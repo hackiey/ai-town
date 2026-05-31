@@ -1,0 +1,10 @@
+[gd_resource type="Resource" script_class="MapGrid" load_steps=2 format=3 uid="uid://btowngrid001"]
+
+[ext_resource type="Script" path="res://src/world/map_grid.gd" id="1_grid"]
+
+[resource]
+script = ExtResource("1_grid")
+origin = Vector3(-40, 0, -40)
+cell_size = 1.0
+width = 80
+depth = 80

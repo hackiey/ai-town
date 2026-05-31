@@ -1,0 +1,10 @@
+[gd_resource type="Resource" script_class="Shape" format=3 uid="uid://b8fa0jhqoem53"]
+
+[ext_resource type="Script" path="res://src/sim/shapes/shape.gd" id="1_shp"]
+
+[resource]
+script = ExtResource("1_shp")
+type = "loaf"
+parent = ""
+primary_part = "body"
+secondary_parts = PackedStringArray()

@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="Item" format=3 uid="uid://ck1yxgbaar3e4"]
+
+[ext_resource type="Script" uid="uid://dqr5snte2lo05" path="res://src/sim/items/item.gd" id="1_item"]
+
+[resource]
+script = ExtResource("1_item")
+id = "omelet"
+kind = "food"
+max_stack = 50
+use_duration_seconds = 60.0
+shape_type = "dish"
+materials = {
+"body": "omelet"
+}
+tint = Color(0.92, 0.78, 0.4, 1)
+base_effects = {
+"hunger": 20,
+"stamina": 15
+}

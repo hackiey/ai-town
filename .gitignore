@@ -1,0 +1,44 @@
+# Godot 4+ specific ignores
+.godot/
+**/.godot/
+/android/
+
+# macOS
+.DS_Store
+**/.DS_Store
+
+# Local editor/agent settings
+.claude/
+.codex/
+.cursor/
+
+# Local environment and secrets
+.env
+.env.*
+!.env.example
+!**/.env.example
+
+# Vendor / third-party (手工下载，看 third-party/README.md)
+third-party/
+
+# Lua VM binaries (跑 ./scripts/install-lua-gdextension 重新拉)
+addons/lua-gdextension/build/
+
+# SQLite GDExtension binaries (跑 ./scripts/install-sqlite-gdextension 重新拉)
+addons/godot-sqlite/bin/
+
+# Node backend
+backend/node_modules/
+backend/dist/
+backend/.env
+backend/.env.local
+backend/*.log
+*.log
+*.db
+*.sqlite
+*.sqlite3
+backend/data/state.db
+backend/data/state.db-journal
+backend/data/state.db-wal
+backend/data/state.db-shm
+backend/data/archive/

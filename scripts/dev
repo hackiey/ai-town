@@ -1,0 +1,262 @@
+#!/usr/bin/env bash
+# Dev launcher for the ai-games backend.
+#
+# Usage: ./scripts/dev <command> [args...]
+# Run `./scripts/dev help` for the full list.
+
+set -euo pipefail
+
+ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+BACKEND_DIR="$ROOT_DIR/backend"
+TOWN_ID="${TOWN_ID:-town_001}"
+HOST="${HOST:-127.0.0.1}"
+PORT="${PORT:-3000}"
+BASE_URL="http://$HOST:$PORT"
+if [[ -z "${GODOT_BIN:-}" ]]; then
+  if command -v godot >/dev/null 2>&1; then
+    GODOT_BIN="$(command -v godot)"
+  else
+    GODOT_BIN="/Applications/Godot.app/Contents/MacOS/Godot"
+  fi
+fi
+GODOT_PORT="${GODOT_PORT:-7777}"
+
+cd "$BACKEND_DIR"
+
+c_red()  { printf "\033[31m%s\033[0m" "$*"; }
+c_grn()  { printf "\033[32m%s\033[0m" "$*"; }
+c_ylw()  { printf "\033[33m%s\033[0m" "$*"; }
+c_dim()  { printf "\033[2m%s\033[0m" "$*"; }
+
+pretty() { jq . 2>/dev/null || cat; }
+
+require() {
+  command -v "$1" >/dev/null 2>&1 || { echo "$(c_red "missing dependency:") $1"; exit 1; }
+}
+
+ensure_env() {
+  if [[ ! -f .env ]]; then
+    echo "$(c_ylw "no .env, copying from .env.example")"
+    cp .env.example .env
+  fi
+}
+
+# 用 bash 内建 /dev/tcp 测端口，无需 nc
+port_open() {
+  (echo > "/dev/tcp/$1/$2") >/dev/null 2>&1
+}
+
+# 检查本地 redis 是否可达；缺少时才起 docker
+ensure_services() {
+  if port_open 127.0.0.1 6379; then
+    echo "$(c_grn "✓ redis reachable on 127.0.0.1:6379 (local)")"
+    return
+  fi
+  require docker
+  echo "$(c_ylw "==> docker compose up -d redis")"
+  docker compose up -d redis
+  for _ in {1..30}; do
+    port_open 127.0.0.1 6379 && break
+    sleep 0.5
+  done
+}
+
+cmd_setup() {
+  require pnpm
+  ensure_env
+  echo "$(c_grn "==> pnpm install")"
+  pnpm install
+  ensure_services
+  echo "$(c_grn "setup done")"
+}
+
+cmd_up()   { ensure_env; ensure_services; }
+cmd_down() {
+  require docker
+  # 只停 docker 起的服务；本地 redis 不会被动到
+  docker compose down
+}
+
+cmd_gateway() {
+  require pnpm; ensure_env; ensure_services
+  reject_backend_init_args "$@"
+  if [[ $# -gt 0 ]]; then
+    exec pnpm dev -- "$@"
+  fi
+  exec pnpm dev
+}
+
+cmd_worker() {
+  require pnpm; ensure_env; ensure_services
+  exec pnpm worker:dev
+}
+
+reject_backend_init_args() {
+  for arg in "$@"; do
+    if [[ "$arg" == "--INIT" ]]; then
+      echo "$(c_red "--INIT belongs to the Godot server now.")"
+      echo "Run: ./scripts/dev server --INIT"
+      exit 1
+    fi
+  done
+}
+
+cmd_all() {
+  require pnpm; ensure_env; ensure_services
+  reject_backend_init_args "$@"
+  echo "$(c_grn "==> starting gateway + worker (Ctrl+C to stop both)")"
+  # Run both in this script's process group so trap can kill the whole tree.
+  trap 'kill 0' EXIT INT TERM
+  # awk fflush keeps lines flowing live; \033 prefix labels each stream.
+  if [[ $# -gt 0 ]]; then
+    pnpm dev -- "$@" 2>&1 | awk '{ print "\033[32m[gw]\033[0m " $0; fflush() }' &
+  else
+    pnpm dev 2>&1 | awk '{ print "\033[32m[gw]\033[0m " $0; fflush() }' &
+  fi
+  pnpm worker:dev 2>&1 | awk '{ print "\033[33m[wk]\033[0m " $0; fflush() }' &
+  wait
+}
+
+cmd_status() {
+  echo "$(c_dim "GET $BASE_URL/health")"
+  curl -sS "$BASE_URL/health" | pretty; echo
+  echo "$(c_dim "GET $BASE_URL/ready")"
+  curl -sS "$BASE_URL/ready"  | pretty; echo
+  echo "$(c_dim "GET $BASE_URL/town-runtimes")"
+  curl -sS "$BASE_URL/town-runtimes" | pretty; echo
+}
+
+cmd_intent() {
+  if [[ $# -lt 3 ]]; then
+    echo "usage: ./scripts/dev intent <npcId> <action> <target> [reason] [priority]"
+    echo "  target may be a position name (string) or JSON like '{\"x\":-30,\"y\":30,\"z\":20}'"
+    echo "  example: ./scripts/dev intent mira_blacksmith go_to_position blacksmith_shop"
+    exit 1
+  fi
+  local npc="$1" action="$2" target="$3" reason="${4:-}" priority="${5:-0.5}"
+  local target_json
+  if [[ "$target" == "{"* || "$target" == "["* ]]; then
+    target_json="$target"
+  else
+    target_json="\"$target\""
+  fi
+  local body
+  body=$(printf '{"townId":"%s","npcId":"%s","action":"%s","target":%s,"priority":%s' \
+    "$TOWN_ID" "$npc" "$action" "$target_json" "$priority")
+  if [[ -n "$reason" ]]; then
+    body+=$(printf ',"reason":"%s"' "$reason")
+  fi
+  body+="}"
+  echo "$(c_dim "POST $BASE_URL/npc/intents") $body"
+  curl -sS -X POST "$BASE_URL/npc/intents" \
+    -H 'content-type: application/json' \
+    -d "$body" | pretty; echo
+}
+
+require_godot() {
+  if [[ ! -x "$GODOT_BIN" ]]; then
+    echo "$(c_red "godot not found at:") $GODOT_BIN"
+    echo "set GODOT_BIN env var to your installation path"
+    exit 1
+  fi
+}
+
+cmd_server() {
+  require_godot
+  cd "$ROOT_DIR"
+  echo "$(c_grn "==> godot server (headless)") town=$TOWN_ID port=$GODOT_PORT"
+  exec "$GODOT_BIN" --headless --path . -- \
+    --mode runtime --town "$TOWN_ID" --port "$GODOT_PORT" "$@"
+}
+
+cmd_client() {
+  require_godot
+  cd "$ROOT_DIR"
+  local connect="${CONNECT:-127.0.0.1:$GODOT_PORT}"
+  echo "$(c_grn "==> godot client") connect=$connect"
+  exec "$GODOT_BIN" --path . -- \
+    --mode client --connect "$connect" "$@"
+}
+
+cmd_logs() {
+  require docker
+  local svcs=()
+  local running
+  running=$(docker compose ps --status running --services 2>/dev/null || true)
+  echo "$running" | grep -q '^redis$' && svcs+=(redis)
+  if [[ ${#svcs[@]} -eq 0 ]]; then
+    echo "$(c_ylw "no docker redis service running (likely using local redis); nothing to tail")"
+    exit 0
+  fi
+  exec docker compose logs -f "${svcs[@]}"
+}
+
+cmd_redis() {
+  if command -v redis-cli >/dev/null 2>&1 && port_open 127.0.0.1 6379; then
+    exec redis-cli
+  fi
+  require docker
+  exec docker compose exec redis redis-cli
+}
+
+cmd_help() {
+  cat <<EOF
+$(c_grn "ai-games dev launcher")
+
+usage: ./scripts/dev <command> [args]
+
+setup                        first time: pnpm install + .env + ensure redis
+up                           ensure redis (start docker only when missing)
+down                         stop docker services (won't touch local redis)
+all                          ensure services + gateway + worker (Ctrl+C stops both)
+gateway [backend-args...]    run gateway only (pnpm dev)
+worker                       run worker only (pnpm worker:dev)
+all [backend-args...]        ensure services + gateway + worker; args go to gateway except --INIT
+status                       hit /health /ready /town-runtimes
+intent <npc> <action> <tgt>  POST a single intent for testing
+server [--INIT]              run headless godot town runtime (game-state authority)
+client                       run godot client (renderer + input only)
+logs                         tail docker redis logs (skips if all-local)
+redis                        redis-cli — uses local if available, else docker exec
+help                         this message
+
+env overrides:
+  TOWN_ID    (default: town_001)
+  HOST       (default: 127.0.0.1)
+  PORT       (default: 3000)
+  GODOT_BIN  (auto-detected from PATH, else /Applications/Godot.app/Contents/MacOS/Godot)
+  GODOT_PORT (default: 7777)
+  CONNECT    (client target, default: 127.0.0.1:$GODOT_PORT)
+
+examples:
+  ./scripts/dev setup
+  ./scripts/dev all
+  ./scripts/dev server --INIT
+  ./scripts/dev intent mira_blacksmith go_to_position blacksmith_shop
+  ./scripts/dev intent mira_blacksmith go_to_position '{"x":-50,"y":30,"z":25}'
+  ./scripts/dev status
+EOF
+}
+
+main() {
+  local cmd="${1:-help}"
+  shift || true
+  case "$cmd" in
+    setup)   cmd_setup ;;
+    up)      cmd_up ;;
+    down)    cmd_down ;;
+    all)     cmd_all "$@" ;;
+    gateway) cmd_gateway "$@" ;;
+    worker)  cmd_worker ;;
+    status)  cmd_status ;;
+    intent)  cmd_intent "$@" ;;
+    server)  cmd_server "$@" ;;
+    client)  cmd_client "$@" ;;
+    logs)    cmd_logs ;;
+    redis)   cmd_redis ;;
+    help|-h|--help) cmd_help ;;
+    *) echo "$(c_red "unknown command:") $cmd"; echo; cmd_help; exit 1 ;;
+  esac
+}
+
+main "$@"

@@ -1,0 +1,25 @@
+[gd_resource type="Resource" script_class="Substance" format=3 uid="uid://drc70yrmkseom"]
+
+[ext_resource type="Script" path="res://src/sim/materials/substance.gd" id="1_mat"]
+
+[resource]
+script = ExtResource("1_mat")
+id = "silver"
+category = "metal"
+hardness = 25
+density = 10.49
+melting_point = 962.0
+ignite_temperature = -1.0
+flammable = false
+thermal_capacity = 232.0
+thermal_conductivity = 0.97
+brittleness = 0.1
+electrical_conductivity = 0.97
+default_state = 0
+hazards = PackedStringArray()
+tint = Color(0.86, 0.86, 0.90, 1)
+visual_fallback = ""
+transforms = {}
+alloys = {}
+tags = PackedStringArray("metal", "non_ferrous", "precious")
+extra = {}

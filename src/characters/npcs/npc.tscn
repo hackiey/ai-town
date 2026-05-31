@@ -1,0 +1,92 @@
+[gd_scene load_steps=7 format=3]
+
+[ext_resource type="PackedScene" uid="uid://celevj4es5c3m" path="res://third-party/polygon-fantasy-kingdom/Assets/PolygonFantasyKingdom/Models/FantasyKingdom_Characters.fbx" id="1_fbx"]
+[ext_resource type="Script" path="res://src/characters/npcs/npc.gd" id="2_script"]
+[ext_resource type="Animation" path="res://assets/animations/idle.res" id="3_idle"]
+[ext_resource type="Animation" path="res://assets/animations/walking.res" id="4_walk"]
+
+[sub_resource type="CapsuleShape3D" id="CapsuleShape_npc"]
+radius = 0.176
+height = 1.432
+
+[sub_resource type="AnimationLibrary" id="AnimationLibrary_main"]
+_data = {
+&"Idle": ExtResource("3_idle"),
+&"Walking": ExtResource("4_walk"),
+}
+
+[sub_resource type="SceneReplicationConfig" id="SceneReplicationConfig_npc"]
+properties/0/path = NodePath(".:position")
+properties/0/spawn = true
+properties/0/replication_mode = 1
+properties/1/path = NodePath(".:rotation")
+properties/1/spawn = true
+properties/1/replication_mode = 1
+properties/2/path = NodePath(".:anim_state")
+properties/2/spawn = true
+properties/2/replication_mode = 2
+properties/3/path = NodePath(".:hp")
+properties/3/spawn = true
+properties/3/replication_mode = 2
+properties/4/path = NodePath(".:max_hp")
+properties/4/spawn = true
+properties/4/replication_mode = 2
+properties/5/path = NodePath(".:stamina")
+properties/5/spawn = true
+properties/5/replication_mode = 2
+properties/6/path = NodePath(".:max_stamina")
+properties/6/spawn = true
+properties/6/replication_mode = 2
+properties/7/path = NodePath(".:hunger")
+properties/7/spawn = true
+properties/7/replication_mode = 2
+properties/8/path = NodePath(".:max_hunger")
+properties/8/spawn = true
+properties/8/replication_mode = 2
+properties/9/path = NodePath(".:rest")
+properties/9/spawn = true
+properties/9/replication_mode = 2
+properties/10/path = NodePath(".:max_rest")
+properties/10/spawn = true
+properties/10/replication_mode = 2
+properties/11/path = NodePath(".:active_conditions")
+properties/11/spawn = true
+properties/11/replication_mode = 2
+properties/12/path = NodePath(".:alive")
+properties/12/spawn = true
+properties/12/replication_mode = 2
+properties/13/path = NodePath(".:burning")
+properties/13/spawn = true
+properties/13/replication_mode = 2
+
+[node name="NPC" type="CharacterBody3D"]
+collision_layer = 2
+collision_mask = 25
+floor_snap_length = 0.5
+floor_max_angle = 1.0472
+script = ExtResource("2_script")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.72, 0)
+shape = SubResource("CapsuleShape_npc")
+
+[node name="NavigationAgent3D" type="NavigationAgent3D" parent="."]
+radius = 0.176
+path_desired_distance = 0.4
+target_desired_distance = 0.6
+path_max_distance = 5.0
+path_height_offset = 0.0
+avoidance_enabled = false
+
+[node name="Visual" parent="." instance=ExtResource("1_fbx")]
+transform = Transform3D(0.8, 0, 0, 0, 0.8, 0, 0, 0, 0.8, 0, 0, 0)
+
+[node name="AnimationPlayer" type="AnimationPlayer" parent="."]
+root_node = NodePath("../Visual")
+libraries = {
+&"": SubResource("AnimationLibrary_main"),
+}
+autoplay = "Idle"
+
+[node name="MultiplayerSynchronizer" type="MultiplayerSynchronizer" parent="."]
+replication_config = SubResource("SceneReplicationConfig_npc")

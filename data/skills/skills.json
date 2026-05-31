@@ -1,0 +1,42 @@
+{
+  "_doc": "技能轴单点真值表。键 = skill_id（与 npc_proficiency.skillId / lua reaction.skill_id / i18n prompt.context.proficiency.skill.<id> 一致）。books = 该技能在 data/i18n/<locale>/skills.json 里的教材 entries。新增 / 移除技能轴时改这里。axis 工具 slug（mine/cook/smith...）由 backend/src/agent-shared/game-tools/axis-registry.ts 单独管，并通过 AXIS_DEFAULTS.skillId 引向本表。",
+  "skills": {
+    "milling": {
+      "books": [
+        "milling_basics"
+      ]
+    },
+    "cooking": {
+      "books": [
+        "breadmaking_basics"
+      ]
+    },
+    "mining": {
+      "books": [
+        "mining_basics"
+      ]
+    },
+    "salt_making": {
+      "books": [
+        "saltmaking_basics"
+      ]
+    },
+    "assembly": {
+      "books": [
+        "tool_crafting_basics"
+      ]
+    },
+    "smithing": {
+      "books": []
+    },
+    "smelting": {
+      "books": []
+    },
+    "charcoal_making": {
+      "books": []
+    },
+    "woodworking": {
+      "books": []
+    }
+  }
+}

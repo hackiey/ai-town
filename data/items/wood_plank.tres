@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="Item" format=3]
+
+[ext_resource type="Script" path="res://src/sim/items/item.gd" id="1_item"]
+
+[resource]
+script = ExtResource("1_item")
+id = "wood_plank"
+kind = "material"
+stackable = true
+max_stack = 99
+shape_type = "plank"
+materials = {
+"body": "wood_oak",
+}
+tags = PackedStringArray("wood", "building_material")
+tint = Color(0.60, 0.45, 0.28, 1)

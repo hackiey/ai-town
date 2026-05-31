@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="Item" format=3]
+
+[ext_resource type="Script" path="res://src/sim/items/item.gd" id="1_item"]
+
+[resource]
+script = ExtResource("1_item")
+id = "charcoal"
+kind = "material"
+stackable = true
+max_stack = 99
+shape_type = "lump"
+materials = {
+"body": "charcoal",
+}
+tags = PackedStringArray("fuel")
+tint = Color(0.10, 0.10, 0.10, 1)

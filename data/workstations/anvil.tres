@@ -1,0 +1,9 @@
+[gd_resource type="Resource" script_class="Workstation" load_steps=2 format=3 uid="uid://bwksanvil00001"]
+
+[ext_resource type="Script" path="res://src/sim/workstations/workstation.gd" id="1_ws"]
+
+[resource]
+script = ExtResource("1_ws")
+id = "anvil"
+verbs = PackedStringArray("shape", "hammer")
+tags = PackedStringArray()

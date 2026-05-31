@@ -1,0 +1,25 @@
+[gd_resource type="Resource" script_class="Substance" load_steps=2 format=3 uid="uid://bmatstone0001"]
+
+[ext_resource type="Script" path="res://src/sim/materials/substance.gd" id="1_mat"]
+
+[resource]
+script = ExtResource("1_mat")
+id = "stone"
+category = "stone"
+hardness = 60
+density = 2.6
+melting_point = 1500.0
+ignite_temperature = -1.0
+flammable = false
+thermal_capacity = 800.0
+thermal_conductivity = 0.3
+brittleness = 0.7
+electrical_conductivity = 0.0
+default_state = 0
+hazards = PackedStringArray()
+tint = Color(0.55, 0.55, 0.55, 1)
+visual_fallback = ""
+transforms = {}
+alloys = {}
+tags = PackedStringArray("stone")
+extra = {}

@@ -1,0 +1,27 @@
+[gd_resource type="Resource" script_class="Substance" format=3 uid="uid://bmatironore01"]
+
+[ext_resource type="Script" path="res://src/sim/materials/substance.gd" id="1_mat"]
+
+[resource]
+script = ExtResource("1_mat")
+id = "iron_ore"
+category = "ore"
+hardness = 50
+density = 4.5
+melting_point = 1538.0
+ignite_temperature = -1.0
+flammable = false
+thermal_capacity = 600.0
+thermal_conductivity = 0.4
+brittleness = 0.6
+electrical_conductivity = 0.0
+default_state = 0
+hazards = PackedStringArray()
+tint = Color(0.45, 0.30, 0.20, 1)
+visual_fallback = ""
+transforms = {
+"fire": "iron",
+}
+alloys = {}
+tags = PackedStringArray("ore", "ferrous")
+extra = {}

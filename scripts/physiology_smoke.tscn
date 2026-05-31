@@ -1,0 +1,6 @@
+[gd_scene format=3 uid="uid://0j6rt0exx441"]
+
+[ext_resource type="Script" path="res://scripts/physiology-smoke.gd" id="1_phys_smoke"]
+
+[node name="PhysiologySmoke" type="Node"]
+script = ExtResource("1_phys_smoke")

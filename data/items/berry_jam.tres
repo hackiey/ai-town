@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="Item" format=3 uid="uid://c3cl2c2fw82fe"]
+
+[ext_resource type="Script" uid="uid://dqr5snte2lo05" path="res://src/sim/items/item.gd" id="1_item"]
+
+[resource]
+script = ExtResource("1_item")
+id = "berry_jam"
+kind = "food"
+max_stack = 30
+use_duration_seconds = 60.0
+shape_type = "jar"
+materials = {
+"body": "berry_jam"
+}
+tint = Color(0.5, 0.1, 0.3, 1)
+base_effects = {
+"hunger": 15,
+"stamina": 5
+}

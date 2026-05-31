@@ -1,0 +1,38 @@
+[gd_scene load_steps=2 format=3 uid="uid://b1nvtestpanel00"]
+
+[ext_resource type="Script" path="res://src/ui/dev/nav_test_panel.gd" id="1_navtest"]
+
+[node name="NavTestPanel" type="VBoxContainer"]
+anchors_preset = 1
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -260.0
+offset_top = 10.0
+offset_right = -10.0
+offset_bottom = 600.0
+grow_horizontal = 0
+script = ExtResource("1_navtest")
+
+[node name="ToggleButton" type="Button" parent="."]
+unique_name_in_owner = true
+layout_mode = 2
+text = "ui.nav_test.toggle"
+
+[node name="Body" type="PanelContainer" parent="."]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="VBox" type="VBoxContainer" parent="Body"]
+layout_mode = 2
+
+[node name="Scroll" type="ScrollContainer" parent="Body/VBox"]
+layout_mode = 2
+size_flags_vertical = 3
+custom_minimum_size = Vector2(0, 500)
+
+[node name="List" type="VBoxContainer" parent="Body/VBox/Scroll"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3

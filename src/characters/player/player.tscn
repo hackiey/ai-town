@@ -1,0 +1,140 @@
+[gd_scene load_steps=8 format=3 uid="uid://bplayer3d0001"]
+
+[ext_resource type="Script" path="res://src/characters/player/player.gd" id="1_player"]
+[ext_resource type="PackedScene" uid="uid://celevj4es5c3m" path="res://third-party/polygon-fantasy-kingdom/Assets/PolygonFantasyKingdom/Models/FantasyKingdom_Characters.fbx" id="2_fbx"]
+[ext_resource type="Animation" path="res://assets/animations/idle.res" id="3_idle"]
+[ext_resource type="Animation" path="res://assets/animations/walking.res" id="4_walk"]
+
+[sub_resource type="CapsuleShape3D" id="CapsuleShape_player"]
+radius = 0.24
+height = 1.44
+
+[sub_resource type="AnimationLibrary" id="AnimationLibrary_main"]
+_data = {
+&"Idle": ExtResource("3_idle"),
+&"Walking": ExtResource("4_walk"),
+}
+
+[sub_resource type="SceneReplicationConfig" id="SceneReplicationConfig_player"]
+properties/0/path = NodePath(".:position")
+properties/0/spawn = true
+properties/0/replication_mode = 1
+properties/1/path = NodePath(".:rotation")
+properties/1/spawn = true
+properties/1/replication_mode = 1
+properties/2/path = NodePath(".:anim_state")
+properties/2/spawn = true
+properties/2/replication_mode = 2
+properties/3/path = NodePath(".:character_id")
+properties/3/spawn = true
+properties/3/replication_mode = 0
+properties/4/path = NodePath(".:owner_peer_id")
+properties/4/spawn = true
+properties/4/replication_mode = 0
+
+[sub_resource type="SceneReplicationConfig" id="SceneReplicationConfig_inventory"]
+properties/0/path = NodePath(".:inventory")
+properties/0/spawn = false
+properties/0/replication_mode = 2
+properties/1/path = NodePath(".:hp")
+properties/1/spawn = false
+properties/1/replication_mode = 2
+properties/2/path = NodePath(".:stamina")
+properties/2/spawn = false
+properties/2/replication_mode = 2
+properties/3/path = NodePath(".:hunger")
+properties/3/spawn = false
+properties/3/replication_mode = 2
+properties/4/path = NodePath(".:active_conditions")
+properties/4/spawn = false
+properties/4/replication_mode = 2
+properties/5/path = NodePath(".:staged_items")
+properties/5/spawn = false
+properties/5/replication_mode = 2
+properties/6/path = NodePath(".:groups")
+properties/6/spawn = false
+properties/6/replication_mode = 2
+properties/7/path = NodePath(".:max_hp")
+properties/7/spawn = false
+properties/7/replication_mode = 2
+properties/8/path = NodePath(".:max_stamina")
+properties/8/spawn = false
+properties/8/replication_mode = 2
+properties/9/path = NodePath(".:max_hunger")
+properties/9/spawn = false
+properties/9/replication_mode = 2
+properties/10/path = NodePath(".:alive")
+properties/10/spawn = false
+properties/10/replication_mode = 2
+properties/11/path = NodePath(".:temperature")
+properties/11/spawn = false
+properties/11/replication_mode = 2
+properties/12/path = NodePath(".:burning")
+properties/12/spawn = false
+properties/12/replication_mode = 2
+properties/13/path = NodePath(".:faction")
+properties/13/spawn = false
+properties/13/replication_mode = 2
+properties/14/path = NodePath(".:character_name")
+properties/14/spawn = false
+properties/14/replication_mode = 2
+properties/15/path = NodePath(".:character_age")
+properties/15/spawn = false
+properties/15/replication_mode = 2
+properties/16/path = NodePath(".:occupation")
+properties/16/spawn = false
+properties/16/replication_mode = 2
+properties/17/path = NodePath(".:personality")
+properties/17/spawn = false
+properties/17/replication_mode = 2
+properties/18/path = NodePath(".:equipped")
+properties/18/spawn = false
+properties/18/replication_mode = 2
+properties/19/path = NodePath(".:rest")
+properties/19/spawn = false
+properties/19/replication_mode = 2
+properties/20/path = NodePath(".:max_rest")
+properties/20/spawn = false
+properties/20/replication_mode = 2
+properties/21/path = NodePath(".:sleep_needed_hours")
+properties/21/spawn = false
+properties/21/replication_mode = 2
+properties/22/path = NodePath(".:wallet_centi")
+properties/22/spawn = false
+properties/22/replication_mode = 2
+
+[node name="Player" type="CharacterBody3D"]
+collision_layer = 2
+collision_mask = 25
+floor_snap_length = 0.5
+floor_max_angle = 1.0472
+script = ExtResource("1_player")
+visible_mesh = "SM_Chr_King_01"
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.72, 0)
+shape = SubResource("CapsuleShape_player")
+
+[node name="NavigationAgent3D" type="NavigationAgent3D" parent="."]
+radius = 0.24
+path_desired_distance = 0.4
+target_desired_distance = 0.6
+path_max_distance = 5.0
+avoidance_enabled = false
+
+[node name="Visual" parent="." instance=ExtResource("2_fbx")]
+transform = Transform3D(0.8, 0, 0, 0, 0.8, 0, 0, 0, 0.8, 0, 0, 0)
+
+[node name="AnimationPlayer" type="AnimationPlayer" parent="."]
+root_node = NodePath("../Visual")
+libraries = {
+&"": SubResource("AnimationLibrary_main"),
+}
+autoplay = "Idle"
+
+[node name="MultiplayerSynchronizer" type="MultiplayerSynchronizer" parent="."]
+replication_config = SubResource("SceneReplicationConfig_player")
+
+[node name="InventorySync" type="MultiplayerSynchronizer" parent="."]
+public_visibility = false
+replication_config = SubResource("SceneReplicationConfig_inventory")

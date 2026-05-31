@@ -1,0 +1,27 @@
+[gd_resource type="Resource" script_class="Substance" format=3 uid="uid://drcpv5n7b10om"]
+
+[ext_resource type="Script" path="res://src/sim/materials/substance.gd" id="1_mat"]
+
+[resource]
+script = ExtResource("1_mat")
+id = "berry_jam"
+category = "food"
+hardness = 0
+density = 1.3
+melting_point = -1.0
+ignite_temperature = -1.0
+flammable = false
+thermal_capacity = 3600.0
+thermal_conductivity = 0.45
+brittleness = 0.0
+electrical_conductivity = 0.05
+default_state = 1
+hazards = PackedStringArray()
+tint = Color(0.50, 0.10, 0.30, 1)
+visual_fallback = ""
+transforms = {}
+alloys = {}
+shelf_life_hours = 720.0
+rotten_into = "rotten_food"
+tags = PackedStringArray("food", "cooked", "sweet", "liquid")
+extra = {}

@@ -1,0 +1,49 @@
+[gd_scene load_steps=4 format=3 uid="uid://b7r4hwk5xpvld"]
+
+[ext_resource type="Script" path="res://src/sim/workstations/workstation_node.gd" id="1_script"]
+
+[sub_resource type="CylinderShape3D" id="CylinderShape_proximity"]
+radius = 1.5
+height = 2.0
+
+[sub_resource type="StandardMaterial3D" id="Material_placeholder"]
+albedo_color = Color(0.62, 0.45, 0.25, 1)
+
+[sub_resource type="BoxMesh" id="BoxMesh_placeholder"]
+material = SubResource("Material_placeholder")
+size = Vector3(1, 0.8, 1)
+
+[node name="WorkstationNode" type="Node3D"]
+script = ExtResource("1_script")
+
+[node name="Mesh" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.4, 0)
+mesh = SubResource("BoxMesh_placeholder")
+
+[node name="Area3D" type="Area3D" parent="."]
+collision_layer = 0
+collision_mask = 2
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Area3D"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 0)
+shape = SubResource("CylinderShape_proximity")
+
+[node name="Title" type="Label3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.1, 0)
+billboard = 1
+no_depth_test = true
+pixel_size = 0.012
+text = "工作站"
+font_size = 48
+outline_size = 10
+modulate = Color(1, 1, 0.85, 1)
+
+[node name="Prompt" type="Label3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.65, 0)
+billboard = 1
+no_depth_test = true
+pixel_size = 0.006
+text = "按 E 使用"
+font_size = 28
+outline_size = 6
+modulate = Color(0.9, 0.9, 0.7, 1)

@@ -1,0 +1,103 @@
+{
+  "material": {
+    "berry": {
+      "name": "浆果"
+    },
+    "berry_jam": {
+      "name": "浆果酱"
+    },
+    "bread": {
+      "name": "面包"
+    },
+    "bronze": {
+      "name": "青铜"
+    },
+    "charcoal": {
+      "name": "木炭"
+    },
+    "cooked_meat": {
+      "name": "熟肉"
+    },
+    "copper": {
+      "name": "铜"
+    },
+    "copper_ore": {
+      "name": "铜矿石"
+    },
+    "cured_meat": {
+      "name": "腌肉"
+    },
+    "cured_omelet": {
+      "name": "咸蛋饼"
+    },
+    "cured_stew": {
+      "name": "盐渍菜汤"
+    },
+    "dough": {
+      "name": "面团"
+    },
+    "egg": {
+      "name": "蛋"
+    },
+    "flesh": {
+      "name": "血肉"
+    },
+    "flour": {
+      "name": "面粉"
+    },
+    "hemp": {
+      "name": "麻"
+    },
+    "iron": {
+      "name": "铁"
+    },
+    "iron_ore": {
+      "name": "铁矿石"
+    },
+    "omelet": {
+      "name": "蛋饼"
+    },
+    "raw_meat": {
+      "name": "生肉"
+    },
+    "rotten_food": {
+      "name": "腐烂食物"
+    },
+    "salt": {
+      "name": "盐"
+    },
+    "stone": {
+      "name": "石"
+    },
+    "tin": {
+      "name": "锡"
+    },
+    "tin_ore": {
+      "name": "锡矿石"
+    },
+    "vegetable_stew": {
+      "name": "蔬菜炖菜"
+    },
+    "water": {
+      "name": "水"
+    },
+    "wheat": {
+      "name": "小麦"
+    },
+    "wood_oak": {
+      "name": "橡木"
+    },
+    "gold": {
+      "name": "黄金"
+    },
+    "silver": {
+      "name": "白银"
+    },
+    "gold_ore": {
+      "name": "金矿石"
+    },
+    "silver_ore": {
+      "name": "银矿石"
+    }
+  }
+}

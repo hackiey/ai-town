@@ -1,0 +1,72 @@
+[gd_resource type="Resource" script_class="RegionMap" format=3 uid="uid://ewp4wia7rnum"]
+
+[ext_resource type="Script" uid="uid://bj4tjdgo33cf8" path="res://src/world/region_map.gd" id="1_rmap"]
+[ext_resource type="Script" uid="uid://dv454d6ntpn46" path="res://src/world/map_region.gd" id="2_mreg"]
+[ext_resource type="Script" uid="uid://m7lhnfne8nxc" path="res://src/world/region_rect.gd" id="3_rect"]
+[ext_resource type="Resource" uid="uid://btowngrid001" path="res://src/world/presets/town_demo_grid.tres" id="4_grid"]
+
+[sub_resource type="Resource" id="Rect_North"]
+script = ExtResource("3_rect")
+region_id = "north_meadow"
+max = Vector2i(79, 24)
+
+[sub_resource type="Resource" id="Rect_South"]
+script = ExtResource("3_rect")
+region_id = "south_meadow"
+min = Vector2i(0, 55)
+max = Vector2i(79, 79)
+
+[sub_resource type="Resource" id="Rect_West"]
+script = ExtResource("3_rect")
+region_id = "west_woods"
+min = Vector2i(0, 25)
+max = Vector2i(24, 54)
+
+[sub_resource type="Resource" id="Rect_East"]
+script = ExtResource("3_rect")
+region_id = "east_woods"
+min = Vector2i(55, 25)
+max = Vector2i(79, 54)
+
+[sub_resource type="Resource" id="Rect_Center"]
+script = ExtResource("3_rect")
+region_id = "town_center"
+min = Vector2i(25, 25)
+max = Vector2i(54, 54)
+
+[sub_resource type="Resource" id="Region_TownCenter"]
+script = ExtResource("2_mreg")
+id = "town_center"
+display_name = "Town Center"
+color = Color(1, 0.85, 0.3, 1)
+
+[sub_resource type="Resource" id="Region_NorthMeadow"]
+script = ExtResource("2_mreg")
+id = "north_meadow"
+display_name = "North Meadow"
+color = Color(0.45, 0.85, 0.45, 1)
+
+[sub_resource type="Resource" id="Region_SouthMeadow"]
+script = ExtResource("2_mreg")
+id = "south_meadow"
+display_name = "South Meadow"
+color = Color(0.5, 0.75, 0.55, 1)
+
+[sub_resource type="Resource" id="Region_WestWoods"]
+script = ExtResource("2_mreg")
+id = "west_woods"
+display_name = "West Woods"
+color = Color(0.25, 0.5, 0.3, 1)
+
+[sub_resource type="Resource" id="Region_EastWoods"]
+script = ExtResource("2_mreg")
+id = "east_woods"
+display_name = "East Woods"
+color = Color(0.3, 0.55, 0.35, 1)
+
+[resource]
+script = ExtResource("1_rmap")
+grid = ExtResource("4_grid")
+regions = Array[ExtResource("2_mreg")]([SubResource("Region_TownCenter"), SubResource("Region_NorthMeadow"), SubResource("Region_SouthMeadow"), SubResource("Region_WestWoods"), SubResource("Region_EastWoods")])
+rects = Array[ExtResource("3_rect")]([SubResource("Rect_North"), SubResource("Rect_South"), SubResource("Rect_West"), SubResource("Rect_East"), SubResource("Rect_Center")])
+cell_region = PackedInt32Array()

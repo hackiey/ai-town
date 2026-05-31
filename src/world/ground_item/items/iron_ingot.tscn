@@ -1,0 +1,9 @@
+[gd_scene load_steps=3 format=3 uid="uid://bgi9ironingt0"]
+
+[ext_resource type="PackedScene" uid="uid://bgdi8groundtm" path="res://src/world/ground_item/ground_item.tscn" id="1_base"]
+[ext_resource type="ArrayMesh" uid="uid://dyidelekfcomp" path="res://assets/PolygonFantasyKingdom/Models/extracted/SM_Item_Ingot_Iron_01.res" id="2_mesh"]
+
+[node name="GroundItem" instance=ExtResource("1_base")]
+
+[node name="Mesh" parent="."]
+mesh = ExtResource("2_mesh")

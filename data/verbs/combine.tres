@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="Verb" load_steps=2 format=3 uid="uid://bvrbcombine01"]
+
+[ext_resource type="Script" path="res://src/sim/verbs/verb.gd" id="1_verb"]
+
+[resource]
+script = ExtResource("1_verb")
+id = "combine"
+sub_options = {
+"axe": "",
+"knife": "",
+"pick": "",
+"rope": "",
+"shovel": "",
+"sickle": "",
+}

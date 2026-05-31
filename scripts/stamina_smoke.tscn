@@ -1,0 +1,6 @@
+[gd_scene format=3 uid="uid://8ainc32ew1gm"]
+
+[ext_resource type="Script" path="res://scripts/stamina-smoke.gd" id="1_stamina_smoke"]
+
+[node name="StaminaSmoke" type="Node"]
+script = ExtResource("1_stamina_smoke")

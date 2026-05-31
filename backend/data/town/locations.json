@@ -1,0 +1,283 @@
+{
+  "blacksmith_shop": {
+    "category": "workshop",
+    "primaryNpcs": [
+      "owen_barclay",
+      "tilda_sparks"
+    ]
+  },
+  "forge_yard": {
+    "category": "workshop",
+    "primaryNpcs": [
+      "garr_hollow",
+      "edda_vance"
+    ]
+  },
+  "tavern": {
+    "category": "social",
+    "primaryNpcs": [
+      "garron_potter",
+      "nell_savor"
+    ]
+  },
+  "inn": {
+    "category": "logistics",
+    "primaryNpcs": [
+      "vera_clay",
+      "tobin_reeve"
+    ]
+  },
+  "livestock": {
+    "category": "service",
+    "primaryNpcs": [
+      "osric_bell",
+      "maeve_coop",
+      "milo_fallow",
+      "tessa_coop"
+    ]
+  },
+  "well": {
+    "category": "civic",
+    "primaryNpcs": []
+  },
+  "guard_post": {
+    "category": "military",
+    "primaryNpcs": [
+      "keir_march"
+    ]
+  },
+  "market_square": {
+    "category": "commerce",
+    "primaryNpcs": []
+  },
+  "saint_candle_chapel": {
+    "category": "civic",
+    "primaryNpcs": [
+      "aldric_voss",
+      "mirelle_hart"
+    ]
+  },
+  "general_store": {
+    "category": "commerce",
+    "primaryNpcs": [
+      "cora_reed"
+    ]
+  },
+  "hale_bakery": {
+    "category": "commerce",
+    "primaryNpcs": [
+      "edda_hale",
+      "mara_hale"
+    ]
+  },
+  "notice_board": {
+    "category": "civic",
+    "primaryNpcs": []
+  },
+  "graveyard": {
+    "category": "civic",
+    "primaryNpcs": []
+  },
+  "farm": {
+    "category": "production",
+    "primaryNpcs": []
+  },
+  "north_wall_wheat_plot": {
+    "category": "production",
+    "primaryNpcs": [
+      "oren_vale",
+      "alma_vale",
+      "niko_vale"
+    ]
+  },
+  "north_wall_field_1": {
+    "category": "production",
+    "primaryNpcs": []
+  },
+  "north_wall_field_2": {
+    "category": "production",
+    "primaryNpcs": []
+  },
+  "north_wall_field_3": {
+    "category": "production",
+    "primaryNpcs": []
+  },
+  "greystone_farmstead": {
+    "category": "production",
+    "primaryNpcs": [
+      "elspeth_rowan",
+      "tavin_rowan",
+      "lysa_rowan",
+      "bram_holt"
+    ]
+  },
+  "greystone_field_1": {
+    "category": "production",
+    "primaryNpcs": []
+  },
+  "greystone_field_2": {
+    "category": "production",
+    "primaryNpcs": []
+  },
+  "greystone_field_3": {
+    "category": "production",
+    "primaryNpcs": []
+  },
+  "millward_mill": {
+    "category": "workshop",
+    "primaryNpcs": [
+      "selma_millward",
+      "jonas_millward",
+      "rudi_tate"
+    ]
+  },
+  "millward_field_1": {
+    "category": "production",
+    "primaryNpcs": []
+  },
+  "millward_field_2": {
+    "category": "production",
+    "primaryNpcs": []
+  },
+  "saint_bell_chapel": {
+    "category": "civic",
+    "primaryNpcs": [
+      "greta_moss",
+      "borin_ash",
+      "pella_moss"
+    ]
+  },
+  "saint_bell_garden": {
+    "category": "production",
+    "primaryNpcs": []
+  },
+  "saint_bell_field_1": {
+    "category": "production",
+    "primaryNpcs": []
+  },
+  "saint_bell_field_2": {
+    "category": "production",
+    "primaryNpcs": []
+  },
+  "fishing_dock": {
+    "category": "production",
+    "primaryNpcs": []
+  },
+  "lumberyard": {
+    "category": "production",
+    "primaryNpcs": [
+      "silas_coppice"
+    ]
+  },
+  "granary": {
+    "category": "logistics",
+    "primaryNpcs": []
+  },
+  "butcher": {
+    "category": "commerce",
+    "primaryNpcs": [
+      "osric_bell",
+      "maeve_coop",
+      "hugh_marrow"
+    ]
+  },
+  "tailor": {
+    "category": "commerce",
+    "primaryNpcs": [
+      "hilda_fenwick",
+      "perrin_weft"
+    ]
+  },
+  "herbalist": {
+    "category": "commerce",
+    "primaryNpcs": []
+  },
+  "jeweler": {
+    "category": "commerce",
+    "primaryNpcs": []
+  },
+  "fishmonger": {
+    "category": "commerce",
+    "primaryNpcs": []
+  },
+  "bookstore": {
+    "category": "commerce",
+    "primaryNpcs": []
+  },
+  "barber": {
+    "category": "service",
+    "primaryNpcs": []
+  },
+  "apothecary": {
+    "category": "commerce",
+    "primaryNpcs": []
+  },
+  "training_ground": {
+    "category": "military",
+    "primaryNpcs": [
+      "keir_march",
+      "garret_pell",
+      "brenna_vail",
+      "rolan_teague"
+    ]
+  },
+  "iron_mine": {
+    "category": "production",
+    "primaryNpcs": [
+      "merrin_cairn"
+    ]
+  },
+  "gold_mine": {
+    "category": "production",
+    "primaryNpcs": [
+      "tomas_pike"
+    ]
+  },
+  "silver_mine": {
+    "category": "production",
+    "primaryNpcs": [
+      "harlan_dunn",
+      "wilf_drake"
+    ]
+  },
+  "treasury": {
+    "category": "logistics",
+    "primaryNpcs": [
+      "magda_kerr"
+    ]
+  },
+  "pasture": {
+    "category": "production",
+    "primaryNpcs": [
+      "osric_bell",
+      "maeve_coop",
+      "milo_fallow",
+      "tessa_coop"
+    ]
+  },
+  "saltworks": {
+    "category": "production",
+    "primaryNpcs": [
+      "iona_brine"
+    ]
+  },
+  "town_gate": {
+    "category": "military",
+    "primaryNpcs": [
+      "merek_gate"
+    ]
+  },
+  "jail": {
+    "category": "military",
+    "primaryNpcs": [
+      "oswin_locke"
+    ]
+  },
+  "patrol_route": {
+    "category": "military",
+    "primaryNpcs": [
+      "sona_ward",
+      "iva_stone"
+    ]
+  }
+}

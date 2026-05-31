@@ -1,0 +1,26 @@
+[gd_resource type="Resource" script_class="Item" format=3]
+
+[ext_resource type="Script" path="res://src/sim/items/item.gd" id="1_item"]
+[ext_resource type="PackedScene" uid="uid://bgi9ironaxer6" path="res://src/world/ground_item/items/iron_axe.tscn" id="2_ground"]
+
+[resource]
+script = ExtResource("1_item")
+id = "iron_axe"
+kind = "tool"
+stackable = false
+max_stack = 1
+crop_variety_id = ""
+source = ""
+shape_type = "axe_head_on_shaft"
+materials = {
+"binding": "hemp",
+"head": "iron",
+"shaft": "wood_oak",
+}
+tags = PackedStringArray("tool", "metal")
+properties = {
+"blade_area": 0.08,
+"can_chop": ["wood", "tree"],
+}
+world_mesh = ExtResource("2_ground")
+tint = Color(0.62, 0.63, 0.66, 1)

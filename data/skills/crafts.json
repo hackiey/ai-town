@@ -1,0 +1,74 @@
+{
+  "_doc": "手艺（craft）单点真值。craft = LLM 看到的一个手艺工具（mine / cook / smith…），背后由 (workstation, verb) 决定路由到哪个 lua reaction。Godot 端 src/autoload/crafts.gd 与 backend craft-registry.ts 都从这一份读，禁止再起镜像表。新增/修改 craft 改这里；改 skillId 时同步检查 data/skills/skills.json 是否要加 skill。",
+  "crafts": {
+    "mine": {
+      "skillId": "mining",
+      "operations": [
+        {"workstation": "iron_mine_workstation",   "verb": "dig"},
+        {"workstation": "silver_mine_workstation", "verb": "dig"},
+        {"workstation": "gold_mine_workstation",   "verb": "dig"}
+      ]
+    },
+    "woodwork": {
+      "skillId": "woodworking",
+      "operations": [
+        {"workstation": "lumberyard_workstation", "verb": "chop"},
+        {"workstation": "workbench",              "verb": "carve"}
+      ],
+      "subOptions": ["plank", "shaft"]
+    },
+    "burn_charcoal": {
+      "skillId": "charcoal_making",
+      "operations": [
+        {"workstation": "charcoal_kiln", "verb": "burn"}
+      ]
+    },
+    "smelt": {
+      "skillId": "smelting",
+      "operations": [
+        {"workstation": "forge", "verb": "fire"},
+        {"workstation": "mint",  "verb": "mint"}
+      ]
+    },
+    "smith": {
+      "skillId": "smithing",
+      "operations": [
+        {"workstation": "anvil", "verb": "shape"}
+      ],
+      "subOptions": ["axe_head", "blade", "pick_head"]
+    },
+    "assemble": {
+      "skillId": "assembly",
+      "operations": [
+        {"workstation": "workbench", "verb": "combine"}
+      ],
+      "subOptions": ["axe", "knife", "pick", "rope", "shovel", "sickle"]
+    },
+    "cook": {
+      "skillId": "cooking",
+      "operations": [
+        {"workstation": "stove", "verb": "bake"},
+        {"workstation": "stove", "verb": "mix"}
+      ]
+    },
+    "mill_grain": {
+      "skillId": "milling",
+      "operations": [
+        {"workstation": "mill", "verb": "grind"}
+      ]
+    },
+    "boil_salt": {
+      "skillId": "salt_making",
+      "operations": [
+        {"workstation": "saltworks_pan", "verb": "boil"}
+      ]
+    },
+    "draw_water": {
+      "skillId": "",
+      "operations": [
+        {"workstation": "well", "verb": "direct"}
+      ]
+    }
+  }
+}
+

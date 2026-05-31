@@ -1,0 +1,27 @@
+[gd_resource type="Resource" script_class="Substance" format=3 uid="uid://drcpv5n7sseom"]
+
+[ext_resource type="Script" path="res://src/sim/materials/substance.gd" id="1_mat"]
+
+[resource]
+script = ExtResource("1_mat")
+id = "berry"
+category = "food"
+hardness = 1
+density = 0.85
+melting_point = -1.0
+ignite_temperature = -1.0
+flammable = false
+thermal_capacity = 3800.0
+thermal_conductivity = 0.5
+brittleness = 0.6
+electrical_conductivity = 0.05
+default_state = 0
+hazards = PackedStringArray()
+tint = Color(0.55, 0.10, 0.30, 1)
+visual_fallback = ""
+transforms = {}
+alloys = {}
+shelf_life_hours = 12.0
+rotten_into = "rotten_food"
+tags = PackedStringArray("fruit", "edible_raw", "sweet")
+extra = {}

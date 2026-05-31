@@ -1,0 +1,21 @@
+[gd_resource type="Resource" script_class="Item" format=3]
+
+[ext_resource type="Script" path="res://src/sim/items/item.gd" id="1_item"]
+
+[resource]
+script = ExtResource("1_item")
+id = "rope"
+kind = "part"
+stackable = true
+max_stack = 99
+crop_variety_id = ""
+source = ""
+shape_type = "rope"
+materials = {
+"body": "hemp",
+}
+tags = PackedStringArray("fiber", "binding")
+properties = {
+"flexibility": "high",
+}
+tint = Color(0.78, 0.65, 0.42, 1)

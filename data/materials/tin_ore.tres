@@ -1,0 +1,27 @@
+[gd_resource type="Resource" script_class="Substance" format=3 uid="uid://drc801ky6seom"]
+
+[ext_resource type="Script" path="res://src/sim/materials/substance.gd" id="1_mat"]
+
+[resource]
+script = ExtResource("1_mat")
+id = "tin_ore"
+category = "ore"
+hardness = 35
+density = 3.5
+melting_point = 232.0
+ignite_temperature = -1.0
+flammable = false
+thermal_capacity = 400.0
+thermal_conductivity = 0.4
+brittleness = 0.5
+electrical_conductivity = 0.0
+default_state = 0
+hazards = PackedStringArray()
+tint = Color(0.55, 0.55, 0.62, 1)
+visual_fallback = ""
+transforms = {
+"fire": "tin",
+}
+alloys = {}
+tags = PackedStringArray("ore", "non_ferrous")
+extra = {}

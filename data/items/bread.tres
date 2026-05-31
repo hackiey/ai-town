@@ -1,0 +1,20 @@
+[gd_resource type="Resource" script_class="Item" format=3 uid="uid://mbl3v3lds8vq"]
+
+[ext_resource type="Script" uid="uid://dqr5snte2lo05" path="res://src/sim/items/item.gd" id="1_item"]
+[ext_resource type="PackedScene" uid="uid://bgi9bread0lc7" path="res://src/world/ground_item/items/bread.tscn" id="2_ground"]
+
+[resource]
+script = ExtResource("1_item")
+id = "bread"
+kind = "food"
+use_duration_seconds = 60.0
+shape_type = "loaf"
+materials = {
+"body": "bread"
+}
+world_mesh = ExtResource("2_ground")
+tint = Color(0.78, 0.55, 0.32, 1)
+base_effects = {
+"hunger": 30,
+"stamina": 5
+}

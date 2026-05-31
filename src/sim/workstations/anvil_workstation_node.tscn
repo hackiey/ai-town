@@ -1,0 +1,24 @@
+[gd_scene format=3 uid="uid://ce7luw4kak602"]
+
+[ext_resource type="PackedScene" uid="uid://b7r4hwk5xpvld" path="res://src/sim/workstations/workstation_node.tscn" id="1_base"]
+[ext_resource type="PackedScene" uid="uid://dgmbcien3vj0s" path="res://third-party/polygon-fantasy-kingdom/Assets/PolygonFantasyKingdom/Prefabs/Props/SM_Prop_Anvil_02.tscn" id="2_anvil"]
+[ext_resource type="Script" uid="uid://c87hcimotyk3h" path="res://src/sim/workstations/approach_marker.gd" id="approach_script"]
+
+[node name="AnvilWorkstationNode" unique_id=1070324833 instance=ExtResource("1_base")]
+workstation_id = "anvil"
+
+[node name="Mesh" parent="." index="0"]
+visible = false
+
+[node name="Title" parent="." index="2"]
+text = "铁砧"
+
+[node name="Prompt" parent="." index="3"]
+text = "按 E 打造"
+
+[node name="SM_Prop_Anvil_02" parent="." index="4" unique_id=1545424271 instance=ExtResource("2_anvil")]
+transform = Transform3D(1.45, 0, 0, 0, 1.45, 0, 0, 0, 1.45, 0, 0, 0)
+
+[node name="Approach" type="Marker3D" parent="." index="5" unique_id=2072236354]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.9221213, 0, 0.41417098)
+script = ExtResource("approach_script")

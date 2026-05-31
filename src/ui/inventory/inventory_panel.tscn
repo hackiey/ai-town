@@ -1,0 +1,62 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://src/ui/inventory/inventory_panel.gd" id="1_inv"]
+
+[node name="InventoryPanel" type="CanvasLayer"]
+script = ExtResource("1_inv")
+layer = 10
+
+[node name="Root" type="Control" parent="."]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+mouse_filter = 2
+visible = false
+
+[node name="Panel" type="PanelContainer" parent="Root"]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -210.0
+offset_top = -180.0
+offset_right = 210.0
+offset_bottom = 180.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 0
+
+[node name="Margin" type="MarginContainer" parent="Root/Panel"]
+layout_mode = 2
+theme_override_constants/margin_left = 16
+theme_override_constants/margin_top = 16
+theme_override_constants/margin_right = 16
+theme_override_constants/margin_bottom = 16
+
+[node name="VBox" type="VBoxContainer" parent="Root/Panel/Margin"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="Title" type="Label" parent="Root/Panel/Margin/VBox"]
+layout_mode = 2
+text = "ui.inventory.title"
+horizontal_alignment = 1
+
+[node name="Wallet" type="Label" parent="Root/Panel/Margin/VBox"]
+layout_mode = 2
+text = "ui.inventory.wallet_format"
+horizontal_alignment = 1
+
+[node name="BackpackTitle" type="Label" parent="Root/Panel/Margin/VBox"]
+layout_mode = 2
+text = "ui.inventory.backpack_title"
+horizontal_alignment = 1
+
+[node name="Grid" type="GridContainer" parent="Root/Panel/Margin/VBox"]
+layout_mode = 2
+columns = 5
+theme_override_constants/h_separation = 6
+theme_override_constants/v_separation = 6

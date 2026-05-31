@@ -1,0 +1,1487 @@
+[gd_scene format=3 uid="uid://bjibfqfe60rrx"]
+
+[ext_resource type="PackedScene" uid="uid://dg5nayyj2bk25" path="res://third-party/polygon-fantasy-kingdom/Assets/PolygonFantasyKingdom/Prefabs/House/SM_Bld_House_Roof_Tile_Peak_Cap_01.tscn" id="1_jqfaq"]
+[ext_resource type="ArrayMesh" uid="uid://krwff7y868sv" path="res://third-party/polygon-fantasy-kingdom/Assets/PolygonFantasyKingdom/Models/extracted/SM_Bld_House_Roof_Tile_Peak_Cap_01.res" id="2_nuhtq"]
+[ext_resource type="Material" uid="uid://cb4yxmbb5n5tc" path="res://third-party/polygon-fantasy-kingdom/Assets/PolygonFantasyKingdom/Materials/Alts/PolygonFantasyKingdom_Mat_01_C_mat.tres" id="3_ta1ot"]
+[ext_resource type="PackedScene" uid="uid://c65d6xqmdl1hw" path="res://third-party/polygon-fantasy-kingdom/Assets/PolygonFantasyKingdom/Prefabs/House/SM_Bld_House_Roof_Tile_Peak_Cap_Edge_01.tscn" id="4_nwmow"]
+[ext_resource type="ArrayMesh" uid="uid://eug1qrrds1q4" path="res://third-party/polygon-fantasy-kingdom/Assets/PolygonFantasyKingdom/Models/extracted/SM_Bld_House_Roof_Tile_Peak_Cap_Edge_01.res" id="5_w6gvu"]
+[ext_resource type="PackedScene" uid="uid://8pxipdhps726" path="res://third-party/polygon-fantasy-kingdom/Assets/PolygonFantasyKingdom/Prefabs/House/SM_Bld_House_Roof_Tile_Edge_End_01.tscn" id="6_l7jol"]
+[ext_resource type="ArrayMesh" uid="uid://bsdnbku36ukei" path="res://third-party/polygon-fantasy-kingdom/Assets/PolygonFantasyKingdom/Models/extracted/SM_Bld_House_Roof_Tile_Edge_End_01.res" id="7_n47eb"]
+[ext_resource type="PackedScene" uid="uid://dpke20iu48ab4" path="res://third-party/polygon-fantasy-kingdom/Assets/PolygonFantasyKingdom/Prefabs/House/SM_Bld_House_WoodBeam_02.tscn" id="8_y8b73"]
+[ext_resource type="ArrayMesh" uid="uid://c1awbpkdjae1p" path="res://third-party/polygon-fantasy-kingdom/Assets/PolygonFantasyKingdom/Models/extracted/SM_Bld_House_WoodBeam_02.res" id="9_dwbec"]
+[ext_resource type="Material" uid="uid://dp6l4j2v4w6o1" path="res://third-party/polygon-fantasy-kingdom/Assets/PolygonFantasyKingdom/Materials/PolygonFantasyKingdom_Mat_01_A_mat.tres" id="10_ohmlm"]
+[ext_resource type="PackedScene" uid="uid://dhnuhhsiurt23" path="res://third-party/polygon-fantasy-kingdom/Assets/PolygonFantasyKingdom/Prefabs/House/SM_Bld_House_Base_Corner_01.tscn" id="11_0rmm1"]
+[ext_resource type="ArrayMesh" uid="uid://bf6gu3l6lv4kt" path="res://third-party/polygon-fantasy-kingdom/Assets/PolygonFantasyKingdom/Models/extracted/SM_Bld_House_Base_Corner_01.res" id="12_u1ery"]
+[ext_resource type="PackedScene" uid="uid://uk0w38ektdyq" path="res://third-party/polygon-fantasy-kingdom/Assets/PolygonFantasyKingdom/Prefabs/House/SM_Bld_House_Stairs_Stone_01.tscn" id="13_1ml4k"]
+[ext_resource type="ArrayMesh" uid="uid://cmrr0so6wkeb" path="res://third-party/polygon-fantasy-kingdom/Assets/PolygonFantasyKingdom/Models/extracted/SM_Bld_House_Stairs_Stone_01.res" id="14_2o6eu"]
+[ext_resource type="PackedScene" uid="uid://cao55y5hhb37l" path="res://third-party/polygon-fantasy-kingdom/Assets/PolygonFantasyKingdom/Prefabs/House/SM_Bld_House_Base_Corner_02.tscn" id="15_0q1bc"]
+[ext_resource type="ArrayMesh" uid="uid://bswwljrjgrkji" path="res://third-party/polygon-fantasy-kingdom/Assets/PolygonFantasyKingdom/Models/extracted/SM_Bld_House_Base_Corner_02.res" id="16_r0v4y"]
+[ext_resource type="PackedScene" uid="uid://dwiqxyj7f7ja0" path="res://third-party/polygon-fantasy-kingdom/Assets/PolygonFantasyKingdom/Prefabs/House/SM_Bld_House_Roof_Tile_End_01.tscn" id="17_7tmh8"]
+[ext_resource type="ArrayMesh" uid="uid://bm0qmnopvw65k" path="res://third-party/polygon-fantasy-kingdom/Assets/PolygonFantasyKingdom/Models/extracted/SM_Bld_House_Roof_Tile_End_01.res" id="18_8y7b5"]
+[ext_resource type="PackedScene" uid="uid://dpi1daqfqmmjq" path="res://third-party/polygon-fantasy-kingdom/Assets/PolygonFantasyKingdom/Prefabs/House/SM_Bld_House_Base_Wall_02.tscn" id="19_ab45g"]
+[ext_resource type="ArrayMesh" uid="uid://b05xgsrodmgog" path="res://third-party/polygon-fantasy-kingdom/Assets/PolygonFantasyKingdom/Models/extracted/SM_Bld_House_Base_Wall_02.res" id="20_5o2h8"]
+[ext_resource type="PackedScene" uid="uid://dgm46nhg5ckrp" path="res://third-party/polygon-fantasy-kingdom/Assets/PolygonFantasyKingdom/Prefabs/House/SM_Bld_House_Roof_Tile_End_Half_01.tscn" id="21_5bi3o"]
+[ext_resource type="ArrayMesh" uid="uid://codhctwsjd54s" path="res://third-party/polygon-fantasy-kingdom/Assets/PolygonFantasyKingdom/Models/extracted/SM_Bld_House_Roof_Tile_End_Half_01.res" id="22_or6cw"]
+[ext_resource type="PackedScene" uid="uid://bjy645t57nfun" path="res://third-party/polygon-fantasy-kingdom/Assets/PolygonFantasyKingdom/Prefabs/House/SM_Bld_House_Roof_Tile_Intersection_01.tscn" id="23_2i6q0"]
+[ext_resource type="ArrayMesh" uid="uid://btiww4t7pk2ge" path="res://third-party/polygon-fantasy-kingdom/Assets/PolygonFantasyKingdom/Models/extracted/SM_Bld_House_Roof_Tile_Intersection_01.res" id="24_avpn2"]
+[ext_resource type="PackedScene" uid="uid://cvv6nov5hxlw6" path="res://third-party/polygon-fantasy-kingdom/Assets/PolygonFantasyKingdom/Prefabs/House/SM_Bld_House_Roof_Tile_01.tscn" id="25_srr2g"]
+[ext_resource type="ArrayMesh" uid="uid://cb8ti1iygod1j" path="res://third-party/polygon-fantasy-kingdom/Assets/PolygonFantasyKingdom/Models/extracted/SM_Bld_House_Roof_Tile_01.res" id="26_gjabb"]
+[ext_resource type="PackedScene" uid="uid://b0omx0mkfr41l" path="res://third-party/polygon-fantasy-kingdom/Assets/PolygonFantasyKingdom/Prefabs/House/SM_Bld_House_Roof_Tile_Window_01.tscn" id="27_iscqt"]
+[ext_resource type="ArrayMesh" uid="uid://bfk05imvent5y" path="res://third-party/polygon-fantasy-kingdom/Assets/PolygonFantasyKingdom/Models/extracted/SM_Bld_House_Roof_Tile_Window_01.res" id="28_isd2e"]
+[ext_resource type="ArrayMesh" uid="uid://csp31v2iufuje" path="res://third-party/polygon-fantasy-kingdom/Assets/PolygonFantasyKingdom/Models/extracted/SM_Bld_House_Roof_Tile_Window_01_Glass.res" id="29_7bino"]
+[ext_resource type="Material" uid="uid://c0ck44xqfw3ke" path="res://third-party/polygon-fantasy-kingdom/Assets/PolygonFantasyKingdom/Materials/Misc/PolygonFantasyKingdom_Mat_Glass_mat.tres" id="30_m1y45"]
+[ext_resource type="PackedScene" uid="uid://1ggeapmj2mvs" path="res://third-party/polygon-fantasy-kingdom/Assets/PolygonFantasyKingdom/Prefabs/House/SM_Bld_House_Base_Wall_01.tscn" id="31_nnwlu"]
+[ext_resource type="ArrayMesh" uid="uid://c5g38cdqogcxy" path="res://third-party/polygon-fantasy-kingdom/Assets/PolygonFantasyKingdom/Models/extracted/SM_Bld_House_Base_Wall_01.res" id="32_kowwo"]
+[ext_resource type="PackedScene" uid="uid://b45p0785hj5v3" path="res://third-party/polygon-fantasy-kingdom/Assets/PolygonFantasyKingdom/Prefabs/House/SM_Bld_House_Supports_02.tscn" id="33_iahxv"]
+[ext_resource type="ArrayMesh" uid="uid://b101xtfs5adx4" path="res://third-party/polygon-fantasy-kingdom/Assets/PolygonFantasyKingdom/Models/extracted/SM_Bld_House_Supports_02.res" id="34_7wowg"]
+[ext_resource type="PackedScene" uid="uid://cn54nalu86xyl" path="res://third-party/polygon-fantasy-kingdom/Assets/PolygonFantasyKingdom/Prefabs/House/SM_Bld_House_Wall_Cut_02.tscn" id="35_xey00"]
+[ext_resource type="ArrayMesh" uid="uid://d258yx6bfb3l8" path="res://third-party/polygon-fantasy-kingdom/Assets/PolygonFantasyKingdom/Models/extracted/SM_Bld_House_Wall_Cut_02.res" id="36_mulwb"]
+[ext_resource type="PackedScene" uid="uid://dvst2pimrs366" path="res://third-party/polygon-fantasy-kingdom/Assets/PolygonFantasyKingdom/Prefabs/House/SM_Bld_House_WoodBeam_03.tscn" id="37_57ili"]
+[ext_resource type="ArrayMesh" uid="uid://6eivhg65cnsq" path="res://third-party/polygon-fantasy-kingdom/Assets/PolygonFantasyKingdom/Models/extracted/SM_Bld_House_WoodBeam_03.res" id="38_h0hlv"]
+[ext_resource type="PackedScene" uid="uid://bww7dxv1cimj3" path="res://third-party/polygon-fantasy-kingdom/Assets/PolygonFantasyKingdom/Prefabs/House/SM_Bld_House_Wall_03.tscn" id="39_4keh2"]
+[ext_resource type="ArrayMesh" uid="uid://u7axyt0teeah" path="res://third-party/polygon-fantasy-kingdom/Assets/PolygonFantasyKingdom/Models/extracted/SM_Bld_House_Wall_03.res" id="40_v0hf7"]
+[ext_resource type="PackedScene" uid="uid://dtiva7l8ksyqi" path="res://third-party/polygon-fantasy-kingdom/Assets/PolygonFantasyKingdom/Prefabs/House/SM_Bld_House_Stairs_Stone_Block_01.tscn" id="41_kox7v"]
+[ext_resource type="ArrayMesh" uid="uid://bt1mqxcgv4wem" path="res://third-party/polygon-fantasy-kingdom/Assets/PolygonFantasyKingdom/Models/extracted/SM_Bld_House_Stairs_Stone_Block_01.res" id="42_7buds"]
+[ext_resource type="PackedScene" uid="uid://d1581ogs6a4qw" path="res://third-party/polygon-fantasy-kingdom/Assets/PolygonFantasyKingdom/Prefabs/House/SM_Bld_House_Chimney_Stone_Base_03.tscn" id="43_ndmq3"]
+[ext_resource type="ArrayMesh" uid="uid://d08b4twruf4vw" path="res://third-party/polygon-fantasy-kingdom/Assets/PolygonFantasyKingdom/Models/extracted/SM_Bld_House_Chimney_Stone_Base_03.res" id="44_miy7n"]
+[ext_resource type="PackedScene" uid="uid://fpichm0nuy88" path="res://third-party/polygon-fantasy-kingdom/Assets/PolygonFantasyKingdom/Prefabs/House/SM_Bld_House_Wall_Window_06.tscn" id="45_8b3f8"]
+[ext_resource type="ArrayMesh" uid="uid://dff3hkxdc43d" path="res://third-party/polygon-fantasy-kingdom/Assets/PolygonFantasyKingdom/Models/extracted/SM_Bld_House_Wall_Window_06.res" id="46_gvyl4"]
+[ext_resource type="ArrayMesh" uid="uid://bxteaklmkj7j0" path="res://third-party/polygon-fantasy-kingdom/Assets/PolygonFantasyKingdom/Models/extracted/SM_Bld_House_Wall_Window_06_Glass.res" id="47_wfvnk"]
+[ext_resource type="PackedScene" uid="uid://cdx6nketpe30v" path="res://third-party/polygon-fantasy-kingdom/Assets/PolygonFantasyKingdom/Prefabs/House/SM_Bld_House_Floor_Wood_02.tscn" id="48_g8vgs"]
+[ext_resource type="ArrayMesh" uid="uid://d0mr2gukjtfwt" path="res://third-party/polygon-fantasy-kingdom/Assets/PolygonFantasyKingdom/Models/extracted/SM_Bld_House_Floor_Wood_02.res" id="49_sajtb"]
+[ext_resource type="PackedScene" uid="uid://ivj3e36kicp" path="res://third-party/polygon-fantasy-kingdom/Assets/PolygonFantasyKingdom/Prefabs/House/SM_Bld_House_Roof_Tile_Half_01.tscn" id="50_sib5r"]
+[ext_resource type="ArrayMesh" uid="uid://boharh7wrcoha" path="res://third-party/polygon-fantasy-kingdom/Assets/PolygonFantasyKingdom/Models/extracted/SM_Bld_House_Roof_Tile_Half_01.res" id="51_7i552"]
+[ext_resource type="PackedScene" uid="uid://kswe8vk1xvgd" path="res://third-party/polygon-fantasy-kingdom/Assets/PolygonFantasyKingdom/Prefabs/House/SM_Bld_House_Chimney_Stone_Base_01.tscn" id="52_w34jv"]
+[ext_resource type="ArrayMesh" uid="uid://gbcodf7redwr" path="res://third-party/polygon-fantasy-kingdom/Assets/PolygonFantasyKingdom/Models/extracted/SM_Bld_House_Chimney_Stone_Base_01.res" id="53_vt3oc"]
+[ext_resource type="PackedScene" uid="uid://t3u5rtatyof6" path="res://third-party/polygon-fantasy-kingdom/Assets/PolygonFantasyKingdom/Prefabs/House/SM_Bld_House_Wall_Door_02.tscn" id="54_osj5g"]
+[ext_resource type="ArrayMesh" uid="uid://bgao1n3cqp554" path="res://third-party/polygon-fantasy-kingdom/Assets/PolygonFantasyKingdom/Models/extracted/SM_Bld_House_Wall_Door_02.res" id="55_6pulu"]
+[ext_resource type="ArrayMesh" uid="uid://vjm01jc3nure" path="res://third-party/polygon-fantasy-kingdom/Assets/PolygonFantasyKingdom/Models/extracted/SM_Bld_House_Wall_Door_02_Door.res" id="56_x87cs"]
+[ext_resource type="PackedScene" uid="uid://ogcoxn1vhoqy" path="res://third-party/polygon-fantasy-kingdom/Assets/PolygonFantasyKingdom/Prefabs/House/SM_Bld_House_Supports_01.tscn" id="57_8r8f1"]
+[ext_resource type="ArrayMesh" uid="uid://cqsea1ptt1tyw" path="res://third-party/polygon-fantasy-kingdom/Assets/PolygonFantasyKingdom/Models/extracted/SM_Bld_House_Supports_01.res" id="58_tpiw6"]
+[ext_resource type="PackedScene" uid="uid://cn8fyhd6g6a4y" path="res://third-party/polygon-fantasy-kingdom/Assets/PolygonFantasyKingdom/Prefabs/House/SM_Bld_House_Roof_Tile_Half_02.tscn" id="59_1j5qc"]
+[ext_resource type="ArrayMesh" uid="uid://b77kimqignmph" path="res://third-party/polygon-fantasy-kingdom/Assets/PolygonFantasyKingdom/Models/extracted/SM_Bld_House_Roof_Tile_Half_02.res" id="60_ddqlf"]
+[ext_resource type="PackedScene" uid="uid://bfbuacj584auh" path="res://third-party/polygon-fantasy-kingdom/Assets/PolygonFantasyKingdom/Prefabs/House/SM_Bld_House_Wall_Window_02.tscn" id="61_i720a"]
+[ext_resource type="ArrayMesh" uid="uid://c6hbglt0ib5rc" path="res://third-party/polygon-fantasy-kingdom/Assets/PolygonFantasyKingdom/Models/extracted/SM_Bld_House_Wall_Window_02.res" id="62_l7a8g"]
+[ext_resource type="ArrayMesh" uid="uid://fgx6rkc50aen" path="res://third-party/polygon-fantasy-kingdom/Assets/PolygonFantasyKingdom/Models/extracted/SM_Bld_House_Wall_Window_02_Glass.res" id="63_qdu3o"]
+[ext_resource type="ArrayMesh" uid="uid://b6d0mqm618u3n" path="res://third-party/polygon-fantasy-kingdom/Assets/PolygonFantasyKingdom/Models/extracted/SM_Bld_House_Wall_Window_02_Shutters_01.res" id="64_cbbxn"]
+[ext_resource type="ArrayMesh" uid="uid://cxelj4qfxgk71" path="res://third-party/polygon-fantasy-kingdom/Assets/PolygonFantasyKingdom/Models/extracted/SM_Bld_House_Wall_Window_02_Shutters_02.res" id="65_0qnia"]
+[ext_resource type="PackedScene" uid="uid://brudoivd2at81" path="res://third-party/polygon-fantasy-kingdom/Assets/PolygonFantasyKingdom/Prefabs/House/SM_Bld_House_Chimney_Stone_Base_02.tscn" id="66_lxy6y"]
+[ext_resource type="ArrayMesh" uid="uid://bka24cnuwg5ab" path="res://third-party/polygon-fantasy-kingdom/Assets/PolygonFantasyKingdom/Models/extracted/SM_Bld_House_Chimney_Stone_Base_02.res" id="67_gm2sk"]
+[ext_resource type="PackedScene" uid="uid://d3mlnogf6gjpg" path="res://third-party/polygon-fantasy-kingdom/Assets/PolygonFantasyKingdom/Prefabs/House/SM_Bld_House_Wall_01.tscn" id="68_nylto"]
+[ext_resource type="ArrayMesh" uid="uid://be8g6jijb0x8m" path="res://third-party/polygon-fantasy-kingdom/Assets/PolygonFantasyKingdom/Models/extracted/SM_Bld_House_Wall_01.res" id="69_g51di"]
+[ext_resource type="PackedScene" uid="uid://djb0hm2toeyg7" path="res://third-party/polygon-fantasy-kingdom/Assets/PolygonFantasyKingdom/Prefabs/Props/SM_Prop_Tether_Beam_01.tscn" id="70_goagt"]
+[ext_resource type="ArrayMesh" uid="uid://0qnjb4i60k3" path="res://third-party/polygon-fantasy-kingdom/Assets/PolygonFantasyKingdom/Models/extracted/SM_Prop_Tether_Beam_01.res" id="71_lb303"]
+[ext_resource type="PackedScene" uid="uid://biv1ofsjtmren" path="res://third-party/polygon-fantasy-kingdom/Assets/PolygonFantasyKingdom/Prefabs/House/SM_Bld_House_Chimney_Stone_01.tscn" id="72_hlqxw"]
+[ext_resource type="ArrayMesh" uid="uid://b3aqogc8iv76g" path="res://third-party/polygon-fantasy-kingdom/Assets/PolygonFantasyKingdom/Models/extracted/SM_Bld_House_Chimney_Stone_01.res" id="73_cxpo7"]
+
+[sub_resource type="ConvexPolygonShape3D" id="ConvexPolygonShape3D_ig76t"]
+points = PackedVector3Array(0.28106686, -0.02662576, -1.875, 0.24925873, -0.079078116, -1.6811864, 0.24791774, -0.08905005, -1.8774471, 0.21868429, -0.12699324, -2.0717502, 0.24207106, -0.08231899, -2.0688136, 0.21589503, -0.027922109, -2.5, 0.23128954, 0.042180553, -2.2917483, 0.033682138, 0.3791321, -2.2917483, 0.033145726, 0.38047826, -1.875, 0.03357485, 0.37953097, -1.0417483, 0.03384304, 0.37873322, -0.6296495, 0.031590194, 0.38077742, -0.20849657, 0.21707511, 0.058584392, -0.20849657, 0.21589503, -0.027922109, -0.00024461746, 0.18011758, -0.10704938, 0, -0.1748677, -0.10704938, -2.5, 0.18011758, -0.10704938, -2.5, -0.2184765, -0.12853889, -0.4302075, -0.000110685825, 0.22112684, -2.5, 0.03142926, 0.31441426, -2.498287, -0.03175789, 0.3808273, -2.2917483, -0.03331344, 0.38047826, -0.62524474, -0.033903465, 0.3791321, -0.20849657, -0.031596974, 0.31441426, -0.001957655, 0.03142926, 0.31441426, -0.001957655, -0.000110685825, 0.22177504, 0, -0.1748677, -0.10704938, 0, -0.2116643, -0.027922109, -2.5, -0.24105868, -0.0722972, -0.8195478, -0.2116643, -0.027922109, 0, -0.23542655, -0.08012517, -0.43118644, -0.26691285, -0.0090253055, -0.62524474, -0.031596974, 0.31441426, -2.498287, -0.034010753, 0.37873322, -1.8705952, -0.033742547, 0.37953097, -1.4584965, -0.21284437, 0.058584392, -2.2917483, -0.2270588, 0.042180553, -0.20849657, -0.22813159, 0.038341373, -1.8307067)
+
+[sub_resource type="ConvexPolygonShape3D" id="ConvexPolygonShape3D_tihod"]
+points = PackedVector3Array(-0.14811085, 0.07551664, -0.09418793, -0.32759842, -0.11645746, -0.05852588, -0.33010873, -0.068006575, -0.05852588, -0.03361255, 0.38799828, -0.05876972, -0.014297068, 0.21414165, -0.09418793, -0.008021265, -0.06464275, -0.09418793, -0.3563276, -0.028584905, 0.20531236, -0.36671752, 0.025944471, 0.20531236, 0.31894737, -0.10329723, -0.05876972, -0.2865966, -0.12525062, -0.028716058, -0.32083452, -0.100523554, 0.46939445, -0.03716883, 0.47539878, 0.20531236, 0.03688547, 0.47764128, 0.20531236, 0.036676288, 0.38906056, -0.05876972, 0.12586224, 0.07398227, -0.09418793, -0.32976007, -0.04493191, 0.46939445, -0.034588784, 0.38906056, 0.4670779, 0.32027227, -0.043220498, -0.05876972, 0.3456543, 0.04777983, 0.20531236, 0.3434927, -0.0075167343, 0.20531236, 0.3206209, -0.100523554, 0.46939445, 0.27843362, -0.11150025, 0.43934077, 0.27669036, -0.113447726, -0.029203743, -0.28018135, -0.1109101, 0.43812156, -0.008021265, -0.06464275, 0.52852637, -0.14811085, 0.07551664, 0.52852637, 0.036676288, 0.38906056, 0.4670779, -0.014297068, 0.21414165, 0.52852637, 0.32633883, -0.04357458, 0.46939445, 0.12586224, 0.07404128, 0.52852637)
+
+[sub_resource type="ConvexPolygonShape3D" id="ConvexPolygonShape3D_dnrhe"]
+points = PackedVector3Array(0.056657784, 0.2513535, 0.26215416, 0.35698044, 0.050587177, 0.26215416, -0.044077396, 0.15097022, -0.03828617, -0.044077396, 0.15097022, 0.51258975, 0.70782757, -0.4501717, -0.08834976, 3.111664, -2.5535908, 0.46246737, 3.1618748, -2.503833, 0.11196342, -0.044077396, -0.19964767, -0.03828617, -0.044077396, -0.19964767, 0.46246737, 2.1598577, -2.4031606, 0.46246737, 2.2100685, -2.0030742, 0.51258975, 3.111664, -2.5535908, -0.03828617, 2.4099698, -2.4537861, -0.08834976, 3.0940902, -2.6418238, 0.06825337, 2.9613457, -2.704021, 0.46246737, 2.1598577, -2.4031606, -0.03828617)
+
+[sub_resource type="ConvexPolygonShape3D" id="ConvexPolygonShape3D_pbq85"]
+points = PackedVector3Array(-0.22191314, -0.0133749, -0.22191162, -0.22191314, -0.0133749, 0.22191162, -0.2203926, 0.15593499, -0.22039108, 0.22191314, -0.0133749, -0.22191162, -0.2203926, 0.15593499, 0.1701699, 0.22191314, -0.0133749, 0.22191162, -0.11464933, 0.15593499, 0.22034763, -0.19649827, 2.346104, 0.19645347, 0.22034915, 0.15593499, -0.22039108, -0.19649827, 2.346104, -0.19649692, 0.19645484, 2.4324865, -0.19649692, 0.22034915, 0.15593499, 0.22034763, 0.19645484, 2.346104, 0.19645347, -0.19345717, 2.5080097, 0.19341241, -0.19345717, 2.5080097, -0.19345585, 0.19341372, 2.5080097, -0.19345585, 0.19341372, 2.5080097, 0.19341241)
+
+[sub_resource type="ConvexPolygonShape3D" id="ConvexPolygonShape3D_k07ly"]
+points = PackedVector3Array(0.3586258, 0.06291226, 0.45420963, 0.37881276, 0.38405022, 0.41259444, -0.35019994, 0.3773495, 0.4204195, -0.39127603, 0.058693297, 0.44238305, -0.41471046, 0, 0.40877086, 0.4146227, 0, 0.40877086, 0.44832614, 0.040328376, 0.36742246, 0.4189234, 0.38405022, 0.3436805, 0.40672347, 0.4613566, 0.3338102, 0.36678836, 0.4614807, 0.40041226, -0.33264607, 0.48369235, 0.405214, -0.41901115, 0.38963416, 0.33914548, -0.4068112, 0.46954638, 0.32954198, -0.44832614, 0.06502175, 0.3616426, -0.44832614, 0.04839405, -0.097102165, -0.44832614, 0.044919606, -0.20745344, -0.44832614, 0.040328376, -0.41615164, -0.41471046, 0, -0.4205977, 0.4146227, 0, -0.4205977, 0.44832614, 0.052364845, -0.41615164, 0.4190112, 0.38665605, -0.37898254, 0.406899, 0.46507925, -0.36564437, 0.25102052, 1.2339242, 0.20691961, 0.2131919, 1.2339242, 0.2447111, 0.26243058, 0.8337426, 0.3367446, -0.17615318, 1.1907418, 0.2457782, -0.26594132, 0.9186184, 0.30535543, -0.2511083, 1.2339242, 0.20691961, -0.4190989, 0.38380206, -0.38485134, -0.33782446, 0.83883023, 0.24666739, -0.39259255, 0.051496234, -0.45420992, -0.3646819, 0.38640788, -0.42531052, 0.41014645, 0.040328376, -0.45420992, 0.3784617, 0.38380206, -0.42531052, 0.36634955, 0.46110845, -0.41321722, 0.21108547, 1.2316906, -0.25778288, 0.2513716, 1.2316906, -0.1947377, 0.20731136, 1.267676, 0.20105082, -0.20748688, 1.267676, 0.20105082, -0.20748688, 1.267676, -0.21367793, -0.25154713, 1.2316906, -0.21741262, -0.35353518, 0.464707, -0.41321722, -0.21117319, 1.2316906, -0.25778288, 0.19713011, 1.267676, -0.18424499)
+
+[sub_resource type="ConvexPolygonShape3D" id="ConvexPolygonShape3D_iebaq"]
+points = PackedVector3Array(-0.0067641735, 0, 0.93092024, -0.013769388, 1.1882228, 0.9237306, -1.8684965, 0, 0.93092024, -0.0067641735, 0, -0.9309966, -0.013953686, 1.1882228, -0.923807, -0.081793904, 1.2675039, 0.8271322, -0.8805746, 1.2382232, 0.88335836, -1.8541174, 0.1528548, 0.9165411, -1.8898809, 0.22320275, -0.92270094, -1.8684965, 0, -0.9309966, -1.8006563, 0.22320275, -0.952381, -0.8234266, 1.2393398, -0.9136679, -0.14078534, 1.2660149, -0.8823287, -1.7114319, 0.43164113, 0.89257574, -1.1305506, 1.0532341, -0.7995564, -1.1305506, 1.0532341, 0.79929554)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_r0mj3"]
+size = Vector3(0.91156006, 2.5141602, 0.9206543)
+
+[sub_resource type="ConvexPolygonShape3D" id="ConvexPolygonShape3D_vmldy"]
+points = PackedVector3Array(0.7240784, -0.20556524, -0.4678936, 0.6778366, -0.09884846, -0.6656226, 0.5395533, -0.038235396, -0.20849657, 0.5074581, -0.12310228, 0, 0.49773228, -0.17015038, 0, 0.6908338, -0.34967154, -0.4678936, 0.7240784, -0.20556524, -2.0323513, 0.67765975, -0.09262404, -2.2917483, 0.6766872, -0.095199645, -1.4584965, 0.022493944, 0.08887178, -0.20849657, 0.057506844, 0.057534993, 0, 0.5666971, -0.044245183, -1.875, 0.33964372, -0.17749092, 0, -0.17918396, -0.17920801, -0.4678936, 0.6908338, -0.34967154, -2.0323513, 0.6918948, -0.15607029, -2.2917483, 0.6155914, -0.1546537, -2.4902115, 0.057506844, 0.057534993, -2.5, 0.57262105, -0.05798185, -2.2917483, -5.2258372e-05, -3.027916e-05, 0, 0.022493944, 0.08887178, -2.2917483, 0.2030403, -0.14581072, 0, -0.17918396, -0.17920801, -2.0323513, 0.33964372, -0.17749092, -2.5, 0.61621034, -0.21955949, -2.4902115, 0.5074581, -0.12310228, -2.5, -5.2258372e-05, -3.027916e-05, -2.5, 0.2030403, -0.14581072, -2.5, 0.49773228, -0.17015038, -2.5)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_p1crn"]
+size = Vector3(2.5049438, 2.517456, 0.6992798)
+
+[sub_resource type="ConvexPolygonShape3D" id="ConvexPolygonShape3D_lsom7"]
+points = PackedVector3Array(0.733999, -0.20554842, -0.5458509, 0.55519354, -0.027015, -0.24816644, 0.51560795, -0.18566334, 0.009868145, 0.6669805, -0.34967202, -0.5508226, 0.6669805, -0.34967202, -0.6993541, 0.51560795, -0.18562011, -1.2599206, 0.55519354, -0.027058244, -1.0614228, 0.039686844, 0.072151035, 0.009868145, 0.05943498, 0.09194964, -1.1607339, 0.19829741, -0.1658215, 0.009868145, -0.17888299, -0.18354516, -0.5490825, -0.17888299, -0.18354516, -0.7010942, 0.27764738, -0.18562011, -1.2599206, 0.5203439, -0.10802509, -1.2053555, 0.019759998, -0.027058244, -1.2599206, 0.038882613, 0.07444212, -0.53354573)
+
+[sub_resource type="ConvexPolygonShape3D" id="ConvexPolygonShape3D_xxjur"]
+points = PackedVector3Array(0.16762602, 0.062048197, 0.057614088, 0.16762602, 0.062048197, -2.5257797, 0.025764681, 0.025950432, -2.4931374, -0.0839771, -0.06470084, 0.057614088, 3.758515, -2.3323421, 0.057354927, 3.758515, -0.94651616, -1.1400423, 3.6327133, -0.8832773, -1.3283824, -0.0839771, -0.06470084, -2.5257797, 3.758515, -2.395581, -2.5889914, 0.015058167, -0.37356687, -0.53875303, 2.3096938, -2.7106895, 0.057354927, 3.8223715, -1.4507983, -1.1400423, 3.758515, -2.5844834, -0.0058567524, 2.3096938, -2.7106895, -2.5257797, 0.015058167, -0.37356687, -1.9928834, 3.2514849, -2.6501648, -2.3501337)
+
+[sub_resource type="ConvexPolygonShape3D" id="ConvexPolygonShape3D_eglsd"]
+points = PackedVector3Array(0.10334432, 0.079270124, 0.0412488, 0.10334432, 0.079270124, -2.5217216, -0.07082459, -0.007814407, 0.0412488, 2.5792642, -2.3969219, 0.0412488, 2.5792642, -2.3963776, -0.65393436, -0.07082459, -0.007814407, -2.5217216, 2.5792642, -2.3963776, -1.8699403, 2.5792642, -2.3969219, -2.5217216, -0.20090699, -0.22498107, -0.43667388, 2.4489098, -2.5708187, 0.0412488, 2.5449746, -2.4548874, -2.490362, -0.20090699, -0.22498107, -2.043799, 2.4489098, -2.5708187, -2.5217216, 2.275013, -2.700901, -0.43667388, 2.3329785, -2.6668837, -2.0239794, 2.275013, -2.700901, -2.043799)
+
+[sub_resource type="ConvexPolygonShape3D" id="ConvexPolygonShape3D_a0aaq"]
+points = PackedVector3Array(0.12416279, 0.061006308, 0.02107048, 1.9364378, -0.6654811, -0.19576263, 2.0600145, 0.005580187, -1.1666564, 0.12416279, 0.061006308, -2.5219245, -0.018071875, -0.017941952, -2.4880676, -0.051602483, -0.070664406, 0.02107048, 2.5794685, -2.3942342, 0.02131939, 2.5794685, -2.3942342, -2.5219245, 1.9361675, -0.6654811, -2.3045936, 2.0529838, -2.1752336, -2.5219245, -0.18302083, -0.24586487, -2.039465, -0.18302083, -0.24586487, -0.46138906, 2.2722847, -2.7011056, -0.46114016, 2.5464787, -2.4534457, -0.009052277, 2.5464787, -2.4534457, -2.491802, 2.2722847, -2.7011056, -2.039465)
+
+[sub_resource type="ConvexPolygonShape3D" id="ConvexPolygonShape3D_23wi6"]
+points = PackedVector3Array(2.5000029, 1.2526441, 0, 2.5000029, 1.2508049, 0.16330674, 2.5000029, 1.2508049, -0.16337557, 0, 1.2526441, 0, 0, 1.2508049, 0.16330674, 2.5000029, 1.1170309, 0.24946776, 2.5000029, 1.1170309, -0.24953657, 0, 1.2508049, -0.16337557, 0, 1.1170309, 0.24946776, 2.5000029, 0, 0.35152587, 2.5000029, 0, -0.35152587, 0, 1.1170309, -0.24953657, 0, 0, 0.35152587, 0, 0, -0.35152587)
+
+[sub_resource type="ConvexPolygonShape3D" id="ConvexPolygonShape3D_0df6m"]
+points = PackedVector3Array(0.019841194, 0.047486544, 0.12506646, 0.019841194, -0.1907208, 0.12506646, 0.019841194, 0.047486544, -0.112958714, -2.5198395, 0.047486544, 0.12506646, 0.019592524, -1.8172845, 0.08540335, 0.019592524, -1.8172845, -0.113005325, -2.5198395, -0.1907208, 0.12506646, -1.844895, -0.2303307, -0.113005325, -2.5198395, 0.047486544, -0.112958714, -0.059710264, -1.8172845, 0.08540335, -0.059710264, -1.8172845, -0.113005325, -2.5198395, -0.1907208, -0.112958714)
+
+[sub_resource type="ConvexPolygonShape3D" id="ConvexPolygonShape3D_hyb0h"]
+points = PackedVector3Array(2.5198395, 2.5198412, 0.05757375, 2.5198395, 2.5198412, -0.0614933, -0.019842863, 2.5198412, 0.05757375, 2.5198395, 2.2018838, 0.13694271, 2.5198395, 2.2018838, -0.14083508, -0.019842863, 2.5198412, -0.0614933, -0.019842863, 2.1626053, 0.13694271, 2.5198395, -0.019841194, 0.13694271, 2.5198395, -0.019841194, -0.14083508, -0.019842863, 2.2018838, -0.14083508, -0.019842863, -0.019841194, 0.13694271, -0.019842863, -0.019841194, -0.14083508)
+
+[sub_resource type="ConvexPolygonShape3D" id="ConvexPolygonShape3D_tbdh0"]
+points = PackedVector3Array(0.019733045, 2.525867, 0.05800113, 0.019733045, 2.525867, -0.06129612, -0.01988864, 2.525867, 0.05800113, 0.3382017, 2.2076476, 0.13755989, 0.45756513, 2.1279058, 0.13755989, -0.01988864, 2.525867, -0.06129612, 0.45756513, 2.1279058, -0.14088213, 0.3382017, 2.2076476, -0.14088213, -0.01988864, 2.2076476, 0.13755989, 2.525867, 0.059603922, 0.13755989, -0.01988864, 2.2076476, -0.14088213, 2.525867, 0.059603922, -0.14088213, -0.01988864, -0.01988864, 0.13755989, 2.525867, -0.01988864, 0.13755989, -0.01988864, -0.01988864, -0.14088213, 2.525867, -0.01988864, -0.14088213)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_3vev5"]
+size = Vector3(0.33361816, 2.9883423, 0.34820557)
+
+[sub_resource type="ConvexPolygonShape3D" id="ConvexPolygonShape3D_p4q4l"]
+points = PackedVector3Array(2.5232959, 2.523296, 0.0975654, 2.5232959, 2.523296, -0.10113505, -0.019792438, 2.523296, 0.0975654, 2.5232959, 0.85456854, 0.13732183, 2.5232959, 0.85456854, -0.14086425, -0.019792438, 2.523296, -0.10113505, -0.019792438, 0.85456854, 0.13732183, 2.5232959, -0.01962161, 0.13732183, 2.5232959, -0.01962161, -0.14086425, -0.019792438, 0.85456854, -0.14086425, -0.019792438, -0.01962161, 0.13732183, -0.019792438, -0.01962161, -0.14086425)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_tdbb4"]
+size = Vector3(1.9077148, 1.2754517, 1.9020996)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_s2eaa"]
+size = Vector3(2.331421, 2.50885, 2.3554077)
+
+[sub_resource type="ConvexPolygonShape3D" id="ConvexPolygonShape3D_ntvwj"]
+points = PackedVector3Array(2.5235448, 2.5235455, 0.0975662, 2.5235448, 2.5235455, -0.101107046, -0.019871235, 2.5235455, 0.0975662, 2.5235448, 2.2053695, 0.13732263, 2.5235448, 2.2053695, -0.14086348, -0.019871235, 2.5235455, -0.101107046, -0.019871235, 2.2053695, 0.13732263, 2.5235448, -0.01987052, 0.13732263, 2.5235448, -0.01987052, -0.14086348, -0.019871235, 2.2053695, -0.14086348, -0.019871235, -0.01987052, 0.13732263, -0.019871235, -0.01987052, -0.14086348)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_pd24g"]
+size = Vector3(2.5097656, 0.15222168, 2.5023804)
+
+[sub_resource type="ConvexPolygonShape3D" id="ConvexPolygonShape3D_wmtu7"]
+points = PackedVector3Array(1.3271738, -1.1711047, 0.019841194, 0.09727135, 0.05854261, 0.019841194, 1.1682339, -1.290041, 0.019841194, 1.0492873, -1.4488194, -0.4564271, 1.2824581, -1.2174397, -1.8099134, 1.3271738, -1.1711047, -2.5195928, -0.061373383, -0.020846605, 0.019841194, 0.09727135, 0.05854261, -2.5195928, -0.061373383, -0.060541272, 0.019841194, -0.1804676, -0.21917212, -0.4564271, -0.1804676, -0.2193197, -2.0435731, 1.0492873, -1.4488194, -2.0435731, 1.1682339, -1.290041, -2.5195928, -0.061373383, -0.020846605, -2.5195928, -0.1804676, -0.13993049, -0.6547892, -0.061373383, -0.060688853, -2.5195928)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_h5h3l"]
+size = Vector3(0.9472656, 2.4987488, 0.9472656)
+
+[sub_resource type="ConcavePolygonShape3D" id="ConcavePolygonShape3D_2bhtj"]
+data = PackedVector3Array(0.6802, 2.2271, 0.0953, 0.5711, 2.2756, 0.0953, 1.9289, 2.2756, 0.0953, 0.5711, 0, 0.0953, 0.5711, 2.2756, 0.0953, 0.6802, 2.2271, 0.0953, 0.6802, 2.2271, 0.0953, 0.6802, 0, 0.0953, 0.5711, 0, 0.0953, 1.9289, 2.2756, 0.0953, 1.8197999, 2.2271, 0.0953, 0.6802, 2.2271, 0.0953, 1.8197999, 2.2271, 0.0953, 1.9289, 2.2756, 0.0953, 1.9289, 0, 0.0953, 1.9289, 0, 0.0953, 1.8197999, 0, 0.0953, 1.8197999, 2.2271, 0.0953, 1.9289, 2.2756, -0.0953, 0.5711, 2.2756, -0.0953, 0.6802, 2.2271, -0.0953, 0.6802, 2.2271, -0.0953, 0.5711, 2.2756, -0.0953, 0.5711, 0, -0.0953, 0.5711, 0, -0.0953, 0.6802, 0, -0.0953, 0.6802, 2.2271, -0.0953, 0.6802, 2.2271, -0.0953, 1.8197999, 2.2271, -0.0953, 1.9289, 2.2756, -0.0953, 1.9289, 0, -0.0953, 1.9289, 2.2756, -0.0953, 1.8197999, 2.2271, -0.0953, 1.8197999, 2.2271, -0.0953, 1.8197999, 0, -0.0953, 1.9289, 0, -0.0953, 1.8197999, 0, 0.0953, 1.9289, 0, 0.0953, 1.9289, 0, -0.0953, 1.9289, 0, -0.0953, 1.8197999, 0, -0.0953, 1.8197999, 0, 0.0953, 1.8082, 0, 0.0637, 1.8197999, 0, 0.0953, 1.8197999, 0, -0.0953, 1.8197999, 0, -0.0953, 1.8082, 0, -0.0637, 1.8082, 0, 0.0637, 1.7421, 0, 0.0488, 1.8082, 0, 0.0637, 1.8082, 0, -0.0637, 1.8082, 0, -0.0637, 1.7421, 0, -0.0488, 1.7421, 0, 0.0488, 0.6802, 0, -0.0953, 0.5711, 0, -0.0953, 0.5711, 0, 0.0953, 0.5711, 0, 0.0953, 0.6802, 0, 0.0953, 0.6802, 0, -0.0953, 0.6802, 0, -0.0953, 0.6802, 0, 0.0953, 0.6918, 0, 0.0637, 0.6918, 0, 0.0637, 0.6918, 0, -0.0637, 0.6802, 0, -0.0953, 0.7578, 0, -0.0488, 0.6918, 0, -0.0637, 0.6918, 0, 0.0637, 0.6918, 0, 0.0637, 0.7578, 0, 0.0488, 0.7578, 0, -0.0488, 0.7568, 2.1805, 0.0488, 1.7432, 2.1805, 0.0488, 1.7432, 2.1805, -0.0488, 1.7421, 0, -0.0488, 1.7432, 2.1805, -0.0488, 1.7432, 2.1805, 0.0488, 1.7432, 2.1805, 0.0488, 1.7421, 0, 0.0488, 1.7421, 0, -0.0488, 1.7432, 2.1805, -0.0488, 0.7568, 2.1805, -0.0488, 0.7568, 2.1805, 0.0488, 0.7578, 0, 0.0488, 0.7568, 2.1805, 0.0488, 0.7568, 2.1805, -0.0488, 0.7568, 2.1805, -0.0488, 0.7578, 0, -0.0488, 0.7578, 0, 0.0488, 1.8197999, 2.2271, -0.0953, 0.6802, 2.2271, -0.0953, 0.6918, 2.2137, -0.0637, 0.6918, 2.2137, -0.0637, 1.8082, 2.2137, -0.0637, 1.8197999, 2.2271, -0.0953, 0.6918, 2.2137, 0.0637, 0.6802, 2.2271, 0.0953, 1.8197999, 2.2271, 0.0953, 1.8197999, 2.2271, 0.0953, 1.8082, 2.2137, 0.0637, 0.6918, 2.2137, 0.0637, 0.6918, 2.2137, 0.0637, 0.6918, 0, 0.0637, 0.6802, 0, 0.0953, 0.6802, 0, 0.0953, 0.6802, 2.2271, 0.0953, 0.6918, 2.2137, 0.0637, 0.6918, 2.2137, -0.0637, 0.6802, 2.2271, -0.0953, 0.6802, 0, -0.0953, 0.6802, 0, -0.0953, 0.6918, 0, -0.0637, 0.6918, 2.2137, -0.0637, 1.8082, 2.2137, -0.0637, 1.8082, 0, -0.0637, 1.8197999, 0, -0.0953, 1.8197999, 0, -0.0953, 1.8197999, 2.2271, -0.0953, 1.8082, 2.2137, -0.0637, 1.8082, 2.2137, 0.0637, 1.8197999, 2.2271, 0.0953, 1.8197999, 0, 0.0953, 1.8197999, 0, 0.0953, 1.8082, 0, 0.0637, 1.8082, 2.2137, 0.0637, 0.6918, 2.2137, -0.0637, 0.7568, 2.1805, -0.0488, 1.7432, 2.1805, -0.0488, 0.7568, 2.1805, -0.0488, 0.6918, 2.2137, -0.0637, 0.6918, 0, -0.0637, 0.6918, 0, -0.0637, 0.7578, 0, -0.0488, 0.7568, 2.1805, -0.0488, 1.7432, 2.1805, -0.0488, 1.8082, 2.2137, -0.0637, 0.6918, 2.2137, -0.0637, 1.8082, 0, -0.0637, 1.8082, 2.2137, -0.0637, 1.7432, 2.1805, -0.0488, 1.7432, 2.1805, -0.0488, 1.7421, 0, -0.0488, 1.8082, 0, -0.0637, 0.6918, 2.2137, 0.0637, 1.8082, 2.2137, 0.0637, 1.7432, 2.1805, 0.0488, 1.7432, 2.1805, 0.0488, 1.8082, 2.2137, 0.0637, 1.8082, 0, 0.0637, 1.8082, 0, 0.0637, 1.7421, 0, 0.0488, 1.7432, 2.1805, 0.0488, 1.7432, 2.1805, 0.0488, 0.7568, 2.1805, 0.0488, 0.6918, 2.2137, 0.0637, 0.6918, 0, 0.0637, 0.6918, 2.2137, 0.0637, 0.7568, 2.1805, 0.0488, 0.7568, 2.1805, 0.0488, 0.7578, 0, 0.0488, 0.6918, 0, 0.0637, 0.47259998, 0.1585, 0.0819, -0.0009, 0.6814, 0.0819, 0.36789998, 0.4008, 0.0819, 0.2914, 0.5462, 0.0819, 0.36789998, 0.4008, 0.0819, -0.0009, 0.6814, 0.0819, -0.0009, 0.6814, 0.0819, 0.1603, 0.6814, 0.0819, 0.2914, 0.5462, 0.0819, 0.47259998, 0.1585, -0.0819, 0.47259998, 0.1585, 0.0819, 0.6114, 0.1585, 0.0819, 0.6114, 0.1585, 0.0819, 0.6114, 0.1585, -0.0819, 0.47259998, 0.1585, -0.0819, 0.1603, 0.6814, -0.0819, -0.0009, 0.6814, -0.0819, 0.47259998, 0.1585, -0.0819, 0.47259998, 0.1585, -0.0819, 0.6114, 0.1585, -0.0819, 0.1603, 0.6814, -0.0819, -0.0009, 0.6814, 0.0819, -0.0009, 0.6814, -0.0819, 0.1603, 0.6814, -0.0819, 0.1603, 0.6814, -0.0819, 0.1603, 0.6814, 0.0819, -0.0009, 0.6814, 0.0819, 0.47259998, 0.1585, -0.0819, -0.0009, 0.6814, -0.0819, -0.0009, 0.6814, 0.0819, -0.0009, 0.6814, 0.0819, 0.47259998, 0.1585, 0.0819, 0.47259998, 0.1585, -0.0819, 0.54109997, 0.22819999, 0.0819, 0.3927, 0.4418, 0.0513, 0.6114, 0.1585, -0.0819, 0.6114, 0.1585, -0.0819, 0.6114, 0.1585, 0.0819, 0.54109997, 0.22819999, 0.0819, 0.3927, 0.4418, 0.0513, 0.54109997, 0.22819999, 0.0819, 0.36789998, 0.4008, 0.0819, 0.3927, 0.4418, 0.0513, 0.36789998, 0.4008, 0.0819, 0.2914, 0.5462, 0.0819, 2.0149999, 0.1585, 0.0819, 1.8722999, 0.1585, 0.0819, 2.3272998, 0.6814, 0.0819, 2.3272998, 0.6814, 0.0819, 2.4947, 0.6814, 0.0819, 2.0149999, 0.1585, 0.0819, 2.0149999, 0.1585, -0.0819, 1.8722999, 0.1585, -0.0819, 1.8722999, 0.1585, 0.0819, 1.8722999, 0.1585, 0.0819, 2.0149999, 0.1585, 0.0819, 2.0149999, 0.1585, -0.0819, 2.0149999, 0.1585, -0.0819, 2.4947, 0.6814, -0.0819, 2.3272998, 0.6814, -0.0819, 2.3272998, 0.6814, -0.0819, 1.8722999, 0.1585, -0.0819, 2.0149999, 0.1585, -0.0819, 2.4947, 0.6814, 0.0819, 2.3272998, 0.6814, 0.0819, 2.3272998, 0.6814, -0.0819, 2.3272998, 0.6814, -0.0819, 2.4947, 0.6814, -0.0819, 2.4947, 0.6814, 0.0819, 2.0149999, 0.1585, -0.0819, 2.0149999, 0.1585, 0.0819, 2.4947, 0.6814, 0.0819, 2.4947, 0.6814, 0.0819, 2.4947, 0.6814, -0.0819, 2.0149999, 0.1585, -0.0819, 1.8722999, 0.1585, 0.0819, 1.8722999, 0.1585, -0.0819, 2.3272998, 0.6814, -0.0819, 2.3272998, 0.6814, -0.0819, 2.3272998, 0.6814, 0.0819, 1.8722999, 0.1585, 0.0819, 1.893, 0, 0.121, 2.1694, 0.1161, 0.121, 2.5, 0, 0.121, 1.893, 0, 0.121, 1.994, 0.1585, 0.121, 2.1694, 0.1161, 0.121, 1.893, 0, 0.121, 1.893, 0.1585, 0.121, 1.994, 0.1585, 0.121, 2.5, 0, -0.121, 2.5, 0, 0.121, 2.5, 0.1585, 0.121, 2.5, 0.1585, 0.121, 2.5, 0.1585, -0.121, 2.5, 0, -0.121, 1.893, 0, -0.121, 2.5, 0, -0.121, 2.5, 0.1585, -0.121, 2.5, 0.1585, -0.121, 1.893, 0.1585, -0.121, 1.893, 0, -0.121, 0, 0, 0.121, 0, 0, -0.121, 0, 0.1585, -0.121, 0, 0.1585, -0.121, 0, 0.1585, 0.121, 0, 0, 0.121, 0.6042, 0, -0.121, 0, 0, -0.121, 0, 0, 0.121, 0, 0, 0.121, 0.6042, 0, 0.121, 0.6042, 0, -0.121, 0.6042, 0.1585, -0.121, 0.2652, 0.1585, -0.0849, 0.41939998, 0.1585, -0.121, 0.6042, 0.1585, -0.121, 0.6042, 0.1585, 0.121, 0.2652, 0.1585, -0.0849, 0.6042, 0.1585, 0.121, 0, 0.1585, 0.121, 0.2652, 0.1585, -0.0849, 1.994, 0.1585, 0.121, 2.1675, 0.1585, 0.0874, 2.1694, 0.1161, 0.121, 2.1694, 0.1161, 0.121, 2.1675, 0.1585, 0.0874, 2.3046, 0.1585, 0.121, 2.2212, 0.83989996, 0.0897, 2.5, 0.83989996, 0.0897, 2.5, 0.6814, 0.0897, 2.5, 0.6814, 0.0897, 2.2212, 0.6814, 0.0897, 2.2212, 0.83989996, 0.0897, 1.8912, 0.83989996, 0.0897, 2.2212, 0.83989996, 0.0897, 2.2212, 0.6814, 0.0897, 0, 0.83989996, -0.0897, 0, 0.83989996, 0.0897, 0, 0.6814, 0.0897, 0, 0.6814, 0.0897, 0, 0.6814, -0.0897, 0, 0.83989996, -0.0897, 2.3776, 0.83989996, -0.0897, 2.2212, 0.6814, -0.0897, 2.5, 0.6814, -0.0897, 2.3776, 0.83989996, -0.0897, 2.2212, 0.80429995, -0.0897, 2.2212, 0.6814, -0.0897, 2.3776, 0.83989996, -0.0897, 2.5, 0.6814, -0.0897, 2.5, 0.83989996, -0.0897, 2.5, 0.83989996, 0.0897, 2.5, 0.83989996, -0.0897, 2.5, 0.6814, -0.0897, 2.5, 0.6814, -0.0897, 2.5, 0.6814, 0.0897, 2.5, 0.83989996, 0.0897, 2.3776, 0.83989996, -0.0897, 2.5, 0.83989996, 0.0897, 2.2212, 0.83989996, 0.0897, 2.3776, 0.83989996, -0.0897, 2.5, 0.83989996, -0.0897, 2.5, 0.83989996, 0.0897, 2.3776, 0.83989996, -0.0897, 2.2212, 0.83989996, 0.0897, 2.2212, 0.83989996, -0.0504, 2.0018, 0.83989996, -0.0897, 2.2212, 0.83989996, -0.0504, 2.2212, 0.83989996, 0.0897, 2.2212, 0.83989996, 0.0897, 1.8912, 0.83989996, 0.0897, 2.0018, 0.83989996, -0.0897, 2.0018, 0.83989996, -0.0897, 1.8912, 0.83989996, 0.0897, 1.8912, 0.83989996, -0.0897, 2.2212, 0.6814, 0.0897, 2.5, 0.6814, 0.0897, 2.5, 0.6814, -0.0897, 2.5, 0.6814, -0.0897, 2.2212, 0.6814, -0.0897, 2.2212, 0.6814, 0.0897, 0.1171, 0.83989996, 0.0897, 0.2131, 0.79929996, 0.0897, 0, 0.6814, 0.0897, 0, 0.6814, 0.0897, 0, 0.83989996, 0.0897, 0.1171, 0.83989996, 0.0897, 1.8912, 0.6814, -0.0897, 1.8912, 0.6814, 0.0897, 2.2212, 0.6814, 0.0897, 2.2212, 0.6814, 0.0897, 2.2212, 0.6814, -0.0897, 1.8912, 0.6814, -0.0897, 0.606, 0.6814, -0.0897, 0.606, 0.83989996, -0.0897, 0, 0.83989996, -0.0897, 0, 0.83989996, -0.0897, 0, 0.6814, -0.0897, 0.606, 0.6814, -0.0897, 0, 0.83989996, -0.0897, 0.606, 0.83989996, -0.0897, 0.2455, 0.83989996, 0.0579, 0.1171, 0.83989996, 0.0897, 0.2455, 0.83989996, 0.0579, 0.2131, 0.79929996, 0.0897, 0.2131, 0.79929996, 0.0897, 0.2455, 0.83989996, 0.0579, 0.5282, 0.83989996, 0.0897, 2.2212, 0.80429995, -0.0897, 2.3776, 0.83989996, -0.0897, 2.2212, 0.83989996, -0.0504, 2.2212, 0.80429995, -0.0897, 2.2212, 0.83989996, -0.0504, 2.0018, 0.83989996, -0.0897, 1.8912, 0.6814, 0.0897, 1.8912, 0.83989996, 0.0897, 2.2212, 0.6814, 0.0897, 0.54109997, 0.22819999, 0.0819, 0.6114, 0.1585, 0.0819, 0.47259998, 0.1585, 0.0819, 0.47259998, 0.1585, 0.0819, 0.36789998, 0.4008, 0.0819, 0.54109997, 0.22819999, 0.0819, 2.3046, 0.1585, 0.121, 2.5, 0.1585, 0.121, 2.5, 0, 0.121, 2.5, 0, 0.121, 2.1694, 0.1161, 0.121, 2.3046, 0.1585, 0.121, 0.1171, 0.83989996, 0.0897, 0, 0.83989996, 0.0897, 0, 0.83989996, -0.0897, 0, 0.83989996, -0.0897, 0.2455, 0.83989996, 0.0579, 0.1171, 0.83989996, 0.0897, 0.2914, 0.5462, 0.0819, 0.1603, 0.6814, 0.0819, 0.1603, 0.6814, -0.0819, 0.1603, 0.6814, -0.0819, 0.3927, 0.4418, 0.0513, 0.2914, 0.5462, 0.0819, 0.6114, 0.1585, -0.0819, 0.3927, 0.4418, 0.0513, 0.1603, 0.6814, -0.0819, 1.25, 2.5, -0.0449, 1.25, 2.5, 0.0449, 0, 2.5, 0.0449, 0, 2.5, 0.0449, 0, 2.5, -0.0449, 1.25, 2.5, -0.0449, 2.5, 2.5, 0.0449, 1.25, 2.5, 0.0449, 1.25, 2.5, -0.0449, 1.25, 2.5, -0.0449, 2.5, 2.5, -0.0449, 2.5, 2.5, 0.0449, 2.5, 2.5, -0.0449, 2.5, 0.0061999997, -0.0449, 2.5, 0.0061999997, 0.0449, 2.5, 0.0061999997, 0.0449, 2.5, 2.5, 0.0449, 2.5, 2.5, -0.0449, 0, 2.5, 0.0449, 0, 0.0061999997, 0.0449, 0, 0.0061999997, -0.0449, 0, 0.0061999997, -0.0449, 0, 2.5, -0.0449, 0, 2.5, 0.0449, 2.5, 0.0061999997, 0.0449, 1.8376, 0.0061999997, 0.0449, 1.8376, 2.2719, 0.0449, 1.8376, 2.2719, 0.0449, 2.5, 2.5, 0.0449, 2.5, 0.0061999997, 0.0449, 1.8376, 2.2719, 0.0449, 1.25, 2.5, 0.0449, 2.5, 2.5, 0.0449, 1.8376, 2.2719, 0.0449, 0.6624, 2.2719, 0.0449, 1.25, 2.5, 0.0449, 0.6624, 2.2719, 0.0449, 0, 2.5, 0.0449, 1.25, 2.5, 0.0449, 0.6624, 2.2719, 0.0449, 0.6624, 0.0061999997, 0.0449, 0, 0.0061999997, 0.0449, 0, 0.0061999997, 0.0449, 0, 2.5, 0.0449, 0.6624, 2.2719, 0.0449, 0.6624, 2.2719, -0.0449, 1.25, 2.5, -0.0449, 0, 2.5, -0.0449, 0.6624, 2.2719, -0.0449, 1.8376, 2.2719, -0.0449, 1.25, 2.5, -0.0449, 1.8376, 2.2719, -0.0449, 2.5, 2.5, -0.0449, 1.25, 2.5, -0.0449, 1.8376, 2.2719, -0.0449, 1.8376, 0.0061999997, -0.0449, 2.5, 0.0061999997, -0.0449, 2.5, 0.0061999997, -0.0449, 2.5, 2.5, -0.0449, 1.8376, 2.2719, -0.0449, 0.6624, 2.2719, -0.0449, 0, 2.5, -0.0449, 0, 0.0061999997, -0.0449, 0, 0.0061999997, -0.0449, 0.6624, 0.0061999997, -0.0449, 0.6624, 2.2719, -0.0449, 2.0018, 0.83989996, -0.0897, 1.8912, 0.6814, -0.0897, 2.2212, 0.6814, -0.0897, 2.0018, 0.83989996, -0.0897, 1.8912, 0.83989996, -0.0897, 1.8912, 0.6814, -0.0897, 2.0018, 0.83989996, -0.0897, 2.2212, 0.6814, -0.0897, 2.2212, 0.80429995, -0.0897, 0, 0.6814, 0.0897, 0.606, 0.6814, 0.0897, 0.606, 0.6814, -0.0897, 0.606, 0.6814, -0.0897, 0, 0.6814, -0.0897, 0, 0.6814, 0.0897, 0.5282, 0.83989996, 0.0897, 0.606, 0.83989996, 0.0897, 0.606, 0.6814, 0.0897, 0.606, 0.6814, 0.0897, 0.2131, 0.79929996, 0.0897, 0.5282, 0.83989996, 0.0897, 0, 0.6814, 0.0897, 0.2131, 0.79929996, 0.0897, 0.606, 0.6814, 0.0897, 0.5282, 0.83989996, 0.0897, 0.2455, 0.83989996, 0.0579, 0.606, 0.83989996, -0.0897, 0.606, 0.83989996, -0.0897, 0.606, 0.83989996, 0.0897, 0.5282, 0.83989996, 0.0897, 1.8506999, 0.5629, 0.13319999, 1.8977, 0.7438, 0.13319999, 1.9741, 0, 0.13319999, 1.9741, 0, 0.13319999, 1.8506999, 0, 0.13319999, 1.8506999, 0.5629, 0.13319999, 1.8506999, 0, -0.13319999, 1.8506999, 0, 0.13319999, 1.9741, 0, 0.13319999, 1.9741, 0, 0.13319999, 1.9741, 0, -0.13319999, 1.8506999, 0, -0.13319999, 1.8506999, 1.7023, -0.13319999, 1.8812, 1.5769999, -0.13319999, 1.9741, 2.5012, -0.13319999, 1.9741, 2.5012, -0.13319999, 1.8506999, 2.5012, -0.13319999, 1.8506999, 1.7023, -0.13319999, 1.9741, 2.5012, -0.13319999, 1.8812, 1.5769999, -0.13319999, 1.9741, 0, -0.13319999, 1.9741, 0, -0.13319999, 1.8812, 1.5769999, -0.13319999, 1.8506999, 1.378, -0.13319999, 1.8506999, 1.378, -0.13319999, 1.8506999, 0, -0.13319999, 1.9741, 0, -0.13319999, 1.8506999, 2.5012, 0.13319999, 1.8506999, 2.5012, -0.13319999, 1.9741, 2.5012, -0.13319999, 1.9741, 2.5012, -0.13319999, 1.9741, 2.5012, 0.13319999, 1.8506999, 2.5012, 0.13319999, 1.8506999, 1.378, -0.13319999, 1.8506999, 1.5708, -0.056399997, 1.8506999, 0.7539, 0.0796, 1.8506999, 0.7539, 0.0796, 1.8506999, 0, -0.13319999, 1.8506999, 1.378, -0.13319999, 1.9741, 0, 0.13319999, 1.9741, 2.5012, 0.13319999, 1.9741, 2.5012, -0.13319999, 1.9741, 2.5012, -0.13319999, 1.9741, 0, -0.13319999, 1.9741, 0, 0.13319999, 0.5259, 0, 0.13319999, 0.5259, 2.5012, 0.13319999, 0.5933, 1.814, 0.13319999, 0.5259, 0, -0.13319999, 0.5259, 0, 0.13319999, 0.6493, 0, 0.13319999, 0.6493, 0, 0.13319999, 0.6493, 0, -0.13319999, 0.5259, 0, -0.13319999, 0.6493, 0.87119997, -0.13319999, 0.6042, 1.0411999, -0.13319999, 0.5259, 0, -0.13319999, 0.5259, 2.5012, -0.13319999, 0.5259, 0, -0.13319999, 0.6042, 1.0411999, -0.13319999, 0.5259, 0, -0.13319999, 0.6493, 0, -0.13319999, 0.6493, 0.87119997, -0.13319999, 0.5259, 2.5012, 0.13319999, 0.5259, 2.5012, -0.13319999, 0.6493, 2.5012, -0.13319999, 0.6493, 2.5012, -0.13319999, 0.6493, 2.5012, 0.13319999, 0.5259, 2.5012, 0.13319999, 0.5259, 0, -0.13319999, 0.5259, 2.5012, -0.13319999, 0.5259, 2.5012, 0.13319999, 0.5259, 2.5012, 0.13319999, 0.5259, 0, 0.13319999, 0.5259, 0, -0.13319999, 0.6493, 1.5401, 0.13319999, 0.6493, 1.7994, 0.0698, 0.6493, 1.0564, -0.0831, 0.6493, 1.0564, -0.0831, 0.6493, 0, 0.13319999, 0.6493, 1.5401, 0.13319999, 0.5082, 2.3648999, 0.1574, 1.6636, 2.2561998, 0.1574, 0.5082, 2.2561998, 0.1574, 0.5082, 2.3648999, 0.1574, 1.9918, 2.3648999, 0.1574, 1.6636, 2.2561998, 0.1574, 1.9918, 2.3648999, 0.1574, 1.9918, 2.2924, 0.1574, 1.6636, 2.2561998, 0.1574, 0.5082, 2.3648999, -0.1125, 0.5082, 2.2561998, 0.1574, 0.5082, 2.2561998, -0.1574, 0.5082, 2.3648999, -0.1125, 0.5082, 2.3648999, 0.1574, 0.5082, 2.2561998, 0.1574, 0.5082, 2.3648999, -0.1125, 0.5082, 2.2561998, -0.1574, 0.5082, 2.3023999, -0.1574, 0.7233, 2.3648999, -0.1574, 0.5082, 2.2561998, -0.1574, 1.9918, 2.2561998, -0.1574, 0.7233, 2.3648999, -0.1574, 0.5082, 2.3023999, -0.1574, 0.5082, 2.2561998, -0.1574, 0.7233, 2.3648999, -0.1574, 1.9918, 2.2561998, -0.1574, 1.9918, 2.3648999, -0.1574, 1.9918, 2.3648999, 0.1574, 1.9918, 2.2561998, -0.1574, 1.9918, 2.2561998, 0.078099996, 1.9918, 2.3648999, 0.1574, 1.9918, 2.3648999, -0.1574, 1.9918, 2.2561998, -0.1574, 1.9918, 2.3648999, 0.1574, 1.9918, 2.2561998, 0.078099996, 1.9918, 2.2924, 0.1574, 0.7233, 2.3648999, -0.1574, 1.9918, 2.3648999, 0.1574, 0.5082, 2.3648999, 0.1574, 0.7233, 2.3648999, -0.1574, 1.9918, 2.3648999, -0.1574, 1.9918, 2.3648999, 0.1574, 0.7233, 2.3648999, -0.1574, 0.5082, 2.3648999, 0.1574, 0.5082, 2.3648999, -0.1125, 1.6636, 2.2561998, 0.1574, 1.9918, 2.2561998, -0.1574, 0.5082, 2.2561998, -0.1574, 1.6636, 2.2561998, 0.1574, 1.9918, 2.2561998, 0.078099996, 1.9918, 2.2561998, -0.1574, 1.6636, 2.2561998, 0.1574, 0.5082, 2.2561998, -0.1574, 0.5082, 2.2561998, 0.1574, 0, 0.1585, 0.121, 0.6042, 0.1585, 0.121, 0.6042, 0, 0.121, 0.6042, 0, 0.121, 0, 0, 0.121, 0, 0.1585, 0.121, 0, 0, -0.121, 0.6042, 0, -0.121, 0.2692, 0.12979999, -0.121, 2.5, 0, -0.121, 1.893, 0, -0.121, 1.893, 0, 0.121, 1.893, 0, 0.121, 2.5, 0, 0.121, 2.5, 0, -0.121, 2.1675, 0.1585, 0.0874, 1.893, 0.1585, -0.121, 2.5, 0.1585, -0.121, 2.1675, 0.1585, 0.0874, 1.994, 0.1585, 0.121, 1.893, 0.1585, -0.121, 1.994, 0.1585, 0.121, 1.893, 0.1585, 0.121, 1.893, 0.1585, -0.121, 2.3046, 0.1585, 0.121, 2.1675, 0.1585, 0.0874, 2.5, 0.1585, -0.121, 2.5, 0.1585, -0.121, 2.5, 0.1585, 0.121, 2.3046, 0.1585, 0.121, 0.41939998, 0.1585, -0.121, 0.2652, 0.1585, -0.0849, 0.2692, 0.12979999, -0.121, 0.101399995, 0.1585, -0.121, 0, 0.1585, -0.121, 0, 0, -0.121, 0, 0, -0.121, 0.2692, 0.12979999, -0.121, 0.101399995, 0.1585, -0.121, 0.41939998, 0.1585, -0.121, 0.2692, 0.12979999, -0.121, 0.6042, 0, -0.121, 0.6042, 0, -0.121, 0.6042, 0.1585, -0.121, 0.41939998, 0.1585, -0.121, 0.2692, 0.12979999, -0.121, 0.2652, 0.1585, -0.0849, 0.101399995, 0.1585, -0.121, 0.101399995, 0.1585, -0.121, 0.2652, 0.1585, -0.0849, 0, 0.1585, 0.121, 0, 0.1585, 0.121, 0, 0.1585, -0.121, 0.101399995, 0.1585, -0.121, 0.6493, 1.5401, 0.13319999, 0.5933, 1.814, 0.13319999, 0.6493, 1.7994, 0.0698, 0.6493, 1.7994, 0.0698, 0.5933, 1.814, 0.13319999, 0.6493, 2.0769, 0.13319999, 0.6493, 1.2171, -0.13319999, 0.6042, 1.0411999, -0.13319999, 0.6493, 1.0564, -0.0831, 0.6493, 1.0564, -0.0831, 0.6042, 1.0411999, -0.13319999, 0.6493, 0.87119997, -0.13319999, 1.8506999, 0.7539, 0.0796, 1.8977, 0.7438, 0.13319999, 1.8506999, 0.5629, 0.13319999, 1.8812, 1.5769999, -0.13319999, 1.8506999, 1.5708, -0.056399997, 1.8506999, 1.378, -0.13319999, 0.5082, 2.3648999, -0.1125, 0.5082, 2.3023999, -0.1574, 0.7233, 2.3648999, -0.1574, 1.9918, 2.2924, 0.1574, 1.9918, 2.2561998, 0.078099996, 1.6636, 2.2561998, 0.1574, 1.8506999, 0.5629, 0.13319999, 1.8506999, 0, 0.13319999, 1.8506999, 0, -0.13319999, 1.8506999, 0, -0.13319999, 1.8506999, 0.7539, 0.0796, 1.8506999, 0.5629, 0.13319999, 1.8506999, 1.7023, -0.13319999, 1.8506999, 2.5012, -0.13319999, 1.8506999, 2.5012, 0.13319999, 1.8506999, 2.5012, 0.13319999, 1.8506999, 1.5708, -0.056399997, 1.8506999, 1.7023, -0.13319999, 1.8506999, 0.90709996, 0.13319999, 1.8506999, 0.7539, 0.0796, 1.8506999, 1.5708, -0.056399997, 1.8506999, 1.5708, -0.056399997, 1.8506999, 2.5012, 0.13319999, 1.8506999, 0.90709996, 0.13319999, 1.8506999, 1.7023, -0.13319999, 1.8506999, 1.5708, -0.056399997, 1.8812, 1.5769999, -0.13319999, 0.6493, 1.2171, -0.13319999, 0.6493, 2.5012, -0.13319999, 0.5259, 2.5012, -0.13319999, 0.5259, 2.5012, -0.13319999, 0.6042, 1.0411999, -0.13319999, 0.6493, 1.2171, -0.13319999, 0.6493, 0.87119997, -0.13319999, 0.6493, 0, -0.13319999, 0.6493, 0, 0.13319999, 0.6493, 0, 0.13319999, 0.6493, 1.0564, -0.0831, 0.6493, 0.87119997, -0.13319999, 0.6493, 2.0769, 0.13319999, 0.6493, 2.5012, 0.13319999, 0.6493, 2.5012, -0.13319999, 0.6493, 2.5012, -0.13319999, 0.6493, 1.7994, 0.0698, 0.6493, 2.0769, 0.13319999, 0.6493, 1.2171, -0.13319999, 0.6493, 1.0564, -0.0831, 0.6493, 1.7994, 0.0698, 0.6493, 1.7994, 0.0698, 0.6493, 2.5012, -0.13319999, 0.6493, 1.2171, -0.13319999, 0.6493, 1.5401, 0.13319999, 0.6493, 0, 0.13319999, 0.5259, 0, 0.13319999, 0.5259, 0, 0.13319999, 0.5933, 1.814, 0.13319999, 0.6493, 1.5401, 0.13319999, 0.6493, 2.0769, 0.13319999, 0.5933, 1.814, 0.13319999, 0.5259, 2.5012, 0.13319999, 0.5259, 2.5012, 0.13319999, 0.6493, 2.5012, 0.13319999, 0.6493, 2.0769, 0.13319999, 1.8506999, 0.90709996, 0.13319999, 1.8506999, 2.5012, 0.13319999, 1.9741, 2.5012, 0.13319999, 1.9741, 2.5012, 0.13319999, 1.8977, 0.7438, 0.13319999, 1.8506999, 0.90709996, 0.13319999, 1.9741, 0, 0.13319999, 1.8977, 0.7438, 0.13319999, 1.9741, 2.5012, 0.13319999, 1.8506999, 0.90709996, 0.13319999, 1.8977, 0.7438, 0.13319999, 1.8506999, 0.7539, 0.0796)
+
+[sub_resource type="ConvexPolygonShape3D" id="ConvexPolygonShape3D_toij2"]
+points = PackedVector3Array(-0.032566547, -0.01726842, -0.039191388, 0.07108432, 0.43189886, -0.10826492, 1.0035365, -0.01726842, -0.039191388, -0.032566547, -0.01726842, 0.06441891, -0.032566547, 2.1930847, -0.039191388, 0.9343683, 1.0188887, -0.14280169, 0.1127678, 1.6777107, -0.097852506, 1.0035365, -0.01726842, 0.06441891, 1.0035365, 2.1930847, -0.039191388, 0.9689524, 0.811614, 0.13349245, 0.0019161291, 0.39728096, 0.098955676, -0.032566547, 2.1930847, 0.06441891, 1.0035365, 2.1930847, 0.06441891, 0.9689524, 1.8131531, 0.098955676, 0.7962347, 1.053723, 0.13349245, 0.0019161291, 1.8131531, 0.098955676)
+
+[sub_resource type="ConvexPolygonShape3D" id="ConvexPolygonShape3D_qhuvl"]
+points = PackedVector3Array(0.011790156, 0.021025777, 0.10726912, 0.011790156, -0.19123459, 0.10726912, 0.011790156, 0.021025777, -0.10495426, -1.4973538, 0.021025777, 0.10726912, 0.011790156, -1.2758948, 0.08367029, -1.426742, -0.19123459, 0.10726912, 0.011790156, -0.19123459, -0.10495426, -1.4973538, 0.021025777, -0.10495426, -1.4973538, -0.16762185, 0.10726912, -0.035481453, -1.2758948, 0.08367029, 0.011790156, -1.2758948, -0.08137619, -1.4973538, -0.19123459, -0.10495426, -1.4973538, -0.19123459, 0.08367029, -0.035481453, -1.2758948, -0.08137619)
+
+[sub_resource type="ConvexPolygonShape3D" id="ConvexPolygonShape3D_ri7ao"]
+points = PackedVector3Array(0.10334432, 0.07899809, 0.031357646, 0.10334432, 0.07899809, -1.27172, -0.07082459, -0.00807786, -0.48982245, -0.07082459, -0.05188799, 0.031357646, 2.5792642, -2.3964074, 0.031357646, -0.07082459, -0.05188799, -1.27172, 2.5792642, -2.3964074, -1.27172, -0.20090699, -0.22522354, -0.706917, -0.20090699, -0.22522354, -0.53331786, 2.275013, -2.700901, -0.53331786, 2.4486375, -2.5702872, 0.031357646, 2.4921796, -2.5702872, 0.031357646, 2.4486375, -2.5702872, -1.27172, 2.275013, -2.700901, -0.706917, 2.4921796, -2.5702872, -1.27172, 2.3618252, -2.700901, -0.53331786)
+
+[sub_resource type="ConvexPolygonShape3D" id="ConvexPolygonShape3D_xg3b0"]
+points = PackedVector3Array(2.5198395, 2.5198412, 0.05757451, 2.5198395, 2.5198412, -0.06149254, -0.019842863, 2.5198412, 0.05757451, 2.5198395, 2.2018838, 0.13694347, 2.5198395, 2.2018838, -0.14083432, -0.019842863, 2.5198412, -0.06149254, -0.019842863, 2.1626053, 0.13694347, 2.5198395, -0.019841194, 0.13694347, 2.5198395, -0.019841194, -0.14083432, -0.019842863, 2.2018838, -0.14083432, -0.019842863, -0.019841194, 0.13694347, -0.019842863, -0.019841194, -0.14083432)
+
+[sub_resource type="ConvexPolygonShape3D" id="ConvexPolygonShape3D_yhjcb"]
+points = PackedVector3Array(-1.1466404, 0.16772388, 1.146648, 1.154426, 0.21581255, 1.146648, -1.0533905, 1.9235466, 1.053173, -1.1466404, 0.21581255, -1.1544183, -1.1288464, 0, 1.1286288, 1.1303252, 0.007917036, 1.1225473, 1.154426, 0.16772388, -1.1544183, 1.053743, 1.9206144, -1.0539607, 1.053743, 1.9206144, 1.0459651, -1.0461828, 1.9206144, -1.0539607, -0.5065043, 2.9955719, 0.50628674, -1.1227648, 0.007917036, -1.1305428, 1.1303252, 0.007917036, -1.1305428, 0.50910926, 2.9803243, -0.5093269, 0.50528026, 2.969475, 0.49750233, -0.49997228, 2.975926, -0.5077502)
+
+[sub_resource type="ConvexPolygonShape3D" id="ConvexPolygonShape3D_vivr7"]
+points = PackedVector3Array(2.5198379, 2.5198412, 0.057574496, 2.5198379, 2.5198412, -0.061438173, -0.019844532, 2.5198412, 0.057574496, 2.5198379, 2.2018838, 0.13694346, 2.5198379, 2.2018838, -0.14083433, -0.019844532, 2.5198412, -0.061438173, -0.019844532, 2.1626053, 0.13694346, 2.5198379, -0.019841194, 0.13694346, 2.5198379, -0.019841194, -0.14083433, -0.019844532, 2.2018838, -0.14083433, -0.019844532, -0.019841194, 0.13694346, -0.019844532, -0.019841194, -0.14083433)
+
+[sub_resource type="ConvexPolygonShape3D" id="ConvexPolygonShape3D_mm7jt"]
+points = PackedVector3Array(0.075666144, -0.36844707, 1.730588, 0.11894791, 0.107329845, 1.6438212, -0.09724928, -0.109223366, 1.6438212, -0.05119494, -0.40605044, 1.691294, 0.0324267, -2.6171865, 1.730588, 0.11894791, 0.107329845, -0.08582401, -0.09724928, 0.107329845, 1.0385876, 0.11894791, -0.54152966, 1.4277934, -0.097270444, -0.8876946, -0.08582401, -0.09724928, -0.54152966, 1.5142045, -0.010749236, -2.6171865, 1.643999, 0.0324267, -2.6171865, 1.643999, -0.09724928, 0.107329845, -0.08582401, 0.11894791, -0.108956575, -0.08582401, 0.075687304, -0.8876946, -0.08582401, -0.05400984, -1.7952445, 1.2547933)
+
+[sub_resource type="ConvexPolygonShape3D" id="ConvexPolygonShape3D_wmu56"]
+points = PackedVector3Array(0.41017377, 0.10561855, 0.4102596, 0.2714668, 1.4339632, 0.34190995, -0.4102614, 0.10561855, 0.4102596, 0.41017377, -0.00021596998, 0.4102596, 0.41025406, 0.10561855, -0.41025734, 0.34190458, 1.4339632, 0.27773678, 0.3036738, 2.062342, 0.30367917, -0.3419922, 1.4339632, 0.34190995, -0.4102614, 0.10561855, -0.41025734, -0.4102614, -0.00021596998, 0.4102596, 0.32407427, -0.036672536, 0.32407963, 0.41025406, -0.00021596998, -0.41025734, 0.34190458, 1.4339632, -0.34198803, 0.3036738, 2.062342, -0.3037572, 0.2268107, 2.2205412, 0.22681594, -0.2449696, 2.062342, 0.30367917, -0.3419922, 1.4339632, -0.2747628, -0.30376142, 2.009756, 0.30367917, -0.30376142, 2.062342, 0.2060942, -0.30199447, 1.4339632, -0.34198803, -0.4102614, -0.00021596998, -0.41025734, -0.30376142, 2.062342, -0.3037572, -0.3241619, -0.036672536, 0.32407963, 0.32407427, -0.036672536, -0.32415769, 0.1503492, 2.2205412, -0.22689396, 0.2268107, 2.2203202, -0.12946963, -0.22689836, 2.2205412, 0.22681594, -0.3241619, -0.036672536, -0.32415769, -0.22689836, 2.2205412, -0.22689396)
+
+[node name="Preset_Blacksmith_01" type="Node3D" unique_id=89455033]
+
+[node name="SM_Bld_House_Roof_Tile_Peak_Cap_01 (10)" parent="." unique_id=696635859 instance=ExtResource("1_jqfaq")]
+transform = Transform3D(5.9604645e-08, 0, -1, 0, 1, 0, 1, 0, 5.9604645e-08, -3.75, 5, -1.25)
+layers = 256
+gi_mode = 2
+mesh = ExtResource("2_nuhtq")
+surface_material_override/0 = ExtResource("3_ta1ot")
+
+[node name="CollisionShape3D" parent="SM_Bld_House_Roof_Tile_Peak_Cap_01 (10)/MeshCollider" index="0"]
+shape = SubResource("ConvexPolygonShape3D_ig76t")
+
+[node name="SM_Bld_House_Roof_Tile_Peak_Cap_Edge_01 (9)" parent="." unique_id=260061716 instance=ExtResource("4_nwmow")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -3.75, 6.25, 0)
+layers = 256
+gi_mode = 2
+mesh = ExtResource("5_w6gvu")
+surface_material_override/0 = ExtResource("3_ta1ot")
+
+[node name="CollisionShape3D" parent="SM_Bld_House_Roof_Tile_Peak_Cap_Edge_01 (9)/MeshCollider" index="0"]
+shape = SubResource("ConvexPolygonShape3D_tihod")
+
+[node name="SM_Bld_House_Roof_Tile_Edge_End_01 (10)" parent="." unique_id=686811031 instance=ExtResource("6_l7jol")]
+transform = Transform3D(1, 0, -1.0132788e-06, 0, 1, 0, -1.0132788e-06, 0, -1, 2.5, 6.25, -2.5)
+layers = 256
+gi_mode = 2
+mesh = ExtResource("7_n47eb")
+surface_material_override/0 = ExtResource("3_ta1ot")
+
+[node name="CollisionShape3D" parent="SM_Bld_House_Roof_Tile_Edge_End_01 (10)/MeshCollider" index="0"]
+shape = SubResource("ConvexPolygonShape3D_dnrhe")
+
+[node name="SM_Bld_House_WoodBeam_02 (41)" parent="." unique_id=1532349208 instance=ExtResource("8_y8b73")]
+transform = Transform3D(5.9604645e-08, 0, 1, 0, 1, 0, -1, 0, 5.9604645e-08, -3.75, 3.75, -2.5)
+gi_mode = 2
+mesh = ExtResource("9_dwbec")
+surface_material_override/0 = ExtResource("10_ohmlm")
+
+[node name="CollisionShape3D" parent="SM_Bld_House_WoodBeam_02 (41)/MeshCollider" index="0"]
+shape = SubResource("ConvexPolygonShape3D_pbq85")
+
+[node name="SM_Bld_House_Base_Corner_01 (24)" parent="." unique_id=1840704617 instance=ExtResource("11_0rmm1")]
+transform = Transform3D(5.5233477e-07, 0, 0.9999995, 0, 1, 0, -0.9999995, 0, 5.5233477e-07, 0, 0, 5)
+gi_mode = 2
+mesh = ExtResource("12_u1ery")
+surface_material_override/0 = ExtResource("10_ohmlm")
+
+[node name="CollisionShape3D" parent="SM_Bld_House_Base_Corner_01 (24)/MeshCollider" index="0"]
+shape = SubResource("ConvexPolygonShape3D_k07ly")
+
+[node name="SM_Bld_House_Stairs_Stone_01 (1)" parent="." unique_id=1009572258 instance=ExtResource("13_1ml4k")]
+transform = Transform3D(5.9604645e-08, 0, 1, 0, 1, 0, -1, 0, 5.9604645e-08, -5, 0, 0)
+gi_mode = 2
+mesh = ExtResource("14_2o6eu")
+surface_material_override/0 = ExtResource("10_ohmlm")
+
+[node name="CollisionShape3D" parent="SM_Bld_House_Stairs_Stone_01 (1)/MeshCollider" index="0"]
+shape = SubResource("ConvexPolygonShape3D_iebaq")
+
+[node name="SM_Bld_House_Roof_Tile_Peak_Cap_Edge_01 (12)" parent="." unique_id=89919268 instance=ExtResource("4_nwmow")]
+transform = Transform3D(-1, 0, -1.0132788e-06, 0, 1, 0, 1.0132788e-06, 0, -1, 2.5, 6.25, -2.5)
+layers = 256
+gi_mode = 2
+mesh = ExtResource("5_w6gvu")
+surface_material_override/0 = ExtResource("3_ta1ot")
+
+[node name="CollisionShape3D" parent="SM_Bld_House_Roof_Tile_Peak_Cap_Edge_01 (12)/MeshCollider" index="0"]
+shape = SubResource("ConvexPolygonShape3D_tihod")
+
+[node name="SM_Bld_House_Base_Corner_02 (20)" parent="." unique_id=1786365156 instance=ExtResource("15_0q1bc")]
+transform = Transform3D(5.5233477e-07, 0, 0.9999995, 0, 1, 0, -0.9999995, 0, 5.5233477e-07, 5, 0, 5)
+gi_mode = 2
+mesh = ExtResource("16_r0v4y")
+surface_material_override/0 = ExtResource("10_ohmlm")
+
+[node name="CollisionShape3D" parent="SM_Bld_House_Base_Corner_02 (20)/MeshCollider" index="0"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.0047302246, -1.2546387, -0.004760742)
+shape = SubResource("BoxShape3D_r0mj3")
+
+[node name="SM_Bld_House_Base_Corner_02 (19)" parent="." unique_id=1548597890 instance=ExtResource("15_0q1bc")]
+transform = Transform3D(5.5233477e-07, 0, 0.9999995, 0, 1, 0, -0.9999995, 0, 5.5233477e-07, -3.75, 0, 0)
+gi_mode = 2
+mesh = ExtResource("16_r0v4y")
+surface_material_override/0 = ExtResource("10_ohmlm")
+
+[node name="CollisionShape3D" parent="SM_Bld_House_Base_Corner_02 (19)/MeshCollider" index="0"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.0047302246, -1.2546387, -0.004760742)
+shape = SubResource("BoxShape3D_r0mj3")
+
+[node name="SM_Bld_House_WoodBeam_02 (44)" parent="." unique_id=1189860750 instance=ExtResource("8_y8b73")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.25, -2.5)
+gi_mode = 2
+mesh = ExtResource("9_dwbec")
+surface_material_override/0 = ExtResource("10_ohmlm")
+
+[node name="CollisionShape3D" parent="SM_Bld_House_WoodBeam_02 (44)/MeshCollider" index="0"]
+shape = SubResource("ConvexPolygonShape3D_pbq85")
+
+[node name="SM_Bld_House_Roof_Tile_Edge_End_01 (5)" parent="." unique_id=421939145 instance=ExtResource("6_l7jol")]
+transform = Transform3D(-1, 0, -1.1622905e-06, 0, 1, 0, 1.1622905e-06, 0, -1, -3.75, 6.251, -2.5)
+layers = 256
+gi_mode = 2
+mesh = ExtResource("7_n47eb")
+surface_material_override/0 = ExtResource("3_ta1ot")
+
+[node name="CollisionShape3D" parent="SM_Bld_House_Roof_Tile_Edge_End_01 (5)/MeshCollider" index="0"]
+shape = SubResource("ConvexPolygonShape3D_dnrhe")
+
+[node name="SM_Bld_House_WoodBeam_02 (45)" parent="." unique_id=1890470096 instance=ExtResource("8_y8b73")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 5, 1.25, 5)
+gi_mode = 2
+mesh = ExtResource("9_dwbec")
+surface_material_override/0 = ExtResource("10_ohmlm")
+
+[node name="CollisionShape3D" parent="SM_Bld_House_WoodBeam_02 (45)/MeshCollider" index="0"]
+shape = SubResource("ConvexPolygonShape3D_pbq85")
+
+[node name="SM_Bld_House_Base_Corner_01 (20)" parent="." unique_id=1019379931 instance=ExtResource("11_0rmm1")]
+transform = Transform3D(5.5233477e-07, 0, 0.9999995, 0, 1, 0, -0.9999995, 0, 5.5233477e-07, 5, 0, 5)
+gi_mode = 2
+mesh = ExtResource("12_u1ery")
+surface_material_override/0 = ExtResource("10_ohmlm")
+
+[node name="CollisionShape3D" parent="SM_Bld_House_Base_Corner_01 (20)/MeshCollider" index="0"]
+shape = SubResource("ConvexPolygonShape3D_k07ly")
+
+[node name="SM_Bld_House_Roof_Tile_End_01 (7)" parent="." unique_id=589864764 instance=ExtResource("17_7tmh8")]
+transform = Transform3D(-1, 0, -1.1622905e-06, 0, 1, 0, 1.1622905e-06, 0, -1, -6.25, 3.75, -2.5)
+layers = 256
+gi_mode = 2
+mesh = ExtResource("18_8y7b5")
+surface_material_override/0 = ExtResource("3_ta1ot")
+
+[node name="CollisionShape3D" parent="SM_Bld_House_Roof_Tile_End_01 (7)/MeshCollider" index="0"]
+shape = SubResource("ConvexPolygonShape3D_vmldy")
+
+[node name="SM_Bld_House_Base_Corner_02 (18)" parent="." unique_id=1053321593 instance=ExtResource("15_0q1bc")]
+transform = Transform3D(-1, 0, 7.152557e-07, 0, 1, 0, -7.152557e-07, 0, -1, -3.75, 0, -2.5)
+gi_mode = 2
+mesh = ExtResource("16_r0v4y")
+surface_material_override/0 = ExtResource("10_ohmlm")
+
+[node name="CollisionShape3D" parent="SM_Bld_House_Base_Corner_02 (18)/MeshCollider" index="0"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.0047302246, -1.2546387, -0.004760742)
+shape = SubResource("BoxShape3D_r0mj3")
+
+[node name="SM_Bld_House_Base_Corner_01 (19)" parent="." unique_id=1911932867 instance=ExtResource("11_0rmm1")]
+transform = Transform3D(5.5233477e-07, 0, 0.9999995, 0, 1, 0, -0.9999995, 0, 5.5233477e-07, -3.75, 0, 0)
+gi_mode = 2
+mesh = ExtResource("12_u1ery")
+surface_material_override/0 = ExtResource("10_ohmlm")
+
+[node name="CollisionShape3D" parent="SM_Bld_House_Base_Corner_01 (19)/MeshCollider" index="0"]
+shape = SubResource("ConvexPolygonShape3D_k07ly")
+
+[node name="SM_Bld_House_Base_Wall_02 (40)" parent="." unique_id=1029158838 instance=ExtResource("19_ab45g")]
+transform = Transform3D(5.9604645e-08, 0, -1, 0, 1, 0, 1, 0, 5.9604645e-08, 5, 0, -2.5)
+gi_mode = 2
+mesh = ExtResource("20_5o2h8")
+surface_material_override/0 = ExtResource("10_ohmlm")
+
+[node name="CollisionShape3D" parent="SM_Bld_House_Base_Wall_02 (40)/MeshCollider" index="0"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.2427673, -1.2490845, 0.0030212402)
+shape = SubResource("BoxShape3D_p1crn")
+
+[node name="SM_Bld_House_Base_Corner_02 (22)" parent="." unique_id=1776038499 instance=ExtResource("15_0q1bc")]
+transform = Transform3D(5.5233477e-07, 0, 0.9999995, 0, 1, 0, -0.9999995, 0, 5.5233477e-07, 0, 0, -2.5)
+gi_mode = 2
+mesh = ExtResource("16_r0v4y")
+surface_material_override/0 = ExtResource("10_ohmlm")
+
+[node name="CollisionShape3D" parent="SM_Bld_House_Base_Corner_02 (22)/MeshCollider" index="0"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.0047302246, -1.2546387, -0.004760742)
+shape = SubResource("BoxShape3D_r0mj3")
+
+[node name="SM_Bld_House_Base_Corner_01 (18)" parent="." unique_id=414442685 instance=ExtResource("11_0rmm1")]
+transform = Transform3D(-1, 0, 7.152557e-07, 0, 1, 0, -7.152557e-07, 0, -1, -3.75, 0, -2.5)
+gi_mode = 2
+mesh = ExtResource("12_u1ery")
+surface_material_override/0 = ExtResource("10_ohmlm")
+
+[node name="CollisionShape3D" parent="SM_Bld_House_Base_Corner_01 (18)/MeshCollider" index="0"]
+shape = SubResource("ConvexPolygonShape3D_k07ly")
+
+[node name="SM_Bld_House_Roof_Tile_Edge_End_01 (8)" parent="." unique_id=1157392107 instance=ExtResource("6_l7jol")]
+transform = Transform3D(1, 0, 1.0132788e-06, 0, 1, 0, -1.0132788e-06, 0, 1, 2.5, 6.25, 5)
+layers = 256
+gi_mode = 2
+mesh = ExtResource("7_n47eb")
+surface_material_override/0 = ExtResource("3_ta1ot")
+
+[node name="CollisionShape3D" parent="SM_Bld_House_Roof_Tile_Edge_End_01 (8)/MeshCollider" index="0"]
+shape = SubResource("ConvexPolygonShape3D_dnrhe")
+
+[node name="SM_Bld_House_WoodBeam_02 (46)" parent="." unique_id=1187267193 instance=ExtResource("8_y8b73")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 5, 1.25, 0)
+gi_mode = 2
+mesh = ExtResource("9_dwbec")
+surface_material_override/0 = ExtResource("10_ohmlm")
+
+[node name="CollisionShape3D" parent="SM_Bld_House_WoodBeam_02 (46)/MeshCollider" index="0"]
+shape = SubResource("ConvexPolygonShape3D_pbq85")
+
+[node name="SM_Bld_House_Roof_Tile_End_01 (13)" parent="." unique_id=774428297 instance=ExtResource("17_7tmh8")]
+transform = Transform3D(1, 0, 3.2782552e-07, 0, 1, 0, -3.2782552e-07, 0, 1, 5, 3.75, 5)
+layers = 256
+gi_mode = 2
+mesh = ExtResource("18_8y7b5")
+surface_material_override/0 = ExtResource("3_ta1ot")
+
+[node name="CollisionShape3D" parent="SM_Bld_House_Roof_Tile_End_01 (13)/MeshCollider" index="0"]
+shape = SubResource("ConvexPolygonShape3D_vmldy")
+
+[node name="SM_Bld_House_Roof_Tile_End_Half_01 (9)" parent="." unique_id=355173659 instance=ExtResource("21_5bi3o")]
+transform = Transform3D(-9.536743e-07, 0, 1, 0, 1, 0, -1, 0, -9.536743e-07, 0, 3.75, -2.5)
+layers = 256
+gi_mode = 2
+mesh = ExtResource("22_or6cw")
+surface_material_override/0 = ExtResource("3_ta1ot")
+
+[node name="CollisionShape3D" parent="SM_Bld_House_Roof_Tile_End_Half_01 (9)/MeshCollider" index="0"]
+shape = SubResource("ConvexPolygonShape3D_lsom7")
+
+[node name="SM_Bld_House_Base_Corner_02 (21)" parent="." unique_id=1459422445 instance=ExtResource("15_0q1bc")]
+transform = Transform3D(5.5233477e-07, 0, 0.9999995, 0, 1, 0, -0.9999995, 0, 5.5233477e-07, 5, 0, -2.5)
+gi_mode = 2
+mesh = ExtResource("16_r0v4y")
+surface_material_override/0 = ExtResource("10_ohmlm")
+
+[node name="CollisionShape3D" parent="SM_Bld_House_Base_Corner_02 (21)/MeshCollider" index="0"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.0047302246, -1.2546387, -0.004760742)
+shape = SubResource("BoxShape3D_r0mj3")
+
+[node name="SM_Bld_House_Roof_Tile_Intersection_01 (1)" parent="." unique_id=1542279357 instance=ExtResource("23_2i6q0")]
+transform = Transform3D(-1, 0, -1.1622905e-06, 0, 1, 0, 1.1622905e-06, 0, -1, 2.5, 6.25, -2.5)
+layers = 256
+gi_mode = 2
+mesh = ExtResource("24_avpn2")
+surface_material_override/0 = ExtResource("3_ta1ot")
+
+[node name="CollisionShape3D" parent="SM_Bld_House_Roof_Tile_Intersection_01 (1)/MeshCollider" index="0"]
+shape = SubResource("ConvexPolygonShape3D_xxjur")
+
+[node name="SM_Bld_House_Roof_Tile_01 (3)" parent="." unique_id=512219215 instance=ExtResource("25_srr2g")]
+transform = Transform3D(-1, 0, -1.1622905e-06, 0, 1, 0, 1.1622905e-06, 0, -1, -3.75, 6.25, -2.5)
+layers = 256
+gi_mode = 2
+mesh = ExtResource("26_gjabb")
+surface_material_override/0 = ExtResource("3_ta1ot")
+
+[node name="CollisionShape3D" parent="SM_Bld_House_Roof_Tile_01 (3)/MeshCollider" index="0"]
+shape = SubResource("ConvexPolygonShape3D_eglsd")
+
+[node name="SM_Bld_House_Base_Corner_01 (25)" parent="." unique_id=1989187202 instance=ExtResource("11_0rmm1")]
+transform = Transform3D(5.5233477e-07, 0, 0.9999995, 0, 1, 0, -0.9999995, 0, 5.5233477e-07, 5, 0, 2.5)
+gi_mode = 2
+mesh = ExtResource("12_u1ery")
+surface_material_override/0 = ExtResource("10_ohmlm")
+
+[node name="CollisionShape3D" parent="SM_Bld_House_Base_Corner_01 (25)/MeshCollider" index="0"]
+shape = SubResource("ConvexPolygonShape3D_k07ly")
+
+[node name="SM_Bld_House_Roof_Tile_Window_01" parent="." unique_id=1874113242 instance=ExtResource("27_iscqt")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2.5, 6.25, 5)
+layers = 256
+gi_mode = 2
+mesh = ExtResource("28_isd2e")
+surface_material_override/0 = ExtResource("3_ta1ot")
+
+[node name="CollisionShape3D" parent="SM_Bld_House_Roof_Tile_Window_01/MeshCollider" index="0"]
+shape = SubResource("ConvexPolygonShape3D_a0aaq")
+
+[node name="SM_Bld_House_Roof_Tile_Window_01_Glass" parent="SM_Bld_House_Roof_Tile_Window_01" index="1"]
+gi_mode = 2
+mesh = ExtResource("29_7bino")
+surface_material_override/0 = ExtResource("30_m1y45")
+
+[node name="SM_Bld_House_Base_Wall_01 (36)" parent="." unique_id=1194226414 instance=ExtResource("31_nnwlu")]
+transform = Transform3D(5.9604645e-08, 0, -1, 0, 1, 0, 1, 0, 5.9604645e-08, -3.75, 0, -2.5)
+gi_mode = 2
+mesh = ExtResource("32_kowwo")
+surface_material_override/0 = ExtResource("10_ohmlm")
+
+[node name="CollisionShape3D" parent="SM_Bld_House_Base_Wall_01 (36)/MeshCollider" index="0"]
+shape = SubResource("ConvexPolygonShape3D_23wi6")
+
+[node name="SM_Bld_House_Roof_Tile_Window_01 (2)" parent="." unique_id=1769407647 instance=ExtResource("27_iscqt")]
+transform = Transform3D(-1, 0, 1.1622905e-06, 0, 1, 0, -1.1622905e-06, 0, -1, 2.5, 6.25, 1.25)
+layers = 256
+gi_mode = 2
+mesh = ExtResource("28_isd2e")
+surface_material_override/0 = ExtResource("3_ta1ot")
+
+[node name="CollisionShape3D" parent="SM_Bld_House_Roof_Tile_Window_01 (2)/MeshCollider" index="0"]
+shape = SubResource("ConvexPolygonShape3D_a0aaq")
+
+[node name="SM_Bld_House_Roof_Tile_Window_01_Glass" parent="SM_Bld_House_Roof_Tile_Window_01 (2)" index="1"]
+gi_mode = 2
+mesh = ExtResource("29_7bino")
+surface_material_override/0 = ExtResource("30_m1y45")
+
+[node name="SM_Bld_House_Roof_Tile_Edge_End_01 (6)" parent="." unique_id=1059110262 instance=ExtResource("6_l7jol")]
+transform = Transform3D(-1, 0, 1.1046701e-06, 0, 1, 0, 1.1046701e-06, 0, 1, -3.75, 6.25, 0)
+layers = 256
+gi_mode = 2
+mesh = ExtResource("7_n47eb")
+surface_material_override/0 = ExtResource("3_ta1ot")
+
+[node name="CollisionShape3D" parent="SM_Bld_House_Roof_Tile_Edge_End_01 (6)/MeshCollider" index="0"]
+shape = SubResource("ConvexPolygonShape3D_dnrhe")
+
+[node name="SM_Bld_House_Base_Corner_02 (16)" parent="." unique_id=1888512642 instance=ExtResource("15_0q1bc")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -6.25, 0, 0)
+gi_mode = 2
+mesh = ExtResource("16_r0v4y")
+surface_material_override/0 = ExtResource("10_ohmlm")
+
+[node name="CollisionShape3D" parent="SM_Bld_House_Base_Corner_02 (16)/MeshCollider" index="0"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.0047302246, -1.2546387, -0.004760742)
+shape = SubResource("BoxShape3D_r0mj3")
+
+[node name="SM_Bld_House_Base_Corner_02 (25)" parent="." unique_id=430089064 instance=ExtResource("15_0q1bc")]
+transform = Transform3D(5.5233477e-07, 0, 0.9999995, 0, 1, 0, -0.9999995, 0, 5.5233477e-07, 5, 0, 2.5)
+gi_mode = 2
+mesh = ExtResource("16_r0v4y")
+surface_material_override/0 = ExtResource("10_ohmlm")
+
+[node name="CollisionShape3D" parent="SM_Bld_House_Base_Corner_02 (25)/MeshCollider" index="0"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.0047302246, -1.2546387, -0.004760742)
+shape = SubResource("BoxShape3D_r0mj3")
+
+[node name="SM_Bld_House_Supports_02 (1)" parent="." unique_id=291885540 instance=ExtResource("33_iahxv")]
+transform = Transform3D(4.371139e-08, -1, -1.3429643e-07, -1, -4.371139e-08, -7.709898e-09, 8.668595e-09, 1.509958e-07, -0.8894051, 2.5, 3.75, 5)
+gi_mode = 2
+mesh = ExtResource("34_7wowg")
+surface_material_override/0 = ExtResource("10_ohmlm")
+
+[node name="CollisionShape3D" parent="SM_Bld_House_Supports_02 (1)/MeshCollider" index="0"]
+shape = SubResource("ConvexPolygonShape3D_0df6m")
+
+[node name="SM_Bld_House_Wall_02 (10)" parent="." unique_id=994697557 instance=ExtResource("19_ab45g")]
+transform = Transform3D(5.9604645e-08, 0, -1, 0, 1, 0, 1, 0, 5.9604645e-08, -3.75, 1.25, -2.5)
+gi_mode = 2
+mesh = ExtResource("20_5o2h8")
+surface_material_override/0 = ExtResource("10_ohmlm")
+
+[node name="CollisionShape3D" parent="SM_Bld_House_Wall_02 (10)/MeshCollider" index="0"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.2427673, -1.2490845, 0.0030212402)
+shape = SubResource("ConvexPolygonShape3D_hyb0h")
+
+[node name="SM_Bld_House_Wall_Cut_02 (10)" parent="." unique_id=1528492228 instance=ExtResource("35_xey00")]
+transform = Transform3D(-1, 0, -1.1622905e-06, 0, 1, 0, 1.1622905e-06, 0, -1, -3.75, 3.75, 0)
+gi_mode = 2
+mesh = ExtResource("36_mulwb")
+surface_material_override/0 = ExtResource("10_ohmlm")
+
+[node name="CollisionShape3D" parent="SM_Bld_House_Wall_Cut_02 (10)/MeshCollider" index="0"]
+shape = SubResource("ConvexPolygonShape3D_tbdh0")
+
+[node name="SM_Bld_House_Supports_02 (3)" parent="." unique_id=871609114 instance=ExtResource("33_iahxv")]
+transform = Transform3D(4.371139e-08, -1, -1.3429643e-07, -1, -4.371139e-08, -7.709898e-09, 8.668595e-09, 1.509958e-07, -0.8894051, 2.5, 3.75, -2.5)
+gi_mode = 2
+mesh = ExtResource("34_7wowg")
+surface_material_override/0 = ExtResource("10_ohmlm")
+
+[node name="CollisionShape3D" parent="SM_Bld_House_Supports_02 (3)/MeshCollider" index="0"]
+shape = SubResource("ConvexPolygonShape3D_0df6m")
+
+[node name="SM_Bld_House_Base_Wall_01 (37)" parent="." unique_id=370294775 instance=ExtResource("31_nnwlu")]
+transform = Transform3D(-1, 0, -2.0861623e-07, 0, 1, 0, 2.0861623e-07, 0, -1, -3.75, 0, 0)
+gi_mode = 2
+mesh = ExtResource("32_kowwo")
+surface_material_override/0 = ExtResource("10_ohmlm")
+
+[node name="CollisionShape3D" parent="SM_Bld_House_Base_Wall_01 (37)/MeshCollider" index="0"]
+shape = SubResource("ConvexPolygonShape3D_23wi6")
+
+[node name="SM_Bld_House_Base_Wall_02 (37)" parent="." unique_id=1072733167 instance=ExtResource("19_ab45g")]
+transform = Transform3D(-1, 0, -2.0861623e-07, 0, 1, 0, 2.0861623e-07, 0, -1, -3.75, 0, 0)
+gi_mode = 2
+mesh = ExtResource("20_5o2h8")
+surface_material_override/0 = ExtResource("10_ohmlm")
+
+[node name="CollisionShape3D" parent="SM_Bld_House_Base_Wall_02 (37)/MeshCollider" index="0"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.2427673, -1.2490845, 0.0030212402)
+shape = SubResource("BoxShape3D_p1crn")
+
+[node name="SM_Bld_House_Supports_02" parent="." unique_id=307270861 instance=ExtResource("33_iahxv")]
+transform = Transform3D(5.9604645e-08, 1, 0, -1, 5.9604645e-08, 0, 0, 0, 1, 2.5, 3.75, 5)
+gi_mode = 2
+mesh = ExtResource("34_7wowg")
+surface_material_override/0 = ExtResource("10_ohmlm")
+
+[node name="CollisionShape3D" parent="SM_Bld_House_Supports_02/MeshCollider" index="0"]
+shape = SubResource("ConvexPolygonShape3D_0df6m")
+
+[node name="SM_Bld_House_Roof_Tile_Edge_End_01 (7)" parent="." unique_id=1871984809 instance=ExtResource("6_l7jol")]
+transform = Transform3D(-1, 0, 1.1046701e-06, 0, 1, 0, 1.1046701e-06, 0, 1, 2.5, 6.25, 5)
+layers = 256
+gi_mode = 2
+mesh = ExtResource("7_n47eb")
+surface_material_override/0 = ExtResource("3_ta1ot")
+
+[node name="CollisionShape3D" parent="SM_Bld_House_Roof_Tile_Edge_End_01 (7)/MeshCollider" index="0"]
+shape = SubResource("ConvexPolygonShape3D_dnrhe")
+
+[node name="SM_Bld_House_WoodBeam_03 (4)" parent="." unique_id=845700902 instance=ExtResource("37_57ili")]
+transform = Transform3D(4.7139736e-08, 1.6974764, 0, -0.6243847, 1.281559e-07, 0, 0, 0, 1, 0, 3.75, 5)
+gi_mode = 2
+mesh = ExtResource("38_h0hlv")
+surface_material_override/0 = ExtResource("10_ohmlm")
+
+[node name="CollisionShape3D" parent="SM_Bld_House_WoodBeam_03 (4)/MeshCollider" index="0"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.00018310547, 1.4903259, -0.00015258789)
+shape = SubResource("BoxShape3D_3vev5")
+
+[node name="SM_Bld_House_Base_Wall_01 (39)" parent="." unique_id=2145881174 instance=ExtResource("31_nnwlu")]
+transform = Transform3D(-1.6292061e-07, 0, 0.9999995, 0, 1, 0, -0.9999995, 0, -1.6292061e-07, 5, 0, 2.5)
+gi_mode = 2
+mesh = ExtResource("32_kowwo")
+surface_material_override/0 = ExtResource("10_ohmlm")
+
+[node name="CollisionShape3D" parent="SM_Bld_House_Base_Wall_01 (39)/MeshCollider" index="0"]
+shape = SubResource("ConvexPolygonShape3D_23wi6")
+
+[node name="SM_Bld_House_Base_Wall_02 (34)" parent="." unique_id=1760389364 instance=ExtResource("19_ab45g")]
+transform = Transform3D(-9.536743e-07, 0, 1, 0, 1, 0, -1, 0, -9.536743e-07, -6.25, 0, 0)
+gi_mode = 2
+mesh = ExtResource("20_5o2h8")
+surface_material_override/0 = ExtResource("10_ohmlm")
+
+[node name="CollisionShape3D" parent="SM_Bld_House_Base_Wall_02 (34)/MeshCollider" index="0"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.2427673, -1.2490845, 0.0030212402)
+shape = SubResource("BoxShape3D_p1crn")
+
+[node name="SM_Bld_House_Wall_03" parent="." unique_id=820852173 instance=ExtResource("39_4keh2")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2.5, 1.25, -2.5)
+gi_mode = 2
+mesh = ExtResource("40_v0hf7")
+surface_material_override/0 = ExtResource("10_ohmlm")
+
+[node name="CollisionShape3D" parent="SM_Bld_House_Wall_03/MeshCollider" index="0"]
+shape = SubResource("ConvexPolygonShape3D_p4q4l")
+
+[node name="SM_Bld_House_Roof_Tile_Peak_Cap_01 (6)" parent="." unique_id=851899440 instance=ExtResource("1_jqfaq")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -3.75, 6.25, 0)
+layers = 256
+gi_mode = 2
+mesh = ExtResource("2_nuhtq")
+surface_material_override/0 = ExtResource("3_ta1ot")
+
+[node name="CollisionShape3D" parent="SM_Bld_House_Roof_Tile_Peak_Cap_01 (6)/MeshCollider" index="0"]
+shape = SubResource("ConvexPolygonShape3D_ig76t")
+
+[node name="SM_Bld_House_Stairs_Stone_Block_01 (2)" parent="." unique_id=662463985 instance=ExtResource("41_kox7v")]
+transform = Transform3D(5.9604645e-08, 0, 1, 0, 1, 0, -1, 0, 5.9604645e-08, -5, -1.25, 0)
+gi_mode = 2
+mesh = ExtResource("42_7buds")
+surface_material_override/0 = ExtResource("10_ohmlm")
+
+[node name="CollisionShape3D" parent="SM_Bld_House_Stairs_Stone_Block_01 (2)/MeshCollider" index="0"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.94018555, 0.6348572, 0.005493164)
+shape = SubResource("BoxShape3D_tdbb4")
+
+[node name="SM_Bld_House_WoodBeam_03 (5)" parent="." unique_id=1854399211 instance=ExtResource("37_57ili")]
+transform = Transform3D(4.7139736e-08, 1.6974764, 0, -0.6243847, 1.281559e-07, 0, 0, 0, 1, 0, 3.75, 0)
+gi_mode = 2
+mesh = ExtResource("38_h0hlv")
+surface_material_override/0 = ExtResource("10_ohmlm")
+
+[node name="CollisionShape3D" parent="SM_Bld_House_WoodBeam_03 (5)/MeshCollider" index="0"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.00018310547, 1.4903259, -0.00015258789)
+shape = SubResource("BoxShape3D_3vev5")
+
+[node name="SM_Bld_House_Wall_02 (9)" parent="." unique_id=266488680 instance=ExtResource("19_ab45g")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -6.25, 1.25, -2.5)
+gi_mode = 2
+mesh = ExtResource("20_5o2h8")
+surface_material_override/0 = ExtResource("10_ohmlm")
+
+[node name="CollisionShape3D" parent="SM_Bld_House_Wall_02 (9)/MeshCollider" index="0"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.2427673, -1.2490845, 0.0030212402)
+shape = SubResource("ConvexPolygonShape3D_hyb0h")
+
+[node name="SM_Bld_House_Base_Wall_01 (42)" parent="." unique_id=597139326 instance=ExtResource("31_nnwlu")]
+transform = Transform3D(-1, 0, -2.0861623e-07, 0, 1, 0, 2.0861623e-07, 0, -1, 2.5, 0, -2.5)
+gi_mode = 2
+mesh = ExtResource("32_kowwo")
+surface_material_override/0 = ExtResource("10_ohmlm")
+
+[node name="CollisionShape3D" parent="SM_Bld_House_Base_Wall_01 (42)/MeshCollider" index="0"]
+shape = SubResource("ConvexPolygonShape3D_23wi6")
+
+[node name="SM_Bld_House_WoodBeam_02 (37)" parent="." unique_id=119170897 instance=ExtResource("8_y8b73")]
+transform = Transform3D(5.9604645e-08, 0, 1, 0, 1, 0, -1, 0, 5.9604645e-08, -3.75, 1.25, 0)
+gi_mode = 2
+mesh = ExtResource("9_dwbec")
+surface_material_override/0 = ExtResource("10_ohmlm")
+
+[node name="CollisionShape3D" parent="SM_Bld_House_WoodBeam_02 (37)/MeshCollider" index="0"]
+shape = SubResource("ConvexPolygonShape3D_pbq85")
+
+[node name="SM_Bld_House_Base_Wall_02 (39)" parent="." unique_id=1560473486 instance=ExtResource("19_ab45g")]
+transform = Transform3D(-1.6292061e-07, 0, 0.9999995, 0, 1, 0, -0.9999995, 0, -1.6292061e-07, 5, 0, 2.5)
+gi_mode = 2
+mesh = ExtResource("20_5o2h8")
+surface_material_override/0 = ExtResource("10_ohmlm")
+
+[node name="CollisionShape3D" parent="SM_Bld_House_Base_Wall_02 (39)/MeshCollider" index="0"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.2427673, -1.2490845, 0.0030212402)
+shape = SubResource("BoxShape3D_p1crn")
+
+[node name="SM_Bld_House_Chimney_Stone_Base_03" parent="." unique_id=1609948844 instance=ExtResource("43_ndmq3")]
+transform = Transform3D(1, 0, 0, 0, 1.3127505, 0, 0, 0, 1, 2.5, -2.5, -2.25)
+gi_mode = 2
+mesh = ExtResource("44_miy7n")
+surface_material_override/0 = ExtResource("10_ohmlm")
+
+[node name="CollisionShape3D" parent="SM_Bld_House_Chimney_Stone_Base_03/MeshCollider" index="0"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.004699707, 1.2476501, 0.011627197)
+shape = SubResource("BoxShape3D_s2eaa")
+
+[node name="SM_Bld_House_Roof_Tile_Peak_Cap_01 (12)" parent="." unique_id=641866602 instance=ExtResource("1_jqfaq")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2.5, 6.25, 2.5)
+layers = 256
+gi_mode = 2
+mesh = ExtResource("2_nuhtq")
+surface_material_override/0 = ExtResource("3_ta1ot")
+
+[node name="CollisionShape3D" parent="SM_Bld_House_Roof_Tile_Peak_Cap_01 (12)/MeshCollider" index="0"]
+shape = SubResource("ConvexPolygonShape3D_ig76t")
+
+[node name="SM_Bld_House_Wall_Window_06" parent="." unique_id=1492462982 instance=ExtResource("45_8b3f8")]
+transform = Transform3D(5.9604645e-08, 0, -1, 0, 1, 0, 1, 0, 5.9604645e-08, 5, 1.25, 0)
+gi_mode = 2
+mesh = ExtResource("46_gvyl4")
+surface_material_override/0 = ExtResource("10_ohmlm")
+
+[node name="CollisionShape3D" parent="SM_Bld_House_Wall_Window_06/MeshCollider" index="0"]
+shape = SubResource("ConvexPolygonShape3D_ntvwj")
+
+[node name="SM_Bld_House_Wall_Window_06_Glass" parent="SM_Bld_House_Wall_Window_06" index="1"]
+gi_mode = 2
+mesh = ExtResource("47_wfvnk")
+surface_material_override/0 = ExtResource("30_m1y45")
+
+[node name="SM_Bld_House_WoodBeam_02 (36)" parent="." unique_id=65780674 instance=ExtResource("8_y8b73")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -6.25, 1.25, 0)
+gi_mode = 2
+mesh = ExtResource("9_dwbec")
+surface_material_override/0 = ExtResource("10_ohmlm")
+
+[node name="CollisionShape3D" parent="SM_Bld_House_WoodBeam_02 (36)/MeshCollider" index="0"]
+shape = SubResource("ConvexPolygonShape3D_pbq85")
+
+[node name="SM_Bld_House_Base_Corner_02 (26)" parent="." unique_id=152128478 instance=ExtResource("15_0q1bc")]
+transform = Transform3D(5.5233477e-07, 0, 0.9999995, 0, 1, 0, -0.9999995, 0, 5.5233477e-07, 5, 0, 0)
+gi_mode = 2
+mesh = ExtResource("16_r0v4y")
+surface_material_override/0 = ExtResource("10_ohmlm")
+
+[node name="CollisionShape3D" parent="SM_Bld_House_Base_Corner_02 (26)/MeshCollider" index="0"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.0047302246, -1.2546387, -0.004760742)
+shape = SubResource("BoxShape3D_r0mj3")
+
+[node name="SM_Bld_House_Wall_03 (1)" parent="." unique_id=1256304742 instance=ExtResource("39_4keh2")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.25, -2.5)
+gi_mode = 2
+mesh = ExtResource("40_v0hf7")
+surface_material_override/0 = ExtResource("10_ohmlm")
+
+[node name="CollisionShape3D" parent="SM_Bld_House_Wall_03 (1)/MeshCollider" index="0"]
+shape = SubResource("ConvexPolygonShape3D_p4q4l")
+
+[node name="SM_Bld_House_Supports_02 (2)" parent="." unique_id=1141988642 instance=ExtResource("33_iahxv")]
+transform = Transform3D(5.9604645e-08, 1, 0, -1, 5.9604645e-08, 0, 0, 0, 1, 2.5, 3.75, -2.5)
+gi_mode = 2
+mesh = ExtResource("34_7wowg")
+surface_material_override/0 = ExtResource("10_ohmlm")
+
+[node name="CollisionShape3D" parent="SM_Bld_House_Supports_02 (2)/MeshCollider" index="0"]
+shape = SubResource("ConvexPolygonShape3D_0df6m")
+
+[node name="SM_Bld_House_Roof_Tile_End_01 (8)" parent="." unique_id=1353314875 instance=ExtResource("17_7tmh8")]
+transform = Transform3D(-1, 0, 7.152557e-07, 0, 1, 0, -7.152557e-07, 0, -1, 0, 3.75, 2.5)
+layers = 256
+gi_mode = 2
+mesh = ExtResource("18_8y7b5")
+surface_material_override/0 = ExtResource("3_ta1ot")
+
+[node name="CollisionShape3D" parent="SM_Bld_House_Roof_Tile_End_01 (8)/MeshCollider" index="0"]
+shape = SubResource("ConvexPolygonShape3D_vmldy")
+
+[node name="SM_Bld_House_Base_Wall_02 (35)" parent="." unique_id=514461179 instance=ExtResource("19_ab45g")]
+transform = Transform3D(1, 0, 9.536742e-07, 0, 1, 0, -9.536742e-07, 0, 1, -6.25, 0, -2.5)
+gi_mode = 2
+mesh = ExtResource("20_5o2h8")
+surface_material_override/0 = ExtResource("10_ohmlm")
+
+[node name="CollisionShape3D" parent="SM_Bld_House_Base_Wall_02 (35)/MeshCollider" index="0"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.2427673, -1.2490845, 0.0030212402)
+shape = SubResource("BoxShape3D_p1crn")
+
+[node name="SM_Bld_House_Roof_Tile_End_01 (14)" parent="." unique_id=1696158860 instance=ExtResource("17_7tmh8")]
+transform = Transform3D(1, 0, 3.2782552e-07, 0, 1, 0, -3.2782552e-07, 0, 1, 5, 3.75, 0)
+layers = 256
+gi_mode = 2
+mesh = ExtResource("18_8y7b5")
+surface_material_override/0 = ExtResource("3_ta1ot")
+
+[node name="CollisionShape3D" parent="SM_Bld_House_Roof_Tile_End_01 (14)/MeshCollider" index="0"]
+shape = SubResource("ConvexPolygonShape3D_vmldy")
+
+[node name="SM_Bld_House_WoodBeam_02 (47)" parent="." unique_id=1099986311 instance=ExtResource("8_y8b73")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 5, 1.25, -2.5)
+gi_mode = 2
+mesh = ExtResource("9_dwbec")
+surface_material_override/0 = ExtResource("10_ohmlm")
+
+[node name="CollisionShape3D" parent="SM_Bld_House_WoodBeam_02 (47)/MeshCollider" index="0"]
+shape = SubResource("ConvexPolygonShape3D_pbq85")
+
+[node name="SM_Bld_House_Base_Corner_02 (23)" parent="." unique_id=1506298860 instance=ExtResource("15_0q1bc")]
+transform = Transform3D(5.5233477e-07, 0, 0.9999995, 0, 1, 0, -0.9999995, 0, 5.5233477e-07, 0, 0, 0)
+gi_mode = 2
+mesh = ExtResource("16_r0v4y")
+surface_material_override/0 = ExtResource("10_ohmlm")
+
+[node name="CollisionShape3D" parent="SM_Bld_House_Base_Corner_02 (23)/MeshCollider" index="0"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.0047302246, -1.2546387, -0.004760742)
+shape = SubResource("BoxShape3D_r0mj3")
+
+[node name="SM_Bld_House_Wall_Window_06 (1)" parent="." unique_id=288218804 instance=ExtResource("45_8b3f8")]
+transform = Transform3D(5.9604645e-08, 0, -1, 0, 1, 0, 1, 0, 5.9604645e-08, 5, 1.25, 2.5)
+gi_mode = 2
+mesh = ExtResource("46_gvyl4")
+surface_material_override/0 = ExtResource("10_ohmlm")
+
+[node name="CollisionShape3D" parent="SM_Bld_House_Wall_Window_06 (1)/MeshCollider" index="0"]
+shape = SubResource("ConvexPolygonShape3D_ntvwj")
+
+[node name="SM_Bld_House_Wall_Window_06_Glass" parent="SM_Bld_House_Wall_Window_06 (1)" index="1"]
+gi_mode = 2
+mesh = ExtResource("47_wfvnk")
+surface_material_override/0 = ExtResource("30_m1y45")
+
+[node name="SM_Bld_House_Floor_Wood_02 (13)" parent="." unique_id=1563699719 instance=ExtResource("48_g8vgs")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -6.25, 1.25, -2.5)
+gi_mode = 2
+mesh = ExtResource("49_sajtb")
+surface_material_override/0 = ExtResource("10_ohmlm")
+
+[node name="CollisionShape3D" parent="SM_Bld_House_Floor_Wood_02 (13)/MeshCollider" index="0"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.2514648, 0.0004272461, 1.2497253)
+shape = SubResource("BoxShape3D_pd24g")
+
+[node name="SM_Bld_House_WoodBeam_02 (39)" parent="." unique_id=1319260741 instance=ExtResource("8_y8b73")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -3.75, 1.25, -2.5)
+gi_mode = 2
+mesh = ExtResource("9_dwbec")
+surface_material_override/0 = ExtResource("10_ohmlm")
+
+[node name="CollisionShape3D" parent="SM_Bld_House_WoodBeam_02 (39)/MeshCollider" index="0"]
+shape = SubResource("ConvexPolygonShape3D_pbq85")
+
+[node name="SM_Bld_House_Base_Corner_02 (24)" parent="." unique_id=259664542 instance=ExtResource("15_0q1bc")]
+transform = Transform3D(5.5233477e-07, 0, 0.9999995, 0, 1, 0, -0.9999995, 0, 5.5233477e-07, 0, 0, 5)
+gi_mode = 2
+mesh = ExtResource("16_r0v4y")
+surface_material_override/0 = ExtResource("10_ohmlm")
+
+[node name="CollisionShape3D" parent="SM_Bld_House_Base_Corner_02 (24)/MeshCollider" index="0"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.0047302246, -1.2546387, -0.004760742)
+shape = SubResource("BoxShape3D_r0mj3")
+
+[node name="SM_Bld_House_WoodBeam_02 (48)" parent="." unique_id=1026754156 instance=ExtResource("8_y8b73")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 5, 1.25, 2.5)
+gi_mode = 2
+mesh = ExtResource("9_dwbec")
+surface_material_override/0 = ExtResource("10_ohmlm")
+
+[node name="CollisionShape3D" parent="SM_Bld_House_WoodBeam_02 (48)/MeshCollider" index="0"]
+shape = SubResource("ConvexPolygonShape3D_pbq85")
+
+[node name="SM_Bld_House_Roof_Tile_Half_01 (8)" parent="." unique_id=181873644 instance=ExtResource("50_sib5r")]
+transform = Transform3D(5.9604645e-08, 0, -1, 0, 1, 0, 1, 0, 5.9604645e-08, -3.75, 5, -1.25)
+layers = 256
+gi_mode = 2
+mesh = ExtResource("51_7i552")
+surface_material_override/0 = ExtResource("3_ta1ot")
+
+[node name="CollisionShape3D" parent="SM_Bld_House_Roof_Tile_Half_01 (8)/MeshCollider" index="0"]
+shape = SubResource("ConvexPolygonShape3D_wmtu7")
+
+[node name="SM_Bld_House_Chimney_Stone_Base_01" parent="." unique_id=1633904558 instance=ExtResource("52_w34jv")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2.5, 3.75, -2.25)
+gi_mode = 2
+mesh = ExtResource("53_vt3oc")
+surface_material_override/0 = ExtResource("10_ohmlm")
+
+[node name="CollisionShape3D" parent="SM_Bld_House_Chimney_Stone_Base_01/MeshCollider" index="0"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.2524567, 0)
+shape = SubResource("BoxShape3D_h5h3l")
+
+[node name="SM_Bld_House_Wall_Door_02 (1)" parent="." unique_id=820659127 instance=ExtResource("54_osj5g")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -6.25, 1.25, 0)
+gi_mode = 2
+mesh = ExtResource("55_6pulu")
+surface_material_override/0 = ExtResource("10_ohmlm")
+
+[node name="CollisionShape3D" parent="SM_Bld_House_Wall_Door_02 (1)/MeshCollider" index="0"]
+shape = SubResource("ConcavePolygonShape3D_2bhtj")
+
+[node name="SM_Bld_House_Wall_Door_02_Door" parent="SM_Bld_House_Wall_Door_02 (1)" index="1"]
+transform = Transform3D(-0.3117864, 0, -0.9501523, 0, 1, 0, 0.9501523, 0, -0.3117864, 0.7552038, 0.006232834, 0)
+gi_mode = 2
+mesh = ExtResource("56_x87cs")
+surface_material_override/0 = ExtResource("10_ohmlm")
+
+[node name="CollisionShape3D" parent="SM_Bld_House_Wall_Door_02 (1)/SM_Bld_House_Wall_Door_02_Door/MeshCollider" index="0"]
+shape = SubResource("ConvexPolygonShape3D_toij2")
+
+[node name="SM_Bld_House_Roof_Tile_Peak_Cap_01 (13)" parent="." unique_id=463611612 instance=ExtResource("1_jqfaq")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2.5, 6.25, 0)
+layers = 256
+gi_mode = 2
+mesh = ExtResource("2_nuhtq")
+surface_material_override/0 = ExtResource("3_ta1ot")
+
+[node name="CollisionShape3D" parent="SM_Bld_House_Roof_Tile_Peak_Cap_01 (13)/MeshCollider" index="0"]
+shape = SubResource("ConvexPolygonShape3D_ig76t")
+
+[node name="SM_Bld_House_Base_Wall_02 (41)" parent="." unique_id=443380374 instance=ExtResource("19_ab45g")]
+transform = Transform3D(-1, 0, -2.0861623e-07, 0, 1, 0, 2.0861623e-07, 0, -1, 5, 0, -2.5)
+gi_mode = 2
+mesh = ExtResource("20_5o2h8")
+surface_material_override/0 = ExtResource("10_ohmlm")
+
+[node name="CollisionShape3D" parent="SM_Bld_House_Base_Wall_02 (41)/MeshCollider" index="0"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.2427673, -1.2490845, 0.0030212402)
+shape = SubResource("BoxShape3D_p1crn")
+
+[node name="SM_Bld_House_Supports_01 (27)" parent="." unique_id=1041602772 instance=ExtResource("57_8r8f1")]
+transform = Transform3D(1.2946764, 0, 3.2782552e-07, 0, 1, 0, -4.2442798e-07, 0, 1, 0, 3.5, -2.5)
+gi_mode = 2
+mesh = ExtResource("58_tpiw6")
+surface_material_override/0 = ExtResource("10_ohmlm")
+
+[node name="CollisionShape3D" parent="SM_Bld_House_Supports_01 (27)/MeshCollider" index="0"]
+shape = SubResource("ConvexPolygonShape3D_qhuvl")
+
+[node name="SM_Bld_House_Roof_Tile_Peak_Cap_Edge_01 (10)" parent="." unique_id=1957799169 instance=ExtResource("4_nwmow")]
+transform = Transform3D(-1, 0, -1.1622905e-06, 0, 1, 0, 1.1622905e-06, 0, -1, -3.75, 6.25, -2.5)
+layers = 256
+gi_mode = 2
+mesh = ExtResource("5_w6gvu")
+surface_material_override/0 = ExtResource("3_ta1ot")
+
+[node name="CollisionShape3D" parent="SM_Bld_House_Roof_Tile_Peak_Cap_Edge_01 (10)/MeshCollider" index="0"]
+shape = SubResource("ConvexPolygonShape3D_tihod")
+
+[node name="SM_Bld_House_Roof_Tile_Half_02 (9)" parent="." unique_id=1349467665 instance=ExtResource("59_1j5qc")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2.5, 6.25, -1.25)
+layers = 256
+gi_mode = 2
+mesh = ExtResource("60_ddqlf")
+surface_material_override/0 = ExtResource("3_ta1ot")
+
+[node name="CollisionShape3D" parent="SM_Bld_House_Roof_Tile_Half_02 (9)/MeshCollider" index="0"]
+shape = SubResource("ConvexPolygonShape3D_ri7ao")
+
+[node name="SM_Bld_House_Wall_Window_02" parent="." unique_id=1841213820 instance=ExtResource("61_i720a")]
+transform = Transform3D(-5.205483e-07, 0, -0.9999995, 0, 1, 0, 0.9999995, 0, -5.205483e-07, -6.25, 1.25, -2.5)
+gi_mode = 2
+mesh = ExtResource("62_l7a8g")
+surface_material_override/0 = ExtResource("10_ohmlm")
+
+[node name="CollisionShape3D" parent="SM_Bld_House_Wall_Window_02/MeshCollider" index="0"]
+shape = SubResource("ConvexPolygonShape3D_xg3b0")
+
+[node name="SM_Bld_House_Wall_Window_02_Glass" parent="SM_Bld_House_Wall_Window_02" index="1"]
+gi_mode = 2
+mesh = ExtResource("63_qdu3o")
+surface_material_override/0 = ExtResource("30_m1y45")
+
+[node name="SM_Bld_House_Wall_Window_02_Shutters_01" parent="SM_Bld_House_Wall_Window_02" index="2"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.6444503, 1.4168862, 0.09948112)
+gi_mode = 2
+mesh = ExtResource("64_cbbxn")
+surface_material_override/0 = ExtResource("10_ohmlm")
+
+[node name="SM_Bld_House_Wall_Window_02_Shutters_02" parent="SM_Bld_House_Wall_Window_02" index="3"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.8341056, 1.4168862, 0.09948112)
+gi_mode = 2
+mesh = ExtResource("65_0qnia")
+surface_material_override/0 = ExtResource("10_ohmlm")
+
+[node name="SM_Bld_House_Supports_01 (26)" parent="." unique_id=1837433021 instance=ExtResource("57_8r8f1")]
+transform = Transform3D(-1.2946764, 0, 6.2783295e-07, 0, 1, 0, -8.1284054e-07, 0, -1, -3.75, 3.5, -2.5)
+gi_mode = 2
+mesh = ExtResource("58_tpiw6")
+surface_material_override/0 = ExtResource("10_ohmlm")
+
+[node name="CollisionShape3D" parent="SM_Bld_House_Supports_01 (26)/MeshCollider" index="0"]
+shape = SubResource("ConvexPolygonShape3D_qhuvl")
+
+[node name="SM_Bld_House_Roof_Tile_End_01 (9)" parent="." unique_id=572062329 instance=ExtResource("17_7tmh8")]
+transform = Transform3D(-1, 0, 7.152557e-07, 0, 1, 0, -7.152557e-07, 0, -1, 0, 3.75, 0)
+layers = 256
+gi_mode = 2
+mesh = ExtResource("18_8y7b5")
+surface_material_override/0 = ExtResource("3_ta1ot")
+
+[node name="CollisionShape3D" parent="SM_Bld_House_Roof_Tile_End_01 (9)/MeshCollider" index="0"]
+shape = SubResource("ConvexPolygonShape3D_vmldy")
+
+[node name="SM_Bld_House_Roof_Tile_Half_01 (9)" parent="." unique_id=1087069554 instance=ExtResource("50_sib5r")]
+transform = Transform3D(5.9604645e-08, 0, 1, 0, 1, 0, -1, 0, 5.9604645e-08, -1.25, 5, -1.25)
+layers = 256
+gi_mode = 2
+mesh = ExtResource("51_7i552")
+surface_material_override/0 = ExtResource("3_ta1ot")
+
+[node name="CollisionShape3D" parent="SM_Bld_House_Roof_Tile_Half_01 (9)/MeshCollider" index="0"]
+shape = SubResource("ConvexPolygonShape3D_wmtu7")
+
+[node name="SM_Bld_House_Base_Wall_01 (41)" parent="." unique_id=1708942599 instance=ExtResource("31_nnwlu")]
+transform = Transform3D(-1, 0, -2.0861623e-07, 0, 1, 0, 2.0861623e-07, 0, -1, 5, 0, -2.5)
+gi_mode = 2
+mesh = ExtResource("32_kowwo")
+surface_material_override/0 = ExtResource("10_ohmlm")
+
+[node name="CollisionShape3D" parent="SM_Bld_House_Base_Wall_01 (41)/MeshCollider" index="0"]
+shape = SubResource("ConvexPolygonShape3D_23wi6")
+
+[node name="SM_Bld_House_Supports_01 (25)" parent="." unique_id=1321107035 instance=ExtResource("57_8r8f1")]
+transform = Transform3D(1.2946764, 0, 3.2782552e-07, 0, 1, 0, -4.2442798e-07, 0, 1, 0, 3.5, 0)
+gi_mode = 2
+mesh = ExtResource("58_tpiw6")
+surface_material_override/0 = ExtResource("10_ohmlm")
+
+[node name="CollisionShape3D" parent="SM_Bld_House_Supports_01 (25)/MeshCollider" index="0"]
+shape = SubResource("ConvexPolygonShape3D_qhuvl")
+
+[node name="SM_Bld_House_Chimney_Stone_Base_02" parent="." unique_id=1540382180 instance=ExtResource("66_lxy6y")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2.5, 0.75, -2.25)
+gi_mode = 2
+mesh = ExtResource("67_gm2sk")
+surface_material_override/0 = ExtResource("10_ohmlm")
+
+[node name="CollisionShape3D" parent="SM_Bld_House_Chimney_Stone_Base_02/MeshCollider" index="0"]
+shape = SubResource("ConvexPolygonShape3D_yhjcb")
+
+[node name="SM_Bld_House_Base_Wall_02 (42)" parent="." unique_id=2086288706 instance=ExtResource("19_ab45g")]
+transform = Transform3D(-1, 0, -2.0861623e-07, 0, 1, 0, 2.0861623e-07, 0, -1, 2.5, 0, -2.5)
+gi_mode = 2
+mesh = ExtResource("20_5o2h8")
+surface_material_override/0 = ExtResource("10_ohmlm")
+
+[node name="CollisionShape3D" parent="SM_Bld_House_Base_Wall_02 (42)/MeshCollider" index="0"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.2427673, -1.2490845, 0.0030212402)
+shape = SubResource("BoxShape3D_p1crn")
+
+[node name="SM_Bld_House_Base_Corner_01 (17)" parent="." unique_id=164315518 instance=ExtResource("11_0rmm1")]
+transform = Transform3D(5.9604645e-08, 0, -1, 0, 1, 0, 1, 0, 5.9604645e-08, -6.25, 0, -2.5)
+gi_mode = 2
+mesh = ExtResource("12_u1ery")
+surface_material_override/0 = ExtResource("10_ohmlm")
+
+[node name="CollisionShape3D" parent="SM_Bld_House_Base_Corner_01 (17)/MeshCollider" index="0"]
+shape = SubResource("ConvexPolygonShape3D_k07ly")
+
+[node name="SM_Bld_House_WoodBeam_02 (40)" parent="." unique_id=681326354 instance=ExtResource("8_y8b73")]
+transform = Transform3D(5.9604645e-08, 0, 1, 0, 1, 0, -1, 0, 5.9604645e-08, -3.75, 3.75, 0)
+gi_mode = 2
+mesh = ExtResource("9_dwbec")
+surface_material_override/0 = ExtResource("10_ohmlm")
+
+[node name="CollisionShape3D" parent="SM_Bld_House_WoodBeam_02 (40)/MeshCollider" index="0"]
+shape = SubResource("ConvexPolygonShape3D_pbq85")
+
+[node name="SM_Bld_House_Base_Wall_01 (38)" parent="." unique_id=1095923781 instance=ExtResource("31_nnwlu")]
+transform = Transform3D(5.9604645e-08, 0, -1, 0, 1, 0, 1, 0, 5.9604645e-08, 5, 0, 2.5)
+gi_mode = 2
+mesh = ExtResource("32_kowwo")
+surface_material_override/0 = ExtResource("10_ohmlm")
+
+[node name="CollisionShape3D" parent="SM_Bld_House_Base_Wall_01 (38)/MeshCollider" index="0"]
+shape = SubResource("ConvexPolygonShape3D_23wi6")
+
+[node name="SM_Bld_House_Roof_Tile_Half_02 (10)" parent="." unique_id=10929150 instance=ExtResource("59_1j5qc")]
+transform = Transform3D(-1, 0, -1.1622905e-06, 0, 1, 0, 1.1622905e-06, 0, -1, 2.5, 6.25, 3.75)
+layers = 256
+gi_mode = 2
+mesh = ExtResource("60_ddqlf")
+surface_material_override/0 = ExtResource("3_ta1ot")
+
+[node name="CollisionShape3D" parent="SM_Bld_House_Roof_Tile_Half_02 (10)/MeshCollider" index="0"]
+shape = SubResource("ConvexPolygonShape3D_ri7ao")
+
+[node name="SM_Bld_House_Wall_03 (2)" parent="." unique_id=63945601 instance=ExtResource("39_4keh2")]
+transform = Transform3D(5.9604645e-08, 0, -1, 0, 1, 0, 1, 0, 5.9604645e-08, 5, 1.25, -2.5)
+gi_mode = 2
+mesh = ExtResource("40_v0hf7")
+surface_material_override/0 = ExtResource("10_ohmlm")
+
+[node name="CollisionShape3D" parent="SM_Bld_House_Wall_03 (2)/MeshCollider" index="0"]
+shape = SubResource("ConvexPolygonShape3D_p4q4l")
+
+[node name="SM_Bld_House_Roof_Tile_Peak_Cap_01 (11)" parent="." unique_id=456450455 instance=ExtResource("1_jqfaq")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2.5, 6.25, 5)
+layers = 256
+gi_mode = 2
+mesh = ExtResource("2_nuhtq")
+surface_material_override/0 = ExtResource("3_ta1ot")
+
+[node name="CollisionShape3D" parent="SM_Bld_House_Roof_Tile_Peak_Cap_01 (11)/MeshCollider" index="0"]
+shape = SubResource("ConvexPolygonShape3D_ig76t")
+
+[node name="SM_Bld_House_Roof_Tile_End_01 (12)" parent="." unique_id=1328499064 instance=ExtResource("17_7tmh8")]
+transform = Transform3D(1, 0, 3.2782552e-07, 0, 1, 0, -3.2782552e-07, 0, 1, 5, 3.75, 2.5)
+layers = 256
+gi_mode = 2
+mesh = ExtResource("18_8y7b5")
+surface_material_override/0 = ExtResource("3_ta1ot")
+
+[node name="CollisionShape3D" parent="SM_Bld_House_Roof_Tile_End_01 (12)/MeshCollider" index="0"]
+shape = SubResource("ConvexPolygonShape3D_vmldy")
+
+[node name="SM_Bld_House_Base_Wall_02 (36)" parent="." unique_id=2023522493 instance=ExtResource("19_ab45g")]
+transform = Transform3D(5.9604645e-08, 0, -1, 0, 1, 0, 1, 0, 5.9604645e-08, -3.75, 0, -2.5)
+gi_mode = 2
+mesh = ExtResource("20_5o2h8")
+surface_material_override/0 = ExtResource("10_ohmlm")
+
+[node name="CollisionShape3D" parent="SM_Bld_House_Base_Wall_02 (36)/MeshCollider" index="0"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.2427673, -1.2490845, 0.0030212402)
+shape = SubResource("BoxShape3D_p1crn")
+
+[node name="SM_Bld_House_Roof_Tile_End_Half_01 (8)" parent="." unique_id=1641740382 instance=ExtResource("21_5bi3o")]
+transform = Transform3D(5.5233477e-07, 0, -0.9999995, 0, 1, 0, 0.9999995, 0, 5.5233477e-07, -1.25, 3.75, 0)
+layers = 256
+gi_mode = 2
+mesh = ExtResource("22_or6cw")
+surface_material_override/0 = ExtResource("3_ta1ot")
+
+[node name="CollisionShape3D" parent="SM_Bld_House_Roof_Tile_End_Half_01 (8)/MeshCollider" index="0"]
+shape = SubResource("ConvexPolygonShape3D_lsom7")
+
+[node name="SM_Bld_House_Base_Corner_01 (22)" parent="." unique_id=448137454 instance=ExtResource("11_0rmm1")]
+transform = Transform3D(5.5233477e-07, 0, 0.9999995, 0, 1, 0, -0.9999995, 0, 5.5233477e-07, 0, 0, -2.5)
+gi_mode = 2
+mesh = ExtResource("12_u1ery")
+surface_material_override/0 = ExtResource("10_ohmlm")
+
+[node name="CollisionShape3D" parent="SM_Bld_House_Base_Corner_01 (22)/MeshCollider" index="0"]
+shape = SubResource("ConvexPolygonShape3D_k07ly")
+
+[node name="SM_Bld_House_Roof_Tile_Half_02 (11)" parent="." unique_id=1645975899 instance=ExtResource("59_1j5qc")]
+transform = Transform3D(-1, 0, -1.1622905e-06, 0, 1, 0, 1.1622905e-06, 0, -1, 2.5, 6.25, 0)
+layers = 256
+gi_mode = 2
+mesh = ExtResource("60_ddqlf")
+surface_material_override/0 = ExtResource("3_ta1ot")
+
+[node name="CollisionShape3D" parent="SM_Bld_House_Roof_Tile_Half_02 (11)/MeshCollider" index="0"]
+shape = SubResource("ConvexPolygonShape3D_ri7ao")
+
+[node name="SM_Bld_House_Base_Corner_01 (23)" parent="." unique_id=134031424 instance=ExtResource("11_0rmm1")]
+transform = Transform3D(5.5233477e-07, 0, 0.9999995, 0, 1, 0, -0.9999995, 0, 5.5233477e-07, 0, 0, 0)
+gi_mode = 2
+mesh = ExtResource("12_u1ery")
+surface_material_override/0 = ExtResource("10_ohmlm")
+
+[node name="CollisionShape3D" parent="SM_Bld_House_Base_Corner_01 (23)/MeshCollider" index="0"]
+shape = SubResource("ConvexPolygonShape3D_k07ly")
+
+[node name="SM_Bld_House_Base_Wall_01 (34)" parent="." unique_id=1270159956 instance=ExtResource("31_nnwlu")]
+transform = Transform3D(-9.536743e-07, 0, 1, 0, 1, 0, -1, 0, -9.536743e-07, -6.25, 0, 0)
+gi_mode = 2
+mesh = ExtResource("32_kowwo")
+surface_material_override/0 = ExtResource("10_ohmlm")
+
+[node name="CollisionShape3D" parent="SM_Bld_House_Base_Wall_01 (34)/MeshCollider" index="0"]
+shape = SubResource("ConvexPolygonShape3D_23wi6")
+
+[node name="SM_Bld_House_Wall_Cut_02 (11)" parent="." unique_id=1482121688 instance=ExtResource("35_xey00")]
+transform = Transform3D(-1, 0, -1.1622905e-06, 0, 1, 0, 1.1622905e-06, 0, -1, -3.75, 3.75, -2.5)
+gi_mode = 2
+mesh = ExtResource("36_mulwb")
+surface_material_override/0 = ExtResource("10_ohmlm")
+
+[node name="CollisionShape3D" parent="SM_Bld_House_Wall_Cut_02 (11)/MeshCollider" index="0"]
+shape = SubResource("ConvexPolygonShape3D_tbdh0")
+
+[node name="SM_Bld_House_Base_Corner_01 (26)" parent="." unique_id=1994551841 instance=ExtResource("11_0rmm1")]
+transform = Transform3D(5.5233477e-07, 0, 0.9999995, 0, 1, 0, -0.9999995, 0, 5.5233477e-07, 5, 0, 0)
+gi_mode = 2
+mesh = ExtResource("12_u1ery")
+surface_material_override/0 = ExtResource("10_ohmlm")
+
+[node name="CollisionShape3D" parent="SM_Bld_House_Base_Corner_01 (26)/MeshCollider" index="0"]
+shape = SubResource("ConvexPolygonShape3D_k07ly")
+
+[node name="SM_Bld_House_Wall_01" parent="." unique_id=984336023 instance=ExtResource("68_nylto")]
+transform = Transform3D(5.9604645e-08, 0, 1, 0, 1, 0, -1, 0, 5.9604645e-08, -3.75, 3.75, 0)
+gi_mode = 2
+mesh = ExtResource("69_g51di")
+surface_material_override/0 = ExtResource("10_ohmlm")
+
+[node name="CollisionShape3D" parent="SM_Bld_House_Wall_01/MeshCollider" index="0"]
+shape = SubResource("ConvexPolygonShape3D_vivr7")
+
+[node name="SM_Bld_House_Base_Corner_02 (17)" parent="." unique_id=619008800 instance=ExtResource("15_0q1bc")]
+transform = Transform3D(5.9604645e-08, 0, -1, 0, 1, 0, 1, 0, 5.9604645e-08, -6.25, 0, -2.5)
+gi_mode = 2
+mesh = ExtResource("16_r0v4y")
+surface_material_override/0 = ExtResource("10_ohmlm")
+
+[node name="CollisionShape3D" parent="SM_Bld_House_Base_Corner_02 (17)/MeshCollider" index="0"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.0047302246, -1.2546387, -0.004760742)
+shape = SubResource("BoxShape3D_r0mj3")
+
+[node name="SM_Bld_House_Roof_Tile_Peak_Cap_Edge_01 (11)" parent="." unique_id=1264603699 instance=ExtResource("4_nwmow")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2.5, 6.25, 5)
+layers = 256
+gi_mode = 2
+mesh = ExtResource("5_w6gvu")
+surface_material_override/0 = ExtResource("3_ta1ot")
+
+[node name="CollisionShape3D" parent="SM_Bld_House_Roof_Tile_Peak_Cap_Edge_01 (11)/MeshCollider" index="0"]
+shape = SubResource("ConvexPolygonShape3D_tihod")
+
+[node name="SM_Prop_Tether_Beam_01 (3)" parent="." unique_id=1615145588 instance=ExtResource("70_goagt")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2.5, 6, 5.1289997)
+gi_mode = 2
+mesh = ExtResource("71_lb303")
+surface_material_override/0 = ExtResource("10_ohmlm")
+
+[node name="CollisionShape3D" parent="SM_Prop_Tether_Beam_01 (3)/MeshCollider" index="0"]
+shape = SubResource("ConvexPolygonShape3D_mm7jt")
+
+[node name="SM_Bld_House_Base_Corner_01 (16)" parent="." unique_id=949828668 instance=ExtResource("11_0rmm1")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -6.25, 0, 0)
+gi_mode = 2
+mesh = ExtResource("12_u1ery")
+surface_material_override/0 = ExtResource("10_ohmlm")
+
+[node name="CollisionShape3D" parent="SM_Bld_House_Base_Corner_01 (16)/MeshCollider" index="0"]
+shape = SubResource("ConvexPolygonShape3D_k07ly")
+
+[node name="SM_Bld_House_Supports_01 (24)" parent="." unique_id=1452781814 instance=ExtResource("57_8r8f1")]
+transform = Transform3D(-1.2946764, 0, 6.2783295e-07, 0, 1, 0, -8.1284054e-07, 0, -1, -3.75, 3.5, 0)
+gi_mode = 2
+mesh = ExtResource("58_tpiw6")
+surface_material_override/0 = ExtResource("10_ohmlm")
+
+[node name="CollisionShape3D" parent="SM_Bld_House_Supports_01 (24)/MeshCollider" index="0"]
+shape = SubResource("ConvexPolygonShape3D_qhuvl")
+
+[node name="SM_Bld_House_Roof_Tile_End_01 (10)" parent="." unique_id=625121229 instance=ExtResource("17_7tmh8")]
+transform = Transform3D(-5.205483e-07, 0, -0.9999995, 0, 1, 0, 0.9999995, 0, -5.205483e-07, -3.75, 3.75, 0)
+layers = 256
+gi_mode = 2
+mesh = ExtResource("18_8y7b5")
+surface_material_override/0 = ExtResource("3_ta1ot")
+
+[node name="CollisionShape3D" parent="SM_Bld_House_Roof_Tile_End_01 (10)/MeshCollider" index="0"]
+shape = SubResource("ConvexPolygonShape3D_vmldy")
+
+[node name="SM_Bld_House_Base_Wall_02 (38)" parent="." unique_id=239302809 instance=ExtResource("19_ab45g")]
+transform = Transform3D(5.9604645e-08, 0, -1, 0, 1, 0, 1, 0, 5.9604645e-08, 5, 0, 2.5)
+gi_mode = 2
+mesh = ExtResource("20_5o2h8")
+surface_material_override/0 = ExtResource("10_ohmlm")
+
+[node name="CollisionShape3D" parent="SM_Bld_House_Base_Wall_02 (38)/MeshCollider" index="0"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.2427673, -1.2490845, 0.0030212402)
+shape = SubResource("BoxShape3D_p1crn")
+
+[node name="SM_Bld_House_Chimney_Stone_01" parent="." unique_id=1357867551 instance=ExtResource("72_hlqxw")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2.5, 6.25, -2.25)
+gi_mode = 2
+mesh = ExtResource("73_cxpo7")
+surface_material_override/0 = ExtResource("10_ohmlm")
+
+[node name="CollisionShape3D" parent="SM_Bld_House_Chimney_Stone_01/MeshCollider" index="0"]
+shape = SubResource("ConvexPolygonShape3D_wmu56")
+
+[node name="SM_Bld_House_Base_Corner_01 (21)" parent="." unique_id=2007409096 instance=ExtResource("11_0rmm1")]
+transform = Transform3D(5.5233477e-07, 0, 0.9999995, 0, 1, 0, -0.9999995, 0, 5.5233477e-07, 5, 0, -2.5)
+gi_mode = 2
+mesh = ExtResource("12_u1ery")
+surface_material_override/0 = ExtResource("10_ohmlm")
+
+[node name="CollisionShape3D" parent="SM_Bld_House_Base_Corner_01 (21)/MeshCollider" index="0"]
+shape = SubResource("ConvexPolygonShape3D_k07ly")
+
+[node name="SM_Bld_House_WoodBeam_02 (38)" parent="." unique_id=1545884011 instance=ExtResource("8_y8b73")]
+transform = Transform3D(5.9604645e-08, 0, -1, 0, 1, 0, 1, 0, 5.9604645e-08, -6.25, 1.25, -2.5)
+gi_mode = 2
+mesh = ExtResource("9_dwbec")
+surface_material_override/0 = ExtResource("10_ohmlm")
+
+[node name="CollisionShape3D" parent="SM_Bld_House_WoodBeam_02 (38)/MeshCollider" index="0"]
+shape = SubResource("ConvexPolygonShape3D_pbq85")
+
+[node name="SM_Bld_House_Roof_Tile_End_01 (11)" parent="." unique_id=1837671803 instance=ExtResource("17_7tmh8")]
+transform = Transform3D(-1.6292061e-07, 0, 0.9999995, 0, 1, 0, -0.9999995, 0, -1.6292061e-07, -1.25, 3.75, -2.5)
+layers = 256
+gi_mode = 2
+mesh = ExtResource("18_8y7b5")
+surface_material_override/0 = ExtResource("3_ta1ot")
+
+[node name="CollisionShape3D" parent="SM_Bld_House_Roof_Tile_End_01 (11)/MeshCollider" index="0"]
+shape = SubResource("ConvexPolygonShape3D_vmldy")
+
+[node name="SM_Bld_House_Base_Wall_01 (40)" parent="." unique_id=1354193123 instance=ExtResource("31_nnwlu")]
+transform = Transform3D(5.9604645e-08, 0, -1, 0, 1, 0, 1, 0, 5.9604645e-08, 5, 0, -2.5)
+gi_mode = 2
+mesh = ExtResource("32_kowwo")
+surface_material_override/0 = ExtResource("10_ohmlm")
+
+[node name="CollisionShape3D" parent="SM_Bld_House_Base_Wall_01 (40)/MeshCollider" index="0"]
+shape = SubResource("ConvexPolygonShape3D_23wi6")
+
+[node name="SM_Bld_House_Roof_Tile_Edge_End_01 (9)" parent="." unique_id=549983134 instance=ExtResource("6_l7jol")]
+transform = Transform3D(-1, 0, -1.1622905e-06, 0, 1, 0, 1.1622905e-06, 0, -1, 2.5, 6.25, -2.5)
+layers = 256
+gi_mode = 2
+mesh = ExtResource("7_n47eb")
+surface_material_override/0 = ExtResource("3_ta1ot")
+
+[node name="CollisionShape3D" parent="SM_Bld_House_Roof_Tile_Edge_End_01 (9)/MeshCollider" index="0"]
+shape = SubResource("ConvexPolygonShape3D_dnrhe")
+
+[node name="SM_Bld_House_Base_Wall_01 (35)" parent="." unique_id=1932358850 instance=ExtResource("31_nnwlu")]
+transform = Transform3D(1, 0, 9.536742e-07, 0, 1, 0, -9.536742e-07, 0, 1, -6.25, 0, -2.5)
+gi_mode = 2
+mesh = ExtResource("32_kowwo")
+surface_material_override/0 = ExtResource("10_ohmlm")
+
+[node name="CollisionShape3D" parent="SM_Bld_House_Base_Wall_01 (35)/MeshCollider" index="0"]
+shape = SubResource("ConvexPolygonShape3D_23wi6")
+
+[node name="SM_Bld_House_WoodBeam_02 (42)" parent="." unique_id=1890750010 instance=ExtResource("8_y8b73")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.25, 5)
+gi_mode = 2
+mesh = ExtResource("9_dwbec")
+surface_material_override/0 = ExtResource("10_ohmlm")
+
+[node name="CollisionShape3D" parent="SM_Bld_House_WoodBeam_02 (42)/MeshCollider" index="0"]
+shape = SubResource("ConvexPolygonShape3D_pbq85")
+
+[node name="SM_Bld_House_Roof_Tile_Half_02 (8)" parent="." unique_id=961954842 instance=ExtResource("59_1j5qc")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2.5, 6.25, 2.5)
+layers = 256
+gi_mode = 2
+mesh = ExtResource("60_ddqlf")
+surface_material_override/0 = ExtResource("3_ta1ot")
+
+[node name="CollisionShape3D" parent="SM_Bld_House_Roof_Tile_Half_02 (8)/MeshCollider" index="0"]
+shape = SubResource("ConvexPolygonShape3D_ri7ao")
+
+[node name="SM_Bld_House_Roof_Tile_Window_01 (1)" parent="." unique_id=1739942987 instance=ExtResource("27_iscqt")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2.5, 6.25, 1.25)
+layers = 256
+gi_mode = 2
+mesh = ExtResource("28_isd2e")
+surface_material_override/0 = ExtResource("3_ta1ot")
+
+[node name="CollisionShape3D" parent="SM_Bld_House_Roof_Tile_Window_01 (1)/MeshCollider" index="0"]
+shape = SubResource("ConvexPolygonShape3D_a0aaq")
+
+[node name="SM_Bld_House_Roof_Tile_Window_01_Glass" parent="SM_Bld_House_Roof_Tile_Window_01 (1)" index="1"]
+gi_mode = 2
+mesh = ExtResource("29_7bino")
+surface_material_override/0 = ExtResource("30_m1y45")
+
+[node name="SM_Bld_House_WoodBeam_02 (43)" parent="." unique_id=1458613661 instance=ExtResource("8_y8b73")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.25, 0)
+gi_mode = 2
+mesh = ExtResource("9_dwbec")
+surface_material_override/0 = ExtResource("10_ohmlm")
+
+[node name="CollisionShape3D" parent="SM_Bld_House_WoodBeam_02 (43)/MeshCollider" index="0"]
+shape = SubResource("ConvexPolygonShape3D_pbq85")
+
+[node name="Preset_Blacksmith_01_Interior" type="Node3D" parent="." unique_id=163170698]
+
+[editable path="SM_Bld_House_Roof_Tile_Peak_Cap_01 (10)"]
+[editable path="SM_Bld_House_Roof_Tile_Peak_Cap_Edge_01 (9)"]
+[editable path="SM_Bld_House_Roof_Tile_Edge_End_01 (10)"]
+[editable path="SM_Bld_House_WoodBeam_02 (41)"]
+[editable path="SM_Bld_House_Base_Corner_01 (24)"]
+[editable path="SM_Bld_House_Stairs_Stone_01 (1)"]
+[editable path="SM_Bld_House_Roof_Tile_Peak_Cap_Edge_01 (12)"]
+[editable path="SM_Bld_House_Base_Corner_02 (20)"]
+[editable path="SM_Bld_House_Base_Corner_02 (19)"]
+[editable path="SM_Bld_House_WoodBeam_02 (44)"]
+[editable path="SM_Bld_House_Roof_Tile_Edge_End_01 (5)"]
+[editable path="SM_Bld_House_WoodBeam_02 (45)"]
+[editable path="SM_Bld_House_Base_Corner_01 (20)"]
+[editable path="SM_Bld_House_Roof_Tile_End_01 (7)"]
+[editable path="SM_Bld_House_Base_Corner_02 (18)"]
+[editable path="SM_Bld_House_Base_Corner_01 (19)"]
+[editable path="SM_Bld_House_Base_Wall_02 (40)"]
+[editable path="SM_Bld_House_Base_Corner_02 (22)"]
+[editable path="SM_Bld_House_Base_Corner_01 (18)"]
+[editable path="SM_Bld_House_Roof_Tile_Edge_End_01 (8)"]
+[editable path="SM_Bld_House_WoodBeam_02 (46)"]
+[editable path="SM_Bld_House_Roof_Tile_End_01 (13)"]
+[editable path="SM_Bld_House_Roof_Tile_End_Half_01 (9)"]
+[editable path="SM_Bld_House_Base_Corner_02 (21)"]
+[editable path="SM_Bld_House_Roof_Tile_Intersection_01 (1)"]
+[editable path="SM_Bld_House_Roof_Tile_01 (3)"]
+[editable path="SM_Bld_House_Base_Corner_01 (25)"]
+[editable path="SM_Bld_House_Roof_Tile_Window_01"]
+[editable path="SM_Bld_House_Base_Wall_01 (36)"]
+[editable path="SM_Bld_House_Roof_Tile_Window_01 (2)"]
+[editable path="SM_Bld_House_Roof_Tile_Edge_End_01 (6)"]
+[editable path="SM_Bld_House_Base_Corner_02 (16)"]
+[editable path="SM_Bld_House_Base_Corner_02 (25)"]
+[editable path="SM_Bld_House_Supports_02 (1)"]
+[editable path="SM_Bld_House_Wall_02 (10)"]
+[editable path="SM_Bld_House_Wall_Cut_02 (10)"]
+[editable path="SM_Bld_House_Supports_02 (3)"]
+[editable path="SM_Bld_House_Base_Wall_01 (37)"]
+[editable path="SM_Bld_House_Base_Wall_02 (37)"]
+[editable path="SM_Bld_House_Supports_02"]
+[editable path="SM_Bld_House_Roof_Tile_Edge_End_01 (7)"]
+[editable path="SM_Bld_House_WoodBeam_03 (4)"]
+[editable path="SM_Bld_House_Base_Wall_01 (39)"]
+[editable path="SM_Bld_House_Base_Wall_02 (34)"]
+[editable path="SM_Bld_House_Wall_03"]
+[editable path="SM_Bld_House_Roof_Tile_Peak_Cap_01 (6)"]
+[editable path="SM_Bld_House_Stairs_Stone_Block_01 (2)"]
+[editable path="SM_Bld_House_WoodBeam_03 (5)"]
+[editable path="SM_Bld_House_Wall_02 (9)"]
+[editable path="SM_Bld_House_Base_Wall_01 (42)"]
+[editable path="SM_Bld_House_WoodBeam_02 (37)"]
+[editable path="SM_Bld_House_Base_Wall_02 (39)"]
+[editable path="SM_Bld_House_Chimney_Stone_Base_03"]
+[editable path="SM_Bld_House_Roof_Tile_Peak_Cap_01 (12)"]
+[editable path="SM_Bld_House_Wall_Window_06"]
+[editable path="SM_Bld_House_WoodBeam_02 (36)"]
+[editable path="SM_Bld_House_Base_Corner_02 (26)"]
+[editable path="SM_Bld_House_Wall_03 (1)"]
+[editable path="SM_Bld_House_Supports_02 (2)"]
+[editable path="SM_Bld_House_Roof_Tile_End_01 (8)"]
+[editable path="SM_Bld_House_Base_Wall_02 (35)"]
+[editable path="SM_Bld_House_Roof_Tile_End_01 (14)"]
+[editable path="SM_Bld_House_WoodBeam_02 (47)"]
+[editable path="SM_Bld_House_Base_Corner_02 (23)"]
+[editable path="SM_Bld_House_Wall_Window_06 (1)"]
+[editable path="SM_Bld_House_Floor_Wood_02 (13)"]
+[editable path="SM_Bld_House_WoodBeam_02 (39)"]
+[editable path="SM_Bld_House_Base_Corner_02 (24)"]
+[editable path="SM_Bld_House_WoodBeam_02 (48)"]
+[editable path="SM_Bld_House_Roof_Tile_Half_01 (8)"]
+[editable path="SM_Bld_House_Chimney_Stone_Base_01"]
+[editable path="SM_Bld_House_Wall_Door_02 (1)"]
+[editable path="SM_Bld_House_Roof_Tile_Peak_Cap_01 (13)"]
+[editable path="SM_Bld_House_Base_Wall_02 (41)"]
+[editable path="SM_Bld_House_Supports_01 (27)"]
+[editable path="SM_Bld_House_Roof_Tile_Peak_Cap_Edge_01 (10)"]
+[editable path="SM_Bld_House_Roof_Tile_Half_02 (9)"]
+[editable path="SM_Bld_House_Wall_Window_02"]
+[editable path="SM_Bld_House_Supports_01 (26)"]
+[editable path="SM_Bld_House_Roof_Tile_End_01 (9)"]
+[editable path="SM_Bld_House_Roof_Tile_Half_01 (9)"]
+[editable path="SM_Bld_House_Base_Wall_01 (41)"]
+[editable path="SM_Bld_House_Supports_01 (25)"]
+[editable path="SM_Bld_House_Chimney_Stone_Base_02"]
+[editable path="SM_Bld_House_Base_Wall_02 (42)"]
+[editable path="SM_Bld_House_Base_Corner_01 (17)"]
+[editable path="SM_Bld_House_WoodBeam_02 (40)"]
+[editable path="SM_Bld_House_Base_Wall_01 (38)"]
+[editable path="SM_Bld_House_Roof_Tile_Half_02 (10)"]
+[editable path="SM_Bld_House_Wall_03 (2)"]
+[editable path="SM_Bld_House_Roof_Tile_Peak_Cap_01 (11)"]
+[editable path="SM_Bld_House_Roof_Tile_End_01 (12)"]
+[editable path="SM_Bld_House_Base_Wall_02 (36)"]
+[editable path="SM_Bld_House_Roof_Tile_End_Half_01 (8)"]
+[editable path="SM_Bld_House_Base_Corner_01 (22)"]
+[editable path="SM_Bld_House_Roof_Tile_Half_02 (11)"]
+[editable path="SM_Bld_House_Base_Corner_01 (23)"]
+[editable path="SM_Bld_House_Base_Wall_01 (34)"]
+[editable path="SM_Bld_House_Wall_Cut_02 (11)"]
+[editable path="SM_Bld_House_Base_Corner_01 (26)"]
+[editable path="SM_Bld_House_Wall_01"]
+[editable path="SM_Bld_House_Base_Corner_02 (17)"]
+[editable path="SM_Bld_House_Roof_Tile_Peak_Cap_Edge_01 (11)"]
+[editable path="SM_Prop_Tether_Beam_01 (3)"]
+[editable path="SM_Bld_House_Base_Corner_01 (16)"]
+[editable path="SM_Bld_House_Supports_01 (24)"]
+[editable path="SM_Bld_House_Roof_Tile_End_01 (10)"]
+[editable path="SM_Bld_House_Base_Wall_02 (38)"]
+[editable path="SM_Bld_House_Chimney_Stone_01"]
+[editable path="SM_Bld_House_Base_Corner_01 (21)"]
+[editable path="SM_Bld_House_WoodBeam_02 (38)"]
+[editable path="SM_Bld_House_Roof_Tile_End_01 (11)"]
+[editable path="SM_Bld_House_Base_Wall_01 (40)"]
+[editable path="SM_Bld_House_Roof_Tile_Edge_End_01 (9)"]
+[editable path="SM_Bld_House_Base_Wall_01 (35)"]
+[editable path="SM_Bld_House_WoodBeam_02 (42)"]
+[editable path="SM_Bld_House_Roof_Tile_Half_02 (8)"]
+[editable path="SM_Bld_House_Roof_Tile_Window_01 (1)"]
+[editable path="SM_Bld_House_WoodBeam_02 (43)"]

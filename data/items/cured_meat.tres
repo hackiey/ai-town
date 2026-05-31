@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="Item" format=3 uid="uid://bq2juju1xgxad"]
+
+[ext_resource type="Script" uid="uid://dqr5snte2lo05" path="res://src/sim/items/item.gd" id="1_item"]
+
+[resource]
+script = ExtResource("1_item")
+id = "cured_meat"
+kind = "food"
+max_stack = 50
+use_duration_seconds = 60.0
+shape_type = "lump"
+materials = {
+"body": "cured_meat"
+}
+tint = Color(0.65, 0.35, 0.22, 1)
+base_effects = {
+"hunger": 30,
+"stamina": 10
+}

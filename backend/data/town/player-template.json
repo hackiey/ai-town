@@ -1,0 +1,39 @@
+{
+  "_comment": "Shared default attribute/identity template for player characters. Seed data only — backend reads soul/knowledge_books/other for AI-takeover memory seeding (proficiency comes from the player's live DB rows); Godot reads proficiency/starting_inventory/starting_wallet_silver to seed a new player's game-world tables. A future character-creation UI will let players tune these before persisting; tune the defaults here meanwhile.",
+  "soul": [
+    "你是这座小镇里一名普通居民，靠自己的双手过日子。",
+    "做事踏实，遇到机会会盘算盘算划不划算，但不算计人。"
+  ],
+  "other": [
+    "你刚开始独立讨生活，手艺还在练，得一边干一边学。"
+  ],
+  "proficiency": {
+    "cooking": 20,
+    "woodworking": 15,
+    "charcoal_making": 10,
+    "mining": 10,
+    "smithing": 10
+  },
+  "knowledge_books": [
+    "farming_basics",
+    "grain_chain_basics"
+  ],
+  "starting_inventory": [
+    { "item_id": "iron_ore", "quantity": 5 },
+    { "item_id": "copper_ore", "quantity": 3 },
+    { "item_id": "tin_ore", "quantity": 3 },
+    { "item_id": "charcoal", "quantity": 8 },
+    { "item_id": "wood", "quantity": 5 },
+    { "item_id": "flax_bundle", "quantity": 6 },
+    { "item_id": "flax_seed", "quantity": 5 },
+    { "item_id": "wheat", "quantity": 5 },
+    { "item_id": "raw_meat", "quantity": 2 },
+    { "item_id": "egg", "quantity": 2 },
+    { "item_id": "berry", "quantity": 5 },
+    { "item_id": "bread", "quantity": 10 },
+    { "item_id": "salt", "quantity": 3 },
+    { "item_id": "tomato_seed", "quantity": 3 },
+    { "item_id": "wood_bucket", "quantity": 1 }
+  ],
+  "starting_wallet_silver": 30
+}

@@ -1,0 +1,27 @@
+[gd_resource type="Resource" script_class="Substance" format=3 uid="uid://drcq62gt517om"]
+
+[ext_resource type="Script" path="res://src/sim/materials/substance.gd" id="1_mat"]
+
+[resource]
+script = ExtResource("1_mat")
+id = "cooked_meat"
+category = "food"
+hardness = 3
+density = 1.0
+melting_point = -1.0
+ignite_temperature = 250.0
+flammable = false
+thermal_capacity = 3300.0
+thermal_conductivity = 0.4
+brittleness = 0.2
+electrical_conductivity = 0.05
+default_state = 0
+hazards = PackedStringArray()
+tint = Color(0.55, 0.35, 0.20, 1)
+visual_fallback = ""
+transforms = {}
+alloys = {}
+shelf_life_hours = 72.0
+rotten_into = "rotten_food"
+tags = PackedStringArray("food", "cooked", "meat")
+extra = {}

@@ -1,0 +1,10 @@
+{
+  "attribute": {
+    "hp": { "name": "HP" },
+    "stamina": { "name": "Stamina" },
+    "hunger": { "name": "Hunger" },
+    "rest": { "name": "Rest" },
+    "temperature": { "name": "Temperature" },
+    "burning": { "name": "Burning" }
+  }
+}

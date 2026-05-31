@@ -1,0 +1,88 @@
+{
+  "shape": {
+    "axe_head": {
+      "name": "斧头"
+    },
+    "axe_head_on_shaft": {
+      "name": "斧"
+    },
+    "bowl": {
+      "name": "汤碗"
+    },
+    "bucket": {
+      "name": "桶"
+    },
+    "dish": {
+      "name": "盘装"
+    },
+    "dough_lump": {
+      "name": "面团"
+    },
+    "fiber_bundle": {
+      "name": "纤维束"
+    },
+    "flat_blade": {
+      "name": "扁刃"
+    },
+    "flat_blade_on_shaft": {
+      "name": "铲"
+    },
+    "fluid_pouch": {
+      "name": "液体（袋装）"
+    },
+    "fruit_whole": {
+      "name": "果实"
+    },
+    "grain": {
+      "name": "颗粒"
+    },
+    "ingot": {
+      "name": "锭"
+    },
+    "jar": {
+      "name": "罐装"
+    },
+    "knife": {
+      "name": "刀"
+    },
+    "loaf": {
+      "name": "面包"
+    },
+    "log": {
+      "name": "原木"
+    },
+    "lump": {
+      "name": "块状"
+    },
+    "ore_chunk": {
+      "name": "矿块"
+    },
+    "pick_head": {
+      "name": "镐头"
+    },
+    "pick_head_on_shaft": {
+      "name": "镐"
+    },
+    "plank": {
+      "name": "木板"
+    },
+    "powder": {
+      "name": "粉末"
+    },
+    "rope": {
+      "name": "绳"
+    },
+    "shaft": {
+      "name": "杆"
+    },
+    "sickle": {
+      "name": "镰刀"
+    },
+    "coin": {
+      "name": "钱币"
+    },
+    "key": {
+      "name": "钥匙"
+    }
+  }
+}

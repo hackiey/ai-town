@@ -1,0 +1,97 @@
+[gd_resource type="SpriteFrames" load_steps=44 format=3 uid="uid://b8x1ai8gameswf0"]
+
+[ext_resource type="Texture2D" path="res://assets/sprites/characters/player/wizard/animations/walk/south/frame_000.png" id="1_s0"]
+[ext_resource type="Texture2D" path="res://assets/sprites/characters/player/wizard/animations/walk/south/frame_001.png" id="2_s1"]
+[ext_resource type="Texture2D" path="res://assets/sprites/characters/player/wizard/animations/walk/south/frame_002.png" id="3_s2"]
+[ext_resource type="Texture2D" path="res://assets/sprites/characters/player/wizard/animations/walk/south/frame_003.png" id="4_s3"]
+[ext_resource type="Texture2D" path="res://assets/sprites/characters/player/wizard/animations/walk/south/frame_004.png" id="5_s4"]
+[ext_resource type="Texture2D" path="res://assets/sprites/characters/player/wizard/animations/walk/south/frame_005.png" id="6_s5"]
+[ext_resource type="Texture2D" path="res://assets/sprites/characters/player/wizard/animations/walk/south-east/frame_000.png" id="7_se0"]
+[ext_resource type="Texture2D" path="res://assets/sprites/characters/player/wizard/animations/walk/south-east/frame_001.png" id="8_se1"]
+[ext_resource type="Texture2D" path="res://assets/sprites/characters/player/wizard/animations/walk/south-east/frame_002.png" id="9_se2"]
+[ext_resource type="Texture2D" path="res://assets/sprites/characters/player/wizard/animations/walk/south-east/frame_003.png" id="10_se3"]
+[ext_resource type="Texture2D" path="res://assets/sprites/characters/player/wizard/animations/walk/south-east/frame_004.png" id="11_se4"]
+[ext_resource type="Texture2D" path="res://assets/sprites/characters/player/wizard/animations/walk/south-east/frame_005.png" id="12_se5"]
+[ext_resource type="Texture2D" path="res://assets/sprites/characters/player/wizard/animations/walk/east/frame_000.png" id="13_e0"]
+[ext_resource type="Texture2D" path="res://assets/sprites/characters/player/wizard/animations/walk/east/frame_001.png" id="14_e1"]
+[ext_resource type="Texture2D" path="res://assets/sprites/characters/player/wizard/animations/walk/east/frame_002.png" id="15_e2"]
+[ext_resource type="Texture2D" path="res://assets/sprites/characters/player/wizard/animations/walk/east/frame_003.png" id="16_e3"]
+[ext_resource type="Texture2D" path="res://assets/sprites/characters/player/wizard/animations/walk/east/frame_004.png" id="17_e4"]
+[ext_resource type="Texture2D" path="res://assets/sprites/characters/player/wizard/animations/walk/east/frame_005.png" id="18_e5"]
+[ext_resource type="Texture2D" path="res://assets/sprites/characters/player/wizard/animations/walk/north-east/frame_000.png" id="19_ne0"]
+[ext_resource type="Texture2D" path="res://assets/sprites/characters/player/wizard/animations/walk/north-east/frame_001.png" id="20_ne1"]
+[ext_resource type="Texture2D" path="res://assets/sprites/characters/player/wizard/animations/walk/north-east/frame_002.png" id="21_ne2"]
+[ext_resource type="Texture2D" path="res://assets/sprites/characters/player/wizard/animations/walk/north-east/frame_003.png" id="22_ne3"]
+[ext_resource type="Texture2D" path="res://assets/sprites/characters/player/wizard/animations/walk/north-east/frame_004.png" id="23_ne4"]
+[ext_resource type="Texture2D" path="res://assets/sprites/characters/player/wizard/animations/walk/north-east/frame_005.png" id="24_ne5"]
+[ext_resource type="Texture2D" path="res://assets/sprites/characters/player/wizard/animations/walk/north-west/frame_000.png" id="25_nw0"]
+[ext_resource type="Texture2D" path="res://assets/sprites/characters/player/wizard/animations/walk/north-west/frame_001.png" id="26_nw1"]
+[ext_resource type="Texture2D" path="res://assets/sprites/characters/player/wizard/animations/walk/north-west/frame_002.png" id="27_nw2"]
+[ext_resource type="Texture2D" path="res://assets/sprites/characters/player/wizard/animations/walk/north-west/frame_003.png" id="28_nw3"]
+[ext_resource type="Texture2D" path="res://assets/sprites/characters/player/wizard/animations/walk/north-west/frame_004.png" id="29_nw4"]
+[ext_resource type="Texture2D" path="res://assets/sprites/characters/player/wizard/animations/walk/north-west/frame_005.png" id="30_nw5"]
+[ext_resource type="Texture2D" path="res://assets/sprites/characters/player/wizard/animations/walk/west/frame_000.png" id="31_w0"]
+[ext_resource type="Texture2D" path="res://assets/sprites/characters/player/wizard/animations/walk/west/frame_001.png" id="32_w1"]
+[ext_resource type="Texture2D" path="res://assets/sprites/characters/player/wizard/animations/walk/west/frame_002.png" id="33_w2"]
+[ext_resource type="Texture2D" path="res://assets/sprites/characters/player/wizard/animations/walk/west/frame_003.png" id="34_w3"]
+[ext_resource type="Texture2D" path="res://assets/sprites/characters/player/wizard/animations/walk/west/frame_004.png" id="35_w4"]
+[ext_resource type="Texture2D" path="res://assets/sprites/characters/player/wizard/animations/walk/west/frame_005.png" id="36_w5"]
+[ext_resource type="Texture2D" path="res://assets/sprites/characters/player/wizard/animations/walk/south-west/frame_000.png" id="37_sw0"]
+[ext_resource type="Texture2D" path="res://assets/sprites/characters/player/wizard/animations/walk/south-west/frame_001.png" id="38_sw1"]
+[ext_resource type="Texture2D" path="res://assets/sprites/characters/player/wizard/animations/walk/south-west/frame_002.png" id="39_sw2"]
+[ext_resource type="Texture2D" path="res://assets/sprites/characters/player/wizard/animations/walk/south-west/frame_003.png" id="40_sw3"]
+[ext_resource type="Texture2D" path="res://assets/sprites/characters/player/wizard/animations/walk/south-west/frame_004.png" id="41_sw4"]
+[ext_resource type="Texture2D" path="res://assets/sprites/characters/player/wizard/animations/walk/south-west/frame_005.png" id="42_sw5"]
+[ext_resource type="Texture2D" path="res://assets/sprites/characters/player/wizard/rotations/north.png" id="43_n_static"]
+
+[resource]
+animations = [
+{
+"frames": [{"duration": 1.0, "texture": ExtResource("1_s0")}, {"duration": 1.0, "texture": ExtResource("2_s1")}, {"duration": 1.0, "texture": ExtResource("3_s2")}, {"duration": 1.0, "texture": ExtResource("4_s3")}, {"duration": 1.0, "texture": ExtResource("5_s4")}, {"duration": 1.0, "texture": ExtResource("6_s5")}],
+"loop": true,
+"name": &"walk_s",
+"speed": 10.0
+},
+{
+"frames": [{"duration": 1.0, "texture": ExtResource("7_se0")}, {"duration": 1.0, "texture": ExtResource("8_se1")}, {"duration": 1.0, "texture": ExtResource("9_se2")}, {"duration": 1.0, "texture": ExtResource("10_se3")}, {"duration": 1.0, "texture": ExtResource("11_se4")}, {"duration": 1.0, "texture": ExtResource("12_se5")}],
+"loop": true,
+"name": &"walk_se",
+"speed": 10.0
+},
+{
+"frames": [{"duration": 1.0, "texture": ExtResource("13_e0")}, {"duration": 1.0, "texture": ExtResource("14_e1")}, {"duration": 1.0, "texture": ExtResource("15_e2")}, {"duration": 1.0, "texture": ExtResource("16_e3")}, {"duration": 1.0, "texture": ExtResource("17_e4")}, {"duration": 1.0, "texture": ExtResource("18_e5")}],
+"loop": true,
+"name": &"walk_e",
+"speed": 10.0
+},
+{
+"frames": [{"duration": 1.0, "texture": ExtResource("19_ne0")}, {"duration": 1.0, "texture": ExtResource("20_ne1")}, {"duration": 1.0, "texture": ExtResource("21_ne2")}, {"duration": 1.0, "texture": ExtResource("22_ne3")}, {"duration": 1.0, "texture": ExtResource("23_ne4")}, {"duration": 1.0, "texture": ExtResource("24_ne5")}],
+"loop": true,
+"name": &"walk_ne",
+"speed": 10.0
+},
+{
+"frames": [{"duration": 1.0, "texture": ExtResource("43_n_static")}],
+"loop": true,
+"name": &"walk_n",
+"speed": 10.0
+},
+{
+"frames": [{"duration": 1.0, "texture": ExtResource("25_nw0")}, {"duration": 1.0, "texture": ExtResource("26_nw1")}, {"duration": 1.0, "texture": ExtResource("27_nw2")}, {"duration": 1.0, "texture": ExtResource("28_nw3")}, {"duration": 1.0, "texture": ExtResource("29_nw4")}, {"duration": 1.0, "texture": ExtResource("30_nw5")}],
+"loop": true,
+"name": &"walk_nw",
+"speed": 10.0
+},
+{
+"frames": [{"duration": 1.0, "texture": ExtResource("31_w0")}, {"duration": 1.0, "texture": ExtResource("32_w1")}, {"duration": 1.0, "texture": ExtResource("33_w2")}, {"duration": 1.0, "texture": ExtResource("34_w3")}, {"duration": 1.0, "texture": ExtResource("35_w4")}, {"duration": 1.0, "texture": ExtResource("36_w5")}],
+"loop": true,
+"name": &"walk_w",
+"speed": 10.0
+},
+{
+"frames": [{"duration": 1.0, "texture": ExtResource("37_sw0")}, {"duration": 1.0, "texture": ExtResource("38_sw1")}, {"duration": 1.0, "texture": ExtResource("39_sw2")}, {"duration": 1.0, "texture": ExtResource("40_sw3")}, {"duration": 1.0, "texture": ExtResource("41_sw4")}, {"duration": 1.0, "texture": ExtResource("42_sw5")}],
+"loop": true,
+"name": &"walk_sw",
+"speed": 10.0
+}
+]

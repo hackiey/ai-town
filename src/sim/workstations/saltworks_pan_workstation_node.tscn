@@ -1,0 +1,135 @@
+[gd_scene format=3 uid="uid://5wfhcheolny2"]
+
+[ext_resource type="PackedScene" uid="uid://b7r4hwk5xpvld" path="res://src/sim/workstations/workstation_node.tscn" id="1_base"]
+[ext_resource type="Script" uid="uid://c87hcimotyk3h" path="res://src/sim/workstations/approach_marker.gd" id="approach_script"]
+
+[sub_resource type="StandardMaterial3D" id="Material_stone"]
+albedo_color = Color(0.34, 0.32, 0.29, 1)
+roughness = 0.95
+
+[sub_resource type="CylinderMesh" id="CylinderMesh_firepit"]
+material = SubResource("Material_stone")
+top_radius = 0.72
+bottom_radius = 0.78
+height = 0.16
+radial_segments = 12
+rings = 1
+
+[sub_resource type="StandardMaterial3D" id="Material_ember"]
+albedo_color = Color(0.95, 0.25, 0.06, 1)
+roughness = 0.75
+emission_enabled = true
+emission = Color(0.95, 0.18, 0.04, 1)
+emission_energy_multiplier = 0.65
+
+[sub_resource type="CylinderMesh" id="CylinderMesh_embers"]
+material = SubResource("Material_ember")
+top_radius = 0.43
+bottom_radius = 0.48
+height = 0.035
+radial_segments = 16
+rings = 1
+
+[sub_resource type="StandardMaterial3D" id="Material_dark_iron"]
+albedo_color = Color(0.08, 0.075, 0.065, 1)
+roughness = 0.82
+
+[sub_resource type="BoxMesh" id="BoxMesh_leg"]
+material = SubResource("Material_dark_iron")
+size = Vector3(0.09, 0.72, 0.09)
+
+[sub_resource type="BoxMesh" id="BoxMesh_crossbar"]
+material = SubResource("Material_dark_iron")
+size = Vector3(1.95, 0.07, 0.07)
+
+[sub_resource type="BoxMesh" id="BoxMesh_sidebar"]
+material = SubResource("Material_dark_iron")
+size = Vector3(0.07, 0.07, 1.35)
+
+[sub_resource type="CylinderMesh" id="CylinderMesh_pan"]
+material = SubResource("Material_dark_iron")
+top_radius = 0.92
+bottom_radius = 1.02
+height = 0.18
+radial_segments = 32
+rings = 1
+
+[sub_resource type="StandardMaterial3D" id="Material_salt"]
+albedo_color = Color(0.92, 0.9, 0.82, 1)
+roughness = 0.95
+
+[sub_resource type="CylinderMesh" id="CylinderMesh_salt"]
+material = SubResource("Material_salt")
+top_radius = 0.78
+bottom_radius = 0.84
+height = 0.035
+radial_segments = 32
+rings = 1
+
+[node name="SaltworksPanWorkstationNode" unique_id=1793478811 instance=ExtResource("1_base")]
+workstation_id = "saltworks_pan"
+
+[node name="Mesh" parent="." index="0"]
+visible = false
+
+[node name="Title" parent="." index="2"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.9, 0)
+text = "盐锅"
+
+[node name="Prompt" parent="." index="3"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.5, 0)
+text = "按 E 熬盐"
+
+[node name="Firepit" type="MeshInstance3D" parent="." index="4" unique_id=1006089465]
+transform = Transform3D(1, 0, 0, 0, -0.99999994, -8.742277e-08, 0, 8.742277e-08, -0.99999994, 0.0011876822, 0.2293992, -0.0008673477)
+mesh = SubResource("CylinderMesh_firepit")
+
+[node name="Embers" type="MeshInstance3D" parent="." index="5" unique_id=90237281]
+transform = Transform3D(1, 0, 0, 0, 0.99999994, 0, 0, 0, 0.99999994, 0, 0.33748454, -0.01)
+mesh = SubResource("CylinderMesh_embers")
+
+[node name="Stand" type="Node3D" parent="." index="6" unique_id=379237799]
+
+[node name="LegFrontLeft" type="MeshInstance3D" parent="Stand" index="0" unique_id=1765918401]
+transform = Transform3D(0.94, 0.243, -0.242, 0, 0.707, 0.707, 0.342, -0.664, 0.664, -0.72, 0.47, -0.5)
+mesh = SubResource("BoxMesh_leg")
+
+[node name="LegFrontRight" type="MeshInstance3D" parent="Stand" index="1" unique_id=1325935029]
+transform = Transform3D(0.94, -0.243, 0.242, 0, 0.707, 0.707, -0.342, -0.664, 0.664, 0.72, 0.47, -0.5)
+mesh = SubResource("BoxMesh_leg")
+
+[node name="LegBackLeft" type="MeshInstance3D" parent="Stand" index="2" unique_id=2023626247]
+transform = Transform3D(0.94, -0.243, -0.242, 0, 0.707, -0.707, 0.342, 0.664, 0.664, -0.72, 0.47, 0.5)
+mesh = SubResource("BoxMesh_leg")
+
+[node name="LegBackRight" type="MeshInstance3D" parent="Stand" index="3" unique_id=485846395]
+transform = Transform3D(0.94, 0.243, 0.242, 0, 0.707, -0.707, -0.342, 0.664, 0.664, 0.72, 0.47, 0.5)
+mesh = SubResource("BoxMesh_leg")
+
+[node name="FrontRail" type="MeshInstance3D" parent="Stand" index="4" unique_id=1173001239]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.78, -0.56)
+mesh = SubResource("BoxMesh_crossbar")
+
+[node name="BackRail" type="MeshInstance3D" parent="Stand" index="5" unique_id=1319227388]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.78, 0.56)
+mesh = SubResource("BoxMesh_crossbar")
+
+[node name="LeftRail" type="MeshInstance3D" parent="Stand" index="6" unique_id=1845975218]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.86, 0.78, 0)
+mesh = SubResource("BoxMesh_sidebar")
+
+[node name="RightRail" type="MeshInstance3D" parent="Stand" index="7" unique_id=1630206034]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.86, 0.78, 0)
+mesh = SubResource("BoxMesh_sidebar")
+
+[node name="Pan" type="MeshInstance3D" parent="." index="7" unique_id=639149443]
+transform = Transform3D(1, 0, 0, 0, -0.9999941, 0.0034209192, 0, -0.0034209192, -0.9999941, 0, 0.86, 0)
+mesh = SubResource("CylinderMesh_pan")
+
+[node name="SaltCrust" type="MeshInstance3D" parent="." index="8" unique_id=1504324895]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.97333217, -0.01)
+mesh = SubResource("CylinderMesh_salt")
+
+[node name="Approach" type="Marker3D" parent="." index="9" unique_id=1746969569]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.15845335, 0, 1.7942107)
+script = ExtResource("approach_script")

@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="Item" format=3 uid="uid://dr7tpd30mjpg6"]
+
+[ext_resource type="Script" uid="uid://dqr5snte2lo05" path="res://src/sim/items/item.gd" id="1_item"]
+[ext_resource type="PackedScene" uid="uid://bgi9wood0kqxn" path="res://src/world/ground_item/items/wood.tscn" id="2_ground"]
+
+[resource]
+script = ExtResource("1_item")
+id = "wood"
+kind = "material"
+shape_type = "log"
+tags = PackedStringArray("wood", "fuel")
+materials = {
+"body": "wood_oak"
+}
+world_mesh = ExtResource("2_ground")
+tint = Color(0.55, 0.4, 0.22, 1)

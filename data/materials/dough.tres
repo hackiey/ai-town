@@ -1,0 +1,30 @@
+[gd_resource type="Resource" script_class="Substance" format=3 uid="uid://drcr68cpsseom"]
+
+[ext_resource type="Script" path="res://src/sim/materials/substance.gd" id="1_mat"]
+
+[resource]
+script = ExtResource("1_mat")
+id = "dough"
+category = "food"
+hardness = 1
+density = 1.1
+melting_point = -1.0
+ignite_temperature = 280.0
+flammable = true
+burn_rate = 0.03
+thermal_capacity = 2800.0
+thermal_conductivity = 0.3
+brittleness = 0.2
+electrical_conductivity = 0.0
+default_state = 0
+hazards = PackedStringArray()
+tint = Color(0.92, 0.85, 0.65, 1)
+visual_fallback = ""
+transforms = {
+"bake": "bread",
+}
+alloys = {}
+shelf_life_hours = 12.0
+rotten_into = "rotten_food"
+tags = PackedStringArray("food", "intermediate")
+extra = {}

@@ -1,0 +1,10 @@
+[gd_resource type="Resource" script_class="Workstation" format=3 uid="uid://cg3f8uyh36rfc"]
+
+[ext_resource type="Script" path="res://src/sim/workstations/workstation.gd" id="1_ws"]
+
+[resource]
+script = ExtResource("1_ws")
+id = "mint"
+verbs = PackedStringArray("mint")
+tags = PackedStringArray()
+slot_count = 1

@@ -1,0 +1,25 @@
+[gd_resource type="Resource" script_class="Substance" load_steps=2 format=3 uid="uid://bmatiron0001"]
+
+[ext_resource type="Script" path="res://src/sim/materials/substance.gd" id="1_mat"]
+
+[resource]
+script = ExtResource("1_mat")
+id = "iron"
+category = "metal"
+hardness = 70
+density = 7.87
+melting_point = 1538.0
+ignite_temperature = -1.0
+flammable = false
+thermal_capacity = 449.0
+thermal_conductivity = 0.8
+brittleness = 0.2
+electrical_conductivity = 0.85
+default_state = 0
+hazards = PackedStringArray()
+tint = Color(0.62, 0.63, 0.66, 1)
+visual_fallback = ""
+transforms = {}
+alloys = {}
+tags = PackedStringArray("metal", "ferrous", "magnetic")
+extra = {}

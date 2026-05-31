@@ -1,0 +1,400 @@
+{
+  "tool": {
+    "common": {
+      "current_location_value": "当前位置",
+      "move_to_character_prefix": "人物：",
+      "move_to_item_prefix": "物品：",
+      "reason_description": "简短动作理由，建议不超过 80 字。只能基于上下文明示事实；不要包含背景回忆、心理独白或场景描写。",
+      "do_nothing_reason_description": "本轮不执行任何行动的简短理由，建议不超过 80 字。",
+      "agent_tool_reason_format": "agent 工具：{reason}",
+      "runtime_pending_note": "runtime 正在执行，等待 completed/failed 回执。",
+      "item_ref_index": "对应清单中物品行首方括号里的 [N] 序号（1 起算）。每个清单（# 背包 / # 装备 / # 附近物品）各自独立从 1 编号，按清单类型选对应序号。同名物品（如不同品质的面包）会分多行显示，必须同时提供 name 与 index 才能定位到具体那份堆叠。"
+    },
+    "move_to_location": {
+      "param": {
+        "location": "目标必须出自当前 user prompt：可前往地点用 # 周围地点 或 # 可交互地点&工作台&货架 中列出的名称（含子地点）；走向远处的人物用 # 附近人物 远处（10米）行的名字；走向远处的物品用 # 附近物品 远处（10米）行的名字。填 「当前位置」 表示保持原地。禁止使用坐标。"
+      },
+      "label": "移动到地点",
+      "description": "让你移动到 location 参数枚举中的地点，或走向远处（10米）范围内的人物/物品。人物和物品只能选择远处列表里的目标；不要使用坐标。",
+      "reason_default_format": "前往 {label}",
+      "result_note": "Godot runtime 已返回移动终态；下一轮 context 会基于最新位置重新构造。"
+    },
+    "plan_farm_work": {
+      "param": {
+        "kind": "动作类型：plant 种植 / pest 除虫 / harvest 收获 / uproot 铲除（清掉占用 slot 的作物，多轮收获已结束或想替换品种时用）都按 slot 寻址；water 整片浇一次，不需要 slot_index。",
+        "slot_index": "目标 slot 序号（0 起算，对应 # 当前附近农场 列表里的顺序）；water 不填。",
+        "seed": "plant 时使用的种子（{name, index}）。name 是 # 背包 中种子的显示名，index 是该行 [N] 序号。其他 kind 不填。",
+        "farm": "目标农场名称；必须使用 user prompt 中 # 当前附近农场 段列出的农场名称（不在该段出现的农场调用会被 Godot 拒掉）。",
+        "ops": "要按顺序执行的动作清单。角色会一个一个走过去做完，每个动作都消耗游戏时间和体力；体力不足时当前 op 失败并停止队列，中途被打断会把已完成项作为 result 回传。"
+      },
+      "label": "规划农事",
+      "description": "唯一农事工具。在附近一块农场提交完整工单，一次最多 16 次操作，批量处理该农场不同 slot。角色会一个一个 slot 走过去，按 ops 顺序执行 plant/pest/harvest/uproot（按 slot_index）以及 water（整片一次）。作物为单次收获：harvest 后 slot 仍被植株占用，必须 uproot 清场才能再 plant。体力消耗：plant/harvest/uproot/pest 各 3，water 10；体力不足时当前 op 失败并停止队列。uproot 需要背包里有 iron_shovel（铁铲，消耗耐久）；pest 需要并消耗 1 单位 wood_ash（草木灰）；water 每次会消耗 20 点木桶里的水（wood_bucket 是 liquid_container，需要先在井边打满），把整片农田水分恢复 20%。水分最佳区间是 20% 到 80%，过干或过湿都会降低成熟度。背包水不够会执行到该 op 时失败，请先用 # 我的背包 核对再下单。每个动作消耗游戏时间；中途被新意图打断会回传 partial 结果（已完成项+未完成项）。只在 # 当前附近农场 列出某个 farm 时可用。",
+      "reason_default_format": "规划农事 {count} 项 @ {label}",
+      "result_note": "result 字段包含 { completed, remaining, interrupted } —— 用 completed 推断哪几格已经动过，用 remaining 决定下轮继续。",
+      "display_target_format": "农场 {label}"
+    },
+    "workstation_common": {
+      "error": {
+        "busy_format": "工作台 {workstation} 正被 {operator} 使用中"
+      }
+    },
+    "mine": {
+      "label": "挖矿",
+      "description": "需要在矿场（gold_mine / silver_mine / iron_mine）附近。在矿场挖矿——按附近矿场名指定。挖矿走 dig 反应，按矿种不同产出对应矿石，要求背包里有铁镐（pick_head_on_shaft）；挖矿会持续多次尝试直到体力不够或被打断，每次尝试都消耗体力并可能损耗工具。state 矿场（金/银矿）产出归国家金库，私矿（铁矿）归个人。",
+      "param": {
+        "mine": "目标矿场名；必须使用 user prompt 中 # 当前附近工作台 段列出的矿场名（gold_mine / silver_mine / iron_mine 类）。角色不在附近时调用会失败。"
+      },
+      "reason_default_format": "在 {label} 挖矿",
+      "result_note": "result 含此次尝试的累计 outputs / 体力消耗 / 工具损坏情况；矿脉枯竭或体力耗尽会停止。"
+    },
+    "woodwork": {
+      "label": "木工",
+      "description": "需要在伐木场（lumberyard）或工作台（workbench）附近。lumberyard 选 workstation=lumberyard_workstation 砍木材，不需 inputs；workbench 选 workstation=workbench + sub_option=plank/shaft 把木材削成木板或木柄，inputs 必填（要削的木头）。属于 woodworking 手艺轴，会累积熟练度。",
+      "param": {
+        "workstation": "目标工作台；必须使用 user prompt 中 # 当前附近工作台 段列出的伐木场或工作台（lumberyard_workstation 或 workbench）。角色不在附近时调用会失败。",
+        "sub_option": "在 workbench 削木时必填：plank=木板，shaft=木柄。",
+        "input_item": "从 # 背包 选择的输入材料（{name, index}）；name=显示名，index=背包中该行 [N] 序号。",
+        "inputs_array": "削木时的材料清单。lumberyard 砍伐不需要填。"
+      },
+      "reason_default_format": "在 {label} 做木工",
+      "result_note": "result 含产出和品质；削木时材料品质会影响成品品质。"
+    },
+    "burn_charcoal": {
+      "label": "烧炭",
+      "description": "需要在炭窑（charcoal_kiln）附近。把木材烧成木炭——1 木→4 炭，木炭性价比是木材 4 倍。属于 charcoal_making 手艺轴，会累积熟练度；难度 45（中等技术活），生手做容易失败。inputs 必填（要烧的木材）。",
+      "param": {
+        "input_item": "从 # 背包 选择的木材（{name, index}）。",
+        "inputs_array": "要烧的木材清单。"
+      },
+      "reason_default_format": "在 {label} 烧炭",
+      "result_note": "result 含产出木炭数量、品质和熟练度变化。"
+    },
+    "smelt": {
+      "label": "冶炼",
+      "description": "需要在熔炉（forge）或铸币所（mint）附近。forge 把矿石熔成金属锭（forge_smelt 单矿冶炼 / forge_alloy 合金）；mint 把金属铸成硬币（gold_coin / silver_coin）。同属 smelting 手艺轴，熟练度共用。inputs 必填，反应按 inputs 自动匹配（铁矿→铁锭，金银混合→合金等）。",
+      "param": {
+        "workstation": "目标工作台；必须使用 user prompt 中 # 当前附近工作台 段列出的 forge 或 mint。角色不在附近时调用会失败。",
+        "input_item": "从 # 背包 选择的输入材料（{name, index}）。",
+        "inputs_array": "要冶炼的矿石/金属清单。同种材料需要多个单位时重复填写。"
+      },
+      "reason_default_format": "在 {label} 冶炼",
+      "result_note": "result 含产出和熟练度变化；火候不够会失败浪费材料。"
+    },
+    "smith": {
+      "label": "锻造",
+      "description": "需要在铁砧（anvil）附近。把金属锭锻打成兵器/工具部件——sub_option=blade（刀片）/axe_head（斧头）/pick_head（镐头）。属于 smithing 手艺轴，难度 50-55（工匠级），新手做容易毁料。inputs 必填（金属锭），且需要燃料。",
+      "param": {
+        "sub_option": "锻造部件：blade=刀片 / axe_head=斧头 / pick_head=镐头。",
+        "input_item": "从 # 背包 选择的输入材料（{name, index}）。",
+        "inputs_array": "金属锭 + 燃料清单。同种材料需要多个单位时重复填写。"
+      },
+      "reason_default_format": "在 {label} 锻造",
+      "result_note": "result 含产出部件、品质和熟练度变化。"
+    },
+    "assemble": {
+      "label": "装配",
+      "description": "需要在工作台（workbench）附近。把零件组装成完整工具——sub_option=axe/knife/pick/sickle/shovel/rope（rope 用麻搓绳）。属于 assembly 手艺轴，难度 15-30（简单到中等），inputs 是各零件（如 axe_head + wood_shaft）。",
+      "param": {
+        "sub_option": "成品类型：axe=斧头 / knife=刀 / pick=镐 / sickle=镰 / shovel=铲 / rope=绳。",
+        "input_item": "从 # 背包 选择的输入零件（{name, index}）。",
+        "inputs_array": "组装所需的零件清单。"
+      },
+      "reason_default_format": "在 {label} 装配",
+      "result_note": "result 含成品和熟练度变化。"
+    },
+    "cook": {
+      "label": "烹饪",
+      "description": "需要在炉灶（stove）附近。verb=bake 烤（面包/烤肉/煎蛋）；verb=mix 拌煮（面团/果酱/炖菜）。属于 cooking 手艺轴，难度 10-35。inputs 必填，反应按 inputs 自动匹配具体菜式；多数菜需要燃料（木材 / 木炭）。",
+      "param": {
+        "verb": "烹饪方式：bake=烤 / mix=拌煮。具体菜式按 inputs 自动匹配。",
+        "input_item": "从 # 背包 选择的食材（{name, index}）。",
+        "inputs_array": "食材+燃料清单。同种材料需要多个单位时重复填写。"
+      },
+      "reason_default_format": "在 {label} 烹饪",
+      "result_note": "result 含菜品、品质、新鲜度和熟练度变化。"
+    },
+    "mill_grain": {
+      "label": "磨粉",
+      "description": "需要在石磨（mill）附近。把谷物磨成粉（grain→flour）。属于 milling 手艺轴，难度 10（简单体力活）。inputs 是谷物。",
+      "param": {
+        "input_item": "从 # 背包 选择的谷物（{name, index}）。",
+        "inputs_array": "要磨的谷物清单。"
+      },
+      "reason_default_format": "在 {label} 磨粉",
+      "result_note": "result 含产出面粉和熟练度变化。"
+    },
+    "boil_salt": {
+      "label": "煮盐",
+      "description": "需要在盐田（saltworks_pan）附近。把盐水熬煮浓缩成盐——inputs 是盛盐水的木桶（liquid_container）。属于 salt_making 手艺轴，难度 25（简单手艺，火候要稳）。",
+      "param": {
+        "input_item": "从 # 背包 选择的木桶（{name, index}）。",
+        "inputs_array": "盛盐水的木桶（liquid_container）。"
+      },
+      "reason_default_format": "在 {label} 煮盐",
+      "result_note": "result 含产出盐和熟练度变化；火候不够浪费盐水。"
+    },
+    "use_container": {
+      "label": "使用容器",
+      "description": "用容器存取物品。container 指定要操作的容器（必须在附近），verb=take 取出 / put 存入 / inspect 查看。take/put 必填 item 和 quantity；inspect 不需要。容器型工作台（如金库）需要有访问权限才能用；上锁的容器需要背包里有对应钥匙。",
+      "param": {
+        "container": "目标容器；必须使用 user prompt 中 # 当前附近工作台 段列出的容器型工作台（如金库、储物箱）。角色不在附近时调用会失败。",
+        "verb": "操作：take=取出 / put=存入 / inspect=查看库存。",
+        "item": "take/put 必填：要取/存的物品。take 时 item 指向容器内列表 [N]（先 inspect 一次拿到列表）；put 时 item 指向背包 [N]。",
+        "quantity": "take/put 必填：取/存数量；inspect 忽略。"
+      },
+      "reason_default_format": "在 {label} 操作容器"
+    },
+    "draw_water": {
+      "label": "打水",
+      "description": "需要在水井（well）附近。把背包里的木桶（wood_bucket 等 liquid_container）装满水（默认 100 单位）。into 指定要装水的木桶。",
+      "param": {
+        "into": "要装水的容器（{name, index}）—— 必须是背包里的 liquid_container（如 wood_bucket）。"
+      },
+      "reason_default_format": "在水井把 {item} 装满水",
+      "result_note": "result 含装入的水量；木桶已经满时不再装。"
+    },
+    "say_to": {
+      "param": {
+        "character": "要直接说话的目标角色名称；必须使用 user prompt 中 # 附近人物 段列出的角色名（含 near 和远处行）。目标必须在 volume 允许的距离内，否则 Godot 会拒掉。",
+        "text": "你实际对目标说出口的一两句话，建议不超过 40 字。不要包含动作、旁白、心理描写、环境描写或引号外叙述。",
+        "volume": "near 只能传达给 near 距离内目标；far 可以传达给 near/far 距离内目标。周围其他角色仍可能听到。"
+      },
+      "label": "对某人说话",
+      "description": "让你对指定目标说出实际台词。目标必须在音量允许的距离内；周围其他角色仍可能听见。不要把动作、旁白、心理或环境描写放进 text。",
+      "reason_format": "对 {label} 以 {volume} 音量说话",
+      "display_target_format": "{label}：「{text}」"
+    },
+    "use_item": {
+      "param": {
+        "item": "# 背包 列表中的物品名称（中文显示名），item.name 与 # 背包 中该行 [N] 后的名字一致。不能使用附近地面物品或未在背包中的物品。",
+        "target": "上下文中的可选目标；作用于自己时填「自己」，也可以是角色、物体、物品或地点。"
+      },
+      "label": "使用物品",
+      "description": "只能使用当前 user prompt 的 # 背包 中列出的物品；不能直接使用附近地面物品、装备/持有但不在背包中的物品，或未在上下文中明示的物品。item 用 {name, index} 格式，index 是 # 背包 列表里该行行首 [N] 序号；同名不同品质的物品会分多行，必须用 index 区分。可以作用于上下文中的目标；作用于自己时 target 填「自己」。",
+      "reason_default_format": "使用 {item}"
+    },
+    "pick_up_item": {
+      "param": {
+        "item": "# 附近物品 列表 near（3米）行中的物品名称（中文显示名），item.name 与该行 [N] 后的名字一致。只有 near 行才有 [N]，far 行不可拾取；要拾远处先 move_to_location 走近。",
+        "quantity": "本次拾取的数量；不填默认 1。地上一堆同类物品想一次全拿就传 N。"
+      },
+      "label": "拾取物品",
+      "description": "拾取地上的物品，加入背包。item 用 {name, index} 格式，index 对应 # 附近物品 中 near（3米）行行首 [N] 序号。far 行不带 [N] 不能拾取，先 move_to_location 走近。quantity 可选，默认 1；地面 perception 不暴露 instance id，同 itemDefId 多份按 Godot 距离 / 默认规则选实例。",
+      "reason_format": "拾取 {item}"
+    },
+    "drop_item": {
+      "param": {
+        "item": "# 背包 列表中的物品名称（中文显示名），item.name 与该行 [N] 后的名字一致。",
+        "quantity": "本次丢下的数量；不填默认 1。同一栈想丢部分留部分时传 N，留下 (stackCount - N) 在栈里。"
+      },
+      "label": "丢下物品",
+      "description": "在你当前所在地点丢下背包中的物品。item 用 {name, index} 格式，index 是 # 背包 列表里该行行首 [N] 序号；同名不同品质的物品会分多行，必须用 index 区分要丢哪一栈。quantity 可选，默认 1；一栈多份想留一部分就传具体数量。\n注意：drop_item 只把物品扔在脚下的地面，不会送到任何人手里；想把东西交给身边的人请用 offer 工具（request 留空就是单向赠送，对方即时收到）。",
+      "reason_format": "丢下 {item}"
+    },
+    "trade_line": {
+      "param": {
+        "offer_item": "# 背包 列表中的物品名称（中文显示名）。你拿出来给对方的物品，必须用 {name, index} 指定背包中具体那份堆叠（同名不同品质 / 不同新鲜度会分多行）。",
+        "request_item": "你想从对方换到的物品名（中文显示名或英文 slug 均可）。对方背包对你不可见，所以只填 name 即可；成交时对方会从自己背包按名字履约。",
+        "count": "数量。普通物品必须为正整数；silver_coin / gold_coin 允许小数（精度 0.01，对应银币剪开找零）。例：要付 0.75 银就写 {item:{name:\"silver_coin\", index:N}, count:0.75}，不要写 75。"
+      },
+      "error": {
+        "invalid_count": "{item} 的数量必须为正整数。",
+        "invalid_currency_count": "{item} 的数量必须 ≥ 0.01（精度 0.01）。"
+      }
+    },
+    "offer": {
+      "param": {
+        "character": "接收方角色名。必须是 # 附近角色 中 3 米内的人；不在场或在远处需先 move_to_location 走近。",
+        "offer": "你拿出来的物品 [{item, count}, ...]，每项 item 走 # 背包 {name, index} 索引（name 用列表里看到的中文名），count 是数量。钱包里的银币直接列在 # 背包 顶部，照普通物品引用即可。count 对银币支持小数 0.01（0.75 = 0.75 银）；想付金币按 1 金=10 银 自己换算，例如付 1 金 = count: 10。\n你也可以把自家货架上挂着的货直接拿出来 offer（不必先收回背包）：只要你本人站在自家货架 3 米内，写上货名即可（背包里没有这件时，index 填 # 我的货架 里看到的该货序号），成交时会直接从货架 listing 上扣减。",
+        "request": "你想换回的物品 [{item, count}, ...]，对方背包对你不可见所以 item 只填 name（中文或英文 slug 均可）。**留空数组 [] 就是单向赠送**——对方即时收到，不需要回应；非空就是议价交易，对方会用 respond(kind:\"trade\") 接受或拒绝。成交时对方先从自己背包履约；只要对方（货架主）本人站在自家货架 3 米内（你不必也在场），那货架上的同名上架货物也算对方可履约的库存——想买货架上挂的货，先 view_shelf 看货，再把它列进 request 即可。"
+      },
+      "label": "递交 / 交换",
+      "description": "把背包里的物品递给附近 3 米内的另一角色。两种用法靠 request 字段区分：\n1. 单向赠送 / 协作分发（同事递工具、做饭分餐、给乞丐银币、领薪、补谢礼）：request:[]。对方立即收到，不需要回应；你也不会被阻塞，立即拿到 transferred 结果。\n2. 交易 / 议价 / 换物：request:[...] 非空。会阻塞直到对方 respond(kind:\"trade\", ...) 接受或拒绝。同一时刻你对同一对象只能挂一笔。\n想把东西扔在脚下而不是递给具体角色，用 drop_item。",
+      "reason_format": "递交 {label}"
+    },
+    "respond": {
+      "param": {
+        "kind": "请求类型。目前唯一合法值是 \"trade\"（回应别人对你发起的 offer 议价报价）。未来会扩展更多 kind（如 group_join 等），届时会在描述里更新可选值。",
+        "character": "trade kind：发起报价的对方（买家）角色名。其他 kind 的语义会按 kind 文档约定。",
+        "response": "接受 (accept) 或拒绝 (reject) 这笔请求。"
+      },
+      "label": "回应请求",
+      "description": "回应别人向你发出的请求。kind 必填以指明类型，目前只支持 \"trade\"（回应 offer 议价报价）。trade kind 下按对方角色名定位一笔挂着的报价；同一对象同一 kind 同一时刻只会有一笔待回应。accept 会即时撮合并扣物 / 转账：你要交付的货先从背包出，只要你本人站在自家货架 3 米内（买家不必在旁），货架上的同名上架货物也会被取来履约——这等于把货架上的货卖给了买家，listing 会按成交量自动扣减。",
+      "reason_accept": "接受 {label} 的请求",
+      "reason_reject": "拒绝 {label} 的请求",
+      "error": {
+        "unsupported_kind": "respond 不支持 kind \"{kind}\"。当前仅支持 \"trade\"。"
+      }
+    },
+    "update_shelf": {
+      "param": {
+        "shelf": "自己的货架；必须使用 user prompt 中 # 我的货架 段列出的货架名/id。",
+        "add": "批量新增上架列表。每项 item 走 # 背包 索引，从背包补到这个货架上。",
+        "add_item": "要新增到货架上的背包物品。# 背包 列表中该物品的显示名 + 行首 [N] 序号。",
+        "add_quantity": "本次要额外上架到货架上的数量。",
+        "add_price_silver": "新增上架后该物品在货架上的一口价，单位为银币最小单位。",
+        "update": "批量更新列表。每项 item 走该货架 listings 索引，把对应 listing 的数量改成指定值并同步更新价格。",
+        "update_item": "要更新的货架 listing。该货架 listings 中该条目的显示名 + 行首 [N] 序号；同种物品分多份上架时按 index 区分。",
+        "update_quantity": "该 listing 最终应保留的总数量。",
+        "update_price_silver": "更新后该 listing 的一口价，单位为银币最小单位。",
+        "remove": "批量下架列表。每项 item 走该货架 listings 索引；数量不填则默认下架该 listing 的全部库存。",
+        "remove_item": "要从货架下架的 listing。该货架 listings 中该条目的显示名 + 行首 [N] 序号。",
+        "remove_quantity": "本次要下架的数量；不填则默认下架该 listing 的全部库存。"
+      },
+      "label": "更新货架",
+      "description": "管理自己的货架。只能对 # 我的货架 中列出的货架使用；运行时会检查你是否在货架 3 米内。`add` 用来把背包里的货补到货架，`update` 用来把某种货的货架总数量和价格改成目标值，`remove` 用来按物品名把货架库存取回背包。",
+      "reason_format": "更新货架 {label}"
+    },
+    "view_shelf": {
+      "param": {
+        "shelf": "3 米内可查看的货架；必须使用 user prompt 中 # 可交互地点&工作台&货架 段列出的货架名/id（自己的货架也可走 # 我的货架）。"
+      },
+      "label": "查看货架",
+      "description": "读取 3 米内货架的当前 listing 列表。只读，不会修改世界状态。",
+      "result_empty": "这个货架现在是空的。",
+      "error_not_visible": "当前上下文里没有这个可查看的货架。"
+    },
+    "buy_from_shelf": {
+      "param": {
+        "shelf": "3 米内可购买的货架；必须使用 user prompt 中 # 可交互地点&工作台&货架 段列出的货架名/id。",
+        "item": "要购买的 listing：该货架 listings 中该条目的显示名 + 行首 [N] 序号。同种物品分多份上架（不同品质 / 价格）时按 index 区分。",
+        "quantity": "本次要买的数量。"
+      },
+      "label": "购买货架物品",
+      "description": "按货架的一口价直接购买 3 米内货架上的货物。item 用 {name, index} 指定该货架第几行 listing。成交时会从买家身上扣钱、从货架扣货，并把钱直接打给卖家。",
+      "reason_format": "购买货架物品 {label}"
+    },
+    "deposit_to_container": {
+      "param": {
+        "container": "要存入的容器名（如「领主国库」「treasury_vault」）。必须站在容器旁边才能下手。",
+        "item": "要存入的物品名。必须是你背包里实际有的物品。",
+        "quantity": "本次存入的数量。"
+      },
+      "label": "存入容器",
+      "description": "把背包里指定数量的物品放进 3 米内你能动的容器（多数容器只有特定主人能存取）。装不下会原样退回背包。",
+      "reason_format": "存入容器 {label}",
+      "error_missing_container": "deposit_to_container 缺少 container 名。",
+      "error_missing_item": "deposit_to_container 缺少 item 名。"
+    },
+    "withdraw_from_container": {
+      "param": {
+        "container": "要取出物品的容器名。必须站在容器旁边才能下手。",
+        "item": "要取出的物品名。",
+        "quantity": "本次要取的数量。"
+      },
+      "label": "从容器取出",
+      "description": "从 3 米内你能动的容器里取出指定数量的物品到背包。背包装不下会留在容器里。",
+      "reason_format": "从容器取出 {label}",
+      "error_missing_container": "withdraw_from_container 缺少 container 名。",
+      "error_missing_item": "withdraw_from_container 缺少 item 名。"
+    },
+    "inspect_container": {
+      "param": {
+        "container": "要查看的容器名。必须站在容器旁边才能看里面。"
+      },
+      "label": "查看容器",
+      "description": "看一下 3 米内你能动的容器里都装了什么。只读，不会改世界状态。",
+      "reason_format": "查看容器 {label}",
+      "error_missing_container": "inspect_container 缺少 container 名。"
+    },
+    "write": {
+      "param": {
+        "item_name": "要书写的道具名（背包或附近 3 米内可拿到的容器里要有这个物品，并且它必须是可书写的，比如纸、空卷轴）。书写后该物品名会变成 title。",
+        "title": "书写完成后这件物品的新名字。之后可以用 read(title) 看到内容。",
+        "content": "实际写下的内容。≤ 800 字。"
+      },
+      "label": "书写",
+      "description": "在一个可书写道具上写字。需要背包或附近容器里有 item_name 指的道具。写完之后这件物品的名字会变成 title，可以用 read(title) 阅读。特殊场景：某些身份的人可以在自己的虚拟账册上书写（不消耗实物道具）——这种情况下 item_name 直接传账册名。",
+      "reason_format": "在 {title} 上写字"
+    },
+    "read": {
+      "param": {
+        "title": "要阅读的物品的名字（一般是之前 write 时定的 title）。背包或附近 3 米可拿到的容器里要有这件物品。"
+      },
+      "label": "阅读",
+      "description": "阅读一件可阅读物品的内容。需要背包或附近容器里有名为 title 的物品。特殊场景：某些身份的人可以阅读自己专属的虚拟账册，系统会一并附上相关的真值流水。",
+      "reason_format": "阅读 {title}"
+    },
+    "update_memory": {
+      "param": {
+        "operation": "记忆操作类型：add 新增 / edit 修改 / remove 删除。",
+        "kind": "记忆类别：self_knowledge 自我认知 / skill 掌握技能 / other 其他记忆。",
+        "old_string": "edit/remove 时要匹配的原记忆文本，必须与已有记忆中的一条文本完全一致。单条记忆建议不超过 160 字。",
+        "new_string": "add 时填写要新增的记忆文本；edit 时填写修改后的新文本；remove 时也必须提供该字段。单条记忆建议不超过 160 字。"
+      },
+      "label": "更新记忆",
+      "description": "维护角色的 Memory。你可以对“自我认知”“掌握技能”“其他记忆”执行 add / edit / remove 三种操作。在不重复、不记录琐碎瞬时状态、且不违反事实边界的前提下，应尽可能主动用 other（其他记忆）记下自己心里浮起的、会影响后续判断或语气的内容：对周围人事的理解、对他人的承诺、对重要事件的反思、此刻挂着的人事、身上的小不适、想去做但还没去做的事、对刚发生事情的印象，等等。心头浮起新的就 add 一条；旧的不必急着删，让它沉下去；过时、想法变了、事情过去了再 edit 或 remove。这是非常重要的工具——不要只在“明显有事要做”的时候才用它，平静或没事可做的 tick 反而是写下这些内心内容的好时机。所有记忆都必须严格基于当前上下文中已经明示的信息，不得编造、扩写或把不确定的信息写成确定事实。无特殊情况，禁止改动 self_knowledge（自我认知）相关记忆；只有当前上下文明确提供了充分、可靠且必须更新的新事实时，才允许修改。",
+      "error_add_requires_new": "add 操作必须提供 new_string。",
+      "error_old_required": "edit/remove 操作必须提供 old_string。",
+      "error_new_required": "edit/remove 操作必须提供 new_string。",
+      "result_added": "记忆已新增。",
+      "result_updated": "记忆已修改。",
+      "result_removed": "记忆已删除。",
+      "result_not_found": "没有找到匹配的记忆。",
+      "result_unchanged": "记忆没有变化。"
+    },
+    "create_item": {
+      "param": {
+        "description": "要创造的物品的自然语言描述。",
+        "location": "物品出现的可选地点名称。",
+        "owner": "接收该物品的可选角色名称。"
+      },
+      "label": "创造物品",
+      "description": "开发者专用工具：在世界中创造一个物品，或把它交给某个角色。",
+      "event_text_format": "创造物品：{description}",
+      "result_recorded": "物品创造事件已记录。"
+    },
+    "do_nothing": {
+      "label": "什么也不做",
+      "description": "不改变世界、不写记忆、不发布事件。用于角色决定本轮主动等待、保持现状或明确不采取行动。",
+      "result_with_reason_format": "本轮没有执行行动：{reason}",
+      "result_default": "本轮没有执行行动。"
+    },
+    "sleep": {
+      "param": {
+        "duration_game_minutes": "睡眠时长（分钟，1-720）。玩家通常需要 8 小时睡满；NPC 各自不同，通常按 8-10 小时估算。睡眠期间普通的近距离声响和事件不会打断；远距离喊话、被攻击等强信号才会吵醒，自然睡满后会触发醒来事件。"
+      },
+      "label": "睡觉",
+      "description": "让你就地进入睡眠状态，持续指定的分钟。睡眠期间不会响应附近的普通对话；只有远距离喊话或紧急事件才能吵醒。睡满后自动醒来。",
+      "reason_default_format": "睡眠 {minutes} 分钟",
+      "display_target_format": "睡眠 {minutes} 分钟"
+    },
+    "farm": {
+      "default_format": "第{n}块农田"
+    },
+    "workstation": {
+      "default_format": "第{n}个工作台"
+    },
+    "shelf": {
+      "default_format": "第{n}个货架"
+    },
+    "action": {
+      "interrupt_note": "动作被新事件打断，等待 runtime 返回取消结果。",
+      "intermediate_note": "收到新事件，先返回当前进度；原动作仍在继续。接下来调用 say_to 只会说话，不会打断当前工作；调用其他工具会先打断当前工作。",
+      "default_target": "动作",
+      "blocked_text": "，被另一个未完成动作阻止",
+      "result_data_format": " 详细结果：{json}",
+      "interrupted_by_event_prefix": "被打断：",
+      "interrupted_prefix": "被打断：",
+      "completed_format": "{toolName} 执行完成：{target} 已完成。{resultText}{noteText}",
+      "interrupted_completed_format": "{toolName} 被打断：{target} 当前动作已提前结束，并返回了截至打断时的结果。{resultText}{noteText}",
+      "failed_format": "{toolName} 执行失败：{target} 未完成，{reason}{resultText}{noteText}",
+      "cancelled_format": "{toolName} 已取消：{target} 未完成，{reason}{resultText}{noteText}",
+      "interrupted_cancelled_format": "{toolName} 被打断：{target} 未执行完，{reason}{resultText}{noteText}",
+      "waiting_format": "{toolName} 正在等待 runtime 结果：{target} 当前状态为 {status}{blockedText}。{noteText}",
+      "failed_reason_with_error_format": "原因：{error}。",
+      "failed_reason_default": "runtime 返回失败。",
+      "cancelled_reason_with_error_format": "原因：{error}。",
+      "cancelled_reason_default": "动作被取消。",
+      "target": {
+        "label_format": "目标 {value}",
+        "speech_with_target_format": "目标 {target}：「{text}」",
+        "speech_no_target_format": "目标 「{text}」",
+        "item_format": "目标 物品 {item}",
+        "farm_format": "目标 农场 {farm}",
+        "workstation_with_action_format": "目标 工作台 {workstation} {action}",
+        "workstation_format": "目标 工作台 {workstation}"
+      }
+    }
+  }
+}

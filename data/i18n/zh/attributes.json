@@ -1,0 +1,11 @@
+{
+  "attribute": {
+    "hp": { "name": "生命" },
+    "stamina": { "name": "体力" },
+    "hunger": { "name": "饱食" },
+    "rest": { "name": "精力" },
+    "temperature": { "name": "体温" },
+    "burning": { "name": "燃烧" },
+    "purse": { "name": "钱包" }
+  }
+}

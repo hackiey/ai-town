@@ -1,0 +1,754 @@
+[gd_scene format=3 uid="uid://dfqhy1jrat4cq"]
+
+[ext_resource type="PackedScene" uid="uid://b4ii2q0c2r7o6" path="res://third-party/polygon-fantasy-kingdom/Assets/PolygonFantasyKingdom/Prefabs/House/SM_Bld_House_Roof_Thatch_Half_02.tscn" id="1_ob0ys"]
+[ext_resource type="ArrayMesh" uid="uid://ciqy7od2hqvqj" path="res://third-party/polygon-fantasy-kingdom/Assets/PolygonFantasyKingdom/Models/extracted/SM_Bld_House_Roof_Thatch_Half_02.res" id="2_uad61"]
+[ext_resource type="Material" uid="uid://dp6l4j2v4w6o1" path="res://third-party/polygon-fantasy-kingdom/Assets/PolygonFantasyKingdom/Materials/PolygonFantasyKingdom_Mat_01_A_mat.tres" id="3_oxbo5"]
+[ext_resource type="PackedScene" uid="uid://b45p0785hj5v3" path="res://third-party/polygon-fantasy-kingdom/Assets/PolygonFantasyKingdom/Prefabs/House/SM_Bld_House_Supports_02.tscn" id="4_1b6b7"]
+[ext_resource type="ArrayMesh" uid="uid://b101xtfs5adx4" path="res://third-party/polygon-fantasy-kingdom/Assets/PolygonFantasyKingdom/Models/extracted/SM_Bld_House_Supports_02.res" id="5_lwrl7"]
+[ext_resource type="PackedScene" uid="uid://ogcoxn1vhoqy" path="res://third-party/polygon-fantasy-kingdom/Assets/PolygonFantasyKingdom/Prefabs/House/SM_Bld_House_Supports_01.tscn" id="6_r5dut"]
+[ext_resource type="ArrayMesh" uid="uid://cqsea1ptt1tyw" path="res://third-party/polygon-fantasy-kingdom/Assets/PolygonFantasyKingdom/Models/extracted/SM_Bld_House_Supports_01.res" id="7_u7wlu"]
+[ext_resource type="PackedScene" uid="uid://chebkmsri68v1" path="res://third-party/polygon-fantasy-kingdom/Assets/PolygonFantasyKingdom/Prefabs/House/SM_Bld_House_Roof_Thatch_Peak_Cap_01.tscn" id="8_ljedh"]
+[ext_resource type="ArrayMesh" uid="uid://iujvd4hydjmo" path="res://third-party/polygon-fantasy-kingdom/Assets/PolygonFantasyKingdom/Models/extracted/SM_Bld_House_Roof_Thatch_Peak_Cap_01.res" id="9_bfcbj"]
+[ext_resource type="PackedScene" uid="uid://x0fl4kp8pixx" path="res://third-party/polygon-fantasy-kingdom/Assets/PolygonFantasyKingdom/Prefabs/House/SM_Bld_House_Roof_Thatch_Stick_03.tscn" id="10_8otr4"]
+[ext_resource type="ArrayMesh" uid="uid://cdn8l7n4fptv" path="res://third-party/polygon-fantasy-kingdom/Assets/PolygonFantasyKingdom/Models/extracted/SM_Bld_House_Roof_Thatch_Stick_03.res" id="11_ldrwu"]
+[ext_resource type="PackedScene" uid="uid://dvst2pimrs366" path="res://third-party/polygon-fantasy-kingdom/Assets/PolygonFantasyKingdom/Prefabs/House/SM_Bld_House_WoodBeam_03.tscn" id="12_2akm6"]
+[ext_resource type="ArrayMesh" uid="uid://6eivhg65cnsq" path="res://third-party/polygon-fantasy-kingdom/Assets/PolygonFantasyKingdom/Models/extracted/SM_Bld_House_WoodBeam_03.res" id="13_coftq"]
+[ext_resource type="PackedScene" uid="uid://bhi714ntf3g4w" path="res://third-party/polygon-fantasy-kingdom/Assets/PolygonFantasyKingdom/Prefabs/House/SM_Bld_House_Roof_Thatch_Peak_Cap_Beams_01.tscn" id="14_ihvef"]
+[ext_resource type="ArrayMesh" uid="uid://bk1wlgsbhe1yq" path="res://third-party/polygon-fantasy-kingdom/Assets/PolygonFantasyKingdom/Models/extracted/SM_Bld_House_Roof_Thatch_Peak_Cap_Beams_01.res" id="15_7fj22"]
+[ext_resource type="PackedScene" uid="uid://mblguaqirert" path="res://third-party/polygon-fantasy-kingdom/Assets/PolygonFantasyKingdom/Prefabs/House/SM_Bld_House_Roof_Thatch_End_01.tscn" id="16_30xkq"]
+[ext_resource type="ArrayMesh" uid="uid://ba16gqbir3l5m" path="res://third-party/polygon-fantasy-kingdom/Assets/PolygonFantasyKingdom/Models/extracted/SM_Bld_House_Roof_Thatch_End_01.res" id="17_5gewy"]
+[ext_resource type="PackedScene" uid="uid://dpke20iu48ab4" path="res://third-party/polygon-fantasy-kingdom/Assets/PolygonFantasyKingdom/Prefabs/House/SM_Bld_House_WoodBeam_02.tscn" id="18_tvoho"]
+[ext_resource type="ArrayMesh" uid="uid://c1awbpkdjae1p" path="res://third-party/polygon-fantasy-kingdom/Assets/PolygonFantasyKingdom/Models/extracted/SM_Bld_House_WoodBeam_02.res" id="19_l2h52"]
+[ext_resource type="PackedScene" uid="uid://dmkfp2qqvomyr" path="res://third-party/polygon-fantasy-kingdom/Assets/PolygonFantasyKingdom/Prefabs/House/SM_Bld_House_Roof_Thatch_Peak_Cap_Edge_01.tscn" id="20_wvo1r"]
+[ext_resource type="ArrayMesh" uid="uid://ua8o3qyvqmf3" path="res://third-party/polygon-fantasy-kingdom/Assets/PolygonFantasyKingdom/Models/extracted/SM_Bld_House_Roof_Thatch_Peak_Cap_Edge_01.res" id="21_28lrg"]
+[ext_resource type="PackedScene" uid="uid://da6n5jqi4lsbf" path="res://third-party/polygon-fantasy-kingdom/Assets/PolygonFantasyKingdom/Prefabs/House/SM_Bld_House_Roof_Thatch_01.tscn" id="22_it4gl"]
+[ext_resource type="ArrayMesh" uid="uid://cb67urqq6t5yw" path="res://third-party/polygon-fantasy-kingdom/Assets/PolygonFantasyKingdom/Models/extracted/SM_Bld_House_Roof_Thatch_01.res" id="23_v6wut"]
+[ext_resource type="PackedScene" uid="uid://cy3miu2dsrq2v" path="res://third-party/polygon-fantasy-kingdom/Assets/PolygonFantasyKingdom/Prefabs/House/SM_Bld_House_Roof_Thatch_Stick_04.tscn" id="24_83f1e"]
+[ext_resource type="ArrayMesh" uid="uid://5iy38ki64i5a" path="res://third-party/polygon-fantasy-kingdom/Assets/PolygonFantasyKingdom/Models/extracted/SM_Bld_House_Roof_Thatch_Stick_04.res" id="25_kofuj"]
+[ext_resource type="PackedScene" uid="uid://4rr154j8gttl" path="res://third-party/polygon-fantasy-kingdom/Assets/PolygonFantasyKingdom/Prefabs/House/SM_Bld_House_Roof_Thatch_Stick_01.tscn" id="26_sxaq6"]
+[ext_resource type="ArrayMesh" uid="uid://cnqfaee4sdw6q" path="res://third-party/polygon-fantasy-kingdom/Assets/PolygonFantasyKingdom/Models/extracted/SM_Bld_House_Roof_Thatch_Stick_01.res" id="27_hjwkk"]
+[ext_resource type="PackedScene" uid="uid://iq7u1kmoihcs" path="res://third-party/polygon-fantasy-kingdom/Assets/PolygonFantasyKingdom/Prefabs/House/SM_Bld_House_Roof_Thatch_Edge_End_01.tscn" id="28_j4l2w"]
+[ext_resource type="ArrayMesh" uid="uid://bgakeh1gc1l0l" path="res://third-party/polygon-fantasy-kingdom/Assets/PolygonFantasyKingdom/Models/extracted/SM_Bld_House_Roof_Thatch_Edge_End_01.res" id="29_edslm"]
+[ext_resource type="PackedScene" uid="uid://kk8y2tyetjx8" path="res://third-party/polygon-fantasy-kingdom/Assets/PolygonFantasyKingdom/Prefabs/House/SM_Bld_House_Roof_Thatch_Stick_02.tscn" id="30_t7of1"]
+[ext_resource type="ArrayMesh" uid="uid://f1ii5emtyy40" path="res://third-party/polygon-fantasy-kingdom/Assets/PolygonFantasyKingdom/Models/extracted/SM_Bld_House_Roof_Thatch_Stick_02.res" id="31_1slc3"]
+
+[sub_resource type="ConvexPolygonShape3D" id="ConvexPolygonShape3D_wgghk"]
+points = PackedVector3Array(0.17757693, 0.083260775, -0.4016984, 0.83001995, -0.4391842, -1.2717531, -0.039904088, -0.09088755, -1.2717531, 0.0936369, 0.026028872, -0.24380851, 0.022233352, -0.029567719, -7.56979e-05, 0.83001995, -0.43891168, 0.033265114, 2.569868, -2.1784873, -0.27114546, 2.4390526, -2.091822, -1.2717531, -0.21432495, -0.2219758, -0.7061089, 2.4390526, -2.5706618, -1.2717531, -0.21432495, -0.2219758, -0.5322513, -0.039904088, -0.09088755, 0.033265114, 2.4390526, -2.091822, 0.033265114, 2.5251727, -2.3613567, -0.7877364, 2.4390526, -2.5706618, 0.033265114, 2.2651768, -2.7009323, -0.7061089)
+
+[sub_resource type="ConvexPolygonShape3D" id="ConvexPolygonShape3D_0df6m"]
+points = PackedVector3Array(0.019841194, 0.047486544, 0.12506646, 0.019841194, -0.1907208, 0.12506646, 0.019841194, 0.047486544, -0.112958714, -2.5198395, 0.047486544, 0.12506646, 0.019592524, -1.8172845, 0.08540335, 0.019592524, -1.8172845, -0.113005325, -2.5198395, -0.1907208, 0.12506646, -1.844895, -0.2303307, -0.113005325, -2.5198395, 0.047486544, -0.112958714, -0.059710264, -1.8172845, 0.08540335, -0.059710264, -1.8172845, -0.113005325, -2.5198395, -0.1907208, -0.112958714)
+
+[sub_resource type="ConvexPolygonShape3D" id="ConvexPolygonShape3D_qhuvl"]
+points = PackedVector3Array(0.011790156, 0.021025777, 0.10726912, 0.011790156, -0.19123459, 0.10726912, 0.011790156, 0.021025777, -0.10495426, -1.4973538, 0.021025777, 0.10726912, 0.011790156, -1.2758948, 0.08367029, -1.426742, -0.19123459, 0.10726912, 0.011790156, -0.19123459, -0.10495426, -1.4973538, 0.021025777, -0.10495426, -1.4973538, -0.16762185, 0.10726912, -0.035481453, -1.2758948, 0.08367029, 0.011790156, -1.2758948, -0.08137619, -1.4973538, -0.19123459, -0.10495426, -1.4973538, -0.19123459, 0.08367029, -0.035481453, -1.2758948, -0.08137619)
+
+[sub_resource type="ConvexPolygonShape3D" id="ConvexPolygonShape3D_kyf87"]
+points = PackedVector3Array(0.38111573, 0.021939605, -0.24750519, 0.085341394, 0.3136812, -0.2937703, 0.073328376, 0.3033354, -8.6545944e-05, 0.33642125, 0.037841454, -8.6545944e-05, 0.34918046, -0.1582016, -8.6545944e-05, 0.34918046, -0.1582016, -2.50017, 0.33642125, 0.037841454, -2.50017, 0.073328376, 0.3033354, -2.50017, -9.292364e-05, 0.33111575, -0.2937703, -9.292364e-05, 0.32072204, -8.6545944e-05, -9.292364e-05, 0.32072204, -2.50017, 0.01714319, 0.11514747, 0.026063442, -0.34929168, -0.1582016, -8.6545944e-05, -0.34929168, -0.1582016, -2.50017, 0.01714319, 0.07266268, -2.5426636, -0.085452616, 0.3136812, -0.2937703, -0.07343957, 0.3033354, -8.6545944e-05, -0.07343957, 0.3033354, -2.50017, -0.27609426, 0.008959472, -8.6545944e-05, -0.38115233, 0.021939605, -0.24750519, -0.31407332, 0.019880027, -2.0712106, -0.27609426, 0.008959472, -2.50017)
+
+[sub_resource type="ConvexPolygonShape3D" id="ConvexPolygonShape3D_ekpab"]
+points = PackedVector3Array(0.5243015, -0.097812325, -0.32503954, 0.49545503, -0.11250441, -0.30721602, -0.18884048, -0.24473315, -0.19919278, -0.5242617, 0.006917268, -0.1571802, -0.5453468, 0.06984374, -0.1361739, 0.44047856, -0.013984293, -0.26202068, 0.39843774, 0.1537272, 0.15727755, 0.6290802, -0.013984293, 0.22029641, 0.67125046, -0.11888021, 0.19929013, 0.39843774, -0.26569015, 0.15727755, -0.6292991, -0.24478859, 0.30419424, 0.06275779, -0.2867026, 0.15734121, -0.65025485, -0.13983722, 0.3252642, -0.48247957, 0.279691, 0.2413027, -0.41961235, 0.23772153, 0.3252642, -0.33553067, -0.24478859, 0.3252642)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_3vev5"]
+size = Vector3(0.33361816, 2.9883423, 0.34820557)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_cf5ti"]
+size = Vector3(0.13916016, 3.1063843, 0.1329956)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_8ewpl"]
+size = Vector3(0.14367676, 3.046875, 0.14650726)
+
+[sub_resource type="ConvexPolygonShape3D" id="ConvexPolygonShape3D_adilv"]
+points = PackedVector3Array(0.7801887, -0.0508129, -0.16819334, 0.6605904, 0.028922975, -0.08853316, 0.74019253, -0.2898021, 0.03133154, 0.7801887, -0.13038495, -2.3604712, 0.62059426, -0.0109449625, -2.5197916, 0.18229488, 0.18839476, -0.048578262, 0.26199454, 0.14847216, -2.5197916, -0.056901664, 0.028922975, 0.03133154, -0.21639854, -0.21012083, -0.44712877, 0.5807932, -0.36953798, -0.44712877, 0.5807932, -0.36953798, -2.0418305, 0.74019253, -0.28974748, -2.5197916, -0.06529109, 0.16512933, -0.14821601, -0.017100602, 0.18839476, -2.4800863, 0.18229488, -0.17025289, -2.5197916, -0.21639854, -0.21012083, -2.0418305)
+
+[sub_resource type="ConvexPolygonShape3D" id="ConvexPolygonShape3D_pbq85"]
+points = PackedVector3Array(-0.22191314, -0.0133749, -0.22191162, -0.22191314, -0.0133749, 0.22191162, -0.2203926, 0.15593499, -0.22039108, 0.22191314, -0.0133749, -0.22191162, -0.2203926, 0.15593499, 0.1701699, 0.22191314, -0.0133749, 0.22191162, -0.11464933, 0.15593499, 0.22034763, -0.19649827, 2.346104, 0.19645347, 0.22034915, 0.15593499, -0.22039108, -0.19649827, 2.346104, -0.19649692, 0.19645484, 2.4324865, -0.19649692, 0.22034915, 0.15593499, 0.22034763, 0.19645484, 2.346104, 0.19645347, -0.19345717, 2.5080097, 0.19341241, -0.19345717, 2.5080097, -0.19345585, 0.19341372, 2.5080097, -0.19345585, 0.19341372, 2.5080097, 0.19341241)
+
+[sub_resource type="ConvexPolygonShape3D" id="ConvexPolygonShape3D_1kfv8"]
+points = PackedVector3Array(0.0007901192, 0.14310735, -0.49266663, -0.32656795, -0.16533895, -0.4093337, -0.48859483, 0.16198412, -0.3666063, -0.15440014, 0.5162066, -0.40769404, 0.0218696, 0.5162066, -0.41840002, 0.19665807, 0.5162066, -0.39824194, 0.29578847, -0.16533895, -0.4093337, -0.32656795, -0.23763695, 0.4268891, -0.49816602, -0.12428199, -0.023340195, -0.55126345, 0.094688475, 0.010031551, -0.14106882, 0.6999719, 0.00048300624, -0.0153897405, 0.72658813, -0.00057795644, 0.110289335, 0.6999719, 0.00048300624, 0.61266375, 0.10403246, 0.010031551, 0.46693075, 0.15556604, -0.3244576, 0.5473745, -0.11106825, -0.023340195, 0.29578847, -0.23763695, 0.4268891, -0.42148244, 0.017388105, 0.4268891, 0.009905577, 0.17935076, 0.49266812, -0.12329373, 0.5162066, 0.4555348, -0.0153897405, 0.5162066, 0.45582417, 0.09251422, 0.5162066, 0.4555348, 0.47957838, 0.061465353, 0.4268891)
+
+[sub_resource type="ConvexPolygonShape3D" id="ConvexPolygonShape3D_78fhi"]
+points = PackedVector3Array(0.18027416, 0.083260775, -0.21638203, 0.83244467, -0.43891168, 0.0011894703, 0.7893845, -0.35197377, -2.0868552, -0.0808121, -0.0042221546, -2.5217514, -0.081084624, -0.003949642, 0.0011894703, 2.4420223, -2.5706618, 0.0011894703, 2.5728378, -2.1790323, -0.30331182, 2.0503929, -1.6135272, -2.0868552, 0.7893845, -0.39585137, -2.4345746, -0.21135521, -0.2219758, -2.0433903, 2.441477, -2.091822, -2.5217514, 2.441477, -2.5701165, -2.5217514, -0.21135521, -0.2219758, -0.43395352, 2.2681465, -2.7009323, -0.43395352, 2.2681465, -2.7009323, -2.0433903, 2.4687304, -2.3897, -2.4661856)
+
+[sub_resource type="ConvexPolygonShape3D" id="ConvexPolygonShape3D_holwo"]
+points = PackedVector3Array(0.18679988, -0.17684141, 0.23085748, 0.17923343, -0.14667761, 0.26099372, 0.18163255, -0.17202732, 0.24750681, -0.10722115, -0.16930047, 0.22332342, 0.08123872, 0.004107699, -0.19128214, 0.06610584, 0.05692801, -0.17626053, 0.1566079, -0.10890554, 0.2762013, 0.08876827, -0.1541849, 0.2762013, 0.041524112, 0.12668177, 0.18639724, -0.039381504, 0.019189596, -0.19890921, -0.12984666, -0.086316355, 0.2610402, -0.1750977, -0.086316355, 0.24592559, -0.1902675, -0.086316355, 0.23843805, -0.09972852, 0.0870918, -0.1988627, -0.008820444, 0.16707972, 0.1766309, -0.06957346, 0.12479654, 0.19318719)
+
+[sub_resource type="ConvexPolygonShape3D" id="ConvexPolygonShape3D_m2m3p"]
+points = PackedVector3Array(0.62595415, -0.018354207, -0.3022123, 0.6496364, 0.06429747, -0.29029685, 0.6496364, -0.05379866, -0.2076556, 0.22439325, -0.2665174, 0.18219173, -0.7560489, -0.2665174, 0.22944057, -0.5790247, -0.05379866, -0.12489636, -0.56718355, -0.0065394044, -0.12489636, 0.75591016, -0.05379866, 0.18219173, -0.035370648, 0.07611227, -0.18400167, -0.059052825, 0.2652014, 0.24123806, 0.7322279, -0.14831719, 0.17033526, 0.28359866, -0.20744333, 0.22938162, -0.64977515, -0.24283572, 0.30040234, -0.73251474, -0.19557646, 0.30040234, -0.14194041, 0.21242508, 0.23398262, 0.16533583, 0.099741906, 0.26489198)
+
+[sub_resource type="ConvexPolygonShape3D" id="ConvexPolygonShape3D_b4ysp"]
+points = PackedVector3Array(0.22678445, 0.22678065, -9.292364e-05, 0.21444522, 0.21444201, -0.07343957, 0.055406123, 0.10730672, 0.01714319, 0.21444522, 0.21444201, 0.073328376, 3.382545, -2.6044767, 0.0601961, 3.3897429, -2.5954485, -0.013150573, 3.382545, -2.6044767, -0.08649722, 0.26174563, -0.23095131, -0.38115233, 0.0060491636, 0.0061905384, -0.27609426, 3.2924001, -2.5557241, -0.11589557, 3.2217922, -2.7308722, -0.33190635, 0.026614562, 0.026654482, 0.33642125, -0.11185913, -0.11207938, -0.21155216, -0.11185913, -0.11207938, 0.21144098, 0.26174563, -0.23095131, 0.38111573, 3.184089, -2.701681, 0.35694045, 3.275605, -2.7444146, 0.32328904, 3.3448417, -2.7402012, 0.004085541, 3.2639513, -2.7597625, -0.2891519, 0.61547047, -0.84246445, -0.21155216, 2.4735544, -2.4034479, -0.31698334, 1.9090343, -1.8900416, -0.31698334, 1.8278009, -2.057064, -0.21155216, 3.196771, -2.8476374, -0.22468443, 2.458473, -2.5882258, -0.21155216, 1.8480234, -2.0847507, -0.19118224, 0.61547047, -0.84246445, 0.21144098, 1.1745067, -1.2174375, 0.3593281, 1.8480234, -2.0847507, 0.19107103, 2.4595013, -2.4028459, 0.32112515, 2.4433918, -2.5816052, 0.21144098, 3.196771, -2.8476374, 0.19838333, 2.4872646, -2.6068842, -0.19118224, 1.8161471, -2.0453274, 0.21144098, 2.4872646, -2.6068842, 0.19107103)
+
+[sub_resource type="ConvexPolygonShape3D" id="ConvexPolygonShape3D_maskt"]
+points = PackedVector3Array(0.23740569, 0.26785123, 0.22944513, 0.23740569, 0.26785123, 0.20565227, -0.023637623, 0.16092983, 0.22944513, 0.011847585, 0.0896838, 0.25323796, 0.33009872, 0.21119964, 0.23119459, 0.22557727, 0.065935105, -0.209923, -0.07117444, 0.05411309, -0.25740874, -0.11863688, 0.05411309, -0.23366587, -0.37997773, -0.0528083, 0.13437366, 0.3443077, -0.26654643, 0.22944513, -0.11878565, -0.20712242, 0.21749872, 0.33247927, -0.07655698, -0.15049084, 0.38001612, -0.24269313, 0.15811652, -0.071323216, -0.01718527, -0.25730878, -0.34434372, -0.17144708, 0.11063078, -0.023786426, -0.26654643, 0.17001295)
+
+[node name="Preset_Shelter_02" type="Node3D" unique_id=1698364063]
+
+[node name="SM_Bld_House_Roof_Thatch_Half_02 (7)" parent="." unique_id=957510911 instance=ExtResource("1_ob0ys")]
+transform = Transform3D(5.9604645e-08, 0, -1, 0, 1, 0, 1, 0, 5.9604645e-08, 2.5, 6.25, -2.5)
+gi_mode = 2
+mesh = ExtResource("2_uad61")
+surface_material_override/0 = ExtResource("3_oxbo5")
+
+[node name="CollisionShape3D" parent="SM_Bld_House_Roof_Thatch_Half_02 (7)/MeshCollider" index="0"]
+shape = SubResource("ConvexPolygonShape3D_wgghk")
+
+[node name="SM_Bld_House_Supports_02 (13)" parent="." unique_id=1068069367 instance=ExtResource("4_1b6b7")]
+transform = Transform3D(-3.4183853e-15, -1.6292068e-07, 0.88940924, -1, 7.54979e-08, 7.899541e-15, -7.54979e-08, -1, -1.4490317e-07, 0, 3.75, -2.5)
+gi_mode = 2
+mesh = ExtResource("5_lwrl7")
+surface_material_override/0 = ExtResource("3_oxbo5")
+
+[node name="CollisionShape3D" parent="SM_Bld_House_Supports_02 (13)/MeshCollider" index="0"]
+shape = SubResource("ConvexPolygonShape3D_0df6m")
+
+[node name="SM_Bld_House_Supports_01 (27)" parent="." unique_id=1209508380 instance=ExtResource("6_r5dut")]
+transform = Transform3D(5.9604645e-08, 0, -1, 0, 1, 0, 1, 0, 5.9604645e-08, 0, 3.75, 0)
+gi_mode = 2
+mesh = ExtResource("7_u7wlu")
+surface_material_override/0 = ExtResource("3_oxbo5")
+
+[node name="CollisionShape3D" parent="SM_Bld_House_Supports_01 (27)/MeshCollider" index="0"]
+shape = SubResource("ConvexPolygonShape3D_qhuvl")
+
+[node name="SM_Bld_House_Roof_Thatch_Peak_Cap_01 (7)" parent="." unique_id=899335131 instance=ExtResource("8_ljedh")]
+transform = Transform3D(8.940697e-07, 0, -1, 0, 1, 0, 1, 0, 8.940697e-07, 2.5, 6.25, -2.5)
+gi_mode = 2
+mesh = ExtResource("9_bfcbj")
+surface_material_override/0 = ExtResource("3_oxbo5")
+
+[node name="CollisionShape3D" parent="SM_Bld_House_Roof_Thatch_Peak_Cap_01 (7)/MeshCollider" index="0"]
+shape = SubResource("ConvexPolygonShape3D_kyf87")
+
+[node name="SM_Bld_House_Roof_Thatch_Stick_03 (5)" parent="." unique_id=2088744270 instance=ExtResource("10_8otr4")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2.9980001, 5.115, -0.97800446)
+gi_mode = 2
+mesh = ExtResource("11_ldrwu")
+surface_material_override/0 = ExtResource("3_oxbo5")
+
+[node name="CollisionShape3D" parent="SM_Bld_House_Roof_Thatch_Stick_03 (5)/MeshCollider" index="0"]
+shape = SubResource("ConvexPolygonShape3D_ekpab")
+
+[node name="SM_Bld_House_WoodBeam_03 (13)" parent="." unique_id=345212028 instance=ExtResource("12_2akm6")]
+transform = Transform3D(7.443189e-08, 3.305115e-07, -1, -0.62438, 1.2815617e-07, -1.1920926e-07, 4.7139366e-08, 1.69748, 1.9470718e-07, 3.7500114, 3.75, -5.0000076)
+gi_mode = 2
+mesh = ExtResource("13_coftq")
+surface_material_override/0 = ExtResource("3_oxbo5")
+
+[node name="CollisionShape3D" parent="SM_Bld_House_WoodBeam_03 (13)/MeshCollider" index="0"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.00018310547, 1.4903259, -0.00015258789)
+shape = SubResource("BoxShape3D_3vev5")
+
+[node name="SM_Bld_House_Roof_Thatch_Half_02 (4)" parent="." unique_id=827409073 instance=ExtResource("1_ob0ys")]
+transform = Transform3D(5.5233477e-07, 0, 0.9999995, 0, 1, 0, -0.9999995, 0, 5.5233477e-07, 7.5, 6.25, -2.5)
+gi_mode = 2
+mesh = ExtResource("2_uad61")
+surface_material_override/0 = ExtResource("3_oxbo5")
+
+[node name="CollisionShape3D" parent="SM_Bld_House_Roof_Thatch_Half_02 (4)/MeshCollider" index="0"]
+shape = SubResource("ConvexPolygonShape3D_wgghk")
+
+[node name="SM_Bld_House_Roof_Thatch_Peak_Cap_Beams_01 (5)" parent="." unique_id=1660039747 instance=ExtResource("14_ihvef")]
+transform = Transform3D(7.5383824e-08, -0.06113032, 0.99813026, 1.8626451e-09, 0.9981298, 0.06113035, 1, 2.7490756e-09, -7.535674e-08, 6.159, 6.25, -2.5)
+gi_mode = 2
+mesh = ExtResource("15_7fj22")
+surface_material_override/0 = ExtResource("3_oxbo5")
+
+[node name="CollisionShape3D" parent="SM_Bld_House_Roof_Thatch_Peak_Cap_Beams_01 (5)/MeshCollider" index="0"]
+transform = Transform3D(0.820112, 0.5722031, 0, -0.5722031, 0.820112, 0, 0, 0, 1, -0.554626, -0.080096275, -0.08151245)
+shape = SubResource("BoxShape3D_cf5ti")
+
+[node name="CollisionShape3D2" parent="SM_Bld_House_Roof_Thatch_Peak_Cap_Beams_01 (5)/MeshCollider" index="1"]
+transform = Transform3D(0.8214009, -0.56855285, -0.045258377, 0.569136, 0.8222434, 0, 0.0372134, -0.025758173, 0.99897534, 0.5469786, -0.09635666, 0.100762285)
+shape = SubResource("BoxShape3D_8ewpl")
+
+[node name="SM_Bld_House_Roof_Thatch_End_01 (18)" parent="." unique_id=197233099 instance=ExtResource("16_30xkq")]
+transform = Transform3D(5.5233477e-07, 0, 0.9999995, 0, 1, 0, -0.9999995, 0, 5.5233477e-07, 5, 3.75, -5)
+gi_mode = 2
+mesh = ExtResource("17_5gewy")
+surface_material_override/0 = ExtResource("3_oxbo5")
+
+[node name="CollisionShape3D" parent="SM_Bld_House_Roof_Thatch_End_01 (18)/MeshCollider" index="0"]
+shape = SubResource("ConvexPolygonShape3D_adilv")
+
+[node name="SM_Bld_House_WoodBeam_02 (160)" parent="." unique_id=1756720339 instance=ExtResource("18_tvoho")]
+transform = Transform3D(5.9604645e-08, 0, -1, 0, 1, 0, 1, 0, 5.9604645e-08, 0, 1.25, 0)
+gi_mode = 2
+mesh = ExtResource("19_l2h52")
+surface_material_override/0 = ExtResource("3_oxbo5")
+
+[node name="CollisionShape3D" parent="SM_Bld_House_WoodBeam_02 (160)/MeshCollider" index="0"]
+shape = SubResource("ConvexPolygonShape3D_pbq85")
+
+[node name="SM_Bld_House_Roof_Thatch_Peak_Cap_Edge_01 (8)" parent="." unique_id=211661942 instance=ExtResource("20_wvo1r")]
+transform = Transform3D(5.5233477e-07, 0, 0.9999995, 0, 1, 0, -0.9999995, 0, 5.5233477e-07, 0, 6, -2.5)
+gi_mode = 2
+mesh = ExtResource("21_28lrg")
+surface_material_override/0 = ExtResource("3_oxbo5")
+
+[node name="CollisionShape3D" parent="SM_Bld_House_Roof_Thatch_Peak_Cap_Edge_01 (8)/MeshCollider" index="0"]
+shape = SubResource("ConvexPolygonShape3D_1kfv8")
+
+[node name="SM_Bld_House_WoodBeam_02 (159)" parent="." unique_id=588262888 instance=ExtResource("18_tvoho")]
+transform = Transform3D(-1, 0, -1.1622905e-06, 0, 1, 0, 1.1622905e-06, 0, -1, 0, 1.25, -5)
+gi_mode = 2
+mesh = ExtResource("19_l2h52")
+surface_material_override/0 = ExtResource("3_oxbo5")
+
+[node name="CollisionShape3D" parent="SM_Bld_House_WoodBeam_02 (159)/MeshCollider" index="0"]
+shape = SubResource("ConvexPolygonShape3D_pbq85")
+
+[node name="SM_Bld_House_Roof_Thatch_Peak_Cap_Beams_01 (7)" parent="." unique_id=798862667 instance=ExtResource("14_ihvef")]
+transform = Transform3D(-4.371139e-08, -0.07726926, -0.9970107, 0, 0.99701, -0.077269316, 1, -3.3775465e-09, -4.3580723e-08, 3.7199998, 6.24, -2.5)
+gi_mode = 2
+mesh = ExtResource("15_7fj22")
+surface_material_override/0 = ExtResource("3_oxbo5")
+
+[node name="CollisionShape3D" parent="SM_Bld_House_Roof_Thatch_Peak_Cap_Beams_01 (7)/MeshCollider" index="0"]
+transform = Transform3D(0.820112, 0.5722031, 0, -0.5722031, 0.820112, 0, 0, 0, 1, -0.554626, -0.080096275, -0.08151245)
+shape = SubResource("BoxShape3D_cf5ti")
+
+[node name="CollisionShape3D2" parent="SM_Bld_House_Roof_Thatch_Peak_Cap_Beams_01 (7)/MeshCollider" index="1"]
+transform = Transform3D(0.8214009, -0.56855285, -0.045258377, 0.569136, 0.8222434, 0, 0.0372134, -0.025758173, 0.99897534, 0.5469786, -0.09635666, 0.100762285)
+shape = SubResource("BoxShape3D_8ewpl")
+
+[node name="SM_Bld_House_Supports_02 (19)" parent="." unique_id=209222211 instance=ExtResource("4_1b6b7")]
+transform = Transform3D(-3.4183853e-15, -1.6292068e-07, 0.88940924, -1, 7.54979e-08, 7.899541e-15, -7.54979e-08, -1, -1.4490317e-07, 3.75, 3.75, -2.5)
+gi_mode = 2
+mesh = ExtResource("5_lwrl7")
+surface_material_override/0 = ExtResource("3_oxbo5")
+
+[node name="CollisionShape3D" parent="SM_Bld_House_Supports_02 (19)/MeshCollider" index="0"]
+shape = SubResource("ConvexPolygonShape3D_0df6m")
+
+[node name="SM_Bld_House_Roof_Thatch_01 (15)" parent="." unique_id=2075055325 instance=ExtResource("22_it4gl")]
+transform = Transform3D(5.9604645e-08, 0, -1, 0, 1, 0, 1, 0, 5.9604645e-08, 3.75, 6.25, -2.5)
+gi_mode = 2
+mesh = ExtResource("23_v6wut")
+surface_material_override/0 = ExtResource("3_oxbo5")
+
+[node name="CollisionShape3D" parent="SM_Bld_House_Roof_Thatch_01 (15)/MeshCollider" index="0"]
+shape = SubResource("ConvexPolygonShape3D_78fhi")
+
+[node name="SM_Bld_House_Roof_Thatch_Peak_Cap_Beams_01 (8)" parent="." unique_id=1668445577 instance=ExtResource("14_ihvef")]
+transform = Transform3D(-2.3841858e-07, 0.06940155, 0.9975888, -1.8626451e-08, 0.9975888, -0.06940155, -1, -2.6077032e-08, -2.3841858e-07, 1.177, 6.312, -2.5)
+gi_mode = 2
+mesh = ExtResource("15_7fj22")
+surface_material_override/0 = ExtResource("3_oxbo5")
+
+[node name="CollisionShape3D" parent="SM_Bld_House_Roof_Thatch_Peak_Cap_Beams_01 (8)/MeshCollider" index="0"]
+transform = Transform3D(0.820112, 0.5722031, 0, -0.5722031, 0.820112, 0, 0, 0, 1, -0.554626, -0.080096275, -0.08151245)
+shape = SubResource("BoxShape3D_cf5ti")
+
+[node name="CollisionShape3D2" parent="SM_Bld_House_Roof_Thatch_Peak_Cap_Beams_01 (8)/MeshCollider" index="1"]
+transform = Transform3D(0.8214009, -0.56855285, -0.045258377, 0.569136, 0.8222434, 0, 0.0372134, -0.025758173, 0.99897534, 0.5469786, -0.09635666, 0.100762285)
+shape = SubResource("BoxShape3D_8ewpl")
+
+[node name="SM_Bld_House_WoodBeam_02 (162)" parent="." unique_id=630353165 instance=ExtResource("18_tvoho")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 3.75, 1.25, 0)
+gi_mode = 2
+mesh = ExtResource("19_l2h52")
+surface_material_override/0 = ExtResource("3_oxbo5")
+
+[node name="CollisionShape3D" parent="SM_Bld_House_WoodBeam_02 (162)/MeshCollider" index="0"]
+shape = SubResource("ConvexPolygonShape3D_pbq85")
+
+[node name="SM_Bld_House_Roof_Thatch_Peak_Cap_01 (6)" parent="." unique_id=1093771425 instance=ExtResource("8_ljedh")]
+transform = Transform3D(8.940697e-07, 0, -1, 0, 1, 0, 1, 0, 8.940697e-07, 5, 6.25, -2.5)
+gi_mode = 2
+mesh = ExtResource("9_bfcbj")
+surface_material_override/0 = ExtResource("3_oxbo5")
+
+[node name="CollisionShape3D" parent="SM_Bld_House_Roof_Thatch_Peak_Cap_01 (6)/MeshCollider" index="0"]
+shape = SubResource("ConvexPolygonShape3D_kyf87")
+
+[node name="SM_Bld_House_WoodBeam_02 (169)" parent="." unique_id=32789698 instance=ExtResource("18_tvoho")]
+transform = Transform3D(5.9604645e-08, 0, -1, 0, 1, 0, 1, 0, 5.9604645e-08, 0, -1.25, 0)
+gi_mode = 2
+mesh = ExtResource("19_l2h52")
+surface_material_override/0 = ExtResource("3_oxbo5")
+
+[node name="CollisionShape3D" parent="SM_Bld_House_WoodBeam_02 (169)/MeshCollider" index="0"]
+shape = SubResource("ConvexPolygonShape3D_pbq85")
+
+[node name="SM_Bld_House_WoodBeam_03 (10)" parent="." unique_id=1063966261 instance=ExtResource("12_2akm6")]
+transform = Transform3D(7.443189e-08, 3.305115e-07, -1, -0.62438, 1.2815617e-07, -1.1920926e-07, 4.7139366e-08, 1.69748, 1.9470718e-07, 1.1444092e-05, 3.75, -5.0000076)
+gi_mode = 2
+mesh = ExtResource("13_coftq")
+surface_material_override/0 = ExtResource("3_oxbo5")
+
+[node name="CollisionShape3D" parent="SM_Bld_House_WoodBeam_03 (10)/MeshCollider" index="0"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.00018310547, 1.4903259, -0.00015258789)
+shape = SubResource("BoxShape3D_3vev5")
+
+[node name="SM_Bld_House_WoodBeam_02 (164)" parent="." unique_id=1649846155 instance=ExtResource("18_tvoho")]
+transform = Transform3D(-1, 0, -2.6822087e-07, 0, 1, 0, 2.6822087e-07, 0, -1, 7.5, -1.25, 0)
+gi_mode = 2
+mesh = ExtResource("19_l2h52")
+surface_material_override/0 = ExtResource("3_oxbo5")
+
+[node name="CollisionShape3D" parent="SM_Bld_House_WoodBeam_02 (164)/MeshCollider" index="0"]
+shape = SubResource("ConvexPolygonShape3D_pbq85")
+
+[node name="SM_Bld_House_Roof_Thatch_Stick_04 (3)" parent="." unique_id=329573419 instance=ExtResource("24_83f1e")]
+transform = Transform3D(-0.91673195, 0.36815628, 0.15512407, 0.39948887, 0.8480131, 0.3482566, -0.0033343881, 0.38122848, -0.92447466, 6.793, 6.037, -2.861)
+gi_mode = 2
+mesh = ExtResource("25_kofuj")
+surface_material_override/0 = ExtResource("3_oxbo5")
+
+[node name="CollisionShape3D" parent="SM_Bld_House_Roof_Thatch_Stick_04 (3)/MeshCollider" index="0"]
+shape = SubResource("ConvexPolygonShape3D_holwo")
+
+[node name="SM_Bld_House_WoodBeam_02 (170)" parent="." unique_id=1720902420 instance=ExtResource("18_tvoho")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 3.75, -1.25, -5)
+gi_mode = 2
+mesh = ExtResource("19_l2h52")
+surface_material_override/0 = ExtResource("3_oxbo5")
+
+[node name="CollisionShape3D" parent="SM_Bld_House_WoodBeam_02 (170)/MeshCollider" index="0"]
+shape = SubResource("ConvexPolygonShape3D_pbq85")
+
+[node name="SM_Bld_House_Supports_02 (17)" parent="." unique_id=1883425718 instance=ExtResource("4_1b6b7")]
+transform = Transform3D(-3.4183853e-15, -1.6292068e-07, 0.88940924, -1, 7.54979e-08, 7.899541e-15, -7.54979e-08, -1, -1.4490317e-07, 7.5, 3.75, -2.5)
+gi_mode = 2
+mesh = ExtResource("5_lwrl7")
+surface_material_override/0 = ExtResource("3_oxbo5")
+
+[node name="CollisionShape3D" parent="SM_Bld_House_Supports_02 (17)/MeshCollider" index="0"]
+shape = SubResource("ConvexPolygonShape3D_0df6m")
+
+[node name="SM_Bld_House_Supports_01 (29)" parent="." unique_id=800652181 instance=ExtResource("6_r5dut")]
+transform = Transform3D(5.9604645e-08, 0, -1, 0, 1, 0, 1, 0, 5.9604645e-08, 3.75, 3.75, 0)
+gi_mode = 2
+mesh = ExtResource("7_u7wlu")
+surface_material_override/0 = ExtResource("3_oxbo5")
+
+[node name="CollisionShape3D" parent="SM_Bld_House_Supports_01 (29)/MeshCollider" index="0"]
+shape = SubResource("ConvexPolygonShape3D_qhuvl")
+
+[node name="SM_Bld_House_Roof_Thatch_Half_02 (6)" parent="." unique_id=1109736277 instance=ExtResource("1_ob0ys")]
+transform = Transform3D(5.9604645e-08, 0, -1, 0, 1, 0, 1, 0, 5.9604645e-08, 6.25, 6.25, -2.5)
+gi_mode = 2
+mesh = ExtResource("2_uad61")
+surface_material_override/0 = ExtResource("3_oxbo5")
+
+[node name="CollisionShape3D" parent="SM_Bld_House_Roof_Thatch_Half_02 (6)/MeshCollider" index="0"]
+shape = SubResource("ConvexPolygonShape3D_wgghk")
+
+[node name="SM_Bld_House_Roof_Thatch_Stick_01 (1)" parent="." unique_id=2004788724 instance=ExtResource("26_sxaq6")]
+transform = Transform3D(1, 0, 0, 0, 0.9601965, 0.27932552, 0, -0.27932552, 0.9601965, 0.7779999, 3.965, 0.12200165)
+gi_mode = 2
+mesh = ExtResource("27_hjwkk")
+surface_material_override/0 = ExtResource("3_oxbo5")
+
+[node name="CollisionShape3D" parent="SM_Bld_House_Roof_Thatch_Stick_01 (1)/MeshCollider" index="0"]
+shape = SubResource("ConvexPolygonShape3D_m2m3p")
+
+[node name="SM_Bld_House_Supports_02 (12)" parent="." unique_id=1890488195 instance=ExtResource("4_1b6b7")]
+transform = Transform3D(1.1920929e-07, 2.3841858e-07, -1, -1, 1.1920929e-07, -1.1920929e-07, 1.1920929e-07, 1, 2.3841858e-07, 0, 3.75, -2.5)
+gi_mode = 2
+mesh = ExtResource("5_lwrl7")
+surface_material_override/0 = ExtResource("3_oxbo5")
+
+[node name="CollisionShape3D" parent="SM_Bld_House_Supports_02 (12)/MeshCollider" index="0"]
+shape = SubResource("ConvexPolygonShape3D_0df6m")
+
+[node name="SM_Bld_House_WoodBeam_02 (168)" parent="." unique_id=532570888 instance=ExtResource("18_tvoho")]
+transform = Transform3D(-1, 0, -1.1622905e-06, 0, 1, 0, 1.1622905e-06, 0, -1, 0, -1.25, -5)
+gi_mode = 2
+mesh = ExtResource("19_l2h52")
+surface_material_override/0 = ExtResource("3_oxbo5")
+
+[node name="CollisionShape3D" parent="SM_Bld_House_WoodBeam_02 (168)/MeshCollider" index="0"]
+shape = SubResource("ConvexPolygonShape3D_pbq85")
+
+[node name="SM_Bld_House_Roof_Thatch_End_01 (19)" parent="." unique_id=2058358378 instance=ExtResource("16_30xkq")]
+transform = Transform3D(5.5233477e-07, 0, 0.9999995, 0, 1, 0, -0.9999995, 0, 5.5233477e-07, 7.5, 3.75, -5)
+gi_mode = 2
+mesh = ExtResource("17_5gewy")
+surface_material_override/0 = ExtResource("3_oxbo5")
+
+[node name="CollisionShape3D" parent="SM_Bld_House_Roof_Thatch_End_01 (19)/MeshCollider" index="0"]
+shape = SubResource("ConvexPolygonShape3D_adilv")
+
+[node name="SM_Bld_House_WoodBeam_02 (163)" parent="." unique_id=224186661 instance=ExtResource("18_tvoho")]
+transform = Transform3D(5.9604645e-08, 0, 1, 0, 1, 0, -1, 0, 5.9604645e-08, 7.5, -1.25, -5)
+gi_mode = 2
+mesh = ExtResource("19_l2h52")
+surface_material_override/0 = ExtResource("3_oxbo5")
+
+[node name="CollisionShape3D" parent="SM_Bld_House_WoodBeam_02 (163)/MeshCollider" index="0"]
+shape = SubResource("ConvexPolygonShape3D_pbq85")
+
+[node name="SM_Bld_House_Supports_01 (28)" parent="." unique_id=760502499 instance=ExtResource("6_r5dut")]
+transform = Transform3D(5.9604645e-08, 0, 1, 0, 1, 0, -1, 0, 5.9604645e-08, 3.75, 3.75, -5)
+gi_mode = 2
+mesh = ExtResource("7_u7wlu")
+surface_material_override/0 = ExtResource("3_oxbo5")
+
+[node name="CollisionShape3D" parent="SM_Bld_House_Supports_01 (28)/MeshCollider" index="0"]
+shape = SubResource("ConvexPolygonShape3D_qhuvl")
+
+[node name="SM_Bld_House_Roof_Thatch_Peak_Cap_Beams_01 (9)" parent="." unique_id=260775495 instance=ExtResource("14_ihvef")]
+transform = Transform3D(7.54979e-08, 0, 1, 0, 1, 0, 1, 0, -7.54979e-08, 0.2819996, 6.25, -2.5)
+gi_mode = 2
+mesh = ExtResource("15_7fj22")
+surface_material_override/0 = ExtResource("3_oxbo5")
+
+[node name="CollisionShape3D" parent="SM_Bld_House_Roof_Thatch_Peak_Cap_Beams_01 (9)/MeshCollider" index="0"]
+transform = Transform3D(0.820112, 0.5722031, 0, -0.5722031, 0.820112, 0, 0, 0, 1, -0.554626, -0.080096275, -0.08151245)
+shape = SubResource("BoxShape3D_cf5ti")
+
+[node name="CollisionShape3D2" parent="SM_Bld_House_Roof_Thatch_Peak_Cap_Beams_01 (9)/MeshCollider" index="1"]
+transform = Transform3D(0.8214009, -0.56855285, -0.045258377, 0.569136, 0.8222434, 0, 0.0372134, -0.025758173, 0.99897534, 0.5469786, -0.09635666, 0.100762285)
+shape = SubResource("BoxShape3D_8ewpl")
+
+[node name="SM_Bld_House_Roof_Thatch_Stick_03 (4)" parent="." unique_id=527368527 instance=ExtResource("10_8otr4")]
+transform = Transform3D(-0.9963058, 0.05068172, 0.069326244, 0.050803952, 0.99870867, -9.599946e-10, -0.06923669, 0.0035220447, -0.99759454, 0.9840002, 5.088, -4.0670013)
+gi_mode = 2
+mesh = ExtResource("11_ldrwu")
+surface_material_override/0 = ExtResource("3_oxbo5")
+
+[node name="CollisionShape3D" parent="SM_Bld_House_Roof_Thatch_Stick_03 (4)/MeshCollider" index="0"]
+shape = SubResource("ConvexPolygonShape3D_ekpab")
+
+[node name="SM_Bld_House_Roof_Thatch_Edge_End_01 (10)" parent="." unique_id=502715827 instance=ExtResource("28_j4l2w")]
+transform = Transform3D(8.940697e-07, 0, 1, 0, 1, 0, -1, 0, 8.940697e-07, 0, 6.25, -2.5)
+gi_mode = 2
+mesh = ExtResource("29_edslm")
+surface_material_override/0 = ExtResource("3_oxbo5")
+
+[node name="CollisionShape3D" parent="SM_Bld_House_Roof_Thatch_Edge_End_01 (10)/MeshCollider" index="0"]
+shape = SubResource("ConvexPolygonShape3D_b4ysp")
+
+[node name="SM_Bld_House_WoodBeam_02 (161)" parent="." unique_id=1912985229 instance=ExtResource("18_tvoho")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 3.75, 1.25, -5)
+gi_mode = 2
+mesh = ExtResource("19_l2h52")
+surface_material_override/0 = ExtResource("3_oxbo5")
+
+[node name="CollisionShape3D" parent="SM_Bld_House_WoodBeam_02 (161)/MeshCollider" index="0"]
+shape = SubResource("ConvexPolygonShape3D_pbq85")
+
+[node name="SM_Bld_House_Roof_Thatch_01 (14)" parent="." unique_id=444321542 instance=ExtResource("22_it4gl")]
+transform = Transform3D(-1.6292061e-07, 0, 0.9999995, 0, 1, 0, -0.9999995, 0, -1.6292061e-07, 6.25, 6.25, -2.5)
+gi_mode = 2
+mesh = ExtResource("23_v6wut")
+surface_material_override/0 = ExtResource("3_oxbo5")
+
+[node name="CollisionShape3D" parent="SM_Bld_House_Roof_Thatch_01 (14)/MeshCollider" index="0"]
+shape = SubResource("ConvexPolygonShape3D_78fhi")
+
+[node name="SM_Bld_House_Roof_Thatch_Stick_02 (3)" parent="." unique_id=146222219 instance=ExtResource("30_t7of1")]
+transform = Transform3D(-0.99984574, -0.007370783, 0.016002702, 7.823118e-08, 0.90828246, 0.41835767, -0.017618593, 0.41829205, -0.908143, 2.7540002, 3.979, -5.1100006)
+gi_mode = 2
+mesh = ExtResource("31_1slc3")
+surface_material_override/0 = ExtResource("3_oxbo5")
+
+[node name="CollisionShape3D" parent="SM_Bld_House_Roof_Thatch_Stick_02 (3)/MeshCollider" index="0"]
+shape = SubResource("ConvexPolygonShape3D_maskt")
+
+[node name="SM_Bld_House_Roof_Thatch_End_01 (22)" parent="." unique_id=168544277 instance=ExtResource("16_30xkq")]
+transform = Transform3D(5.9604645e-08, 0, -1, 0, 1, 0, 1, 0, 5.9604645e-08, 5, 3.75, 0)
+gi_mode = 2
+mesh = ExtResource("17_5gewy")
+surface_material_override/0 = ExtResource("3_oxbo5")
+
+[node name="CollisionShape3D" parent="SM_Bld_House_Roof_Thatch_End_01 (22)/MeshCollider" index="0"]
+shape = SubResource("ConvexPolygonShape3D_adilv")
+
+[node name="SM_Bld_House_Roof_Thatch_Edge_End_01 (13)" parent="." unique_id=1628071597 instance=ExtResource("28_j4l2w")]
+transform = Transform3D(-5.205483e-07, 0, -0.9999995, 0, 1, 0, 0.9999995, 0, -5.205483e-07, 7.5, 6.25, -2.5)
+gi_mode = 2
+mesh = ExtResource("29_edslm")
+surface_material_override/0 = ExtResource("3_oxbo5")
+
+[node name="CollisionShape3D" parent="SM_Bld_House_Roof_Thatch_Edge_End_01 (13)/MeshCollider" index="0"]
+shape = SubResource("ConvexPolygonShape3D_b4ysp")
+
+[node name="SM_Bld_House_Roof_Thatch_Stick_02 (2)" parent="." unique_id=1914269821 instance=ExtResource("30_t7of1")]
+transform = Transform3D(0.91635674, -0.051459886, 0.3970418, -0.12536989, 0.90494657, 0.40663728, -0.38022715, -0.42240185, 0.8228025, 6.95, 4.029, 0.15599823)
+gi_mode = 2
+mesh = ExtResource("31_1slc3")
+surface_material_override/0 = ExtResource("3_oxbo5")
+
+[node name="CollisionShape3D" parent="SM_Bld_House_Roof_Thatch_Stick_02 (2)/MeshCollider" index="0"]
+shape = SubResource("ConvexPolygonShape3D_maskt")
+
+[node name="SM_Bld_House_WoodBeam_02 (155)" parent="." unique_id=2009733073 instance=ExtResource("18_tvoho")]
+transform = Transform3D(-1, 0, -2.6822087e-07, 0, 1, 0, 2.6822087e-07, 0, -1, 7.5, 1.25, 0)
+gi_mode = 2
+mesh = ExtResource("19_l2h52")
+surface_material_override/0 = ExtResource("3_oxbo5")
+
+[node name="CollisionShape3D" parent="SM_Bld_House_WoodBeam_02 (155)/MeshCollider" index="0"]
+shape = SubResource("ConvexPolygonShape3D_pbq85")
+
+[node name="SM_Bld_House_Supports_01 (26)" parent="." unique_id=1395376343 instance=ExtResource("6_r5dut")]
+transform = Transform3D(5.9604645e-08, 0, 1, 0, 1, 0, -1, 0, 5.9604645e-08, 0, 3.75, -5)
+gi_mode = 2
+mesh = ExtResource("7_u7wlu")
+surface_material_override/0 = ExtResource("3_oxbo5")
+
+[node name="CollisionShape3D" parent="SM_Bld_House_Supports_01 (26)/MeshCollider" index="0"]
+shape = SubResource("ConvexPolygonShape3D_qhuvl")
+
+[node name="SM_Bld_House_Roof_Thatch_Stick_04 (4)" parent="." unique_id=1976449968 instance=ExtResource("24_83f1e")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 6.765, 6.132, -2.0730057)
+gi_mode = 2
+mesh = ExtResource("25_kofuj")
+surface_material_override/0 = ExtResource("3_oxbo5")
+
+[node name="CollisionShape3D" parent="SM_Bld_House_Roof_Thatch_Stick_04 (4)/MeshCollider" index="0"]
+shape = SubResource("ConvexPolygonShape3D_holwo")
+
+[node name="SM_Bld_House_Roof_Thatch_01 (12)" parent="." unique_id=44635818 instance=ExtResource("22_it4gl")]
+transform = Transform3D(-1.6292061e-07, 0, 0.9999995, 0, 1, 0, -0.9999995, 0, -1.6292061e-07, 2.5, 6.25, -2.5)
+gi_mode = 2
+mesh = ExtResource("23_v6wut")
+surface_material_override/0 = ExtResource("3_oxbo5")
+
+[node name="CollisionShape3D" parent="SM_Bld_House_Roof_Thatch_01 (12)/MeshCollider" index="0"]
+shape = SubResource("ConvexPolygonShape3D_78fhi")
+
+[node name="SM_Bld_House_Supports_02 (16)" parent="." unique_id=143046196 instance=ExtResource("4_1b6b7")]
+transform = Transform3D(1.1920929e-07, 2.3841858e-07, -1, -1, 1.1920929e-07, -1.1920929e-07, 1.1920929e-07, 1, 2.3841858e-07, 7.5, 3.75, -2.5)
+gi_mode = 2
+mesh = ExtResource("5_lwrl7")
+surface_material_override/0 = ExtResource("3_oxbo5")
+
+[node name="CollisionShape3D" parent="SM_Bld_House_Supports_02 (16)/MeshCollider" index="0"]
+shape = SubResource("ConvexPolygonShape3D_0df6m")
+
+[node name="SM_Bld_House_Supports_02 (18)" parent="." unique_id=1217775042 instance=ExtResource("4_1b6b7")]
+transform = Transform3D(1.1920929e-07, 2.3841858e-07, -1, -1, 1.1920929e-07, -1.1920929e-07, 1.1920929e-07, 1, 2.3841858e-07, 3.7500114, 3.75, -2.5000076)
+gi_mode = 2
+mesh = ExtResource("5_lwrl7")
+surface_material_override/0 = ExtResource("3_oxbo5")
+
+[node name="CollisionShape3D" parent="SM_Bld_House_Supports_02 (18)/MeshCollider" index="0"]
+shape = SubResource("ConvexPolygonShape3D_0df6m")
+
+[node name="SM_Bld_House_Roof_Thatch_Stick_04 (5)" parent="." unique_id=1149922939 instance=ExtResource("24_83f1e")]
+transform = Transform3D(-0.9858699, 0, -0.16751292, 0, 1, 0, 0.16751292, 0, -0.9858699, 3.3390002, 5.595, -3.4440002)
+gi_mode = 2
+mesh = ExtResource("25_kofuj")
+surface_material_override/0 = ExtResource("3_oxbo5")
+
+[node name="CollisionShape3D" parent="SM_Bld_House_Roof_Thatch_Stick_04 (5)/MeshCollider" index="0"]
+shape = SubResource("ConvexPolygonShape3D_holwo")
+
+[node name="SM_Bld_House_Roof_Thatch_End_01 (20)" parent="." unique_id=1578919489 instance=ExtResource("16_30xkq")]
+transform = Transform3D(5.9604645e-08, 0, -1, 0, 1, 0, 1, 0, 5.9604645e-08, 0, 3.75, 0)
+gi_mode = 2
+mesh = ExtResource("17_5gewy")
+surface_material_override/0 = ExtResource("3_oxbo5")
+
+[node name="CollisionShape3D" parent="SM_Bld_House_Roof_Thatch_End_01 (20)/MeshCollider" index="0"]
+shape = SubResource("ConvexPolygonShape3D_adilv")
+
+[node name="SM_Bld_House_WoodBeam_02 (154)" parent="." unique_id=1161262969 instance=ExtResource("18_tvoho")]
+transform = Transform3D(5.9604645e-08, 0, 1, 0, 1, 0, -1, 0, 5.9604645e-08, 7.5, 1.25, -5)
+gi_mode = 2
+mesh = ExtResource("19_l2h52")
+surface_material_override/0 = ExtResource("3_oxbo5")
+
+[node name="CollisionShape3D" parent="SM_Bld_House_WoodBeam_02 (154)/MeshCollider" index="0"]
+shape = SubResource("ConvexPolygonShape3D_pbq85")
+
+[node name="SM_Bld_House_WoodBeam_02 (171)" parent="." unique_id=1250393180 instance=ExtResource("18_tvoho")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 3.75, -1.25, 0)
+gi_mode = 2
+mesh = ExtResource("19_l2h52")
+surface_material_override/0 = ExtResource("3_oxbo5")
+
+[node name="CollisionShape3D" parent="SM_Bld_House_WoodBeam_02 (171)/MeshCollider" index="0"]
+shape = SubResource("ConvexPolygonShape3D_pbq85")
+
+[node name="SM_Bld_House_Roof_Thatch_End_01 (17)" parent="." unique_id=769290767 instance=ExtResource("16_30xkq")]
+transform = Transform3D(5.5233477e-07, 0, 0.9999995, 0, 1, 0, -0.9999995, 0, 5.5233477e-07, 2.5, 3.75, -5)
+gi_mode = 2
+mesh = ExtResource("17_5gewy")
+surface_material_override/0 = ExtResource("3_oxbo5")
+
+[node name="CollisionShape3D" parent="SM_Bld_House_Roof_Thatch_End_01 (17)/MeshCollider" index="0"]
+shape = SubResource("ConvexPolygonShape3D_adilv")
+
+[node name="SM_Bld_House_Supports_01 (31)" parent="." unique_id=2125582382 instance=ExtResource("6_r5dut")]
+transform = Transform3D(5.9604645e-08, 0, -1, 0, 1, 0, 1, 0, 5.9604645e-08, 7.5, 3.75, 0)
+gi_mode = 2
+mesh = ExtResource("7_u7wlu")
+surface_material_override/0 = ExtResource("3_oxbo5")
+
+[node name="CollisionShape3D" parent="SM_Bld_House_Supports_01 (31)/MeshCollider" index="0"]
+shape = SubResource("ConvexPolygonShape3D_qhuvl")
+
+[node name="SM_Bld_House_Supports_01 (30)" parent="." unique_id=1291257467 instance=ExtResource("6_r5dut")]
+transform = Transform3D(5.9604645e-08, 0, 1, 0, 1, 0, -1, 0, 5.9604645e-08, 7.5, 3.75, -5)
+gi_mode = 2
+mesh = ExtResource("7_u7wlu")
+surface_material_override/0 = ExtResource("3_oxbo5")
+
+[node name="CollisionShape3D" parent="SM_Bld_House_Supports_01 (30)/MeshCollider" index="0"]
+shape = SubResource("ConvexPolygonShape3D_qhuvl")
+
+[node name="SM_Bld_House_Roof_Thatch_Stick_03 (3)" parent="." unique_id=825380040 instance=ExtResource("10_8otr4")]
+transform = Transform3D(-0.99294513, 0.08132864, 0.08628257, 0.09953996, 0.9671546, 0.23388726, -0.06442684, 0.24082582, -0.96842766, 6.565, 3.996, -5.144005)
+gi_mode = 2
+mesh = ExtResource("11_ldrwu")
+surface_material_override/0 = ExtResource("3_oxbo5")
+
+[node name="CollisionShape3D" parent="SM_Bld_House_Roof_Thatch_Stick_03 (3)/MeshCollider" index="0"]
+shape = SubResource("ConvexPolygonShape3D_ekpab")
+
+[node name="SM_Bld_House_Roof_Thatch_Edge_End_01 (12)" parent="." unique_id=266413054 instance=ExtResource("28_j4l2w")]
+transform = Transform3D(8.940697e-07, 0, 1, 0, 1, 0, -1, 0, 8.940697e-07, 7.5, 6.25, -2.5)
+gi_mode = 2
+mesh = ExtResource("29_edslm")
+surface_material_override/0 = ExtResource("3_oxbo5")
+
+[node name="CollisionShape3D" parent="SM_Bld_House_Roof_Thatch_Edge_End_01 (12)/MeshCollider" index="0"]
+shape = SubResource("ConvexPolygonShape3D_b4ysp")
+
+[node name="SM_Bld_House_Roof_Thatch_Half_02 (5)" parent="." unique_id=1555563685 instance=ExtResource("1_ob0ys")]
+transform = Transform3D(5.5233477e-07, 0, 0.9999995, 0, 1, 0, -0.9999995, 0, 5.5233477e-07, 3.75, 6.25, -2.5)
+gi_mode = 2
+mesh = ExtResource("2_uad61")
+surface_material_override/0 = ExtResource("3_oxbo5")
+
+[node name="CollisionShape3D" parent="SM_Bld_House_Roof_Thatch_Half_02 (5)/MeshCollider" index="0"]
+shape = SubResource("ConvexPolygonShape3D_wgghk")
+
+[node name="SM_Bld_House_Roof_Thatch_01 (13)" parent="." unique_id=1539198962 instance=ExtResource("22_it4gl")]
+transform = Transform3D(5.9604645e-08, 0, -1, 0, 1, 0, 1, 0, 5.9604645e-08, 0, 6.25, -2.5)
+gi_mode = 2
+mesh = ExtResource("23_v6wut")
+surface_material_override/0 = ExtResource("3_oxbo5")
+
+[node name="CollisionShape3D" parent="SM_Bld_House_Roof_Thatch_01 (13)/MeshCollider" index="0"]
+shape = SubResource("ConvexPolygonShape3D_78fhi")
+
+[node name="SM_Bld_House_WoodBeam_03 (12)" parent="." unique_id=1035346355 instance=ExtResource("12_2akm6")]
+transform = Transform3D(7.443189e-08, 3.305115e-07, -1, -0.62438, 1.2815617e-07, -1.1920926e-07, 4.7139366e-08, 1.69748, 1.9470718e-07, 7.5000114, 3.75, -5.0000076)
+gi_mode = 2
+mesh = ExtResource("13_coftq")
+surface_material_override/0 = ExtResource("3_oxbo5")
+
+[node name="CollisionShape3D" parent="SM_Bld_House_WoodBeam_03 (12)/MeshCollider" index="0"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.00018310547, 1.4903259, -0.00015258789)
+shape = SubResource("BoxShape3D_3vev5")
+
+[node name="SM_Bld_House_Roof_Thatch_End_01 (21)" parent="." unique_id=2031661860 instance=ExtResource("16_30xkq")]
+transform = Transform3D(5.9604645e-08, 0, -1, 0, 1, 0, 1, 0, 5.9604645e-08, 2.5, 3.75, 0)
+gi_mode = 2
+mesh = ExtResource("17_5gewy")
+surface_material_override/0 = ExtResource("3_oxbo5")
+
+[node name="CollisionShape3D" parent="SM_Bld_House_Roof_Thatch_End_01 (21)/MeshCollider" index="0"]
+shape = SubResource("ConvexPolygonShape3D_adilv")
+
+[node name="SM_Bld_House_Roof_Thatch_Peak_Cap_Edge_01 (7)" parent="." unique_id=200660882 instance=ExtResource("20_wvo1r")]
+transform = Transform3D(-1.6292061e-07, 0, -0.9999995, 0, 1, 0, 0.9999995, 0, -1.6292061e-07, 7.5, 6, -2.5)
+gi_mode = 2
+mesh = ExtResource("21_28lrg")
+surface_material_override/0 = ExtResource("3_oxbo5")
+
+[node name="CollisionShape3D" parent="SM_Bld_House_Roof_Thatch_Peak_Cap_Edge_01 (7)/MeshCollider" index="0"]
+shape = SubResource("ConvexPolygonShape3D_1kfv8")
+
+[node name="SM_Bld_House_Roof_Thatch_Edge_End_01 (11)" parent="." unique_id=1276694732 instance=ExtResource("28_j4l2w")]
+transform = Transform3D(-5.205483e-07, 0, -0.9999995, 0, 1, 0, 0.9999995, 0, -5.205483e-07, 0, 6.25, -2.5)
+gi_mode = 2
+mesh = ExtResource("29_edslm")
+surface_material_override/0 = ExtResource("3_oxbo5")
+
+[node name="CollisionShape3D" parent="SM_Bld_House_Roof_Thatch_Edge_End_01 (11)/MeshCollider" index="0"]
+shape = SubResource("ConvexPolygonShape3D_b4ysp")
+
+[node name="SM_Bld_House_Roof_Thatch_Peak_Cap_01 (8)" parent="." unique_id=1406275282 instance=ExtResource("8_ljedh")]
+transform = Transform3D(8.940697e-07, 0, -1, 0, 1, 0, 1, 0, 8.940697e-07, 0, 6.25, -2.5)
+gi_mode = 2
+mesh = ExtResource("9_bfcbj")
+surface_material_override/0 = ExtResource("3_oxbo5")
+
+[node name="CollisionShape3D" parent="SM_Bld_House_Roof_Thatch_Peak_Cap_01 (8)/MeshCollider" index="0"]
+shape = SubResource("ConvexPolygonShape3D_kyf87")
+
+[node name="SM_Bld_House_Roof_Thatch_Peak_Cap_Beams_01 (6)" parent="." unique_id=120903120 instance=ExtResource("14_ihvef")]
+transform = Transform3D(-1.6484876e-07, 0.10296258, 0.99468476, -1.8626451e-08, 0.99468523, -0.10296253, -1, -3.550071e-08, -1.6205473e-07, 7.2130003, 6.251, -2.5)
+gi_mode = 2
+mesh = ExtResource("15_7fj22")
+surface_material_override/0 = ExtResource("3_oxbo5")
+
+[node name="CollisionShape3D" parent="SM_Bld_House_Roof_Thatch_Peak_Cap_Beams_01 (6)/MeshCollider" index="0"]
+transform = Transform3D(0.820112, 0.5722031, 0, -0.5722031, 0.820112, 0, 0, 0, 1, -0.554626, -0.080096275, -0.08151245)
+shape = SubResource("BoxShape3D_cf5ti")
+
+[node name="CollisionShape3D2" parent="SM_Bld_House_Roof_Thatch_Peak_Cap_Beams_01 (6)/MeshCollider" index="1"]
+transform = Transform3D(0.8214009, -0.56855285, -0.045258377, 0.569136, 0.8222434, 0, 0.0372134, -0.025758173, 0.99897534, 0.5469786, -0.09635666, 0.100762285)
+shape = SubResource("BoxShape3D_8ewpl")
+
+[node name="Preset_Shelter_02_Interior" type="Node3D" parent="." unique_id=1224843054]
+
+[editable path="SM_Bld_House_Roof_Thatch_Half_02 (7)"]
+[editable path="SM_Bld_House_Supports_02 (13)"]
+[editable path="SM_Bld_House_Supports_01 (27)"]
+[editable path="SM_Bld_House_Roof_Thatch_Peak_Cap_01 (7)"]
+[editable path="SM_Bld_House_Roof_Thatch_Stick_03 (5)"]
+[editable path="SM_Bld_House_WoodBeam_03 (13)"]
+[editable path="SM_Bld_House_Roof_Thatch_Half_02 (4)"]
+[editable path="SM_Bld_House_Roof_Thatch_Peak_Cap_Beams_01 (5)"]
+[editable path="SM_Bld_House_Roof_Thatch_End_01 (18)"]
+[editable path="SM_Bld_House_WoodBeam_02 (160)"]
+[editable path="SM_Bld_House_Roof_Thatch_Peak_Cap_Edge_01 (8)"]
+[editable path="SM_Bld_House_WoodBeam_02 (159)"]
+[editable path="SM_Bld_House_Roof_Thatch_Peak_Cap_Beams_01 (7)"]
+[editable path="SM_Bld_House_Supports_02 (19)"]
+[editable path="SM_Bld_House_Roof_Thatch_01 (15)"]
+[editable path="SM_Bld_House_Roof_Thatch_Peak_Cap_Beams_01 (8)"]
+[editable path="SM_Bld_House_WoodBeam_02 (162)"]
+[editable path="SM_Bld_House_Roof_Thatch_Peak_Cap_01 (6)"]
+[editable path="SM_Bld_House_WoodBeam_02 (169)"]
+[editable path="SM_Bld_House_WoodBeam_03 (10)"]
+[editable path="SM_Bld_House_WoodBeam_02 (164)"]
+[editable path="SM_Bld_House_Roof_Thatch_Stick_04 (3)"]
+[editable path="SM_Bld_House_WoodBeam_02 (170)"]
+[editable path="SM_Bld_House_Supports_02 (17)"]
+[editable path="SM_Bld_House_Supports_01 (29)"]
+[editable path="SM_Bld_House_Roof_Thatch_Half_02 (6)"]
+[editable path="SM_Bld_House_Roof_Thatch_Stick_01 (1)"]
+[editable path="SM_Bld_House_Supports_02 (12)"]
+[editable path="SM_Bld_House_WoodBeam_02 (168)"]
+[editable path="SM_Bld_House_Roof_Thatch_End_01 (19)"]
+[editable path="SM_Bld_House_WoodBeam_02 (163)"]
+[editable path="SM_Bld_House_Supports_01 (28)"]
+[editable path="SM_Bld_House_Roof_Thatch_Peak_Cap_Beams_01 (9)"]
+[editable path="SM_Bld_House_Roof_Thatch_Stick_03 (4)"]
+[editable path="SM_Bld_House_Roof_Thatch_Edge_End_01 (10)"]
+[editable path="SM_Bld_House_WoodBeam_02 (161)"]
+[editable path="SM_Bld_House_Roof_Thatch_01 (14)"]
+[editable path="SM_Bld_House_Roof_Thatch_Stick_02 (3)"]
+[editable path="SM_Bld_House_Roof_Thatch_End_01 (22)"]
+[editable path="SM_Bld_House_Roof_Thatch_Edge_End_01 (13)"]
+[editable path="SM_Bld_House_Roof_Thatch_Stick_02 (2)"]
+[editable path="SM_Bld_House_WoodBeam_02 (155)"]
+[editable path="SM_Bld_House_Supports_01 (26)"]
+[editable path="SM_Bld_House_Roof_Thatch_Stick_04 (4)"]
+[editable path="SM_Bld_House_Roof_Thatch_01 (12)"]
+[editable path="SM_Bld_House_Supports_02 (16)"]
+[editable path="SM_Bld_House_Supports_02 (18)"]
+[editable path="SM_Bld_House_Roof_Thatch_Stick_04 (5)"]
+[editable path="SM_Bld_House_Roof_Thatch_End_01 (20)"]
+[editable path="SM_Bld_House_WoodBeam_02 (154)"]
+[editable path="SM_Bld_House_WoodBeam_02 (171)"]
+[editable path="SM_Bld_House_Roof_Thatch_End_01 (17)"]
+[editable path="SM_Bld_House_Supports_01 (31)"]
+[editable path="SM_Bld_House_Supports_01 (30)"]
+[editable path="SM_Bld_House_Roof_Thatch_Stick_03 (3)"]
+[editable path="SM_Bld_House_Roof_Thatch_Edge_End_01 (12)"]
+[editable path="SM_Bld_House_Roof_Thatch_Half_02 (5)"]
+[editable path="SM_Bld_House_Roof_Thatch_01 (13)"]
+[editable path="SM_Bld_House_WoodBeam_03 (12)"]
+[editable path="SM_Bld_House_Roof_Thatch_End_01 (21)"]
+[editable path="SM_Bld_House_Roof_Thatch_Peak_Cap_Edge_01 (7)"]
+[editable path="SM_Bld_House_Roof_Thatch_Edge_End_01 (11)"]
+[editable path="SM_Bld_House_Roof_Thatch_Peak_Cap_01 (8)"]
+[editable path="SM_Bld_House_Roof_Thatch_Peak_Cap_Beams_01 (6)"]

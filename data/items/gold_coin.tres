@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="Item" format=3]
+
+[ext_resource type="Script" path="res://src/sim/items/item.gd" id="1_item"]
+
+[resource]
+script = ExtResource("1_item")
+id = "gold_coin"
+kind = "currency"
+stackable = true
+max_stack = 999
+shape_type = "coin"
+materials = {
+"body": "gold",
+}
+tags = PackedStringArray("currency", "coin", "precious")
+tint = Color(0.95, 0.78, 0.22, 1)

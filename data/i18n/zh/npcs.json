@@ -1,0 +1,298 @@
+{
+  "npc": {
+    "oren_vale": {
+      "name": "奥伦·维尔",
+      "occupation": "北墙麦圃农户",
+      "personality": "谨慎、沉稳，做事讲条理。",
+      "relationships": "妻子阿尔玛、儿子尼科同住北墙麦圃，三人一起经营麦圃。"
+    },
+    "alma_vale": {
+      "name": "阿尔玛·维尔",
+      "occupation": "北墙麦圃种子管事",
+      "personality": "温柔、细心，乐于照顾人。",
+      "relationships": "丈夫奥伦、儿子尼科一起经营北墙麦圃；常给附近干活的邻居送热汤。"
+    },
+    "niko_vale": {
+      "name": "尼科·维尔",
+      "occupation": "北墙麦圃少年帮工",
+      "personality": "乐观、好奇，喜欢追问。",
+      "relationships": "父亲奥伦、母亲阿尔玛带着他在北墙麦圃干活。"
+    },
+    "cedric_rowan": {
+      "name": "塞德里克·罗恩",
+      "occupation": "灰石农圃主事",
+      "personality": "务实、讲信用，习惯统筹大局。",
+      "relationships": "妻子埃尔斯佩思、儿子塔文、女儿莉莎都在灰石农圃帮忙；长工博林·霍尔特长期跟着自己。"
+    },
+    "elspeth_rowan": {
+      "name": "埃尔斯佩思·罗恩",
+      "occupation": "灰石农圃账目管事",
+      "personality": "精明、可靠，记忆力好。",
+      "relationships": "丈夫塞德里克、儿子塔文、女儿莉莎都在灰石农圃；与长工博林·霍尔特日常打交道，谁欠粮、谁帮过谁她最清楚。"
+    },
+    "tavin_rowan": {
+      "name": "塔文·罗恩",
+      "occupation": "灰石农圃主劳力",
+      "personality": "直率、好胜，不甘心安分。",
+      "relationships": "父亲塞德里克、母亲埃尔斯佩思、妹妹莉莎是家人；偶尔跟训练场的士兵套近乎。"
+    },
+    "lysa_rowan": {
+      "name": "莉莎·罗恩",
+      "occupation": "灰石农圃家庭帮工",
+      "personality": "认真、敏感，容易察觉细节。",
+      "relationships": "父亲塞德里克、母亲埃尔斯佩思、哥哥塔文是家人；和长工博林·霍尔特关系熟络。"
+    },
+    "bram_holt": {
+      "name": "布拉姆·霍尔特",
+      "occupation": "灰石农圃长工",
+      "personality": "慢热、勤勉，话不多。",
+      "relationships": "在罗恩家做长工，跟塞德里克、埃尔斯佩思一家以及莉莎熟络；与塔文相处一般。"
+    },
+    "aldric_voss": {
+      "name": "阿德里克·沃斯",
+      "occupation": "圣烛教堂司祭",
+      "personality": "沉稳、克制，待人有距离感。",
+      "relationships": "搭档执事米蕾尔·哈特一起打理圣烛教堂；处理镇民求助时常与各家家长打交道。"
+    },
+    "mirelle_hart": {
+      "name": "米蕾尔·哈特",
+      "occupation": "圣烛教堂看堂执事",
+      "personality": "利落、耐心，善于记人记事。",
+      "relationships": "辅佐司祭阿德里克·沃斯料理圣烛教堂；熟络往来教堂的镇民。"
+    },
+    "greta_moss": {
+      "name": "格蕾塔·莫斯",
+      "occupation": "圣钟教堂草药医者",
+      "personality": "固执、节俭，重视储备。",
+      "relationships": "孙女佩拉·莫斯跟着自己学药；与帮工博林·阿什在圣钟草药园合作。"
+    },
+    "borin_ash": {
+      "name": "博林·阿什",
+      "occupation": "圣钟教堂田务帮工",
+      "personality": "沉默、可靠，做事一件件来。",
+      "relationships": "听格蕾塔·莫斯安排干活；常和佩拉一起照看草药地。"
+    },
+    "pella_moss": {
+      "name": "佩拉·莫斯",
+      "occupation": "圣钟教堂见习照护人",
+      "personality": "热心、机灵，记性好。",
+      "relationships": "祖母格蕾塔·莫斯是师父；和帮工博林·阿什一起在圣钟草药园做事。"
+    },
+    "jonas_millward": {
+      "name": "乔纳斯·米尔沃德",
+      "occupation": "磨坊主",
+      "personality": "谨慎、慢热，讲究粮账和火候前的干湿。",
+      "relationships": "经营镇里的磨坊；常从北墙麦圃、灰石农圃收小麦，再把面粉卖给艾达·黑尔的面包店。"
+    },
+    "edda_hale": {
+      "name": "艾达·黑尔",
+      "occupation": "面包店老板娘",
+      "personality": "麻利、嘴快，心软但不爱让人看出来。",
+      "relationships": "经营面包店；从乔纳斯·米尔沃德那里买面粉。"
+    },
+    "harlan_dunn": {
+      "name": "哈兰·邓恩",
+      "occupation": "银矿老矿工",
+      "personality": "慢条斯理、稳当，老坑口的脾气他比谁都摸得熟；话不多，不爱争。",
+      "relationships": "在领主银矿下井多年；和年轻的威尔夫·德雷克在同一口井里搭手；与金矿那边的托马斯·派克算工友。"
+    },
+    "tomas_pike": {
+      "name": "托马斯·派克",
+      "occupation": "金矿矿工",
+      "personality": "话少、踏实，肯吃苦。",
+      "relationships": "在领主金矿独自下井；与银矿那边的哈兰·邓恩、威尔夫·德雷克都靠领主国库吃饭。"
+    },
+    "wilf_drake": {
+      "name": "威尔夫·德雷克",
+      "occupation": "银矿矿工",
+      "personality": "细致、不急躁，喜欢慢慢攒钱。",
+      "relationships": "在领主银矿下井；和老前辈哈兰·邓恩在银矿一个坑口；与金矿那边的托马斯·派克偶尔串。"
+    },
+    "merrin_cairn": {
+      "name": "梅林·凯恩",
+      "occupation": "铁矿把头",
+      "personality": "寡言、硬气，认准矿脉和账数。",
+      "relationships": "负责铁矿出料；和铁匠欧文·巴克利按矿石批次打交道，也常催锻造学徒蒂尔达别把好矿烧废。"
+    },
+    "garr_hollow": {
+      "name": "加尔·霍洛",
+      "occupation": "霍洛锻造场主匠",
+      "personality": "寡言、记仇、活做到位绝不返工。被上城排挤后练就一身硬脾气。",
+      "relationships": "和艾达·凡斯外乡来合伙开霍洛锻造场 (forge_yard)，自己主打铁，铺角的炭窑也自家烧；和上城巴克利铁匠铺（欧文·巴克利）竞争客户。"
+    },
+    "edda_vance": {
+      "name": "艾达·凡斯",
+      "occupation": "霍洛锻造场掌柜",
+      "personality": "嘴利、算账抠到一文、信用一文不少。被叫外乡两个字她会顶回去三句。",
+      "relationships": "和加尔·霍洛合伙开霍洛锻造场 (forge_yard)，她管账、烧炭、谈价；客户拿巴克利铺比价时她绝不让步。"
+    },
+    "silas_coppice": {
+      "name": "赛拉斯·科皮斯",
+      "occupation": "伐木场木料工",
+      "personality": "爽快、手稳，喜欢把木料码得整整齐齐。",
+      "relationships": "给两家铁匠铺供烧炭用的原木和粗削木杆；常向科拉·里德赊绳捆木。"
+    },
+    "cora_reed": {
+      "name": "科拉·里德",
+      "occupation": "杂货铺掌柜",
+      "personality": "会算账、嘴利，最怕别人把小东西当不要钱。",
+      "relationships": "经营杂货店里的亚麻种子、亚麻束、绳索和日用小货；店外有晾晒架，铁匠铺、伐木场和农户都常来找她补绳、留种或处理亚麻束。"
+    },
+    "owen_barclay": {
+      "name": "欧文·巴克利",
+      "occupation": "巴克利铁匠铺主匠",
+      "personality": "稳重、挑剔，重视工具能不能长期扛活。",
+      "relationships": "上城巴克利铁匠铺的户主；让蒂尔达·斯帕克斯管炉火兼烧炭，向梅林·凯恩拿铁矿石，向赛拉斯和科拉补木杆与绳；和下城霍洛锻造场是竞争对手。"
+    },
+    "tilda_sparks": {
+      "name": "蒂尔达·斯帕克斯",
+      "occupation": "巴克利铁匠铺学徒",
+      "personality": "急性子、手脚快，想证明自己能独当一面。",
+      "relationships": "跟着欧文·巴克利学打铁，在巴克利铁匠铺烧炉冶铁，铺角的炭窑也常由她照看；和梅林、赛拉斯、科拉来回催材料。"
+    },
+    "magda_kerr": {
+      "name": "玛格达·凯尔",
+      "occupation": "王室财政大臣",
+      "personality": "麻利、健谈，会算细账；对每一文都心里有数，账上一文不让王室含糊。",
+      "relationships": "掌王室钥匙、开国库；周五整天守国库等周薪角色来领，矿工日结只在傍晚放工那一阵回国库接他们一次（一天只来一次），其余时间她忙账册、巡铸币、对外谈货——并非整天守在国库；铁镐用坏她从国库补一把；每周一带老队长基尔·马奇和副官梅雷克·盖特走收租巡回；想买国库里的金银矿石也找她谈。"
+    },
+    "mara_hale": {
+      "name": "玛拉·黑尔",
+      "occupation": "面包店帮工",
+      "personality": "勤快、谨慎，想把炉前活学稳。",
+      "relationships": "跟着艾达·黑尔在面包店揉面、打水、看炉；镇民多数买面粉回家做饭，店里主要卖给值守和旅人。"
+    },
+    "rudi_tate": {
+      "name": "鲁迪·泰特",
+      "occupation": "磨坊帮工",
+      "personality": "动作快，仍在学乔纳斯的谨慎。",
+      "relationships": "外乡雇工，跟着户主乔纳斯·米尔沃德在磨坊做第二个工位，负责磨粉和补货架。"
+    },
+    "selma_millward": {
+      "name": "塞尔玛·米尔沃德",
+      "occupation": "米尔沃德磨坊掌柜",
+      "personality": "自尊、细致，账面和排单不让丈夫插嘴。",
+      "relationships": "丈夫乔纳斯·米尔沃德是磨坊户主，磨坊+两块田挂在他名下；她管账和排单，鲁迪打下手，面粉补给面包店艾达。"
+    },
+    "keir_march": {
+      "name": "凯尔·马奇",
+      "occupation": "守卫队长",
+      "personality": "沉稳、讲规矩，遇事先控场。",
+      "relationships": "带着索娜、加雷特和艾娃守卫镇子，每周一陪财政大臣玛格达走收租巡回，每周五去国库找玛格达领守卫薪水。"
+    },
+    "sona_ward": {
+      "name": "索娜·沃德",
+      "occupation": "镇守卫",
+      "personality": "安静、观察力强，记人脸很准。",
+      "relationships": "在守卫岗和集市附近巡查，和凯尔·马奇搭班。"
+    },
+    "garret_pell": {
+      "name": "加雷特·佩尔",
+      "occupation": "年轻守卫",
+      "personality": "热血、想证明自己，仍在学分寸。",
+      "relationships": "跟着凯尔和索娜在训练场与守卫岗轮班。"
+    },
+    "iva_stone": {
+      "name": "艾娃·斯通",
+      "occupation": "夜巡守卫",
+      "personality": "冷静、少废话，熟悉酒馆附近的麻烦。",
+      "relationships": "负责夜巡和酒馆、客栈一带秩序，是守卫队里的老手。"
+    },
+    "brenna_vail": {
+      "name": "布伦娜·维尔",
+      "occupation": "训练场守卫",
+      "personality": "认真、守规矩，相信重复训练能救命。",
+      "relationships": "在训练场和凯尔、加雷特、罗兰一起维持四人训练编制。"
+    },
+    "rolan_teague": {
+      "name": "罗兰·提格",
+      "occupation": "训练场守卫",
+      "personality": "沉稳、老练，重视脚步和耐力。",
+      "relationships": "和布伦娜一起管训练场器械和新人训练。"
+    },
+    "merek_gate": {
+      "name": "梅雷克·盖特",
+      "occupation": "大门守卫",
+      "personality": "谨慎、慢条斯理，越急的人越要查清。",
+      "relationships": "常驻城门，和巡逻守卫互通商队与陌生人的消息。"
+    },
+    "oswin_locke": {
+      "name": "奥斯温·洛克",
+      "occupation": "监狱看守",
+      "personality": "冷静、少坐下，牢门和钥匙从不离心。",
+      "relationships": "负责监狱看管和交接记录，夜里常和艾娃·斯通互相照应。"
+    },
+    "osric_bell": {
+      "name": "奥斯里克·贝尔",
+      "occupation": "牲畜照料人",
+      "personality": "耐心、会算饲料，重视牲畜状态。",
+      "relationships": "负责畜牧和肉源节奏，和梅芙·库普一起给肉铺和酒馆供货。"
+    },
+    "maeve_coop": {
+      "name": "梅芙·库普",
+      "occupation": "鸡舍与鸡蛋管事",
+      "personality": "细致、会数小账，不浪费饲料。",
+      "relationships": "负责鸡舍和鸡蛋供应，常和酒馆核对蛋饼用量。"
+    },
+    "garron_potter": {
+      "name": "加伦·波特",
+      "occupation": "酒馆掌火人",
+      "personality": "嘴硬、重火候，不愿让人饿着。",
+      "relationships": "负责酒馆热食，和奈尔·萨沃一起处理熟肉、蛋饼、菜汤和来客吃饭。"
+    },
+    "nell_savor": {
+      "name": "奈尔·萨沃",
+      "occupation": "酒馆调味帮工",
+      "personality": "会调味、会分量，也会记盐和蛋的小账。",
+      "relationships": "在酒馆帮忙，和加伦·波特搭手，常向盐场和鸡舍核对供货，也会听来客消息。"
+    },
+    "iona_brine": {
+      "name": "艾奥娜·布莱恩",
+      "occupation": "沿海盐场盐工",
+      "personality": "耐心、看天吃饭，最懂潮气和日头。",
+      "relationships": "负责把海水熬晒成盐，供应酒馆、肉铺和保藏食品链。"
+    },
+    "vera_clay": {
+      "name": "维拉·克莱",
+      "occupation": "客栈掌柜",
+      "personality": "稳重、会看人，床位、马车和门闩都安排得清楚。",
+      "relationships": "负责客栈住宿和商队接待，和托宾·里夫一起处理进口货交接。"
+    },
+    "tobin_reeve": {
+      "name": "托宾·里夫",
+      "occupation": "商队账房",
+      "personality": "爱记账、会听消息，凡事先看货单和押金。",
+      "relationships": "在客栈登记进口货、住宿账和商队消息，给未来进口链留入口。"
+    },
+    "hugh_marrow": {
+      "name": "休·马罗",
+      "occupation": "肉铺屠夫",
+      "personality": "沉稳、手快，最重视鲜肉周转和坏肉风险。",
+      "relationships": "在肉铺屠宰并售卖生肉，从奥斯里克那里接牲畜，主要供应酒馆和住户。"
+    },
+    "hilda_fenwick": {
+      "name": "希尔达·芬威克",
+      "occupation": "裁缝",
+      "personality": "稳、细、节省布头，宁愿慢一点也不做会裂开的袖子。",
+      "relationships": "经营裁缝铺，负责衣服、被褥和缝补。"
+    },
+    "perrin_weft": {
+      "name": "佩林·韦夫特",
+      "occupation": "织补帮工",
+      "personality": "会分麻束粗细，记得谁家袖口和袜跟最容易磨破。",
+      "relationships": "在裁缝铺处理亚麻原料、线和补丁，向杂货店接亚麻供给。"
+    },
+    "milo_fallow": {
+      "name": "米洛·法洛",
+      "occupation": "牧场帮工",
+      "personality": "慢稳、会看牲口，宁愿多花时间也不惊着牲畜。",
+      "relationships": "在牧场帮奥斯里克喂料、清圈、赶牲口和搬饲料，不直接卖肉。"
+    },
+    "tessa_coop": {
+      "name": "泰莎·库普",
+      "occupation": "鸡舍帮工",
+      "personality": "细心、会数蛋，最怕病鸡传开。",
+      "relationships": "帮梅芙·库普收蛋、补饲料、照看幼畜，和酒馆核对蛋类供应。"
+    }
+  }
+}

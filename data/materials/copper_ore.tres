@@ -1,0 +1,27 @@
+[gd_resource type="Resource" script_class="Substance" format=3 uid="uid://drcq63lmkg42m"]
+
+[ext_resource type="Script" path="res://src/sim/materials/substance.gd" id="1_mat"]
+
+[resource]
+script = ExtResource("1_mat")
+id = "copper_ore"
+category = "ore"
+hardness = 40
+density = 4.0
+melting_point = 1085.0
+ignite_temperature = -1.0
+flammable = false
+thermal_capacity = 500.0
+thermal_conductivity = 0.45
+brittleness = 0.55
+electrical_conductivity = 0.0
+default_state = 0
+hazards = PackedStringArray()
+tint = Color(0.55, 0.30, 0.18, 1)
+visual_fallback = ""
+transforms = {
+"fire": "copper",
+}
+alloys = {}
+tags = PackedStringArray("ore", "non_ferrous")
+extra = {}

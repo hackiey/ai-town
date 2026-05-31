@@ -1,0 +1,32 @@
+[gd_scene load_steps=6 format=3 uid="uid://bgdi8groundtm"]
+
+[ext_resource type="Script" path="res://src/world/ground_item/ground_item.gd" id="1_script"]
+[ext_resource type="ArrayMesh" uid="uid://cnwgphrlvw0gm" path="res://assets/PolygonFantasyKingdom/Models/extracted/SM_Prop_Sack_01.res" id="2_sack_mesh"]
+[ext_resource type="Material" uid="uid://dp6l4j2v4w6o1" path="res://Assets/PolygonFantasyKingdom/Materials/PolygonFantasyKingdom_Mat_01_A_mat.tres" id="3_sack_mat"]
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_pick"]
+size = Vector3(0.4, 0.4, 0.4)
+
+[node name="GroundItem" type="StaticBody3D"]
+collision_layer = 4
+collision_mask = 0
+script = ExtResource("1_script")
+
+[node name="Mesh" type="MeshInstance3D" parent="."]
+mesh = ExtResource("2_sack_mesh")
+surface_material_override/0 = ExtResource("3_sack_mat")
+
+[node name="Collision" type="CollisionShape3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.2, 0)
+shape = SubResource("BoxShape3D_pick")
+
+[node name="QuantityLabel" type="Label3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.6, 0)
+visible = false
+billboard = 1
+no_depth_test = true
+pixel_size = 0.008
+text = "1"
+font_size = 40
+outline_size = 8
+modulate = Color(1, 1, 0.9, 1)

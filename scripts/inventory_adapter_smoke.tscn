@@ -1,0 +1,6 @@
+[gd_scene format=3 uid="uid://b7invadap0001"]
+
+[ext_resource type="Script" path="res://scripts/inventory-adapter-smoke.gd" id="1_inv_adap_smoke"]
+
+[node name="InventoryAdapterSmoke" type="Node"]
+script = ExtResource("1_inv_adap_smoke")

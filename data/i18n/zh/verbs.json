@@ -1,0 +1,63 @@
+{
+  "verb": {
+    "bake": {
+      "name": "烘烤"
+    },
+    "carve": {
+      "name": "雕刻",
+      "sub_option": {
+        "plank": "木板",
+        "shaft": "木杆"
+      }
+    },
+    "combine": {
+      "name": "组装",
+      "sub_option": {
+        "axe": "斧头",
+        "knife": "刀",
+        "pick": "镐",
+        "rope": "绳",
+        "shovel": "铲",
+        "sickle": "镰刀"
+      }
+    },
+    "fire": {
+      "name": "烧制"
+    },
+    "grind": {
+      "name": "研磨"
+    },
+    "hammer": {
+      "name": "锤击"
+    },
+    "mix": {
+      "name": "混合"
+    },
+    "shape": {
+      "name": "锻造",
+      "sub_option": {
+        "axe_head": "斧头",
+        "blade": "扁刃",
+        "pick_head": "镐头"
+      }
+    },
+    "dig": {
+      "name": "采矿"
+    },
+    "dry": {
+      "name": "晾晒",
+      "sub_option": {
+        "save_seed": "留种"
+      }
+    },
+    "mint": {
+      "name": "铸币"
+    },
+    "boil": {
+      "name": "熬煮"
+    },
+    "chop": {
+      "name": "砍木"
+    }
+  }
+}

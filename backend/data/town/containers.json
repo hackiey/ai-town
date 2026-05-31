@@ -1,0 +1,54 @@
+{
+  "treasury_vault": {
+    "starting_inventory": [
+      {
+        "item_id": "iron_pick",
+        "quantity": 24
+      },
+      {
+        "item_id": "iron_shovel",
+        "quantity": 16
+      },
+      {
+        "item_id": "wood_bucket",
+        "quantity": 16
+      },
+      {
+        "item_id": "silver_coin",
+        "quantity": 2000
+      },
+      {
+        "item_id": "gold_coin",
+        "quantity": 100
+      },
+      {
+        "item_id": "silver_ore",
+        "quantity": 120
+      },
+      {
+        "item_id": "gold_ore",
+        "quantity": 30
+      },
+      {
+        "item_id": "charcoal",
+        "quantity": 120
+      },
+      {
+        "item_id": "wood_ash",
+        "quantity": 200
+      },
+      {
+        "item_id": "bread",
+        "quantity": 100
+      },
+      {
+        "item_id": "wheat",
+        "quantity": 200
+      },
+      {
+        "item_id": "tomato_seed",
+        "quantity": 200
+      }
+    ]
+  }
+}

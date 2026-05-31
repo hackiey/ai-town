@@ -1,0 +1,60 @@
+{
+  "workstation": {
+    "anvil": {
+      "name": "铁砧",
+      "prompt": "按 E 打造"
+    },
+    "forge": {
+      "name": "熔炉",
+      "prompt": "按 E 锻造"
+    },
+    "drying_rack": {
+      "name": "晾晒架",
+      "prompt": "按 E 查看"
+    },
+    "mill": {
+      "name": "磨盘",
+      "prompt": "按 E 研磨"
+    },
+    "stove": {
+      "name": "灶台",
+      "prompt": "按 E 烹饪"
+    },
+    "well": {
+      "name": "水井",
+      "prompt": "按 E 打水"
+    },
+    "workbench": {
+      "name": "工作台",
+      "prompt": "按 E 组装"
+    },
+    "gold_mine_workstation": {
+      "name": "金矿矿井",
+      "prompt": "按 E 采矿（需带镐）"
+    },
+    "silver_mine_workstation": {
+      "name": "银矿矿井",
+      "prompt": "按 E 采矿（需带镐）"
+    },
+    "iron_mine_workstation": {
+      "name": "铁矿矿井",
+      "prompt": "按 E 采矿（需带镐）"
+    },
+    "saltworks_pan": {
+      "name": "盐锅",
+      "prompt": "按 E 熬盐"
+    },
+    "mint": {
+      "name": "铸币炉",
+      "prompt": "按 E 铸币"
+    },
+    "treasury_vault": {
+      "name": "领主国库",
+      "prompt": "按 E 查看"
+    },
+    "lumberyard_workstation": {
+      "name": "伐木台",
+      "prompt": "按 E 砍木（需带斧）"
+    }
+  }
+}

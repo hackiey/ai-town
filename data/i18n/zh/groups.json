@@ -1,0 +1,73 @@
+{
+  "group": {
+    "townsfolk": {
+      "name": "镇民"
+    },
+    "north_wall_wheat_plot": {
+      "name": "北墙麦圃"
+    },
+    "greystone_farmstead": {
+      "name": "灰石农圃"
+    },
+    "saint_candle_chapel": {
+      "name": "圣烛教堂神职"
+    },
+    "saint_bell_chapel": {
+      "name": "圣钟草药园"
+    },
+    "blacksmith_shop": {
+      "name": "巴克利铁匠铺"
+    },
+    "forge_yard": {
+      "name": "霍洛锻造场"
+    },
+    "iron_mine": {
+      "name": "铁矿"
+    },
+    "silver_mine": {
+      "name": "银矿"
+    },
+    "gold_mine": {
+      "name": "金矿"
+    },
+    "lumberyard": {
+      "name": "伐木场"
+    },
+    "general_store": {
+      "name": "杂货店"
+    },
+    "town_guard": {
+      "name": "镇守卫"
+    },
+    "hale_bakery": {
+      "name": "黑尔面包店"
+    },
+    "millward_mill": {
+      "name": "米尔沃德磨坊"
+    },
+    "livestock": {
+      "name": "畜牧与鸡舍"
+    },
+    "butcher": {
+      "name": "肉铺"
+    },
+    "tavern": {
+      "name": "酒馆"
+    },
+    "inn": {
+      "name": "客栈商队"
+    },
+    "tailor": {
+      "name": "裁缝铺"
+    },
+    "saltworks": {
+      "name": "沿海盐场"
+    },
+    "royal_house": {
+      "name": "王室"
+    },
+    "royal_treasurer": {
+      "name": "王室财政"
+    }
+  }
+}

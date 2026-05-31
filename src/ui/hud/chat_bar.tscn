@@ -1,0 +1,63 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://src/ui/hud/chat_bar.gd" id="1_chatbar"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_log_bg"]
+bg_color = Color(0, 0, 0, 0.45)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_right = 4
+corner_radius_bottom_left = 4
+content_margin_left = 8.0
+content_margin_top = 6.0
+content_margin_right = 8.0
+content_margin_bottom = 6.0
+
+[node name="ChatBar" type="CanvasLayer"]
+layer = 5
+script = ExtResource("1_chatbar")
+
+[node name="Root" type="VBoxContainer" parent="."]
+anchor_left = 0.0
+anchor_top = 1.0
+anchor_right = 0.0
+anchor_bottom = 1.0
+offset_left = 16.0
+offset_top = -200.0
+offset_right = 496.0
+offset_bottom = -16.0
+grow_horizontal = 1
+grow_vertical = 0
+theme_override_constants/separation = 6
+mouse_filter = 2
+
+[node name="Log" type="RichTextLabel" parent="Root"]
+custom_minimum_size = Vector2(0, 120)
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+mouse_filter = 2
+bbcode_enabled = true
+scroll_following = false
+fit_content = false
+selection_enabled = true
+theme_override_styles/normal = SubResource("StyleBoxFlat_log_bg")
+
+[node name="InputRow" type="HBoxContainer" parent="Root"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 8
+
+[node name="Input" type="LineEdit" parent="Root/InputRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+placeholder_text = "ui.chat.placeholder"
+
+[node name="Expand" type="Button" parent="Root/InputRow"]
+layout_mode = 2
+tooltip_text = "ui.chat.expand_tooltip"
+text = "ui.chat.expand"
+
+[node name="Send" type="Button" parent="Root/InputRow"]
+layout_mode = 2
+text = "ui.chat.send"

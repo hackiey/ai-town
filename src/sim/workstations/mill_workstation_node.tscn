@@ -1,0 +1,60 @@
+[gd_scene format=3 uid="uid://r4y2kn70ymmi"]
+
+[ext_resource type="PackedScene" uid="uid://b7r4hwk5xpvld" path="res://src/sim/workstations/workstation_node.tscn" id="1_base"]
+[ext_resource type="PackedScene" uid="uid://5el8htnedjr3" path="res://third-party/polygon-fantasy-kingdom/Assets/PolygonFantasyKingdom/Prefabs/Props/Furniture/SM_Prop_Table_Stone_02.tscn" id="2_table"]
+[ext_resource type="ArrayMesh" uid="uid://byiv8xiag8ar1" path="res://third-party/polygon-fantasy-kingdom/Assets/PolygonFantasyKingdom/Models/extracted/SM_Prop_Grinding_Wheel_01_Stone.res" id="3_stone"]
+[ext_resource type="Material" uid="uid://dp6l4j2v4w6o1" path="res://third-party/polygon-fantasy-kingdom/Assets/PolygonFantasyKingdom/Materials/PolygonFantasyKingdom_Mat_01_A_mat.tres" id="4_stone_mat"]
+[ext_resource type="Script" uid="uid://c87hcimotyk3h" path="res://src/sim/workstations/approach_marker.gd" id="approach_script"]
+
+[sub_resource type="StandardMaterial3D" id="Material_wood"]
+albedo_color = Color(0.39, 0.25, 0.14, 1)
+roughness = 0.85
+
+[sub_resource type="CylinderMesh" id="CylinderMesh_center_peg"]
+material = SubResource("Material_wood")
+top_radius = 0.045
+bottom_radius = 0.055
+height = 0.32
+
+[sub_resource type="BoxMesh" id="BoxMesh_turning_handle"]
+material = SubResource("Material_wood")
+size = Vector3(0.08, 0.08, 0.58)
+
+[node name="MillWorkstationNode" unique_id=1111079741 instance=ExtResource("1_base")]
+workstation_id = "mill"
+
+[node name="Mesh" parent="." index="0"]
+visible = false
+
+[node name="Title" parent="." index="2"]
+text = "磨坊"
+
+[node name="Prompt" parent="." index="3"]
+text = "按 E 研磨"
+
+[node name="SM_Prop_Table_Stone_02" parent="." index="4" unique_id=221111473 instance=ExtResource("2_table")]
+transform = Transform3D(1.12, 0, 0, 0, 1, 0, 0, 0, 1.12, 0, 0, 0)
+
+[node name="LowerMillstone" type="MeshInstance3D" parent="." index="5" unique_id=184500042]
+transform = Transform3D(1.32, 0, 0, 0, 0, 1.32, 0, -1.32, 0, 0, 0.91, 0)
+gi_mode = 2
+mesh = ExtResource("3_stone")
+surface_material_override/0 = ExtResource("4_stone_mat")
+
+[node name="UpperMillstone" type="MeshInstance3D" parent="." index="6" unique_id=1159005243]
+transform = Transform3D(2, 0, 0, 0, -8.742278e-08, 2, 0, -2, -8.742278e-08, 0, 1.0770216, 1.3019194e-10)
+gi_mode = 2
+mesh = ExtResource("3_stone")
+surface_material_override/0 = ExtResource("4_stone_mat")
+
+[node name="CenterPeg" type="MeshInstance3D" parent="." index="7" unique_id=2068871927]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.15, 0)
+mesh = SubResource("CylinderMesh_center_peg")
+
+[node name="TurningHandle" type="MeshInstance3D" parent="." index="8" unique_id=396846157]
+transform = Transform3D(0.8660254, 0, -0.5, 0, 1, 0, 0.5, 0, 0.8660254, 0.26, 1.13, 0.21)
+mesh = SubResource("BoxMesh_turning_handle")
+
+[node name="Approach" type="Marker3D" parent="." index="9" unique_id=1309403215]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.4080669, 0, 0.36683536)
+script = ExtResource("approach_script")

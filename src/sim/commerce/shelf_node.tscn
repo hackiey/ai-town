@@ -1,0 +1,33 @@
+[gd_scene load_steps=4 format=3 uid="uid://dxtak3npqr4tj"]
+
+[ext_resource type="Script" uid="uid://bjmhudqo5tste" path="res://src/sim/commerce/shelf_node.gd" id="1_script"]
+[ext_resource type="Script" uid="uid://c87hcimotyk3h" path="res://src/sim/workstations/approach_marker.gd" id="2_approach"]
+
+[sub_resource type="CylinderShape3D" id="CylinderShape_proximity"]
+radius = 3.0
+height = 2.0
+
+[node name="ShelfNode" type="Node3D"]
+script = ExtResource("1_script")
+
+[node name="Title" type="Label3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.2, 0)
+billboard = 1
+no_depth_test = true
+pixel_size = 0.012
+text = "货架"
+font_size = 40
+outline_size = 8
+modulate = Color(1, 1, 0.85, 1)
+
+[node name="Approach" type="Marker3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 1.2)
+script = ExtResource("2_approach")
+
+[node name="Area3D" type="Area3D" parent="."]
+collision_layer = 0
+collision_mask = 2
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Area3D"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 0)
+shape = SubResource("CylinderShape_proximity")

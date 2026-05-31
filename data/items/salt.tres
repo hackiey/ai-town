@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="Item" format=3]
+
+[ext_resource type="Script" path="res://src/sim/items/item.gd" id="1_item"]
+
+[resource]
+script = ExtResource("1_item")
+id = "salt"
+kind = "material"
+stackable = true
+max_stack = 99
+shape_type = "powder"
+materials = {
+"body": "salt",
+}
+tags = PackedStringArray("seasoning", "salty")
+tint = Color(0.95, 0.95, 0.95, 1)

@@ -1,0 +1,8 @@
+[gd_resource type="Resource" script_class="Verb" format=3 uid="uid://bvrbdig000001"]
+
+[ext_resource type="Script" path="res://src/sim/verbs/verb.gd" id="1_verb"]
+
+[resource]
+script = ExtResource("1_verb")
+id = "dig"
+sub_options = {}

@@ -1,0 +1,244 @@
+{
+  "reaction": {
+    "anvil_axe_head": {
+      "failure": {
+        "f0": {
+          "name": "扁了",
+          "message": "形状没出来，铁块没废"
+        },
+        "f1": {
+          "name": "碎了",
+          "message": "铁块裂开了"
+        }
+      }
+    },
+    "anvil_blade": {
+      "failure": {
+        "f0": {
+          "name": "扁了",
+          "message": "形状没出来，铁块没废"
+        },
+        "f1": {
+          "name": "碎了",
+          "message": "铁块裂开了"
+        }
+      }
+    },
+    "anvil_pick_head": {
+      "failure": {
+        "f0": {
+          "name": "扁了",
+          "message": "形状没出来，铁块没废"
+        },
+        "f1": {
+          "name": "碎了",
+          "message": "铁块裂开了"
+        }
+      }
+    },
+    "bake_bread": {
+      "failure": {
+        "f0": {
+          "name": "烤焦了",
+          "message": "面团烤糊了"
+        },
+        "f1": {
+          "name": "夹生",
+          "message": "里面还是生的，面团可以重烤"
+        }
+      }
+    },
+    "bake_meat": {
+      "failure": {
+        "f0": {
+          "name": "烤焦",
+          "message": "肉烤过头了"
+        },
+        "f1": {
+          "name": "夹生",
+          "message": "中间还是生的，可以重烤"
+        }
+      }
+    },
+    "bake_meat_salted": {
+      "failure": {
+        "f0": {
+          "name": "腌过头",
+          "message": "盐放多了，肉发苦"
+        }
+      }
+    },
+    "bake_omelet": {
+      "failure": {
+        "f0": {
+          "name": "搅烂了",
+          "message": "蛋液散了"
+        }
+      }
+    },
+    "bake_omelet_salted": {
+      "failure": {
+        "f0": {
+          "name": "腌过头",
+          "message": "盐放多了，蛋发苦"
+        }
+      }
+    },
+    "boil_salt": {
+      "failure": {
+        "f0": {
+          "name": "潮盐坏锅",
+          "message": "火候和潮气没控住，这锅盐结脏了"
+        }
+      }
+    },
+    "carve_plank": {
+      "failure": {
+        "f0": {
+          "name": "裂了",
+          "message": "木板裂了"
+        }
+      }
+    },
+    "carve_shaft": {
+      "failure": {
+        "f0": {
+          "name": "削得不直",
+          "message": "木材歪了，重削吧"
+        }
+      }
+    },
+    "combine_axe": {
+      "failure": {
+        "f0": {
+          "name": "绑松了",
+          "message": "绳子断了，斧头和木杆没事"
+        }
+      }
+    },
+    "combine_knife": {
+      "failure": {
+        "f0": {
+          "name": "握把崩了",
+          "message": "木柄崩了，刃还在"
+        }
+      }
+    },
+    "combine_pick": {
+      "failure": {
+        "f0": {
+          "name": "绑松了",
+          "message": "绳子断了，镐头和木杆没事"
+        }
+      }
+    },
+    "combine_rope": {
+      "failure": {
+        "f0": {
+          "name": "搓散了",
+          "message": "麻束散开了"
+        }
+      }
+    },
+    "combine_shovel": {
+      "failure": {
+        "f0": {
+          "name": "绑松了",
+          "message": "绳子断了，刃和木杆没事"
+        }
+      }
+    },
+    "combine_sickle": {
+      "failure": {
+        "f0": {
+          "name": "弯不到位",
+          "message": "镰刀弧度没出来，材料没废"
+        }
+      }
+    },
+    "forge_alloy": {
+      "failure": {
+        "f0": {
+          "name": "比例不对",
+          "message": "合金没出来，锭子还在"
+        }
+      }
+    },
+    "forge_smelt": {
+      "failure": {
+        "f0": {
+          "name": "火候不足",
+          "message": "炉温不够，矿没熔开"
+        },
+        "f1": {
+          "name": "渣多",
+          "message": "全是渣，没出铁"
+        }
+      }
+    },
+    "mill_grind": {
+      "failure": {
+        "f0": {
+          "name": "磨偏了",
+          "message": "磨石卡了，谷物没废"
+        }
+      }
+    },
+    "mix_dough": {
+      "failure": {
+        "f0": {
+          "name": "太稀了",
+          "message": "水加多了，面粉还在"
+        }
+      }
+    },
+    "mix_jam": {
+      "failure": {
+        "f0": {
+          "name": "结块",
+          "message": "果酱结块了"
+        }
+      }
+    },
+    "mix_stew": {
+      "failure": {
+        "f0": {
+          "name": "煮糊",
+          "message": "汤底糊了"
+        }
+      }
+    },
+    "mix_stew_salted": {
+      "failure": {
+        "f0": {
+          "name": "煮糊",
+          "message": "汤底糊了"
+        }
+      }
+    },
+    "mint_gold_coin": {
+      "failure": {
+        "f0": {
+          "name": "成色不对",
+          "message": "炉温没控好，币上有杂色，按规矩不能出门，矿石作废"
+        }
+      }
+    },
+    "mint_silver_coin": {
+      "failure": {
+        "f0": {
+          "name": "成色不对",
+          "message": "炉温没控好，币上有杂色，按规矩不能出门，矿石作废"
+        }
+      }
+    },
+    "chop_wood": {
+      "failure": {
+        "f0": {
+          "name": "没砍动",
+          "message": "树皮太硬，斧头没吃进去"
+        }
+      }
+    }
+  }
+}

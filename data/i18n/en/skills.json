@@ -1,0 +1,15 @@
+{
+  "skill": {
+    "character_attributes_basics": {
+      "displayName": "Character Attribute Basics",
+      "description": "Common rules for HP, stamina, hunger, rest, and character resources. Every character knows this by default.",
+      "entries": [
+        "Character attribute basics: HP represents physical condition; a character dies when HP reaches 0.",
+        "Character attribute basics: stamina represents available effort; action stamina costs are fixed, and hunger does not make the same action cost extra stamina. Standard stamina recovery is 5 points per 10 minutes.",
+        "Character attribute basics: hunger falls non-linearly; it takes about 4 hours to fall from 100 to 50, at 50 the stamina cap is about 70, and lower hunger falls more slowly. Hunger at 0 continuously reduces HP.",
+        "Character attribute basics: rest falls while awake and recovers through sleep; low rest lowers the stamina cap.",
+        "Character attribute basics: characters do not have mana; magical energy lives in items such as wands, not in character attributes."
+      ]
+    }
+  }
+}

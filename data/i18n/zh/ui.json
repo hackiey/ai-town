@@ -1,0 +1,290 @@
+{
+  "ui": {
+    "common": {
+      "close_esc": "关闭 (ESC)"
+    },
+    "tooltip": {
+      "quality_format": "品质：%s（%d）",
+      "shape_format": "形状：%s",
+      "materials": "材质：",
+      "tags_format": "标签：%s",
+      "attributes": "属性：",
+      "effects_format": "功效：%s"
+    },
+    "craft": {
+      "failure_default": "失败了",
+      "fail_label": "熟练度不够"
+    },
+    "mine": {
+      "fail_label": "空铲",
+      "fail_message": "这一镐没挖到东西，挖出来的全是普通岩石",
+      "missing_pick_message": "背包里没有可用于采矿的铁镐"
+    },
+    "tool": {
+      "broken_format": "工具用坏了：%s"
+    },
+    "status": {
+      "meter_format": "%s %.0f / %.0f",
+      "condition_with_effect_format": "%s（%s）",
+      "condition": {
+        "hungry": "饥饿",
+        "sleeping": "睡眠",
+        "burning": "燃烧",
+        "dead": "死亡"
+      },
+      "condition_effect": {
+        "hungry": "降低体力上限和恢复速度",
+        "sleeping": "恢复精力",
+        "burning": "持续受伤",
+        "dead": "无法行动"
+      }
+    },
+    "npc_hover": {
+      "title_format": "%s 的状态"
+    },
+    "head_status": {
+      "idle": "空闲",
+      "moving": "在路上",
+      "busy": "忙着",
+      "working": "工作中",
+      "crafting": "制作中",
+      "hungry": "饿了",
+      "sleeping": "睡着了"
+    },
+    "chat": {
+      "placeholder": "对附近说话；以 /command 开头给自己下指令（如 /command 前往铁匠铺）",
+      "send": "发送",
+      "expand": "展开",
+      "collapse": "收起",
+      "expand_tooltip": "展开/收起对话窗口（展开后可滚轮翻阅历史）",
+      "system_prefix": "[系统]",
+      "directed_to": "对 %s 说话（Esc 取消）"
+    },
+    "npc_menu": {
+      "talk": "说话",
+      "trade": "提出交易"
+    },
+    "ai_takeover": {
+      "button_takeover": "AI 托管",
+      "button_release": "取消托管",
+      "dialog_title": "AI 托管设置",
+      "agent_type": "Agent 类型",
+      "action_model": "行动模型 (action)",
+      "thinking_model": "思考模型 (thinking)",
+      "confirm": "开始托管",
+      "cancel": "取消",
+      "no_models": "暂无可用模型，请确认后端已连接"
+    },
+    "trade_panel": {
+      "title_format": "与 %s 交易",
+      "section": {
+        "offer": "我给出",
+        "request": "我要求"
+      },
+      "hint": {
+        "click_slot_to_offer": "点选背包槽 → 选择数量加入",
+        "check_to_offer": "勾选要给出的物品，并设数量"
+      },
+      "field": {
+        "item_id": "物品 id",
+        "qty": "数量",
+        "search_item": "搜索中文名…"
+      },
+      "button": {
+        "add_request": "添加",
+        "remove": "移除",
+        "send": "发送",
+        "cancel": "取消"
+      },
+      "empty_offer": "（暂无提供）",
+      "empty_request": "（暂无要求）",
+      "line_format": "%s × %s",
+      "qty_prompt_format": "%s × ? （最多 %d）"
+    },
+    "inventory": {
+      "title": "背包 (B 关闭)",
+      "backpack_title": "背包栏",
+      "wallet_format": "钱包：%s",
+      "menu": {
+        "use": "使用",
+        "drop": "丢弃"
+      }
+    },
+    "character": {
+      "title": "角色 (C 关闭)",
+      "tab": {
+        "attributes": "属性",
+        "proficiency": "手艺"
+      },
+      "proficiency": {
+        "line_format": "%s：%s（%d）"
+      },
+      "section": {
+        "identity": "身份",
+        "vitals": "数值",
+        "physical": "物理",
+        "state": "状态",
+        "equipment": "装备"
+      },
+      "field": {
+        "name": "名字",
+        "id": "ID",
+        "age": "年龄",
+        "occupation": "职业",
+        "personality": "个性",
+        "faction": "阵营",
+        "material": "材质",
+        "mass": "质量",
+        "volume": "体积",
+        "moisture": "含水率",
+        "temperature": "体温",
+        "ignition": "点燃点",
+        "sleeping": "睡眠",
+        "burning": "燃烧",
+        "conditions": "附加状态",
+        "groups": "所属群组"
+      },
+      "slot": {
+        "right_hand": "右手",
+        "left_hand": "左手",
+        "body": "身体",
+        "head": "头部"
+      },
+      "value": {
+        "yes": "是",
+        "no": "否",
+        "not_flammable": "不可燃",
+        "none": "无",
+        "empty": "未装备"
+      }
+    },
+    "nav_test": {
+      "toggle": "📍 前往 ▼",
+      "toggle_open": "📍 前往 ▲"
+    },
+    "farm": {
+      "title": "农场",
+      "title_format": "农场 %s",
+      "hint": {
+        "press_e_to_plant": "按 E 进行种植"
+      },
+      "button": {
+        "select_all": "全选",
+        "invert_selection": "反选",
+        "clear_selection": "清空选择",
+        "clear_plans": "清空规划",
+        "start": "开始"
+      },
+      "label": {
+        "for_selected": "对选中："
+      },
+      "action": {
+        "pest": "🐛 除虫",
+        "harvest": "🌾 收获",
+        "uproot": "✂ 铲除",
+        "water_all": "💧 浇水整片"
+      },
+      "action_short": {
+        "plant": "种植",
+        "pest": "除虫",
+        "harvest": "收获",
+        "uproot": "铲除",
+        "water": "浇水"
+      },
+      "status": {
+        "unplanned": "（未规划）",
+        "must_select_slot": "（先勾选 slot）",
+        "no_applicable": "（没有可%s的 slot；跳过 %d 个）",
+        "planned_with_skipped": "已规划 %s × %d（跳过 %d 个不适用）",
+        "no_seed": "背包里没有这个可种植物了",
+        "seed_short": "%s 不够（已规划 %d / 背包 %d）",
+        "planned_count": "已规划 %d 个动作",
+        "nothing_planned": "（什么都没规划）"
+      },
+      "slot": {
+        "drop_plantable": "拖入作物",
+        "drop_plantable_tooltip": "把背包里的可种植物拖到这里 → 规划在本格种植；点一下清掉规划",
+        "empty_format": "[%d] 空地",
+        "occupied": "（已占用）",
+        "plan_plant_format": "→ 种 %s",
+        "plan_pest": "→ 除虫",
+        "plan_harvest": "→ 收获",
+        "plan_uproot": "→ 铲除"
+      }
+    },
+    "action_panel": {
+      "title": "工作站",
+      "default": {
+        "action": "操作"
+      },
+      "hint": {
+        "press_e": "按 E：操作 · 工作站",
+        "press_e_format": "按 E：%s · %s"
+      },
+      "slot": {
+        "label_format": "槽 %d"
+      },
+      "progress": {
+        "format": "%s 中…"
+      },
+      "notification": {
+        "no_permission_format": "无权限使用 %s（需要加入 %s）",
+        "character_not_ready": "角色未就绪",
+        "no_verb": "未选择动词"
+      },
+      "dialog": {
+        "crafting_title": "正在制造",
+        "crafting_text": "正在制造中。移动会取消并退还所有材料，是否继续？",
+        "confirm_cancel": "取消并移动",
+        "continue_crafting": "继续制造"
+      }
+    },
+    "action_slot": {
+      "tooltip": {
+        "empty_format": "槽位「%s」\n从背包拖物品来此",
+        "label_format": "槽位「%s」",
+        "quantity_format": "数量：%d",
+        "quality_format": "品质：%d",
+        "return_hint": "（左键点退还 1 件到背包）"
+      }
+    },
+    "workstation": {
+      "label_default": "工作站",
+      "prompt_default": "按 E 操作"
+    },
+    "shelf": {
+      "label_default": "货架",
+      "prompt_default": "按 E 查看",
+      "title_default": "货架",
+      "label_listings": "货架陈列",
+      "label_inventory": "我的背包",
+      "wallet_format": "钱包：%s",
+      "unit_price_format": "单价 %s",
+      "hint_buy": "右键购买／走开关闭（ESC）",
+      "hint_manage": "管理模式：上架／改价／下架你管理的货架",
+      "btn_buy_one": "买 1",
+      "btn_buy_all": "全买",
+      "btn_list": "上架...",
+      "btn_unlist": "下架",
+      "btn_reprice": "改价",
+      "popup_list_title": "上架到货架",
+      "popup_reprice_title": "调整定价",
+      "popup_list_target": "上架物品：%s",
+      "popup_reprice_target": "改价物品：%s",
+      "popup_qty": "数量",
+      "popup_price": "单价（银）",
+      "popup_confirm": "确认",
+      "msg_empty": "货架现在是空的"
+    },
+    "container": {
+      "label_default": "储物箱",
+      "label_storage": "容器内容",
+      "label_backpack": "背包",
+      "msg_no_access": "「%s」不归你管，无权打开",
+      "msg_no_key": "「%s」需要钥匙「%s」才能打开",
+      "msg_too_far": "离「%s」太远，先走过去再操作",
+      "msg_empty": "「%s」里没有「%s」",
+      "msg_full": "背包装不下「%s」"
+    }
+  }
+}

@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="Item" format=3]
+
+[ext_resource type="Script" path="res://src/sim/items/item.gd" id="1_item"]
+
+[resource]
+script = ExtResource("1_item")
+id = "copper_ingot"
+kind = "material"
+stackable = true
+max_stack = 99
+shape_type = "ingot"
+materials = {
+"body": "copper",
+}
+tags = PackedStringArray("metal", "ingot", "non_ferrous")
+tint = Color(0.85, 0.55, 0.30, 1)

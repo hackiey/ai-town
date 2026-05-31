@@ -1,0 +1,67 @@
+[gd_resource type="SpriteFrames" load_steps=24 format=3 uid="uid://b8x1ai8gamesdir"]
+
+[ext_resource type="Texture2D" path="res://assets/sprites/characters/player/Diris/animations/walk/south/frame_000.png" id="1_s0"]
+[ext_resource type="Texture2D" path="res://assets/sprites/characters/player/Diris/animations/walk/south/frame_001.png" id="2_s1"]
+[ext_resource type="Texture2D" path="res://assets/sprites/characters/player/Diris/animations/walk/south/frame_002.png" id="3_s2"]
+[ext_resource type="Texture2D" path="res://assets/sprites/characters/player/Diris/animations/walk/south/frame_003.png" id="4_s3"]
+[ext_resource type="Texture2D" path="res://assets/sprites/characters/player/Diris/animations/walk/south/frame_004.png" id="5_s4"]
+[ext_resource type="Texture2D" path="res://assets/sprites/characters/player/Diris/animations/walk/south/frame_005.png" id="6_s5"]
+[ext_resource type="Texture2D" path="res://assets/sprites/characters/player/Diris/animations/walk/north/frame_000.png" id="7_n0"]
+[ext_resource type="Texture2D" path="res://assets/sprites/characters/player/Diris/animations/walk/north/frame_001.png" id="8_n1"]
+[ext_resource type="Texture2D" path="res://assets/sprites/characters/player/Diris/animations/walk/north/frame_002.png" id="9_n2"]
+[ext_resource type="Texture2D" path="res://assets/sprites/characters/player/Diris/animations/walk/north/frame_003.png" id="10_n3"]
+[ext_resource type="Texture2D" path="res://assets/sprites/characters/player/Diris/animations/walk/north/frame_004.png" id="11_n4"]
+[ext_resource type="Texture2D" path="res://assets/sprites/characters/player/Diris/animations/walk/north/frame_005.png" id="12_n5"]
+[ext_resource type="Texture2D" path="res://assets/sprites/characters/player/Diris/animations/walk/west/frame_000.png" id="13_w0"]
+[ext_resource type="Texture2D" path="res://assets/sprites/characters/player/Diris/animations/walk/west/frame_001.png" id="14_w1"]
+[ext_resource type="Texture2D" path="res://assets/sprites/characters/player/Diris/animations/walk/west/frame_002.png" id="15_w2"]
+[ext_resource type="Texture2D" path="res://assets/sprites/characters/player/Diris/animations/walk/west/frame_003.png" id="16_w3"]
+[ext_resource type="Texture2D" path="res://assets/sprites/characters/player/Diris/animations/walk/west/frame_004.png" id="17_w4"]
+[ext_resource type="Texture2D" path="res://assets/sprites/characters/player/Diris/animations/walk/west/frame_005.png" id="18_w5"]
+[ext_resource type="Texture2D" path="res://assets/sprites/characters/player/Diris/rotations/south.png" id="19_is"]
+[ext_resource type="Texture2D" path="res://assets/sprites/characters/player/Diris/rotations/north.png" id="20_in"]
+[ext_resource type="Texture2D" path="res://assets/sprites/characters/player/Diris/rotations/west.png" id="21_iw"]
+[ext_resource type="Texture2D" path="res://assets/sprites/characters/player/Diris/rotations/east.png" id="22_ie"]
+
+[resource]
+animations = [{
+"frames": [{"duration": 1.0, "texture": ExtResource("1_s0")}, {"duration": 1.0, "texture": ExtResource("2_s1")}, {"duration": 1.0, "texture": ExtResource("3_s2")}, {"duration": 1.0, "texture": ExtResource("4_s3")}, {"duration": 1.0, "texture": ExtResource("5_s4")}, {"duration": 1.0, "texture": ExtResource("6_s5")}],
+"loop": true,
+"name": &"walk_s",
+"speed": 10.0
+}, {
+"frames": [{"duration": 1.0, "texture": ExtResource("7_n0")}, {"duration": 1.0, "texture": ExtResource("8_n1")}, {"duration": 1.0, "texture": ExtResource("9_n2")}, {"duration": 1.0, "texture": ExtResource("10_n3")}, {"duration": 1.0, "texture": ExtResource("11_n4")}, {"duration": 1.0, "texture": ExtResource("12_n5")}],
+"loop": true,
+"name": &"walk_n",
+"speed": 10.0
+}, {
+"frames": [{"duration": 1.0, "texture": ExtResource("13_w0")}, {"duration": 1.0, "texture": ExtResource("14_w1")}, {"duration": 1.0, "texture": ExtResource("15_w2")}, {"duration": 1.0, "texture": ExtResource("16_w3")}, {"duration": 1.0, "texture": ExtResource("17_w4")}, {"duration": 1.0, "texture": ExtResource("18_w5")}],
+"loop": true,
+"name": &"walk_w",
+"speed": 10.0
+}, {
+"frames": [{"duration": 1.0, "texture": ExtResource("13_w0")}, {"duration": 1.0, "texture": ExtResource("14_w1")}, {"duration": 1.0, "texture": ExtResource("15_w2")}, {"duration": 1.0, "texture": ExtResource("16_w3")}, {"duration": 1.0, "texture": ExtResource("17_w4")}, {"duration": 1.0, "texture": ExtResource("18_w5")}],
+"loop": true,
+"name": &"walk_e",
+"speed": 10.0
+}, {
+"frames": [{"duration": 1.0, "texture": ExtResource("19_is")}],
+"loop": true,
+"name": &"idle_s",
+"speed": 5.0
+}, {
+"frames": [{"duration": 1.0, "texture": ExtResource("20_in")}],
+"loop": true,
+"name": &"idle_n",
+"speed": 5.0
+}, {
+"frames": [{"duration": 1.0, "texture": ExtResource("21_iw")}],
+"loop": true,
+"name": &"idle_w",
+"speed": 5.0
+}, {
+"frames": [{"duration": 1.0, "texture": ExtResource("22_ie")}],
+"loop": true,
+"name": &"idle_e",
+"speed": 5.0
+}]

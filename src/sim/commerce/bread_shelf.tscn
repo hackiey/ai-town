@@ -1,0 +1,46 @@
+[gd_scene format=3 uid="uid://dbrdshelfkx7t"]
+
+[ext_resource type="PackedScene" uid="uid://dxtak3npqr4tj" path="res://src/sim/commerce/shelf_node.tscn" id="1_base"]
+[ext_resource type="PackedScene" uid="uid://crvt3wcmi7l6p" path="res://third-party/polygon-fantasy-kingdom/Assets/PolygonFantasyKingdom/Prefabs/Props/SM_Prop_Shelf_01.tscn" id="2_shelf_tier"]
+[ext_resource type="PackedScene" uid="uid://b8oxca8urj0x8" path="res://third-party/polygon-fantasy-kingdom/Assets/PolygonFantasyKingdom/Prefabs/Props/SM_Prop_Bread_Crate_01.tscn" id="3_bread_crate"]
+[ext_resource type="PackedScene" uid="uid://wfu4qb1xw1cm" path="res://third-party/polygon-fantasy-kingdom/Assets/PolygonFantasyKingdom/Prefabs/Items/SM_Item_Bread_01.tscn" id="4_bread1"]
+[ext_resource type="PackedScene" uid="uid://c38i6tn2p443s" path="res://third-party/polygon-fantasy-kingdom/Assets/PolygonFantasyKingdom/Prefabs/Items/SM_Item_Bread_02.tscn" id="5_bread2"]
+[ext_resource type="PackedScene" uid="uid://ehuulq4vu8g" path="res://third-party/polygon-fantasy-kingdom/Assets/PolygonFantasyKingdom/Prefabs/Items/SM_Item_Bread_03.tscn" id="6_bread3"]
+
+[node name="BreadShelf" instance=ExtResource("1_base")]
+
+[node name="Title" parent="." index="0"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.0, 0)
+
+[node name="Approach" parent="." index="1"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 1.2)
+
+[node name="TierBottom" parent="." index="2" instance=ExtResource("2_shelf_tier")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.4, 0)
+
+[node name="TierMid" parent="." index="3" instance=ExtResource("2_shelf_tier")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.0, 0)
+
+[node name="TierTop" parent="." index="4" instance=ExtResource("2_shelf_tier")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.6, 0)
+
+[node name="BreadCrate" parent="." index="5" instance=ExtResource("3_bread_crate")]
+transform = Transform3D(0.9, 0, 0, 0, 0.9, 0, 0, 0, 0.9, -0.4, 0.45, 0.1)
+
+[node name="Bread1A" parent="." index="6" instance=ExtResource("4_bread1")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.35, 0.42, 0.08)
+
+[node name="Bread2A" parent="." index="7" instance=ExtResource("5_bread2")]
+transform = Transform3D(0.94, 0, 0.34, 0, 1, 0, -0.34, 0, 0.94, -0.55, 1.02, 0.1)
+
+[node name="Bread2B" parent="." index="8" instance=ExtResource("5_bread2")]
+transform = Transform3D(0.71, 0, -0.71, 0, 1, 0, 0.71, 0, 0.71, 0.15, 1.02, 0.1)
+
+[node name="Bread3A" parent="." index="9" instance=ExtResource("6_bread3")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.5, 1.02, 0.1)
+
+[node name="Bread1B" parent="." index="10" instance=ExtResource("4_bread1")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.4, 1.62, 0.1)
+
+[node name="Bread3B" parent="." index="11" instance=ExtResource("6_bread3")]
+transform = Transform3D(0.866, 0, 0.5, 0, 1, 0, -0.5, 0, 0.866, 0.2, 1.62, 0.1)

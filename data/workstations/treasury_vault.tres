@@ -1,0 +1,11 @@
+[gd_resource type="Resource" script_class="Workstation" format=3 uid="uid://cg3o02qb36rfc"]
+
+[ext_resource type="Script" path="res://src/sim/workstations/workstation.gd" id="1_ws"]
+
+[resource]
+script = ExtResource("1_ws")
+id = "treasury_vault"
+verbs = PackedStringArray("take", "put")
+tags = PackedStringArray("container")
+interaction_mode = "container"
+slot_count = 999

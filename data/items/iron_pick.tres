@@ -1,0 +1,24 @@
+[gd_resource type="Resource" script_class="Item" format=3 uid="uid://dqyl6d40u5oq8"]
+
+[ext_resource type="Script" uid="uid://dqr5snte2lo05" path="res://src/sim/items/item.gd" id="1_item"]
+[ext_resource type="PackedScene" uid="uid://bgi9ironpickm" path="res://src/world/ground_item/items/iron_pick.tscn" id="2_ground"]
+
+[resource]
+script = ExtResource("1_item")
+id = "iron_pick"
+kind = "tool"
+stackable = false
+max_stack = 1
+shape_type = "pick_head_on_shaft"
+materials = {
+"binding": "hemp",
+"head": "iron",
+"shaft": "wood_oak"
+}
+properties = {
+"can_mine": ["stone", "iron_ore", "gold_ore", "silver_ore"],
+"max_durability": 80,
+"point_count": 2
+}
+world_mesh = ExtResource("2_ground")
+tint = Color(0.62, 0.63, 0.66, 1)

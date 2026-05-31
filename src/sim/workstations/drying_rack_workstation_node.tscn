@@ -1,0 +1,173 @@
+[gd_scene format=3 uid="uid://crpseln0hqjtd" load_steps=15]
+
+[ext_resource type="PackedScene" uid="uid://b7r4hwk5xpvld" path="res://src/sim/workstations/workstation_node.tscn" id="1_base"]
+[ext_resource type="Script" path="res://src/sim/containers/container_node.gd" id="2_container"]
+[ext_resource type="Script" uid="uid://c87hcimotyk3h" path="res://src/sim/workstations/approach_marker.gd" id="approach_script"]
+
+[sub_resource type="StandardMaterial3D" id="Material_weathered_wood"]
+albedo_color = Color(0.39, 0.25, 0.13, 1)
+roughness = 0.9
+
+[sub_resource type="BoxMesh" id="BoxMesh_post"]
+material = SubResource("Material_weathered_wood")
+size = Vector3(0.12, 1.22, 0.12)
+
+[sub_resource type="BoxMesh" id="BoxMesh_long_rail"]
+material = SubResource("Material_weathered_wood")
+size = Vector3(2.45, 0.12, 0.12)
+
+[sub_resource type="BoxMesh" id="BoxMesh_short_rail"]
+material = SubResource("Material_weathered_wood")
+size = Vector3(0.12, 0.12, 1.02)
+
+[sub_resource type="StandardMaterial3D" id="Material_reed_mat"]
+albedo_color = Color(0.72, 0.57, 0.31, 1)
+roughness = 0.95
+
+[sub_resource type="BoxMesh" id="BoxMesh_tray_side"]
+material = SubResource("Material_reed_mat")
+size = Vector3(2.08, 0.06, 0.05)
+
+[sub_resource type="BoxMesh" id="BoxMesh_tray_cross"]
+material = SubResource("Material_reed_mat")
+size = Vector3(0.07, 0.055, 0.78)
+
+[sub_resource type="StandardMaterial3D" id="Material_flax_bundle"]
+albedo_color = Color(0.62, 0.59, 0.28, 1)
+roughness = 0.95
+
+[sub_resource type="BoxMesh" id="BoxMesh_drying_bundle"]
+material = SubResource("Material_flax_bundle")
+size = Vector3(0.58, 0.055, 0.14)
+
+[sub_resource type="StandardMaterial3D" id="Material_leaf_bundle"]
+albedo_color = Color(0.29, 0.47, 0.23, 1)
+roughness = 0.9
+
+[sub_resource type="BoxMesh" id="BoxMesh_leaf_bundle"]
+material = SubResource("Material_leaf_bundle")
+size = Vector3(0.34, 0.045, 0.22)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_drying_rack"]
+size = Vector3(2.40, 1.30, 1.05)
+
+[node name="DryingRackWorkstationNode" unique_id=1974611999 instance=ExtResource("1_base")]
+script = ExtResource("2_container")
+workstation_id = "drying_rack"
+passive_tags = PackedStringArray("drying")
+slot_count = 6
+
+[node name="Mesh" parent="." index="0"]
+visible = false
+
+[node name="Title" parent="." index="2"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.85, 0)
+text = "晾晒架"
+
+[node name="Prompt" parent="." index="3"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.42, 0)
+text = "按 E 查看"
+
+[node name="DryingRackMesh" type="Node3D" parent="." index="4" unique_id=1018350021]
+
+[node name="MeshCollider" type="StaticBody3D" parent="DryingRackMesh"]
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="DryingRackMesh/MeshCollider"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.65, 0)
+shape = SubResource("BoxShape3D_drying_rack")
+
+[node name="PostFrontLeft" type="MeshInstance3D" parent="DryingRackMesh" index="0" unique_id=1832208507]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.14, 0.61, -0.48)
+mesh = SubResource("BoxMesh_post")
+
+[node name="PostFrontRight" type="MeshInstance3D" parent="DryingRackMesh" index="1" unique_id=1654973330]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.14, 0.61, -0.48)
+mesh = SubResource("BoxMesh_post")
+
+[node name="PostBackLeft" type="MeshInstance3D" parent="DryingRackMesh" index="2" unique_id=1144106538]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.14, 0.61, 0.48)
+mesh = SubResource("BoxMesh_post")
+
+[node name="PostBackRight" type="MeshInstance3D" parent="DryingRackMesh" index="3" unique_id=37627914]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.14, 0.61, 0.48)
+mesh = SubResource("BoxMesh_post")
+
+[node name="TopFrontRail" type="MeshInstance3D" parent="DryingRackMesh" index="4" unique_id=1332118168]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.22, -0.48)
+mesh = SubResource("BoxMesh_long_rail")
+
+[node name="TopBackRail" type="MeshInstance3D" parent="DryingRackMesh" index="5" unique_id=1620318535]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.22, 0.48)
+mesh = SubResource("BoxMesh_long_rail")
+
+[node name="LowerFrontRail" type="MeshInstance3D" parent="DryingRackMesh" index="6" unique_id=1831247025]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.52, -0.48)
+mesh = SubResource("BoxMesh_long_rail")
+
+[node name="LowerBackRail" type="MeshInstance3D" parent="DryingRackMesh" index="7" unique_id=2015028354]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.52, 0.48)
+mesh = SubResource("BoxMesh_long_rail")
+
+[node name="LeftEndRail" type="MeshInstance3D" parent="DryingRackMesh" index="8" unique_id=1891170004]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.14, 1.05, 0)
+mesh = SubResource("BoxMesh_short_rail")
+
+[node name="RightEndRail" type="MeshInstance3D" parent="DryingRackMesh" index="9" unique_id=700210007]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.14, 1.05, 0)
+mesh = SubResource("BoxMesh_short_rail")
+
+[node name="UpperTrayFront" type="MeshInstance3D" parent="DryingRackMesh" index="10" unique_id=559546798]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.93, -0.34)
+mesh = SubResource("BoxMesh_tray_side")
+
+[node name="UpperTrayBack" type="MeshInstance3D" parent="DryingRackMesh" index="11" unique_id=1740254829]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.93, 0.34)
+mesh = SubResource("BoxMesh_tray_side")
+
+[node name="UpperTrayCrossLeft" type="MeshInstance3D" parent="DryingRackMesh" index="12" unique_id=1162874532]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.78, 0.95, 0)
+mesh = SubResource("BoxMesh_tray_cross")
+
+[node name="UpperTrayCrossMiddleLeft" type="MeshInstance3D" parent="DryingRackMesh" index="13" unique_id=2095502324]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.28, 0.95, 0)
+mesh = SubResource("BoxMesh_tray_cross")
+
+[node name="UpperTrayCrossMiddleRight" type="MeshInstance3D" parent="DryingRackMesh" index="14" unique_id=87189839]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.28, 0.95, 0)
+mesh = SubResource("BoxMesh_tray_cross")
+
+[node name="UpperTrayCrossRight" type="MeshInstance3D" parent="DryingRackMesh" index="15" unique_id=754859559]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.78, 0.95, 0)
+mesh = SubResource("BoxMesh_tray_cross")
+
+[node name="LowerTrayFront" type="MeshInstance3D" parent="DryingRackMesh" index="16" unique_id=1917152261]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.59, -0.31)
+mesh = SubResource("BoxMesh_tray_side")
+
+[node name="LowerTrayBack" type="MeshInstance3D" parent="DryingRackMesh" index="17" unique_id=1615266210]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.59, 0.31)
+mesh = SubResource("BoxMesh_tray_side")
+
+[node name="LowerTrayCrossLeft" type="MeshInstance3D" parent="DryingRackMesh" index="18" unique_id=412036999]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.5, 0.61, 0)
+mesh = SubResource("BoxMesh_tray_cross")
+
+[node name="LowerTrayCrossRight" type="MeshInstance3D" parent="DryingRackMesh" index="19" unique_id=1881310218]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.5, 0.61, 0)
+mesh = SubResource("BoxMesh_tray_cross")
+
+[node name="FlaxBundleLeft" type="MeshInstance3D" parent="DryingRackMesh" index="20" unique_id=355635230]
+transform = Transform3D(0.9659258, 0, -0.258819, 0, 1, 0, 0.258819, 0, 0.9659258, -0.48, 1.005, -0.14)
+mesh = SubResource("BoxMesh_drying_bundle")
+
+[node name="FlaxBundleRight" type="MeshInstance3D" parent="DryingRackMesh" index="21" unique_id=1923950752]
+transform = Transform3D(0.9063078, 0, 0.4226183, 0, 1, 0, -0.4226183, 0, 0.9063078, 0.36, 1.005, 0.17)
+mesh = SubResource("BoxMesh_drying_bundle")
+
+[node name="LeafBundle" type="MeshInstance3D" parent="DryingRackMesh" index="22" unique_id=1493056476]
+transform = Transform3D(0.819152, 0, 0.5735765, 0, 1, 0, -0.5735765, 0, 0.819152, 0.12, 0.665, -0.07)
+mesh = SubResource("BoxMesh_leaf_bundle")
+
+[node name="Approach" type="Marker3D" parent="." index="5" unique_id=912379763]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.09317303, -5.9604645e-07, 1.3205161)
+script = ExtResource("approach_script")

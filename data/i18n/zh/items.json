@@ -1,0 +1,145 @@
+{
+  "item": {
+    "berry": {
+      "name": "浆果"
+    },
+    "berry_jam": {
+      "name": "浆果酱"
+    },
+    "bread": {
+      "name": "面包"
+    },
+    "charcoal": {
+      "name": "木炭"
+    },
+    "cooked_meat": {
+      "name": "熟肉"
+    },
+    "copper_ingot": {
+      "name": "铜锭"
+    },
+    "copper_ore": {
+      "name": "铜矿石"
+    },
+    "cured_meat": {
+      "name": "腌肉"
+    },
+    "cured_omelet": {
+      "name": "咸蛋饼"
+    },
+    "cured_stew": {
+      "name": "盐渍菜汤"
+    },
+    "dough": {
+      "name": "面团"
+    },
+    "egg": {
+      "name": "蛋"
+    },
+    "flax_bundle": {
+      "name": "生亚麻束"
+    },
+    "flax_seed": {
+      "name": "亚麻种子"
+    },
+    "flour": {
+      "name": "面粉"
+    },
+    "iron_axe": {
+      "name": "铁斧"
+    },
+    "iron_axe_head": {
+      "name": "铁斧头"
+    },
+    "iron_blade": {
+      "name": "铁刃"
+    },
+    "iron_ingot": {
+      "name": "铁锭"
+    },
+    "iron_knife": {
+      "name": "铁刀"
+    },
+    "iron_ore": {
+      "name": "铁矿石"
+    },
+    "iron_pick": {
+      "name": "铁镐"
+    },
+    "iron_pick_head": {
+      "name": "铁镐头"
+    },
+    "iron_shovel": {
+      "name": "铁铲"
+    },
+    "omelet": {
+      "name": "蛋饼"
+    },
+    "raw_meat": {
+      "name": "生肉"
+    },
+    "rope": {
+      "name": "绳"
+    },
+    "rotten_food": {
+      "name": "腐烂食物"
+    },
+    "royal_key": {
+      "name": "王室钥匙"
+    },
+    "salt": {
+      "name": "盐"
+    },
+    "sickle": {
+      "name": "镰刀"
+    },
+    "stone": {
+      "name": "石块"
+    },
+    "tin_ingot": {
+      "name": "锡锭"
+    },
+    "tin_ore": {
+      "name": "锡矿石"
+    },
+    "tomato_fruit": {
+      "name": "番茄"
+    },
+    "tomato_seed": {
+      "name": "番茄种子"
+    },
+    "veg_stew": {
+      "name": "蔬菜炖菜"
+    },
+    "wheat": {
+      "name": "小麦"
+    },
+    "wood": {
+      "name": "木材"
+    },
+    "wood_ash": {
+      "name": "草木灰"
+    },
+    "wood_bucket": {
+      "name": "木桶"
+    },
+    "wood_plank": {
+      "name": "木板"
+    },
+    "wood_shaft": {
+      "name": "木杆"
+    },
+    "gold_ore": {
+      "name": "金矿石"
+    },
+    "silver_ore": {
+      "name": "银矿石"
+    },
+    "gold_coin": {
+      "name": "金币"
+    },
+    "silver_coin": {
+      "name": "银币"
+    }
+  }
+}

@@ -1,0 +1,28 @@
+[gd_resource type="Resource" script_class="Substance" load_steps=2 format=3 uid="uid://bmatwoodoak01"]
+
+[ext_resource type="Script" path="res://src/sim/materials/substance.gd" id="1_mat"]
+
+[resource]
+script = ExtResource("1_mat")
+id = "wood_oak"
+category = "wood"
+hardness = 30
+density = 0.75
+melting_point = -1.0
+ignite_temperature = 300.0
+flammable = true
+burn_rate = 0.05
+thermal_capacity = 1700.0
+thermal_conductivity = 0.1
+brittleness = 0.4
+electrical_conductivity = 0.0
+default_state = 0
+hazards = PackedStringArray("flammable")
+tint = Color(0.55, 0.40, 0.22, 1)
+visual_fallback = ""
+transforms = {
+"burn": "charcoal",
+}
+alloys = {}
+tags = PackedStringArray("wood", "fuel")
+extra = {}

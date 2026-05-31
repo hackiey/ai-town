@@ -1,0 +1,10 @@
+[gd_resource type="Resource" script_class="Workstation" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://src/sim/workstations/workstation.gd" id="1_ws"]
+
+[resource]
+script = ExtResource("1_ws")
+id = "saltworks_pan"
+verbs = PackedStringArray("boil")
+tags = PackedStringArray("saltworks")
+slot_count = 1

@@ -1,0 +1,69 @@
+{
+  "ui": {
+    "status": {
+      "meter_format": "%s %.0f / %.0f",
+      "condition_with_effect_format": "%s (%s)",
+      "condition": {
+        "hungry": "Hungry",
+        "sleeping": "Sleeping",
+        "burning": "Burning",
+        "dead": "Dead"
+      },
+      "condition_effect": {
+        "hungry": "lowers stamina cap and recovery speed",
+        "sleeping": "recovers rest",
+        "burning": "takes ongoing damage",
+        "dead": "cannot act"
+      }
+    },
+    "npc_hover": {
+      "title_format": "%s Status"
+    },
+    "inventory": {
+      "title": "Backpack (B to close)",
+      "backpack_title": "Backpack",
+      "wallet_format": "Wallet: %s"
+    },
+    "character": {
+      "title": "Character (C to close)",
+      "section": {
+        "identity": "Identity",
+        "vitals": "Vitals",
+        "physical": "Physical",
+        "state": "State",
+        "equipment": "Equipment"
+      },
+      "field": {
+        "name": "Name",
+        "id": "ID",
+        "age": "Age",
+        "occupation": "Occupation",
+        "personality": "Personality",
+        "faction": "Faction",
+        "material": "Material",
+        "mass": "Mass",
+        "volume": "Volume",
+        "moisture": "Moisture",
+        "temperature": "Temperature",
+        "ignition": "Ignition",
+        "sleeping": "Sleeping",
+        "burning": "Burning",
+        "conditions": "Conditions",
+        "groups": "Groups"
+      },
+      "slot": {
+        "right_hand": "Right hand",
+        "left_hand": "Left hand",
+        "body": "Body",
+        "head": "Head"
+      },
+      "value": {
+        "yes": "Yes",
+        "no": "No",
+        "not_flammable": "Not flammable",
+        "none": "None",
+        "empty": "Empty"
+      }
+    }
+  }
+}

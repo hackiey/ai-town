@@ -1,0 +1,33 @@
+[gd_scene format=3 uid="uid://b2e17e6a22c82"]
+
+[ext_resource type="Script" path="res://src/world/location_marker.gd" id="1_locm"]
+
+[sub_resource type="SphereMesh" id="SphereMesh_loc"]
+radius = 0.2
+height = 0.4
+radial_segments = 16
+rings = 8
+
+[sub_resource type="StandardMaterial3D" id="StdMat_loc"]
+shading_mode = 0
+albedo_color = Color(0.4, 0.9, 1, 1)
+emission_enabled = true
+emission = Color(0.4, 0.9, 1, 1)
+emission_energy_multiplier = 0.6
+
+[node name="LocationMarker" type="Marker3D"]
+script = ExtResource("1_locm")
+
+[node name="EditorVisual" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.5, 0)
+mesh = SubResource("SphereMesh_loc")
+material_override = SubResource("StdMat_loc")
+
+[node name="EditorLabel" type="Label3D" parent="."]
+position = Vector3(0, 0.6, 0)
+billboard = 1
+no_depth_test = true
+modulate = Color(0.4, 0.9, 1, 1)
+outline_size = 8
+font_size = 48
+text = "location"
