@@ -1,22 +1,25 @@
-# AI Games
+# AI Town
 
 *[English](README.md) | [简体中文](README.zh-CN.md)*
 
-AI Games is a **playable AI town** built with Godot + TypeScript: a hand-built medieval world where the NPCs are autonomous LLM agents that farm, gather, produce, and trade, keeping the town alive whether or not a player is around. The current codebase is a prototype/research workbench rather than a packaged game release.
+AI Town is a **playable AI town** built with Godot + TypeScript: a hand-built medieval world where the NPCs are autonomous LLM agents that farm, gather, produce, and trade, keeping the town alive whether or not a player is around. You step in to experience survival, management-sim, and story/puzzle play. The current codebase is a prototype/research workbench rather than a packaged game release.
 
 ## Features
 
-The goal of AI Games is a **playable AI town**: a hand-built medieval world where the NPCs are autonomous LLM agents that genuinely live and work. They keep the town running whether or not a player is around — and you step into that world to experience survival, management-sim, and story/puzzle play.
+- **A town that runs itself.** The ~25 NPCs are autonomous LLM agents that farm, gather, craft, and trade on the exact same systems the player uses. Prices, shortages, and rivalries emerge from real supply and demand rather than scripted spawn tables, and the world keeps living whether or not you're online.
+- **Two-track NPC minds.** Each NPC runs a fast reactive track that acts within seconds and a slow strategic track that reflects, plans, and recovers from failures — staying responsive *and* goal-directed at a fraction of the cost of reasoning on every step. (More below.)
+- **Mechanics you can mod, in Lua.** Recipes, item effects, and world rules live in data and sandboxed Lua instead of engine code, so a new ingredient or a whole new behavior is a script away — no recompile. The sandbox safely runs untrusted, even AI-generated, scripts, which is exactly what makes player-authored magic possible.
+- **Crafting with real stakes.** A 0–100 proficiency per trade and each recipe's difficulty decide whether a craft succeeds and how good it turns out, and that quality travels with the item. Proficiency grows with practice and spreads through skillbooks — so specializing, hiring a master, and trading all genuinely pay off.
+- **Items that keep their meaning.** Every object is a typed instance with a structured identity — a base template, the identity its crafting reaction stamped on it, and mutable per-instance state — so quality, stacking, containers, shelves, and trade stay consistent across the whole world.
 
-**NPC agents that actually do things.** This is the heart of the project. Every NPC is a two-track agent — a fast action track that reacts to events, and a slower thinking track (extended reasoning, on a timer) that reflects and plans, à la the Generative Agents (Smallville) paper. Crucially, they have real abilities in the world:
+### Two-track agents
 
-- **Farming** — agents plant, water, control pests, and harvest as crops grow on the game clock.
-- **Gathering** — agents head out to mine ore and collect raw materials from the world.
-- **Production** — agents run multi-step crafting chains at workstations (forge, anvil, mill, bakery, charcoal kiln, and more), turning raw ore and crops into ingots, parts, tools, and food. Recipes are data-driven *reactions*, and every craft is server-authoritative: it rolls a chance of failure and a quality result, so output is never guaranteed.
-- **Skills & proficiency** — each character carries a 0–100 proficiency per trade (mining, smelting, smithing, milling, cooking, and more) that drives how often a craft succeeds, how good the result is, and how fast the skill itself grows with practice. Knowledge spreads through skillbooks that characters can read and learn from.
-- **Trade** — agents buy and sell what they produce and need, so a living economy emerges from what the town actually makes.
+Reacting fast and reasoning deeply pull in opposite directions: an LLM call on every step is accurate but slow and expensive, while pure reaction drifts, repeats failures, and recovers poorly. So each NPC runs **two independent LLM sessions at once**:
 
-Players share the exact same systems the agents use, so the town supports genuine **survival** and **management-sim** play out of the box.
+- a **reactive track** — low latency, no extended thinking, full game toolset — that wakes on events and turns them straight into in-world actions, and
+- a **strategic track** — extended reasoning — that periodically reflects on the situation, plans, and writes a short working-memory brief (memory / reflection / planning in the spirit of the Generative Agents "Smallville" paper).
+
+The reactive track reads that brief and carries the plan forward cheaply, re-invoking the strategic track only at meaningful events or after enough time passes. The result is an NPC that acts within seconds yet still thinks deeply in the background — without the abort-and-restart machinery a single combined session would need on every event.
 
 ### Roadmap
 
