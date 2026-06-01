@@ -1,6 +1,32 @@
 # AI Games
 
-AI Games is an experimental Godot + TypeScript simulation game about a living town, persistent world state, and LLM-driven character agents. The current codebase is a prototype/research workbench rather than a packaged game release.
+*[English](README.md) | [简体中文](README.zh-CN.md)*
+
+AI Games is a **playable AI town** built with Godot + TypeScript: a hand-built medieval world where the NPCs are autonomous LLM agents that farm, gather, produce, and trade, keeping the town alive whether or not a player is around. The current codebase is a prototype/research workbench rather than a packaged game release.
+
+## Features
+
+The goal of AI Games is a **playable AI town**: a hand-built medieval world where the NPCs are autonomous LLM agents that genuinely live and work. They keep the town running whether or not a player is around — and you step into that world to experience survival, management-sim, and story/puzzle play.
+
+**NPC agents that actually do things.** This is the heart of the project. Every NPC is a two-track agent — a fast action track that reacts to events, and a slower thinking track (extended reasoning, on a timer) that reflects and plans, à la the Generative Agents (Smallville) paper. Crucially, they have real abilities in the world:
+
+- **Farming** — agents plant, water, control pests, and harvest as crops grow on the game clock.
+- **Gathering** — agents head out to mine ore and collect raw materials from the world.
+- **Production** — agents run multi-step crafting chains at workstations (forge, anvil, mill, bakery, charcoal kiln, and more), turning raw ore and crops into ingots, parts, tools, and food. Recipes are data-driven *reactions*, and every craft is server-authoritative: it rolls a chance of failure and a quality result, so output is never guaranteed.
+- **Skills & proficiency** — each character carries a 0–100 proficiency per trade (mining, smelting, smithing, milling, cooking, and more) that drives how often a craft succeeds, how good the result is, and how fast the skill itself grows with practice. Knowledge spreads through skillbooks that characters can read and learn from.
+- **Trade** — agents buy and sell what they produce and need, so a living economy emerges from what the town actually makes.
+
+Players share the exact same systems the agents use, so the town supports genuine **survival** and **management-sim** play out of the box.
+
+### Roadmap
+
+Beyond the systems above, the major planned ones are:
+
+- **Magic** — describe an item or spell in natural language and an LLM generates sandboxed Lua that becomes a usable object, balanced by mana costs rather than designer whitelists. Knowledge is physical: spellbooks can be read, taught, reverse-engineered, bought, and stolen.
+- **Combat** — Harry-Potter-style wand duels with real 3D projectiles, dodging, and cover, driven by behavior-tree NPC AI.
+- **DM storyline** — an LLM "Dungeon Master" that weaves dynamic quests, events, and emergent storylines into the town in response to what players and NPCs do, for story/puzzle play.
+
+See [`docs/design-doc.md`](docs/design-doc.md) for the full design and [`docs/architecture/`](docs/architecture/) for implementation notes.
 
 ## What Is Here
 
