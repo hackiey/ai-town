@@ -405,33 +405,27 @@ function farmViewToContext(farm: FarmView, names: DisplayNameResolver, character
 // 把 slot 列表渲染成"详情"字符串。
 // - 编号直接用 plot_index（0-based，跟 sqlite farm_plots.plotIndex 对齐）。LLM 调
 //   plan_farm_work / plant_seed 时给的 slot_index 就跟这里显示的"N号"一致，不需要做 ±1 换算。
-// - 连续相邻的空格折叠成范围（"0-6号: 空地，可种植"），减少 prompt 噪声。
+// - 连续相邻且 statusText 相同的格子折叠成范围（"0-6号: 空地，可种植" 或
+//   "1-10号: 小麦 · 成熟 · 可收获"），减少 prompt 噪声。
 function foldSlotDetails(slots: FarmSlotContext[]): string {
   if (slots.length === 0) return "";
   const sorted = [...slots].sort((a, b) => a.index - b.index);
   const parts: string[] = [];
   let i = 0;
   while (i < sorted.length) {
-    const s = sorted[i];
-    if (!s.occupied) {
-      // 找连续未占用的最长 run（index 相邻 +1）
-      let j = i;
-      while (
-        j + 1 < sorted.length
-        && !sorted[j + 1].occupied
-        && sorted[j + 1].index === sorted[j].index + 1
-      ) {
-        j++;
-      }
-      const start = sorted[i].index;
-      const end = sorted[j].index;
-      const label = sorted[i].statusText ?? "空地，可种植";
-      parts.push(start === end ? `${start}号: ${label}` : `${start}-${end}号: ${label}`);
-      i = j + 1;
-    } else {
-      parts.push(`${s.index}号: ${s.statusText ?? s.displayName ?? "?"}`);
-      i++;
+    const label = sorted[i].statusText ?? sorted[i].displayName ?? "?";
+    let j = i;
+    while (
+      j + 1 < sorted.length
+      && sorted[j + 1].index === sorted[j].index + 1
+      && (sorted[j + 1].statusText ?? sorted[j + 1].displayName ?? "?") === label
+    ) {
+      j++;
     }
+    const start = sorted[i].index;
+    const end = sorted[j].index;
+    parts.push(start === end ? `${start}号: ${label}` : `${start}-${end}号: ${label}`);
+    i = j + 1;
   }
   return parts.join("; ");
 }
