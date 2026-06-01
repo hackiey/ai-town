@@ -73,7 +73,7 @@ addons/     Godot 插件清单；大体积二进制需单独安装
 
 ```bash
 git clone <repo-url>
-cd ai-games
+cd ai-town
 
 ./scripts/install-sqlite-gdextension
 ./scripts/install-lua-gdextension

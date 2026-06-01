@@ -73,7 +73,7 @@ Optional agent providers require API keys in `backend/.env`. Do not commit real 
 
 ```bash
 git clone <repo-url>
-cd ai-games
+cd ai-town
 
 ./scripts/install-sqlite-gdextension
 ./scripts/install-lua-gdextension
