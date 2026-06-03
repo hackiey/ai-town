@@ -24,26 +24,14 @@ export type MessagesAssembleOptions = {
 };
 
 // 拼一份给 LLM 的 message 列表。
-// = [optional pinned memory, ...trimmed recent history]
-// 历史 context-turn user message 除最新一条外，text content 都被替换成占位符——
-// 当前感知/working_memory 只由最新一条 user message 承担，避免 LLM 看老 brief。
-// tool_use / tool_result（toolResult role）完整保留，让 LLM 看得到自己之前做过什么。
+// Action 轨不再回喂历史 transcript（assistant tool_use / toolResult）——最新 user message
+// （由 agent.prompt 注入）里已带近 8 游戏小时的历史/近期事件，足够快速反应做决策。
+// LLM 实际看到的是：system + 置顶 Memory pin（这里返回的唯一前缀）+ 当前 user message。
+// transcript 仍照常持久化（debug timeline / 后续自我行为详情捕获用），只是不进 LLM 消息序列。
 export async function assembleMessagesForModel(options: MessagesAssembleOptions): Promise<AgentMessage[]> {
   await options.persistence.ensureSession();
-  const recentLimit = Math.min(options.sessionRecentMessageLimit, DEFAULT_AGENT_RECENT_MESSAGE_LIMIT);
-  // 历史压缩已删 —— 直接从 seq=0 之后拉，让 sessionRecentMessageLimit 兜底窗口。
-  const recent = await options.persistence.listMessagesAfter(0, { limit: recentLimit, order: "desc" });
-  const trimmed = trimHistoricalUserMessages(
-    recent.reverse().map((record) => record.message),
-    options.sessionFullUserMessageLimit,
-  );
-  const placeholdered = placeholderizeOldUserMessages(trimmed);
-  const prefix: AgentMessage[] = [];
   const memoryPin = options.renderMemoryPin();
-  if (memoryPin) {
-    prefix.push(userMessage(memoryPin));
-  }
-  return [...prefix, ...placeholdered];
+  return memoryPin ? [userMessage(memoryPin)] : [];
 }
 
 // 把历史 context-turn user message 的 text 替换成占位符；最新一条 user message 保留原文。

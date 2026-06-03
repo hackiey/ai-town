@@ -464,14 +464,15 @@ function renderThinkingUserPrompt(
 
   const locale = getActiveLocale();
   const viewerId = context.characterId;
+  const selfActions = context.selfActionResults;
   if (cutoffMinutes != null) {
-    const sinceBody = since.length > 0 ? renderEventTimeline(since, viewerId, locale) : "（这段时间内没有相关事件。）";
+    const sinceBody = since.length > 0 ? renderEventTimeline(since, viewerId, locale, selfActions) : "（这段时间内没有相关事件。）";
     parts.push(`# 自上次思考以来发生的事\n${sinceBody}`);
     if (before.length > 0) {
-      parts.push(`# 更早的背景事件（上次思考之前，仅供回顾）\n${renderEventTimeline(before, viewerId, locale)}`);
+      parts.push(`# 更早的背景事件（上次思考之前，仅供回顾）\n${renderEventTimeline(before, viewerId, locale, selfActions)}`);
     }
   } else {
-    const allBody = since.length > 0 ? renderEventTimeline(since, viewerId, locale) : "（没有相关事件。）";
+    const allBody = since.length > 0 ? renderEventTimeline(since, viewerId, locale, selfActions) : "（没有相关事件。）";
     parts.push(`# 近期事件（首次思考，没有 cutoff，全量给出）\n${allBody}`);
   }
 

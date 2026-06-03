@@ -4,7 +4,8 @@ const INTERACTION_RADIUS := 3.0
 const _CONTAINERS_JSON_REL := "backend/data/town/containers.json"
 
 var _containers_by_id: Dictionary = {}      # container_id -> ContainerNode
-var _contents: Dictionary = {}              # container_id -> Array[Dictionary] (slot dicts, length = slot_count)
+# 内容真值在 ContainerNode.contents（节点属性，server 内存权威 + 同步给 client）。
+# 这里不再缓存内容；所有读写都走 node.contents，DB 仅写穿持久化。
 var _config_cache: Dictionary = {}          # container_id -> {starting_inventory: [...]}; lazy-loaded
 var _config_loaded: bool = false
 
@@ -38,11 +39,7 @@ func tick_drying() -> void:
 			continue
 		if not node.has_passive_tag("drying"):
 			continue
-		var cid := str(cid_v)
-		var slots_v: Variant = _contents.get(cid, null)
-		if slots_v == null:
-			continue
-		var slots: Array[Dictionary] = slots_v
+		var slots: Array[Dictionary] = node.contents
 		for i in slots.size():
 			var slot: Dictionary = slots[i]
 			if int(slot.get("quantity", 0)) <= 0:
@@ -87,8 +84,11 @@ func register_container(node: ContainerNode) -> void:
 	if _containers_by_id.has(cid) and _containers_by_id[cid] != node:
 		push_warning("[Containers] duplicate id '%s', replacing previous node" % cid)
 	_containers_by_id[cid] = node
-	_hydrate_contents(cid, node.slot_count)
-	_apply_starting_inventory_if_first_boot(node)
+	# 内容从 DB 灌进 node.contents 只在 runtime 做；client 上 node.contents 由
+	# MultiplayerSynchronizer 填（Db 在 client 不开）。
+	if RunMode.is_runtime():
+		_hydrate_contents(node)
+		_apply_starting_inventory_if_first_boot(node)
 
 
 func unregister_container(node: ContainerNode) -> void:
@@ -198,11 +198,8 @@ func system_inventory_summary(container_id: String) -> Dictionary:
 	var node := find_container_node(container_id)
 	if node == null:
 		return {}
-	var slots_v: Variant = _contents.get(container_id, null)
-	if slots_v == null:
-		return {}
 	var totals: Dictionary = {}
-	for slot_v in slots_v:
+	for slot_v in node.contents:
 		var slot: Dictionary = slot_v as Dictionary
 		if InventorySlotData.of(slot).is_empty():
 			continue
@@ -238,29 +235,39 @@ func resolve_for_actor(actor: Character, name_or_id: String) -> Dictionary:
 # 这些方法不做距离 / 钥匙校验 —— 那是 lua mechanic 调用方该在 ctx 里准备好的事。
 # Adapter 把 ContainerNode 包成 InventoryAdapter，由 effects 端调。
 
+# runtime 上确保 node.contents 已按 slot_count 灌好（register 时已做，这里兜底乱序）。
+# client 不做（Db 不开；contents 由同步填）。
+func _ensure_hydrated(node: ContainerNode) -> void:
+	if not RunMode.is_runtime():
+		return
+	if node.contents.size() != node.slot_count:
+		_hydrate_contents(node)
+
+
+# 写 node.contents（运行时内存权威）。所有改 contents 的路径都经这里。
+# 不再做同步快照——client 显示走 Player.view_slots（分页，见 player.gd）。
+func _set_contents(node: ContainerNode, slots: Array[Dictionary]) -> void:
+	node.contents = slots
+
+
+# server-only reader（lua adapter + Player._recompute_view 分页用）。client 不调
+# （面板读 Player.view_slots）。
 func adapter_slots(node: ContainerNode) -> Array:
 	if node == null:
 		return []
-	var cid := node.effective_container_id()
-	var slots_v: Variant = _contents.get(cid, null)
-	if slots_v == null:
-		_hydrate_contents(cid, node.slot_count)
-		slots_v = _contents.get(cid, [])
-	return slots_v as Array
+	_ensure_hydrated(node)
+	return node.contents
 
 
 # 按 query 扣 qty。query 同 InventoryAdapter schema {item_id?, slot_index?, content_id?, min_quality?}。
-# 内部直改 _contents + Db.save_container_slot 持久。返回 { taken_qty, stacks }。
+# 内部直改 node.contents + Db.save_container_slot 持久，末尾重写 node.contents 触发同步。
 func adapter_take(node: ContainerNode, query: Dictionary, qty: int) -> Dictionary:
 	var stacks: Array = []
 	if node == null or qty <= 0:
 		return { "taken_qty": 0, "stacks": stacks }
 	var cid := node.effective_container_id()
-	var slots_v: Variant = _contents.get(cid, null)
-	if slots_v == null:
-		_hydrate_contents(cid, node.slot_count)
-		slots_v = _contents.get(cid, null)
-	var slots: Array[Dictionary] = slots_v
+	_ensure_hydrated(node)
+	var slots: Array[Dictionary] = node.contents
 	var remaining := qty
 	# 找匹配（slot_index in query 时只看那一个）
 	var indices: Array[int] = []
@@ -291,7 +298,7 @@ func adapter_take(node: ContainerNode, query: Dictionary, qty: int) -> Dictionar
 			slots[idx] = slot
 		Db.save_container_slot(cid, idx, slots[idx])
 		remaining -= take
-	_contents[cid] = slots
+	_set_contents(node, slots)
 	return { "taken_qty": qty - remaining, "stacks": stacks }
 
 
@@ -313,21 +320,19 @@ func adapter_set_slot(node: ContainerNode, slot_index: int, fields: Dictionary) 
 	if node == null:
 		return false
 	var cid := node.effective_container_id()
-	var slots_v: Variant = _contents.get(cid, null)
-	if slots_v == null:
-		return false
-	var slots: Array[Dictionary] = slots_v
+	_ensure_hydrated(node)
+	var slots: Array[Dictionary] = node.contents
 	if slot_index < 0 or slot_index >= slots.size():
 		return false
 	var slot: Dictionary = slots[slot_index].duplicate(true)
 	for k in fields.keys():
 		slot[str(k)] = fields[k]
-	# lua-fields 可能塞错型；落 _contents 前归一。
+	# lua-fields 可能塞错型；落 node.contents 前归一。
 	InventorySlotData.normalize(slot)
 	# 同 Character adapter：fields 可能改了影响效果的字段，写库前 recompute displayed_effects。
 	ItemEffects.recompute_slot(slot)
 	slots[slot_index] = slot
-	_contents[cid] = slots
+	_set_contents(node, slots)
 	Db.save_container_slot(cid, slot_index, slot)
 	return true
 
@@ -352,7 +357,9 @@ func _is_character_near(character: Character, node: ContainerNode) -> bool:
 	return character.global_position.distance_squared_to(node.global_position) <= INTERACTION_RADIUS * INTERACTION_RADIUS
 
 
-func _hydrate_contents(container_id: String, slot_count: int) -> void:
+func _hydrate_contents(node: ContainerNode) -> void:
+	var container_id := node.effective_container_id()
+	var slot_count := node.slot_count
 	var slots: Array[Dictionary] = []
 	for i in slot_count:
 		slots.append(InventorySlotData.empty())
@@ -362,7 +369,7 @@ func _hydrate_contents(container_id: String, slot_count: int) -> void:
 		if idx < 0 or idx >= slot_count:
 			continue
 		slots[idx] = InventorySlotData.normalize(persisted[k] as Dictionary)
-	_contents[container_id] = slots
+	_set_contents(node, slots)
 
 
 func _snapshot_for(node: ContainerNode, viewer: Character) -> Dictionary:
@@ -382,16 +389,13 @@ func _snapshot_for(node: ContainerNode, viewer: Character) -> Dictionary:
 		"items": [],
 	}
 	if can_open:
-		snap["items"] = _list_items(cid)
+		snap["items"] = _list_items(node)
 	return snap
 
 
-func _list_items(container_id: String) -> Array:
-	var slots_v: Variant = _contents.get(container_id, null)
-	if slots_v == null:
-		return []
+func _list_items(node: ContainerNode) -> Array:
 	var out: Array = []
-	for slot_v in slots_v:
+	for slot_v in node.contents:
 		var slot: Dictionary = slot_v as Dictionary
 		if InventorySlotData.of(slot).is_empty():
 			continue
@@ -405,10 +409,10 @@ func _list_items(container_id: String) -> Array:
 
 func _extract_from_container(node: ContainerNode, item_name: String, quantity: int) -> Dictionary:
 	var cid := node.effective_container_id()
-	var slots_v: Variant = _contents.get(cid, null)
-	if slots_v == null:
+	_ensure_hydrated(node)
+	var slots: Array[Dictionary] = node.contents
+	if slots.is_empty():
 		return {"ok": false, "message": "「%s」是空的" % node.effective_display_name()}
-	var slots: Array[Dictionary] = slots_v
 	var remaining := maxi(quantity, 0)
 	var extracted: Array = []
 	if remaining <= 0:
@@ -450,22 +454,19 @@ func _extract_from_container(node: ContainerNode, item_name: String, quantity: i
 					slots[put_idx]["quantity"] = int(slots[put_idx].get("quantity", 0)) + qty
 				Db.save_container_slot(cid, put_idx, slots[put_idx])
 		return {"ok": false, "message": "「%s」里没有足够的「%s」" % [node.effective_display_name(), item_name]}
-	_contents[cid] = slots
+	_set_contents(node, slots)
 	return {"ok": true, "stacks": extracted}
 
 
 func _place_stacks_into_container(node: ContainerNode, stacks: Array) -> Dictionary:
 	var cid := node.effective_container_id()
-	var slots_v: Variant = _contents.get(cid, null)
-	if slots_v == null:
-		_hydrate_contents(cid, node.slot_count)
-		slots_v = _contents.get(cid, null)
-	var slots: Array[Dictionary] = slots_v
+	_ensure_hydrated(node)
+	var slots: Array[Dictionary] = node.contents
 	for stack_v in stacks:
 		if typeof(stack_v) != TYPE_DICTIONARY:
 			continue
 		var stack: Dictionary = (stack_v as Dictionary).duplicate(true)
-		# stacks 来源可能是 lua-built（spawn_item / craft outputs）；落 _contents 前归一。
+		# stacks 来源可能是 lua-built（spawn_item / craft outputs）；落 node.contents 前归一。
 		InventorySlotData.normalize(stack)
 		# 同 character_inventory.add_instance：lua-built stack 没 base_effects 时从
 		# template 兜底；然后 recompute displayed_effects。
@@ -499,7 +500,7 @@ func _place_stacks_into_container(node: ContainerNode, stacks: Array) -> Diction
 			var idx := _find_empty_slot(slots)
 			if idx < 0:
 				stack["quantity"] = remaining
-				_contents[cid] = slots
+				_set_contents(node, slots)
 				return {"ok": false, "message": "「%s」装不下了" % node.effective_display_name()}
 			var chunk := mini(remaining, Character.INVENTORY_STACK_MAX)
 			var placed := stack.duplicate(true)
@@ -507,7 +508,7 @@ func _place_stacks_into_container(node: ContainerNode, stacks: Array) -> Diction
 			slots[idx] = placed
 			Db.save_container_slot(cid, idx, placed)
 			remaining -= chunk
-	_contents[cid] = slots
+	_set_contents(node, slots)
 	return {"ok": true}
 
 

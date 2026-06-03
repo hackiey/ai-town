@@ -38,6 +38,9 @@ var _completion: Callable = Callable()
 var _pre_action_snapshot: Dictionary = {}
 var _action_name: String = ""
 var _action_target: Variant = {}
+# fast tool（say_to / respond）派发期间置真：它们与 body 动作并发，不该让自己发出的事件
+# 蹭到 body 动作的 _action_id。详见 current_emit_action_id() + send_world_event 盖戳。
+var _in_fast_tool: bool = false
 
 
 func _init(owner: Character) -> void:
@@ -52,12 +55,19 @@ func current_action_id() -> String:
 	return _action_id
 
 
+# send_world_event 盖 actionId 用：fast tool 派发期间返回 ""（其事件不归属当前 body 动作），
+# 否则返回当前 body/instant 动作 id。
+func current_emit_action_id() -> String:
+	return "" if _in_fast_tool else _action_id
+
+
 # 主入口。preempt 已有 action_request → 派发动作。
 func start(action_request: Dictionary, completion: Callable) -> void:
 	var action := str(action_request.get("action", ""))
 	# say_to 是瞬时 fast tool：不占身体、不打断当前 body action。直接独立 dispatch，
 	# 不动 runner state（_action_id / _completion / _active）。
 	if action == "say_to":
+		_in_fast_tool = true
 		var speech_action_id := str(action_request.get("id", ""))
 		var speech_target: Variant = action_request.get("target", {})
 		_log_npc_action(speech_action_id, action, speech_target, "start")
@@ -69,12 +79,17 @@ func start(action_request: Dictionary, completion: Callable) -> void:
 		var speech_ok := bool(speech.get("ok", false))
 		var speech_error := str(speech.get("error", ""))
 		_log_npc_action(speech_action_id, action, speech_target, "completed" if speech_ok else "failed", speech_result, speech_error)
+		if not speech_ok:
+			_emit_action_failed_event(speech_action_id, action, speech_target, speech_error)
+		_in_fast_tool = false
 		completion.call(speech_ok, speech_error, speech_result)
 		return
 	if _active and action == "respond":
 		# respond 不打断其他身体动作（走路 / 农事 / 工作台 / 睡觉）：DB 标 status
 		# + 撮合 + 库存转移都是即时操作，跑完直接返回，runner 的 _active/_action_id 不变，
 		# 主线 action 继续。买家阻塞的 offer 由 trade_runner.resolve_pending 单独 finish。
+		# _in_fast_tool 守卫：撮合发出的 give 事件不该蹭到正在进行的 body 动作 _action_id。
+		_in_fast_tool = true
 		var resp_action_id := str(action_request.get("id", ""))
 		var resp_target: Variant = action_request.get("target", {})
 		_log_npc_action(resp_action_id, action, resp_target, "start")
@@ -86,6 +101,9 @@ func start(action_request: Dictionary, completion: Callable) -> void:
 		if typeof(resp_result_v) == TYPE_DICTIONARY:
 			resp_result = resp_result_v as Dictionary
 		_log_npc_action(resp_action_id, action, resp_target, "completed" if resp_ok else "failed", resp_result, resp_error)
+		if not resp_ok:
+			_emit_action_failed_event(resp_action_id, action, resp_target, resp_error)
+		_in_fast_tool = false
 		completion.call(resp_ok, resp_error, resp_result)
 		return
 	_preempt_if_active()
@@ -145,7 +163,8 @@ func interrupt_walk(reason: String) -> bool:
 	if not _active or _action_name != "move_to_location":
 		return false
 	character._cancel_action_walk()
-	finish(false, reason, {})
+	# 第三方打断走路不是本人可反应的失败（对方发起的交互会另发 direct_speech 事件）→ 不发 action_failed。
+	finish(false, reason, {}, false)
 	return true
 
 
@@ -183,7 +202,8 @@ func cancel(action_id: String, reason: String = "interrupted") -> String:
 
 
 # 主 finish。子类的额外副作用通过 character._on_backend_action_finished hook 触发。
-func finish(ok: bool, error: String = "", result: Dictionary = {}) -> void:
+# emit_failed=false：抑制 action_failed 自感知事件（用于第三方打断走路这类"非本人可反应失败"的噪声）。
+func finish(ok: bool, error: String = "", result: Dictionary = {}, emit_failed: bool = true) -> void:
 	var finished_action_id := _action_id
 	var finished_action := _action_name
 	var finished_target: Variant = _action_target
@@ -194,7 +214,11 @@ func finish(ok: bool, error: String = "", result: Dictionary = {}) -> void:
 	var final_result := _with_action_changes(result)
 	_pre_action_snapshot = {}
 	_log_npc_action(finished_action_id, finished_action, finished_target, "completed" if ok else "failed", final_result, error)
-	_emit_public_finish_event(finished_action, finished_target, ok, error, final_result)
+	_emit_public_finish_event(finished_action_id, finished_action, finished_target, ok, error, final_result)
+	# 失败 → 发一条 actor-only action_failed 事件进历史（按视角渲染："（未成）你尝试…：原因"）。
+	# 即时反馈本就由 tool 同步返回值给 agent，这条只供后续 turn 的历史时间线。
+	if not ok and emit_failed and not finished_action_id.is_empty() and not _action_self_reports_failure(finished_action):
+		_emit_action_failed_event(finished_action_id, finished_action, finished_target, error)
 	character.perception().send_manifest()
 	character._on_backend_action_finished(ok, error, final_result)
 	if _completion.is_valid():
@@ -270,7 +294,8 @@ func _preempt_if_active() -> void:
 		character.use_item_controller().preempt()
 	if character.trade_runner().has_pending():
 		character.trade_runner().preempt()
-	finish(false, "preempted by new action_request", {})
+	# 被本人下达的新 action_request 抢占，不是可反应失败 → 不发 action_failed。
+	finish(false, "preempted by new action_request", {}, false)
 
 
 func _start_move_to_location(action_request: Dictionary) -> String:
@@ -409,7 +434,7 @@ func _complete_instant_action(action_request: Dictionary) -> void:
 	finish(true, "", result)
 
 
-func _emit_public_finish_event(action: String, target: Variant, ok: bool, error: String, result: Dictionary) -> void:
+func _emit_public_finish_event(action_id: String, action: String, target: Variant, ok: bool, error: String, result: Dictionary) -> void:
 	if not ok:
 		return
 	if action != "move_to_location" and action != "plan_farm_work":
@@ -418,12 +443,46 @@ func _emit_public_finish_event(action: String, target: Variant, ok: bool, error:
 	var target_dict: Dictionary = target as Dictionary if typeof(target) == TYPE_DICTIONARY else {}
 	# Wire contract: move/plan_farm prose is composed by backend renderers
 	# (event-descriptions/move.ts, farm.ts) from target + result. No baked text.
+	# actionId 显式带上：此处在 finish() 内、_action_id 已清空，send_world_event 的隐式盖戳读不到，
+	# 必须用 finish 捕获的 finished_action_id 显式塞进 data。
 	var data := {
 		"actorId": actor_id,
 		"affectedCharacterIds": character.perception().voice_affected_character_ids("far"),
 		"target": target_dict,
 		"result": result,
 	}
+	if not action_id.is_empty():
+		data["actionId"] = action_id
 	if not error.is_empty():
 		data["error"] = error
 	character.emit_world_event(action, data)
+
+
+# 这些动作失败时自己已经发了能体现失败的事件，不该再补 action_failed（否则重复）：
+# - craft（工作台）：失败发 outcome=failure 事件（含难度/熟练度）。
+# - sleep：被外部刺激唤醒走 finish(false)，但 woke_up 事件已表达"睡眠中断"。
+# 代价：这两类的"启动即失败"（没产生自有事件那种）也不会进历史，但 tool 同步返回值已即时告知。
+func _action_self_reports_failure(action: String) -> bool:
+	return Crafts.is_action(action) or action == "sleep"
+
+
+# 失败动作 → actor-only 的 action_failed 自感知事件。data.actionId 与 action_log.actionId 一致，
+# renderer 据此精确 join；say_to 额外带 spokenText（想说但没传到的话）。
+func _emit_action_failed_event(action_id: String, action: String, target: Variant, error: String) -> void:
+	if character == null:
+		return
+	var actor_id := character.backend_character_id()
+	if actor_id.is_empty():
+		return
+	var target_dict: Dictionary = target as Dictionary if typeof(target) == TYPE_DICTIONARY else {}
+	var data := {
+		"actorId": actor_id,
+		"affectedCharacterIds": [actor_id],
+		"actionId": action_id,
+		"action": action,
+		"target": target_dict,
+		"error": error,
+	}
+	if action == "say_to":
+		data["spokenText"] = str(target_dict.get("text", ""))
+	character.emit_world_event("action_failed", data)

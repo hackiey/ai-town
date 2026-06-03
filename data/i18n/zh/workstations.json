@@ -8,6 +8,10 @@
       "name": "熔炉",
       "prompt": "按 E 锻造"
     },
+    "charcoal_kiln": {
+      "name": "炭窑",
+      "prompt": "按 E 烧炭"
+    },
     "drying_rack": {
       "name": "晾晒架",
       "prompt": "按 E 查看"

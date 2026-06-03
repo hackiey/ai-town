@@ -14,6 +14,11 @@ const _DEFAULT_PROMPT_TEXT := "按 E 查看"
 @export_range(1, 64, 1) var slot_count: int = 8
 @export_range(0.5, 12.0, 0.1) var interaction_radius: float = 3.0
 
+# 货架陈列 = 运行时内存权威（server 端由 Shelves 维护，DB 只做写穿持久化）。**不直接同步**：
+# client 显示走「玩家正在查看的那一页」（Player.view_slots，owner-private 同步，见 player.gd）。
+# 每条 = {listing_id, slot_index, owner_character_id, price_centi, slot}（同 Db.list_shelf_listings 行）。
+var listings: Array[Dictionary] = []
+
 # 2D ShelfNameplateLayer 按 property 读取，无需关心 i18n 路径。
 var display_name: String:
 	get: return effective_display_name()

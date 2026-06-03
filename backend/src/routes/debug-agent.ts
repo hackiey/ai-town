@@ -3,7 +3,7 @@ import { rowToAgentSession, rowToAgentSessionMessage, rowToThinkingTurn } from "
 import { parseJsonColumn, type AppDb } from "../db/sqlite.js";
 import { getActiveLocale } from "../i18n/index.js";
 import type { AgentActionHost, AgentRuntimeContext } from "../agent-host/runtime.js";
-import { recentWorldEventRecords } from "../agent-host/sqlite-actions.js";
+import { recentActionsForCharacter, recentWorldEventRecords } from "../agent-host/sqlite-actions.js";
 import { SqliteAgentSessionStore } from "../agent-host/sqlite-session-store.js";
 import { SqliteRuntimeStorage } from "../agent-host/sqlite-storage.js";
 import { AgentRuntimeRouter, loadNpcRuntimeRouter } from "../agent-host/router.js";
@@ -944,13 +944,13 @@ function debugAgentRuntimeContext(db: AppDb, townId: string, characterId: string
     getManifest: async () => null,
     getCurrentContext: async () => null,
     recentEvents: () => [],
-    recentEventRecords: (opts) => Promise.resolve(recentWorldEventRecords(db, townId, opts)),
+    recentEventRecords: (opts) => Promise.resolve(recentWorldEventRecords(db, townId, { ...opts, characterId })),
     characterGroups: () => Promise.resolve(getCharacterGroups(db, townId, characterId)),
     resolveCharacterName: (id) => id,
     resolveItemName: (id) => id,
     resolveLocationName: (id) => id,
     storage: () => new SqliteRuntimeStorage(db, { runtimeName: debugAgentRouter().runtimeFor(characterId), townId, characterId }),
-    actions: () => unavailableDebugActionHost(),
+    actions: () => unavailableDebugActionHost(db, townId, characterId),
     sessions: () => new SqliteAgentSessionStore(db),
     thinkingTurns: () => ({
       record: async () => {
@@ -961,14 +961,17 @@ function debugAgentRuntimeContext(db: AppDb, townId: string, characterId: string
   };
 }
 
-function unavailableDebugActionHost(): AgentActionHost {
+function unavailableDebugActionHost(db: AppDb, townId: string, characterId: string): AgentActionHost {
   const unavailable = async () => {
     throw new Error("debug prompt context cannot execute actions");
   };
   return {
     submit: unavailable,
+    // debug 预览不执行动作；但 recentForCharacter 是只读的，照常查 action_log，
+    // 让预览的事件行也能带上自身动作效果（item-3），与真实 prompt 一致。
+    recordFailed: () => { throw new Error("debug prompt context cannot execute actions"); },
     get: unavailable,
-    recentForCharacter: unavailable,
+    recentForCharacter: async (id, limit) => recentActionsForCharacter(db, townId, id || characterId, limit),
     cancel: unavailable,
     waitForTerminal: unavailable,
     emitWorldEvent: unavailable,

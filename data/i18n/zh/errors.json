@@ -33,6 +33,7 @@
     "unknown_container": "无法识别容器：{container}。请使用合法 container id 或配置中的容器名称。",
     "unknown_shelf": "无法识别货架：{shelf}。请使用当前上下文中的货架名称或 id。",
     "unknown_shelf_listing": "无法识别货架 listing：{listing}。请使用当前货架中列出的 listing_id。",
-    "unknown_target": "无法识别目标：{target}。请使用当前上下文中的角色、地点、工作台或物品名称。"
+    "unknown_target": "无法识别目标：{target}。请使用当前上下文中的角色、地点、工作台或物品名称。",
+    "tool_failure_reflecting": "工具调用失败，当前 agent loop 已停止；正在交给慢思考反思这次失败，随后会带着新的判断继续"
   }
 }

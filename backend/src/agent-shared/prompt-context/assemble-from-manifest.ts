@@ -28,6 +28,7 @@ import {
 } from "../../services/world-state/index.js";
 import { cropStageDisplayName, getVariety, isRipeStage } from "../../services/world-state/crops-catalog.js";
 import { getActiveLocale, t } from "../../i18n/index.js";
+import { syncRuntimeRegistryFromDb } from "../../services/runtime-character-registry.js";
 import { characterAttributeName } from "../name-resolver/index.js";
 import { getCraftSpec, listCraftSlugs, type CraftSlug } from "../game-tools/craft-registry.js";
 import { gameTimeFromRecord } from "./time.js";
@@ -66,6 +67,9 @@ export function assembleAgentContextFromManifest(
   townId: string,
   manifest: PerceptionManifestPayload,
 ): AgentCurrentContext {
+  // worker 进程的 runtime-character 内存 registry 不会被 character.register 直接填（那发生在
+  // server 进程）。渲染前从共享的 runtime_characters 表刷一次，玩家才能解析成真名而非 player_xxx。
+  syncRuntimeRegistryFromDb(db);
   const characterId = manifest.characterId;
   const groupIds = manifest.characterGroupIds;
   // 单一 name resolver：所有"id → 中文名"翻译只走这一条链路（i18n catalog → id）。

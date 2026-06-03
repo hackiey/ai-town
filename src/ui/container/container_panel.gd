@@ -8,21 +8,27 @@ extends CanvasLayer
 # - 实际转移由 server-authoritative RPC 完成（player.request_container_take/put）
 # - 玩家走出容器范围或 ESC 关闭
 
-const ROWS_CONTAINER := 4   # 容器格只显示前 N=ROWS_CONTAINER*COLS 槽（vault 有 999 槽，展示不全；放整页够看）
+const ROWS_CONTAINER := 4   # 容器格每页显示 N=ROWS_CONTAINER*COLS 槽，超出走分页
 const COLS := 6
 const TAKE_PER_CLICK := 1
 const PUT_PER_CLICK := 1
+const PAGE_SIZE := ROWS_CONTAINER * COLS   # 每页槽数 = 24
 
 var _player: Node = null
 var _active_container: Node = null  # ContainerNode 进入 proximity 时记录
 var _open_container: Node = null
 var _container_slots: Array = []
 var _player_slots: Array = []
-var _last_container_snapshot: Array = []
 var _last_player_snapshot: Array = []
+var _page: int = 0   # 当前查看页（0-based）
+# 分页导航控件（程序化创建，挂在容器列底部）
+var _nav_prev: Button = null
+var _nav_next: Button = null
+var _nav_label: Label = null
 
 @onready var _root: Control = $Root
 @onready var _title: Label = $Root/Panel/Margin/VBox/Title
+@onready var _container_col: VBoxContainer = $Root/Panel/Margin/VBox/HBox/ContainerCol
 @onready var _container_grid: GridContainer = $Root/Panel/Margin/VBox/HBox/ContainerCol/Grid
 @onready var _player_grid: GridContainer = $Root/Panel/Margin/VBox/HBox/PlayerCol/Grid
 @onready var _container_label: Label = $Root/Panel/Margin/VBox/HBox/ContainerCol/Label
@@ -35,8 +41,28 @@ func _ready() -> void:
 	_root.visible = false
 	_container_grid.columns = COLS
 	_player_grid.columns = 5
+	_build_nav()
 	EventBus.workstation_proximity_changed.connect(_on_proximity_changed)
 	_close_btn.pressed.connect(close)
+
+
+# 容器列底部的分页导航：[‹ 上一页] 第 X/Y 页 [下一页 ›]，只在多页时显示。
+func _build_nav() -> void:
+	var row := HBoxContainer.new()
+	row.alignment = BoxContainer.ALIGNMENT_CENTER
+	row.add_theme_constant_override("separation", 8)
+	_nav_prev = Button.new()
+	_nav_prev.text = tr("ui.container.page_prev")
+	_nav_prev.pressed.connect(_on_prev_page)
+	row.add_child(_nav_prev)
+	_nav_label = Label.new()
+	row.add_child(_nav_label)
+	_nav_next = Button.new()
+	_nav_next.text = tr("ui.container.page_next")
+	_nav_next.pressed.connect(_on_next_page)
+	row.add_child(_nav_next)
+	row.visible = false
+	_container_col.add_child(row)
 
 
 func set_player(player: Node) -> void:
@@ -66,8 +92,10 @@ func open(workstation: Node) -> void:
 	_title.text = String(workstation.display_name)
 	_container_label.text = tr("ui.container.label_storage")
 	_player_label.text = tr("ui.container.label_backpack")
+	_page = 0
 	_build_container_slots()
 	_build_player_slots()
+	_request_view()
 	_refresh()
 	_root.visible = true
 	set_process(true)
@@ -75,8 +103,35 @@ func open(workstation: Node) -> void:
 
 func close() -> void:
 	_root.visible = false
+	# 通知 server 停止为本玩家算容器页（清空 view）。
+	if _player != null and _open_container != null and _player.has_method("request_view"):
+		_player.request_view.rpc_id(1, "", "", 0, PAGE_SIZE)
 	_open_container = null
 	set_process(false)
+
+
+# 向 server 报「正在看容器 X 第 _page 页」；页数据经 Player.view_slots 同步回来。
+func _request_view() -> void:
+	if _player == null or _open_container == null:
+		return
+	if not _player.has_method("request_view"):
+		return
+	_player.request_view.rpc_id(1, "container", _container_id(), _page, PAGE_SIZE)
+
+
+func _on_prev_page() -> void:
+	if _page <= 0:
+		return
+	_page -= 1
+	_request_view()
+
+
+func _on_next_page() -> void:
+	var count := int(_player.view_page_count) if _player != null and "view_page_count" in _player else 1
+	if _page >= count - 1:
+		return
+	_page += 1
+	_request_view()
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -101,6 +156,14 @@ func _unhandled_input(event: InputEvent) -> void:
 func _process(_delta: float) -> void:
 	if _root.visible:
 		_refresh()
+
+
+func _container_id() -> String:
+	if _open_container == null:
+		return ""
+	if _open_container.has_method("effective_container_id"):
+		return String(_open_container.effective_container_id())
+	return String(_open_container.workstation_id)
 
 
 func _build_container_slots() -> void:
@@ -133,12 +196,13 @@ func _build_player_slots() -> void:
 func _refresh() -> void:
 	if _open_container == null or _player == null:
 		return
-	# 容器内容：从 Containers autoload 拿持久化 slots（server + client 同步同源）。
-	var slots: Array = Containers.adapter_slots(_open_container)
+	# 容器内容：读 Player.view_slots（owner-private 同步的「当前页」；server 切片权威 contents）。
+	# 仅当 server 确认在看本容器时才用，否则当空（避免渲染上一个目标的残留页）。
+	var slots: Array = _view_slots_for_open_container()
 	for i in _container_slots.size():
 		var data: Dictionary = slots[i] if i < slots.size() else {}
 		_container_slots[i].set_slot(i, data)
-	_last_container_snapshot = slots.duplicate(true)
+	_refresh_nav()
 	# 玩家背包
 	var inv: Array = _player.inventory
 	if inv.size() != _player_slots.size():
@@ -148,18 +212,43 @@ func _refresh() -> void:
 	_last_player_snapshot = inv.duplicate(true)
 
 
-func _on_container_take_one(slot_index: int) -> void:
-	_request_take(slot_index, TAKE_PER_CLICK)
+# 当前页的容器槽——只有 server 确认在看本容器（kind/target 匹配）才返回，否则空。
+func _view_slots_for_open_container() -> Array:
+	if _player == null or not ("view_kind" in _player):
+		return []
+	if str(_player.view_kind) != "container":
+		return []
+	if str(_player.view_target_id) != _container_id():
+		return []
+	return _player.view_slots
 
 
-func _on_container_take_all(slot_index: int) -> void:
-	var slots: Array = Containers.adapter_slots(_open_container)
-	if slot_index < 0 or slot_index >= slots.size():
+func _refresh_nav() -> void:
+	if _nav_label == null:
 		return
-	var qty := int((slots[slot_index] as Dictionary).get("quantity", 0))
+	var count := int(_player.view_page_count) if "view_page_count" in _player else 1
+	var nav_row: Node = _nav_label.get_parent()
+	nav_row.visible = count > 1
+	if count <= 1:
+		return
+	_nav_label.text = tr("ui.container.page_indicator") % [_page + 1, count]
+	_nav_prev.disabled = _page <= 0
+	_nav_next.disabled = _page >= count - 1
+
+
+# grid_i 是网格里第 i 格（0..23）；真实容器 slot_index = _page*PAGE_SIZE + grid_i。
+func _on_container_take_one(grid_i: int) -> void:
+	_request_take(_page * PAGE_SIZE + grid_i, TAKE_PER_CLICK)
+
+
+func _on_container_take_all(grid_i: int) -> void:
+	var slots: Array = _view_slots_for_open_container()
+	if grid_i < 0 or grid_i >= slots.size():
+		return
+	var qty := int((slots[grid_i] as Dictionary).get("quantity", 0))
 	if qty <= 0:
 		return
-	_request_take(slot_index, qty)
+	_request_take(_page * PAGE_SIZE + grid_i, qty)
 
 
 func _on_player_put_one(slot_index: int) -> void:
@@ -183,8 +272,7 @@ func _request_take(container_slot_index: int, qty: int) -> void:
 		return
 	if not _player.has_method("request_container_take"):
 		return
-	var cid: String = _open_container.effective_container_id() if _open_container.has_method("effective_container_id") else String(_open_container.workstation_id)
-	_player.request_container_take.rpc_id(1, cid, container_slot_index, qty)
+	_player.request_container_take.rpc_id(1, _container_id(), container_slot_index, qty)
 
 
 func _request_put(player_slot_index: int, qty: int) -> void:
@@ -192,8 +280,7 @@ func _request_put(player_slot_index: int, qty: int) -> void:
 		return
 	if not _player.has_method("request_container_put"):
 		return
-	var cid: String = _open_container.effective_container_id() if _open_container.has_method("effective_container_id") else String(_open_container.workstation_id)
-	_player.request_container_put.rpc_id(1, cid, player_slot_index, qty)
+	_player.request_container_put.rpc_id(1, _container_id(), player_slot_index, qty)
 
 
 func _is_container(workstation: Node) -> bool:

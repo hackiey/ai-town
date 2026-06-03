@@ -227,6 +227,10 @@ export class PiAgentRuntime {
       characterId: ctx.characterId,
       agentKind,
       logger: this.logger,
+      // 仅 npc：tool 失败时 action 同步等 thinking 反思这次失败再续上（player 无 thinking 轨）。
+      requestBlockingReflection: agentKind === "npc"
+        ? (reason: string) => this.thinkingSession(ctx).runThinkBlocking(reason)
+        : undefined,
     });
     this.sessions.set(key, session);
     // Eager 建 thinking session，让 onGameTime 即便没有 significant 事件也能驱动定时 fire。

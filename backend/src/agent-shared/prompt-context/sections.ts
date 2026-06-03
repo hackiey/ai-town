@@ -47,6 +47,10 @@ export function renderNearbyEnvironmentSections(
 ): RenderedContextSection[] {
   return [
     {
+      title: t("prompt.context.label.known_locations", locale),
+      body: renderKnownLocationsLines(current, locale),
+    },
+    {
       title: t("prompt.context.label.nearby_buildings", locale),
       body: renderLocationDistanceBandLines(current.nearbyBuildings, current, {
         near: t("prompt.context.distance.buildings_near", locale),
@@ -342,6 +346,20 @@ function formatCharacterStatusLabel(
       return translated !== i18nKey ? translated : localizeText(status.state);
     }
   }
+}
+
+// 全城地图：列出顶层地点（depth===0 / 无 parentId），全局可见——给 move_to_location 当合法目的地。
+// 子地点不在此段，它们靠"周围地点"（perceivedLocations 实时感知）按 near/far 呈现。
+// move_to_location 去掉 enum 后，没有这段 LLM 就只能走向感知到的近处地点（[[feedback_agent_locations_source_of_truth]]）。
+function renderKnownLocationsLines(current: AgentCurrentContext, locale: Locale): string {
+  const topLevel = current.visibleLocations.filter((location) => location.depth === 0 && !location.parentId);
+  if (topLevel.length === 0) {
+    return t("prompt.context.distance_band_none", locale);
+  }
+  const sep = t("prompt.context.distance_band_separator", locale);
+  const names = topLevel.map((location) => displayLocationContextEntry(location.id, current));
+  // 去重：同名顶层地点（理论上不应有，但保险）合一。
+  return Array.from(new Set(names)).join(sep);
 }
 
 function renderLocationDistanceBandLines(

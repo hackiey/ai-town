@@ -274,7 +274,10 @@
       "popup_qty": "数量",
       "popup_price": "单价（银）",
       "popup_confirm": "确认",
-      "msg_empty": "货架现在是空的"
+      "msg_empty": "货架现在是空的",
+      "page_prev": "‹ 上一页",
+      "page_next": "下一页 ›",
+      "page_indicator": "第 %d / %d 页"
     },
     "container": {
       "label_default": "储物箱",
@@ -284,7 +287,10 @@
       "msg_no_key": "「%s」需要钥匙「%s」才能打开",
       "msg_too_far": "离「%s」太远，先走过去再操作",
       "msg_empty": "「%s」里没有「%s」",
-      "msg_full": "背包装不下「%s」"
+      "msg_full": "背包装不下「%s」",
+      "page_prev": "‹ 上一页",
+      "page_next": "下一页 ›",
+      "page_indicator": "第 %d / %d 页"
     }
   }
 }

@@ -12,6 +12,7 @@
 import type { Locale } from "../../i18n/index.js";
 import { SAY_TO_ACTION } from "../../godot-link/actions.js";
 import type { WorldEventRecord } from "../../godot-link/protocol.js";
+import { renderActionFailedEventLine } from "./action-failed.js";
 import {
   renderContainerDepositedEventLine,
   renderContainerInspectedEventLine,
@@ -68,6 +69,7 @@ const RENDERERS: Record<string, EventLineRenderer> = {
   water_crop: renderWaterCropEventLine,
   harvest_crop: renderHarvestCropEventLine,
   remove_pest: renderRemovePestEventLine,
+  action_failed: renderActionFailedEventLine,
 };
 
 export function renderEventLine(

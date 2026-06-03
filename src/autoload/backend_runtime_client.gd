@@ -207,6 +207,18 @@ func send_world_event(event_type: String, data: Dictionary = {}, spoken_text: St
 	var event_data := data.duplicate(true)
 	if not event_data.has("gameTime"):
 		event_data["gameTime"] = _game_time_snapshot()
+	# 给"由某个动作产生的事件"盖上来源 actionId：backend renderer 据此把 action_log.result 的
+	# 私密效果（饱食/产出/消耗）精确 join 回该事件行，取代历史上"类型+时间邻近"的模糊配对。
+	# actor 的 BackendActionRunner 持有当前动作 id；fast tool（say_to / respond）期间它返回 ""，
+	# 避免 fast tool 蹭到正在进行的 body 动作 id 造成串台。已显式带 actionId 的事件（如失败事件、
+	# move/plan_farm finish 事件）不覆盖。
+	if event_data.has("actorId") and not event_data.has("actionId"):
+		var stamp_actor_id := str(event_data.get("actorId", ""))
+		var stamp_actor: Node = _characters_by_id.get(stamp_actor_id)
+		if stamp_actor != null and stamp_actor.has_method("backend_actions"):
+			var stamp_id: String = stamp_actor.backend_actions().current_emit_action_id()
+			if not stamp_id.is_empty():
+				event_data["actionId"] = stamp_id
 	var payload := {
 		"type": event_type,
 		"spokenText": spoken_text,

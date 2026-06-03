@@ -6,7 +6,7 @@
 // 之间漂移。Memory 形状暂时也共享（v1 都按 self_knowledge/skill/other 分段），
 // 后续如果有 agent 想换 memory 结构再 per-agent 化。
 
-import type { GameTimeSnapshot, WorldEventRecord } from "../../godot-link/protocol.js";
+import type { ActionLogRecord, GameTimeSnapshot, WorldEventRecord } from "../../godot-link/protocol.js";
 
 export type DistanceBandContext = {
   near: string[];
@@ -275,4 +275,8 @@ export type GameAgentContext = {
   relevantEvents: WorldEventRecord[];
   pendingEvents: WorldEventRecord[];
   workingMemory?: WorkingMemorySnapshot;
+  // 本角色近期 action_log（含 result.character_changes/产出/消耗/失败原因）。删 transcript 后
+  // 自身动作的效果只剩在 action_log.result（world_event.data 不带），渲染时按类型+gameTime 合并进
+  // 自身事件行，让 LLM 看得到"吃了面包→饱食+30"。见 renderer.renderEventTimeline。
+  selfActionResults?: ActionLogRecord[];
 };

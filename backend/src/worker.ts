@@ -101,7 +101,7 @@ function agentHostForTown(townId: string): AgentHost | undefined {
     actions: (ctx) => createSqliteAgentActionHost(db, redis, ctx.townId),
     sessions: agentSessionStore,
     thinkingTurns: thinkingTurnStore,
-    recentEventRecords: (ctx, opts) => recentWorldEventRecords(db, ctx.townId, opts),
+    recentEventRecords: (ctx, opts) => recentWorldEventRecords(db, ctx.townId, { ...opts, characterId: ctx.characterId }),
     characterGroups: (ctx) => getCharacterGroups(db, ctx.townId, ctx.characterId),
     currentContext: ({ townId: t, manifest }) => assembleAgentContextFromManifest(db, t, manifest),
     setThinkingStatus: async (ctx) => {

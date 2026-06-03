@@ -19,6 +19,9 @@ export type RecentEventRecordsOptions = {
   sinceMs?: number;
   limit?: number;
   type?: string;
+  // 给定时只取"与该角色相关"的事件（actor / affected / target / global）。
+  // 不给（undefined）= 全局事件（旧行为）。见 sqlite-actions.recentWorldEventRecords。
+  characterId?: string;
 };
 
 export type SubmitGameActionInput = {
@@ -54,6 +57,8 @@ export type EmitWorldEventInput = {
 
 export interface AgentActionHost {
   submit(input: SubmitGameActionInput, options?: SubmitGameActionOptions): Promise<ActionLogRecord>;
+  // 预提交校验失败时记录一条 failed action_log（不发 Godot），让失败动作也有时间轴锚点。
+  recordFailed(input: SubmitGameActionInput, error: string): ActionLogRecord;
   get(actionId: string): Promise<ActionLogRecord | undefined>;
   recentForCharacter(characterId: string, limit: number): Promise<ActionLogRecord[]>;
   cancel(action: ActionLogRecord, reason: string): Promise<ActionLogRecord>;

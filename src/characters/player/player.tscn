@@ -102,6 +102,21 @@ properties/21/replication_mode = 2
 properties/22/path = NodePath(".:wallet_centi")
 properties/22/spawn = false
 properties/22/replication_mode = 2
+properties/23/path = NodePath(".:view_kind")
+properties/23/spawn = false
+properties/23/replication_mode = 2
+properties/24/path = NodePath(".:view_target_id")
+properties/24/spawn = false
+properties/24/replication_mode = 2
+properties/25/path = NodePath(".:view_page")
+properties/25/spawn = false
+properties/25/replication_mode = 2
+properties/26/path = NodePath(".:view_page_count")
+properties/26/spawn = false
+properties/26/replication_mode = 2
+properties/27/path = NodePath(".:view_slots")
+properties/27/spawn = false
+properties/27/replication_mode = 2
 
 [node name="Player" type="CharacterBody3D"]
 collision_layer = 2

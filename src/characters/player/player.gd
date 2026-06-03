@@ -46,6 +46,17 @@ var anim_state: String = "idle":
 @onready var visual: Node3D = $Visual
 @onready var _inventory_sync: MultiplayerSynchronizer = $InventorySync
 
+# ─ 容器/货架分页查看（owner-private 同步，挂在 InventorySync）────────────────
+# client 永远只持有「正在看的那一页」——整容器/货架内容绝不整发（treasury_vault 999 槽
+# 序列化会超 ENet MTU）。server 逐帧把权威节点属性切片到 view_slots 推给 owner peer。
+# 货架页里每条 slot 带 _listing_id / _listing_price_centi overlay。
+var view_kind: String = ""          # "" | "container" | "shelf"
+var view_target_id: String = ""
+var view_page: int = 0
+var view_page_size: int = 24
+var view_page_count: int = 1
+var view_slots: Array[Dictionary] = []
+
 # Client puppet 的 root transform 由 server 同步；Visual 在 client 端做轻量插值，
 # 既抹掉网络/step-assist 的小跳动，也让 CameraRig 跟到平滑后的模型。
 
@@ -201,6 +212,9 @@ func _physics_process(delta: float) -> void:
 	# 唯一权威 = server。client puppet 只接收 synchronizer 推过来的 transform/anim_state。
 	if not RunMode.is_runtime():
 		return
+	# 容器/货架分页查看：逐帧重算当前页（NPC 上架/买卖会改底层），on_change 同步给 owner。
+	if not view_kind.is_empty():
+		_recompute_view()
 	# Craft deadline poll：duration 是 game-second，所以跟着 GameClock 走，timewarp 时也加速。
 	if not _active_craft.is_empty():
 		var deadline: float = float(_active_craft.get("deadline_game_seconds", 0.0))
@@ -1432,6 +1446,55 @@ func request_update_shelf(shelf_id: String, ops: Array) -> void:
 	# update_shelf 没有等价 affectedCharacterIds 触发链路，所以这里显式推一次 manifest）。
 	perception().send_manifest()
 	_ok_owner(str(result.get("message", "货架已更新")))
+
+
+# ─ 容器/货架分页查看 ──────────────────────────────────────────────────────
+# 面板打开/翻页/关闭时由 ContainerPanel / ShelfPanel 调（client→server 控制信号，
+# 同其它 request_* 动作）。页数据经 owner-private synchronizer（view_slots）回传，
+# 不走 RPC 发数据。kind="" 关闭查看。
+@rpc("any_peer", "call_remote", "reliable")
+func request_view(kind: String, target_id: String, page: int, page_size: int) -> void:
+	if not RunMode.is_runtime():
+		return
+	if _reject_if_not_owner("request_view"):
+		return
+	view_kind = kind
+	view_target_id = target_id
+	view_page = maxi(page, 0)
+	view_page_size = clampi(page_size, 1, 64)
+	_recompute_view()
+
+
+# server-only：把当前查看目标的权威内容切到 view_page 这一页，写进 view_slots（同步给 owner）。
+# 逐帧调（_physics_process）以反映 NPC 上架/买卖；on_change 同步，同内容不会重发。
+func _recompute_view() -> void:
+	if view_kind.is_empty():
+		if not view_slots.is_empty():
+			view_slots = []
+			view_page_count = 1
+		return
+	var all_slots: Array = []
+	if view_kind == "container":
+		var node := Containers.find_container_node(view_target_id)
+		if node != null:
+			all_slots = Containers.adapter_slots(node)
+	elif view_kind == "shelf":
+		var node := Shelves.find_shelf_node(view_target_id)
+		if node != null:
+			# 货架按「非空 listing」分页（行视图），不是按 slot_index 网格。
+			for s in Shelves.adapter_listing_slots(node):
+				var slot: Dictionary = s
+				if int(slot.get("quantity", 0)) > 0 and not str(slot.get("item_id", "")).is_empty():
+					all_slots.append(slot)
+	var total := all_slots.size()
+	var size := maxi(view_page_size, 1)
+	view_page_count = maxi(1, int(ceil(float(total) / float(size))))
+	var page := clampi(view_page, 0, view_page_count - 1)
+	var start := page * size
+	var page_slots: Array[Dictionary] = []
+	for i in range(start, mini(start + size, total)):
+		page_slots.append(all_slots[i])
+	view_slots = page_slots
 
 
 func _container_access_ok(node: Node) -> bool:

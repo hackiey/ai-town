@@ -37,7 +37,7 @@ export class AgentContextBuilder {
   constructor(options: AgentContextBuilderOptions = {}) {
     this.worldLore = options.worldLore ?? getDefaultWorldLore();
     this.otherMemoryLimit = options.otherMemoryLimit ?? 20;
-    this.relevantEventLimit = options.relevantEventLimit ?? 80;
+    this.relevantEventLimit = options.relevantEventLimit ?? 50;
     this.recentEventWindowGameMinutes = options.recentEventWindowGameMinutes ?? DEFAULT_RECENT_EVENT_WINDOW_GAME_MINUTES;
     this.relevantEventWindowGameHours = options.relevantEventWindowGameHours ?? DEFAULT_RELEVANT_EVENT_WINDOW_GAME_HOURS;
   }
@@ -52,11 +52,15 @@ export class AgentContextBuilder {
 
     // wall-clock 预过滤：按 1× time_scale 折算，保证至少覆盖所需的游戏小时跨度；
     // 真正按游戏时间的精确过滤在下面用 currentGameMinutes 做。
+    // recentEventRecords 由 host 注入 characterId，在 SQL 层就按角色相关过滤再 LIMIT，
+    // 所以这里直接取 relevantEventLimit 条（都是本角色相关的），不再 ×2 预取兜全局截断。
     const rawRelevantEvents = await ctx.recentEventRecords({
       sinceMs: this.relevantEventWindowGameHours * 60 * 60 * 1000,
-      limit: this.relevantEventLimit * 2,
+      limit: this.relevantEventLimit,
     });
     await ctx.characterGroups(); // i18n / group cache 预热；返回值已经在 input.current 反映过。
+    // 本角色近期 action_log（带 result）——给事件渲染合并自身动作效果（item-3）。复用已有 host 方法。
+    const selfActionResults = await ctx.actions().recentForCharacter(ctx.characterId, this.relevantEventLimit);
     const current = input.current;
     const currentGameTime = normalizeGameTime(current.gameTime);
     const currentGameMinutes = currentGameTime ? gameTimeSortValue(currentGameTime) : undefined;
@@ -86,6 +90,7 @@ export class AgentContextBuilder {
       relevantEvents,
       pendingEvents: input.pendingEvents ?? [],
       workingMemory: input.workingMemory,
+      selfActionResults,
     };
   }
 }

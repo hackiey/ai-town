@@ -11,6 +11,12 @@ extends WorkstationNode
 
 @export_range(1, 999, 1) var slot_count: int = 12
 
+# 容器内容 = 运行时内存权威（server 端由 Containers 维护，DB 只做写穿持久化）。
+# 密集数组，长度 = slot_count，空槽是 InventorySlotData.empty()。**不直接同步**——
+# treasury_vault 有 999 槽，整数组序列化 ~387KB 远超 ENet 单包 MTU(64KB)。client 显示走
+# 「玩家正在查看的那一页」（Player.view_slots，owner-private 同步，见 player.gd）。
+var contents: Array[Dictionary] = []
+
 # 被动转换 tag 集合。每个 tag 代表 Containers.tick_passive 一种被动机制：
 #   "drying"     → 槽内 item.dries_into 累计 drying_age_hours，到阈值 swap（drying.lua）
 #   （未来加 "fermenting" / "smoking" 等就在这里追加）

@@ -3,6 +3,7 @@
 [ext_resource type="Script" path="res://src/ui/container/container_panel.gd" id="1_panel"]
 
 [node name="ContainerPanel" type="CanvasLayer"]
+layer = 10
 script = ExtResource("1_panel")
 
 [node name="Root" type="Control" parent="."]

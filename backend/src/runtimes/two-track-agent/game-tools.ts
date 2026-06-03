@@ -1,21 +1,13 @@
-// Two-track agent 的完整工具集 = shared 工具集 + 本 agent 自己的 update_memory。
+// Two-track action 轨工具集 = shared 工具集。
+// action 轨不再有 update_memory —— memory 写入是 thinking 轨的职责（见 thinking-track.ts
+// 仍用 createTwoTrackUpdateMemoryTool）。action 只做快速反应，长期记忆交给慢轨沉淀。
 
 import type { AgentTool } from "@mariozechner/pi-agent-core";
 import {
   createSharedGameAgentTools,
   type CreateGameAgentToolsOptions,
 } from "../../agent-shared/game-tools/index.js";
-import { createTwoTrackUpdateMemoryTool } from "./memory-tool.js";
 
 export function createTwoTrackAgentTools(options: CreateGameAgentToolsOptions): AgentTool<any>[] {
-  const tools = createSharedGameAgentTools(options);
-  const agentKind = options.agentKind ?? "npc";
-  // god agent 不写 memory（它是世界搭建者，不是住民）
-  if (agentKind === "god" || !options.characterId) {
-    return tools;
-  }
-  return [
-    ...tools,
-    createTwoTrackUpdateMemoryTool(options.memoryStorage, options.townId, options.characterId),
-  ];
+  return createSharedGameAgentTools(options);
 }

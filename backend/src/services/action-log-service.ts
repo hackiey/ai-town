@@ -71,6 +71,82 @@ export async function submitAction(
   return record;
 }
 
+// 把预提交失败渲染进时间线：Godot-side 的 reject 由 Godot 发 action_failed 事件，但预提交失败
+// 不经 Godot，所以 backend 必须自己补一条 action_failed world_event（actor-only）。直接写 world_events
+// 表、**不** publish 给 bus —— 失败的即时反馈本就由 tool 同步返回值给到 agent，这条只供历史时间线，
+// 不该触发新 turn。data.actionId 与 action_log.actionId 一致，渲染层据此精确 join。
+function insertSelfActionFailedEvent(db: AppDb, record: ActionLogRecord, error: string): void {
+  const now = new Date().toISOString();
+  const target = (record.target ?? {}) as Record<string, unknown>;
+  const spokenText = typeof target.text === "string" ? target.text : null;
+  const data: Record<string, unknown> = {
+    actorId: record.characterId,
+    affectedCharacterIds: [record.characterId],
+    actionId: record.id,
+    action: record.action,
+    target,
+    error,
+  };
+  db.prepare(
+    `INSERT INTO world_events (id, townId, type, actorId, spokenText, data, occurredAt, createdAt, gameTime)
+     VALUES (?, ?, 'action_failed', ?, ?, ?, ?, ?, ?)`,
+  ).run(
+    createMessageId("event"),
+    record.townId,
+    record.characterId,
+    spokenText,
+    toJsonColumn(data),
+    now,
+    now,
+    toJsonColumn(record.gameTime),
+  );
+}
+
+// 记录一条"未提交到 Godot 就失败"的动作（backend 预提交校验失败，如工具名翻译不出 slug）。
+// 直接落一行 status=failed 的 action_log，**不** publish 给 Godot（动作非法，不该执行）。
+// 目的：让失败动作也有完整时间轴锚点（debug timeline 读 action_log），失败反思才有对应 action。
+export function recordFailedAction(db: AppDb, input: SubmitActionInput, error: string): ActionLogRecord {
+  const now = new Date().toISOString();
+  const characterId = normalizeCharacterId(input.characterId);
+  const record: ActionLogRecord = {
+    id: createMessageId("action"),
+    townId: input.townId,
+    characterId,
+    action: input.action,
+    target: input.target ?? {},
+    reason: input.reason,
+    priority: clampPriority(input.priority ?? 0.5),
+    expiresAt: input.expiresAt,
+    createdAt: now,
+    gameTime: input.gameTime,
+    status: "failed",
+    failedAt: now,
+    error,
+  };
+  db.prepare(
+    `INSERT INTO action_log (
+       actionId, townId, characterId, action, target, reason, priority, expiresAt, gameTime,
+       submittedAt, status, terminalAt, terminalStatus, terminalGameTime, error
+     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'failed', ?, 'failed', ?, ?)`,
+  ).run(
+    record.id,
+    record.townId,
+    record.characterId,
+    record.action,
+    JSON.stringify(record.target ?? {}),
+    record.reason ?? null,
+    record.priority,
+    record.expiresAt ?? null,
+    toJsonColumn(record.gameTime),
+    now,
+    now,
+    toJsonColumn(record.gameTime),
+    error,
+  );
+  insertSelfActionFailedEvent(db, record, error);
+  return record;
+}
+
 export async function handleActionDelivery(
   db: AppDb,
   _redis: Redis,

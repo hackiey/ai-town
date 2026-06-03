@@ -24,7 +24,12 @@ import { recordActionAck, submitAction } from "../services/action-log-service.js
 import { publishGameTimeToBus } from "../services/game-time-bus.js";
 import { publishPerceptionManifestToBus } from "../services/perception-manifest-bus.js";
 import { auditCraftSkillConsistency, setReactionCatalog } from "../services/world-state/reaction-catalog.js";
-import { registerRuntimeCharacter, unregisterRuntimeCharacter } from "../services/runtime-character-registry.js";
+import {
+  deleteRuntimeCharacterRow,
+  registerRuntimeCharacter,
+  unregisterRuntimeCharacter,
+  upsertRuntimeCharacterRow,
+} from "../services/runtime-character-registry.js";
 import { publishWorldEventToBus } from "../services/world-event-bus.js";
 import { seedPlayerTakeoverMemories } from "../services/memory-service.js";
 import { loadNpcRuntimeRouter } from "./router.js";
@@ -130,12 +135,15 @@ function handleCharacterRegister(app: FastifyInstance, townId: string, payload: 
   if (!characterId) {
     throw new Error("character.register missing characterId");
   }
-  const entry = registerRuntimeCharacter({
+  const input = {
     characterId,
     displayName: payload.displayName,
     kind: payload.kind,
     aliases: payload.aliases,
-  });
+  };
+  // 内存：本进程（server）resolver 用；sqlite：跨进程给 worker 渲染 prompt 用。
+  const entry = registerRuntimeCharacter(input);
+  upsertRuntimeCharacterRow(app.db, townId, input);
   app.log.debug({ townId, entry }, "character registered");
 }
 
@@ -145,6 +153,7 @@ function handleCharacterUnregister(app: FastifyInstance, townId: string, payload
     throw new Error("character.unregister missing characterId");
   }
   unregisterRuntimeCharacter(characterId);
+  deleteRuntimeCharacterRow(app.db, characterId);
   app.log.debug({ townId, characterId }, "character unregistered");
 }
 

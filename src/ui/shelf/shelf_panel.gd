@@ -3,7 +3,7 @@ extends CanvasLayer
 
 # 玩家货架面板（client only）：
 # - shelf_proximity_changed(entered=true) 时记录 active；按 E 弹面板
-# - 左栏：货架陈列（Shelves.adapter_listing_slots 实时拉），每行 = item + 单价 + 买/管理按钮
+# - 左栏：货架陈列（分页，读 Player.view_slots 同步来的当前页），每行 = item + 单价 + 买/管理按钮
 # - 右栏：玩家背包（非空 slot），每行 = item + 数量 + （管理模式时）「上架」按钮
 # - 走出货架 3m 半径 → Area3D 报 exited → 自动关
 # - 买/上架/下架/改价全部通过 server-RPC (Player.request_buy_from_shelf / request_update_shelf)，
@@ -17,19 +17,26 @@ extends CanvasLayer
 
 const Money = preload("res://src/sim/characters/money.gd")
 const POPUP_PRICE_DEFAULT_SILVER := 1.0
+const PAGE_SIZE := 12   # 每页显示的 listing 行数，超出走分页
 
 var _player: Node = null
 var _active_shelf: Node = null      # 当前 proximity 内的货架；按 E 时打开它
 var _open_shelf: Node = null         # 当前实际打开的货架
 var _is_owner_mode: bool = false     # 在 open() 时算好
+var _page: int = 0                   # 当前查看页（0-based）
 # 变化检测——只有数据真变了才 rebuild row widgets，避免每帧 queue_free + add_child 闪烁
 var _last_listings_sig: String = ""
 var _last_inventory_sig: String = ""
 var _last_wallet_centi: int = -1
+# 分页导航控件（程序化创建，挂在货架陈列列底部）
+var _nav_prev: Button = null
+var _nav_next: Button = null
+var _nav_label: Label = null
 
 @onready var _root: Control = $Root
 @onready var _title: Label = $Root/Panel/Margin/VBox/Title
 @onready var _wallet_label: Label = $Root/Panel/Margin/VBox/WalletLabel
+@onready var _shelf_col: VBoxContainer = $Root/Panel/Margin/VBox/HBox/ShelfCol
 @onready var _listings_box: VBoxContainer = $Root/Panel/Margin/VBox/HBox/ShelfCol/Scroll/ListingsBox
 @onready var _listings_empty: Label = $Root/Panel/Margin/VBox/HBox/ShelfCol/Empty
 @onready var _inventory_box: VBoxContainer = $Root/Panel/Margin/VBox/HBox/PlayerCol/Scroll/InventoryBox
@@ -52,8 +59,28 @@ var _reprice_popup_label: Label = null
 
 func _ready() -> void:
 	_root.visible = false
+	_build_nav()
 	EventBus.shelf_proximity_changed.connect(_on_proximity_changed)
 	_close_btn.pressed.connect(close)
+
+
+# 货架陈列列底部的分页导航：[‹ 上一页] 第 X/Y 页 [下一页 ›]，只在多页时显示。
+func _build_nav() -> void:
+	var row := HBoxContainer.new()
+	row.alignment = BoxContainer.ALIGNMENT_CENTER
+	row.add_theme_constant_override("separation", 8)
+	_nav_prev = Button.new()
+	_nav_prev.text = tr("ui.shelf.page_prev")
+	_nav_prev.pressed.connect(_on_prev_page)
+	row.add_child(_nav_prev)
+	_nav_label = Label.new()
+	row.add_child(_nav_label)
+	_nav_next = Button.new()
+	_nav_next.text = tr("ui.shelf.page_next")
+	_nav_next.pressed.connect(_on_next_page)
+	row.add_child(_nav_next)
+	row.visible = false
+	_shelf_col.add_child(row)
 
 
 func set_player(player: Node) -> void:
@@ -93,6 +120,8 @@ func open(shelf: Node) -> void:
 	_last_listings_sig = ""
 	_last_inventory_sig = ""
 	_last_wallet_centi = -1
+	_page = 0
+	_request_view()
 	_refresh()
 	_root.visible = true
 	set_process(true)
@@ -100,6 +129,9 @@ func open(shelf: Node) -> void:
 
 func close() -> void:
 	_root.visible = false
+	# 通知 server 停止为本玩家算货架页（清空 view）。
+	if _player != null and _open_shelf != null and _player.has_method("request_view"):
+		_player.request_view.rpc_id(1, "", "", 0, PAGE_SIZE)
 	_open_shelf = null
 	_is_owner_mode = false
 	set_process(false)
@@ -107,6 +139,30 @@ func close() -> void:
 		_list_popup.hide()
 	if _reprice_popup != null and _reprice_popup.visible:
 		_reprice_popup.hide()
+
+
+# 向 server 报「正在看货架 X 第 _page 页」；页数据经 Player.view_slots 同步回来。
+func _request_view() -> void:
+	if _player == null or _open_shelf == null:
+		return
+	if not _player.has_method("request_view"):
+		return
+	_player.request_view.rpc_id(1, "shelf", _shelf_id(_open_shelf), _page, PAGE_SIZE)
+
+
+func _on_prev_page() -> void:
+	if _page <= 0:
+		return
+	_page -= 1
+	_request_view()
+
+
+func _on_next_page() -> void:
+	var count := int(_player.view_page_count) if _player != null and "view_page_count" in _player else 1
+	if _page >= count - 1:
+		return
+	_page += 1
+	_request_view()
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -128,15 +184,40 @@ func _process(_delta: float) -> void:
 		_refresh()
 
 
-# 每帧重建——row 数会随 NPC 修改货架 / 玩家背包变化而变。listings 走 host 进程
-# 内的 Db.list_shelf_listings（adapter_listing_slots 内调）；多人远端 client 上线
-# 时需要补 readonly RPC 把 listings 推给 owner peer。TODO(multiplayer)。
+# 每帧重建——row 数会随 NPC 修改货架 / 玩家背包变化而变。listings 走
+# Player.view_slots（owner-private 同步的「当前页」；server 把权威 ShelfNode.listings
+# 按非空 listing 切片到当前页），client 直接本地读，无轮询。
 func _refresh() -> void:
 	if _open_shelf == null or _player == null:
 		return
 	_refresh_wallet()
 	_refresh_listings()
+	_refresh_nav()
 	_refresh_inventory()
+
+
+# 当前页的货架 listing——只有 server 确认在看本货架（kind/target 匹配）才返回，否则空。
+func _view_slots_for_open_shelf() -> Array:
+	if _player == null or not ("view_kind" in _player):
+		return []
+	if str(_player.view_kind) != "shelf":
+		return []
+	if str(_player.view_target_id) != _shelf_id(_open_shelf):
+		return []
+	return _player.view_slots
+
+
+func _refresh_nav() -> void:
+	if _nav_label == null:
+		return
+	var count := int(_player.view_page_count) if "view_page_count" in _player else 1
+	var nav_row: Node = _nav_label.get_parent()
+	nav_row.visible = count > 1
+	if count <= 1:
+		return
+	_nav_label.text = tr("ui.shelf.page_indicator") % [_page + 1, count]
+	_nav_prev.disabled = _page <= 0
+	_nav_next.disabled = _page >= count - 1
 
 
 func _refresh_wallet() -> void:
@@ -148,9 +229,9 @@ func _refresh_wallet() -> void:
 
 
 func _refresh_listings() -> void:
-	var slots: Array = Shelves.adapter_listing_slots(_open_shelf)
+	# server 已只把非空 listing 切到当前页（_recompute_view），这里再兜一层空过滤。
 	var non_empty: Array = []
-	for s in slots:
+	for s in _view_slots_for_open_shelf():
 		var slot: Dictionary = s
 		if int(slot.get("quantity", 0)) > 0 and not str(slot.get("item_id", "")).is_empty():
 			non_empty.append(slot)
@@ -473,24 +554,10 @@ func _on_reprice_popup_confirmed() -> void:
 	var price_centi := int(roundf(_reprice_popup_price.value * 100.0))
 	if item_name.is_empty() or price_centi < 0:
 		return
-	# update op 需要 quantity——保留当前总量。用当前 listing slot qty 求和。
-	var current_qty := _count_listings_for_item(item_name)
-	if current_qty <= 0:
-		return
-	var ops := [{"type": "update", "item": item_name, "quantity": current_qty, "price_centi": price_centi}]
+	# 纯改价 op：server 端把该 item 的所有 listing 重新定价，不需要 client 知道跨页总量
+	# （分页后 client 只看得到当前页）。见 Shelves.update_shelf 的 "reprice" 分支。
+	var ops := [{"type": "reprice", "item": item_name, "price_centi": price_centi}]
 	_player.request_update_shelf.rpc_id(1, _shelf_id(_open_shelf), ops)
-
-
-func _count_listings_for_item(item_name: String) -> int:
-	if _open_shelf == null:
-		return 0
-	var total := 0
-	for s in Shelves.adapter_listing_slots(_open_shelf):
-		var slot: Dictionary = s
-		var view := InventorySlotData.of(slot)
-		if view.display_name() == item_name:
-			total += int(slot.get("quantity", 0))
-	return total
 
 
 func _is_shelf(node: Node) -> bool:

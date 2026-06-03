@@ -4,8 +4,8 @@ extends RefCounted
 # 三种 inventory 后端的统一适配层。lua 端通过 affect.take_item / transfer_item /
 # set_slot_state / world.find_items 操作的"holder"实际可能是：
 #   Character        → 自身 inventory: Array[Dictionary] 字段
-#   ContainerNode    → Containers autoload 持有的 _contents[cid] 数组
-#   ShelfNode        → Shelves autoload 持有的 listings 表（**read-only**，写走 6.3）
+#   ContainerNode    → 自身 contents: Array[Dictionary] 节点属性（Containers autoload 维护）
+#   ShelfNode        → 自身 listings: Array[Dictionary] 节点属性（**read-only**，写走 6.3）
 #
 # 共享 slot schema（Phase 1 平铺）：{ item_id, quantity, quality, shape_type, materials, tags,
 #                     physics_props, container_amount, container_content,
@@ -17,7 +17,7 @@ extends RefCounted
 #   container_content 字段名对齐 slot.container_content 平铺列（原 content_id 已废弃）
 #
 # Adapter 是 RefCounted 临时对象 —— 每次 affect 调用 new 一份，用完即弃。
-# 持久状态全在底层（Character.inventory / Containers._contents / Db）。
+# 持久状态全在底层（Character.inventory / ContainerNode.contents / ShelfNode.listings / Db）。
 
 
 # ─── 抽象方法（子类必须 override）─────────────────────────────────────

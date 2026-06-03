@@ -3,6 +3,7 @@ import { rowToActionLog, rowToWorldEvent } from "../db/records.js";
 import { toJsonColumn, type AppDb } from "../db/sqlite.js";
 import type { ActionLogRecord, WorldEventRecord } from "../godot-link/protocol.js";
 import {
+  recordFailedAction,
   requestCancelAction,
   submitAction,
   waitForActionTerminalStatus,
@@ -34,6 +35,16 @@ export function createSqliteAgentActionHost(
       expiresAt: input.expiresAt,
       gameTime: input.gameTime,
     }, options),
+    recordFailed: (input: SubmitGameActionInput, error: string) => recordFailedAction(db, {
+      townId,
+      characterId: input.characterId,
+      action: input.action,
+      target: input.target,
+      reason: input.reason,
+      priority: input.priority,
+      expiresAt: input.expiresAt,
+      gameTime: input.gameTime,
+    }, error),
     get: async (actionId: string) => findAction(db, townId, actionId),
     recentForCharacter: async (characterId: string, limit: number) => recentActionsForCharacter(db, townId, characterId, limit),
     cancel: (action: ActionLogRecord, reason: string) => requestCancelAction(db, redis, action, reason),
@@ -49,29 +60,33 @@ export function recentWorldEventRecords(
 ): WorldEventRecord[] {
   const limit = Math.max(1, Math.floor(opts.limit ?? 100));
   const since = opts.sinceMs == null ? undefined : new Date(Date.now() - opts.sinceMs).toISOString();
-  const rows = opts.type
-    ? since
-      ? db.prepare(
-        `SELECT * FROM world_events
-         WHERE townId = ? AND type = ? AND createdAt >= ?
-         ORDER BY createdAt DESC, id DESC LIMIT ?`,
-      ).all(townId, opts.type, since, limit)
-      : db.prepare(
-        `SELECT * FROM world_events
-         WHERE townId = ? AND type = ?
-         ORDER BY createdAt DESC, id DESC LIMIT ?`,
-      ).all(townId, opts.type, limit)
-    : since
-      ? db.prepare(
-        `SELECT * FROM world_events
-         WHERE townId = ? AND createdAt >= ?
-         ORDER BY createdAt DESC, id DESC LIMIT ?`,
-      ).all(townId, since, limit)
-      : db.prepare(
-        `SELECT * FROM world_events
-         WHERE townId = ?
-         ORDER BY createdAt DESC, id DESC LIMIT ?`,
-      ).all(townId, limit);
+
+  // 历史 bug：原来按"全局最新 N 条"取，再 JS 按角色过滤。全镇几十个 NPC 事件率高，
+  // N=160 只覆盖 ~25 game-min，导致 action 轨"历史事件（1–8小时前）"段饿死。
+  // 给了 characterId 就在 SQL 层先按角色相关过滤，再 LIMIT，这样 LIMIT 条都是本角色相关的，
+  // 足够覆盖整个游戏时间窗。相关判定与 isEventRelevantToCharacter（events.ts）口径一致的超集：
+  //   actor 自己 ∪ 事件 data 里出现该角色 id（affected/target/visible…）∪ 全局事件。
+  // data LIKE 用带引号的 id 片段，避免子串误匹配；精确再判由 builder 的 JS 过滤兜。
+  const clauses: string[] = ["townId = ?"];
+  const params: unknown[] = [townId];
+  if (opts.type) {
+    clauses.push("type = ?");
+    params.push(opts.type);
+  }
+  if (since) {
+    clauses.push("createdAt >= ?");
+    params.push(since);
+  }
+  if (opts.characterId) {
+    clauses.push(`(actorId = ? OR data LIKE ? OR data LIKE '%"scope":"global"%' OR data LIKE '%"global":true%')`);
+    params.push(opts.characterId, `%"${opts.characterId}"%`);
+  }
+  params.push(limit);
+  const rows = db.prepare(
+    `SELECT * FROM world_events
+     WHERE ${clauses.join(" AND ")}
+     ORDER BY createdAt DESC, id DESC LIMIT ?`,
+  ).all(...params);
   return (rows as Record<string, unknown>[]).map(rowToWorldEvent);
 }
 
@@ -82,7 +97,7 @@ function findAction(db: AppDb, townId: string, actionId: string): ActionLogRecor
   return row ? rowToActionLog(row) : undefined;
 }
 
-function recentActionsForCharacter(db: AppDb, townId: string, characterId: string, limit: number): ActionLogRecord[] {
+export function recentActionsForCharacter(db: AppDb, townId: string, characterId: string, limit: number): ActionLogRecord[] {
   const rows = db
     .prepare(
       `SELECT * FROM action_log

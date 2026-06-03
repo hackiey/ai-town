@@ -3,6 +3,7 @@
 
 import type { AgentRuntimeContext } from "../../../agent-host/runtime.js";
 import type { ContinuedActionManager } from "../../../agent-shared/notices/queue.js";
+import { localizeStringValue } from "../../../agent-shared/name-resolver/index.js";
 import type { ActionLogRecord } from "../../../godot-link/protocol.js";
 import { getActiveLocale, t, type Locale } from "../../../i18n/index.js";
 
@@ -34,12 +35,54 @@ function renderActiveWorkLine(action: ActionLogRecord, locale: Locale): string {
   const progressSuffix = progress
     ? t("prompt.agent.two_track.tick.active_work_progress_format", locale, { progress })
     : "";
+  const target = extractTargetLabel(action.target);
+  const targetSuffix = target
+    ? t("prompt.agent.two_track.tick.active_work_target_format", locale, { target })
+    : "";
   return t("prompt.agent.two_track.tick.active_work_line_format", locale, {
-    action: action.action,
-    actionId: action.id,
+    // actionId 不再暴露给 LLM；动作名用工具显示 label（找不到退回 slug），目的地另起 suffix。
+    action: actionLabel(action.action, locale),
+    targetSuffix,
     status: action.status,
     progressSuffix,
   });
+}
+
+// 工具显示名：tools.json 的 tool.<slug>.label；缺失则退回原始 slug。
+function actionLabel(action: string, locale: Locale): string {
+  const key = `tool.${action}.label`;
+  const label = t(key, locale);
+  return label === key ? action : label;
+}
+
+// 从 action_log.target 里抽出可读的目的地/对象名并本地化。
+// move_to_location 是 {locationId}；其它长跑工具的 target 形态各异，覆盖常见键即可，
+// 命中不到就返回空（优雅降级，不渲染 suffix）。复用 move.ts:resolveTargetLabel 同款思路。
+const TARGET_LABEL_KEYS = [
+  "locationId",
+  "characterId",
+  "itemId",
+  "regionId",
+  "farm",
+  "workstation_id",
+  "workstationId",
+  "workstation",
+  "container",
+];
+
+function extractTargetLabel(target: Record<string, unknown> | string | undefined): string | undefined {
+  if (target == null) return undefined;
+  if (typeof target === "string") {
+    const trimmed = target.trim();
+    return trimmed ? localizeStringValue(trimmed) : undefined;
+  }
+  for (const key of TARGET_LABEL_KEYS) {
+    const value = target[key];
+    if (typeof value === "string" && value.length > 0) {
+      return localizeStringValue(value);
+    }
+  }
+  return undefined;
 }
 
 function extractProgress(result: Record<string, unknown> | undefined): string | undefined {

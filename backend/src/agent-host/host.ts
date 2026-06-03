@@ -204,6 +204,7 @@ function unavailableActionHost(): AgentActionHost {
   };
   return {
     submit: unavailable,
+    recordFailed: () => { throw new Error("agent action host is not configured"); },
     get: unavailable,
     recentForCharacter: unavailable,
     cancel: unavailable,

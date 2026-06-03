@@ -26,6 +26,11 @@ func register_shelf(node: ShelfNode) -> void:
 	if _shelves_by_id.has(shelf_id) and _shelves_by_id[shelf_id] != node:
 		push_warning("[Shelves] duplicate shelf_id '%s', replacing previous node" % shelf_id)
 	_shelves_by_id[shelf_id] = node
+	# listings 从 DB 灌进 node.listings 只在 runtime；client 上 node.listings 由
+	# MultiplayerSynchronizer 填（Db 在 client 不开）。
+	if RunMode.is_runtime():
+		var rows: Array[Dictionary] = Db.list_shelf_listings(shelf_id)
+		node.listings = rows
 
 
 func unregister_shelf(node: ShelfNode) -> void:
@@ -92,6 +97,73 @@ func _prune_orphan_shelf_storage() -> void:
 	Db.prune_shelf_storage(valid_shelf_ids)
 
 
+# ─── Listing 存储层（node.listings 是运行时内存权威，DB 写穿持久化）──────────
+# 每条 listing = {listing_id, slot_index, owner_character_id, price_centi, slot}（同
+# Db.list_shelf_listings 行 shape）。所有读走 shelf.listings；所有写经下面的 helper：
+# 改 shelf.listings → Db 写穿 → 重写 shelf.listings 触发 MultiplayerSynchronizer 同步。
+
+func _get_listing(shelf: ShelfNode, listing_id: String) -> Dictionary:
+	for rec_v in shelf.listings:
+		var rec: Dictionary = rec_v
+		if str(rec.get("listing_id", "")) == listing_id:
+			var out: Dictionary = rec.duplicate(true)
+			# get_shelf_listing 旧返回带 shelf_id；buy_from_shelf 会校验，补上保持兼容。
+			out["shelf_id"] = shelf.effective_shelf_id()
+			return out
+	return {}
+
+
+func _save_listing(shelf: ShelfNode, slot_index: int, listing_id: String, owner_id: String, price_centi: int, slot: Dictionary) -> void:
+	var rec := {
+		"listing_id": listing_id,
+		"slot_index": slot_index,
+		"owner_character_id": owner_id,
+		"price_centi": price_centi,
+		"slot": slot,
+	}
+	var listings: Array[Dictionary] = shelf.listings
+	var replaced := false
+	for i in listings.size():
+		if str(listings[i].get("listing_id", "")) == listing_id:
+			listings[i] = rec
+			replaced = true
+			break
+	if not replaced:
+		listings.append(rec)
+	Db.save_shelf_listing(shelf.effective_shelf_id(), slot_index, listing_id, owner_id, price_centi, slot, shelf.effective_location_id())
+	shelf.listings = listings
+
+
+func _delete_listing(shelf: ShelfNode, listing_id: String) -> void:
+	var listings: Array[Dictionary] = shelf.listings
+	for i in range(listings.size() - 1, -1, -1):
+		if str(listings[i].get("listing_id", "")) == listing_id:
+			listings.remove_at(i)
+	Db.delete_shelf_listing(listing_id)
+	shelf.listings = listings
+
+
+func _update_listing_price(shelf: ShelfNode, listing_id: String, price_centi: int) -> void:
+	var listings: Array[Dictionary] = shelf.listings
+	for i in listings.size():
+		if str(listings[i].get("listing_id", "")) == listing_id:
+			var rec: Dictionary = listings[i]
+			rec["price_centi"] = price_centi
+			listings[i] = rec
+	Db.update_shelf_listing_price(listing_id, price_centi)
+	shelf.listings = listings
+
+
+func _next_empty_shelf_slot(shelf: ShelfNode) -> int:
+	var used := {}
+	for rec_v in shelf.listings:
+		used[int((rec_v as Dictionary).get("slot_index", -1))] = true
+	for i in shelf.slot_count:
+		if not used.has(i):
+			return i
+	return -1
+
+
 # ─── InventoryAdapter API（read-only；写路径见 update_shelf / buy_from_shelf）───
 # 把 shelf listings "投影" 成 slot dict 列表 —— 让 lua 端的 world.find_items 可以
 # 像查 Character / Container 一样查货架陈列。每个 listing → 一个虚拟 slot：
@@ -104,8 +176,7 @@ func _prune_orphan_shelf_storage() -> void:
 func adapter_listing_slots(node: ShelfNode) -> Array:
 	if node == null:
 		return []
-	var shelf_id := node.effective_shelf_id()
-	var listings := Db.list_shelf_listings(shelf_id)
+	var listings: Array = node.listings
 	if listings.is_empty():
 		return []
 	var by_idx: Dictionary = {}
@@ -160,6 +231,11 @@ func update_shelf(seller: Character, shelf_id: String, ops: Array) -> Dictionary
 				if not bool(removed.get("ok", false)):
 					return removed
 				changes.append(str(removed.get("message", "下架成功")))
+			"reprice":
+				var resh := _apply_reprice_op(seller, shelf, op)
+				if not bool(resh.get("ok", false)):
+					return resh
+				changes.append(str(resh.get("message", "改价成功")))
 			_:
 				return {"ok": false, "message": "不支持的货架操作：%s" % op_type}
 	var backend := get_node_or_null("/root/BackendRuntimeClient")
@@ -196,7 +272,7 @@ func buy_from_shelf(
 		return {"ok": false, "message": "未知货架：%s" % shelf_id}
 	if not _is_character_near_shelf(buyer, shelf):
 		return {"ok": false, "message": "你不在货架附近（需要 3 米内）"}
-	var listing := Db.get_shelf_listing(listing_id)
+	var listing := _get_listing(shelf, listing_id)
 	if listing.is_empty():
 		return {"ok": false, "message": "未知货架物品：%s" % listing_id}
 	if str(listing.get("shelf_id", "")) != shelf.effective_shelf_id():
@@ -234,17 +310,16 @@ func buy_from_shelf(
 			"message": str(buyer_receive.get("message", "你现在装不下这个货物")),
 		}
 	if wanted_qty >= available:
-		Db.delete_shelf_listing(listing_id)
+		_delete_listing(shelf, listing_id)
 	else:
 		slot["quantity"] = available - wanted_qty
-		Db.save_shelf_listing(
-			shelf.effective_shelf_id(),
+		_save_listing(
+			shelf,
 			int(listing.get("slot_index", 0)),
 			listing_id,
 			seller_id,
 			int(listing.get("price_centi", 0)),
-			slot,
-			shelf.effective_location_id()
+			slot
 		)
 	if emit_sale_event:
 		_emit_sale_event(
@@ -396,6 +471,27 @@ func _apply_remove_item_op(seller: Character, shelf: ShelfNode, op: Dictionary) 
 	}
 
 
+# 纯改价：把货架上该 seller 名下、匹配 item 的所有 listing 重新定价。不动数量。
+# UI 分页后 client 看不到跨页总量，所以改价不再要求传 quantity（对比 update op）。
+func _apply_reprice_op(seller: Character, shelf: ShelfNode, op: Dictionary) -> Dictionary:
+	var item_name := str(op.get("item", op.get("item_name", ""))).strip_edges()
+	var price_centi := int(op.get("price_centi", op.get("priceCenti", -1)))
+	if item_name.is_empty():
+		return {"ok": false, "message": "reprice 操作缺少 item"}
+	if price_centi < 0:
+		return {"ok": false, "message": "reprice.price_centi 必须是非负 centi 整数（1 银 = 100 centi）"}
+	var repriced := _reprice_matching_item_listings(seller, shelf, item_name, price_centi)
+	if not bool(repriced.get("ok", false)):
+		return repriced
+	return {
+		"ok": true,
+		"message": "已把 %s 改价为 %s" % [
+			_display_name_for_item(item_name),
+			Money.format_silver_from_centi(price_centi),
+		],
+	}
+
+
 func _extract_named_item_across_inventory(owner: Character, item_name: String, quantity: int) -> Dictionary:
 	var remaining := maxi(quantity, 0)
 	var extracted: Array[Dictionary] = []
@@ -432,7 +528,8 @@ func _store_stacks_on_shelf(seller: Character, shelf: ShelfNode, stacks: Array, 
 		var remaining := int(stack.get("quantity", 0))
 		if remaining <= 0:
 			continue
-		for listing_v in Db.list_shelf_listings(shelf_id):
+		# 遍历快照（_save_listing 会改 shelf.listings；用 duplicate 避免边迭代边改）。
+		for listing_v in shelf.listings.duplicate():
 			if remaining <= 0:
 				break
 			var listing: Dictionary = listing_v as Dictionary
@@ -446,31 +543,29 @@ func _store_stacks_on_shelf(seller: Character, shelf: ShelfNode, stacks: Array, 
 				continue
 			var move := mini(room, remaining)
 			slot["quantity"] = int(slot.get("quantity", 0)) + move
-			Db.save_shelf_listing(
-				shelf_id,
+			_save_listing(
+				shelf,
 				int(listing.get("slot_index", 0)),
 				str(listing.get("listing_id", "")),
 				seller_id,
 				int(listing.get("price_centi", 0)),
-				slot,
-				shelf.effective_location_id()
+				slot
 			)
 			remaining -= move
 		while remaining > 0:
-			var slot_index := Db.next_empty_shelf_slot(shelf_id, shelf.slot_count)
+			var slot_index := _next_empty_shelf_slot(shelf)
 			if slot_index < 0:
 				return {"ok": false, "message": "货架已经摆满了"}
 			var chunk := mini(remaining, Character.INVENTORY_STACK_MAX)
 			var placed := stack.duplicate(true)
 			placed["quantity"] = chunk
-			Db.save_shelf_listing(
-				shelf_id,
+			_save_listing(
+				shelf,
 				slot_index,
 				_new_listing_id(shelf_id),
 				seller_id,
 				price_centi,
-				placed,
-				shelf.effective_location_id()
+				placed
 			)
 			remaining -= chunk
 	return {"ok": true}
@@ -480,7 +575,7 @@ func _plan_store_stacks_on_shelf(seller: Character, shelf: ShelfNode, stacks: Ar
 	var seller_id := seller.backend_character_id()
 	var used_slots := {}
 	var virtual_listings: Array[Dictionary] = []
-	for listing_v in Db.list_shelf_listings(shelf.effective_shelf_id()):
+	for listing_v in shelf.listings:
 		var listing: Dictionary = (listing_v as Dictionary).duplicate(true)
 		used_slots[int(listing.get("slot_index", -1))] = true
 		virtual_listings.append(listing)
@@ -583,17 +678,16 @@ func _apply_matching_item_removal(seller: Character, shelf: ShelfNode, planned: 
 		var available := int(slot.get("quantity", 0))
 		var take := clampi(int(entry.get("quantity", 0)), 0, available)
 		if take >= available:
-			Db.delete_shelf_listing(listing_id)
+			_delete_listing(shelf, listing_id)
 			continue
 		slot["quantity"] = available - take
-		Db.save_shelf_listing(
-			shelf.effective_shelf_id(),
+		_save_listing(
+			shelf,
 			int(listing.get("slot_index", 0)),
 			listing_id,
 			seller.backend_character_id(),
 			int(listing.get("price_centi", 0)),
-			slot,
-			shelf.effective_location_id()
+			slot
 		)
 	return {"ok": true, "returned_stacks": returned_stacks}
 
@@ -606,13 +700,13 @@ func _reprice_matching_item_listings(seller: Character, shelf: ShelfNode, item_n
 		var listing_id := str(listing.get("listing_id", "")).strip_edges()
 		if listing_id.is_empty():
 			continue
-		Db.update_shelf_listing_price(listing_id, price_centi)
+		_update_listing_price(shelf, listing_id, price_centi)
 	return {"ok": true}
 
 
 func _matching_shelf_listings(shelf: ShelfNode, seller_id: String, item_name: String) -> Array[Dictionary]:
 	var out: Array[Dictionary] = []
-	for listing_v in Db.list_shelf_listings(shelf.effective_shelf_id()):
+	for listing_v in shelf.listings:
 		var listing: Dictionary = listing_v as Dictionary
 		if str(listing.get("owner_character_id", "")).strip_edges() != seller_id:
 			continue

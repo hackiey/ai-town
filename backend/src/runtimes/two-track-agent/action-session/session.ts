@@ -21,6 +21,7 @@ import {
 import type { AgentRuntimeContext } from "../../../agent-host/runtime.js";
 import type { AgentConfig } from "../../../config/env.js";
 import type { GameTimeSnapshot, WorldEventRecord } from "../../../godot-link/protocol.js";
+import type { CharacterAction } from "../../../godot-link/actions.js";
 import {
   resolveAgentProviderApiKey,
   type AgentModelSelection,
@@ -108,6 +109,9 @@ export type ActionTrackSessionOptions = {
   characterId: string;
   agentKind: AgentKind;
   logger?: PiAgentRuntimeLogger;
+  // tool 执行失败时，action 轨同步等 thinking 轨反思这次失败（写新 working_memory）再续上。
+  // 由 runtime 注入 → thinkingSession.runThinkBlocking。player session 不注入（无 thinking 轨）。
+  requestBlockingReflection?: (reason: string) => Promise<void>;
 };
 
 export class ActionTrackSession {
@@ -122,6 +126,8 @@ export class ActionTrackSession {
   private readonly agent: Agent;
 
   private turnInFlight = false;
+  // tool 失败后置位：暂停消费任何 reason，直到 thinking 反思写完（enqueueReflectionTurn 解除）。
+  private pausedForReflection = false;
   private currentThinkReason?: string;
   private latestObservedGameMinute?: number;
   private latestObservedGameTime?: GameTimeSnapshot;
@@ -367,8 +373,62 @@ export class ActionTrackSession {
   // reflection 被即时事件（sensory/interrupt/...）超越时不会占用一次 LLM turn。
   enqueueReflectionTurn(): void {
     if (this.options.agentKind !== "npc") return;
+    // thinking 反思写完 working_memory 是"恢复"信号：解除 tool 失败导致的暂停，让 action 续上。
+    this.pausedForReflection = false;
     this.enqueueReason("reflection");
     void this.runTurnLoop();
+  }
+
+  // tool 失败后同步等 thinking 反思。reflection 写完 working_memory 时 thinking 会回调
+  // onReflectionWritten → enqueueReflectionTurn，那里解除 pausedForReflection 并续轮。
+  // finally 是兜底：万一这次 thinking 没写 working_memory（没回调），也要解除暂停 + 续一轮，
+  // 否则 action 会永久停在 pausedForReflection。
+  private async runFailureReflection(reason: string): Promise<void> {
+    try {
+      await this.options.requestBlockingReflection?.(reason);
+    } catch (error) {
+      this.options.logger?.warn({
+        error,
+        townId: this.options.townId,
+        characterId: this.options.characterId,
+        agentKind: this.options.agentKind,
+        reason,
+      }, "blocking reflection after tool failure failed");
+    } finally {
+      // 若 onReflectionWritten 已经续过轮（pausedForReflection 被清），这里就什么都不做，避免重复起轮。
+      if (this.pausedForReflection) {
+        this.enqueueReflectionTurn();
+      }
+    }
+  }
+
+  // 预提交校验失败（工具在 submitToolAction 之前就 throw，如 resolveCraftWorkstation 翻不出 slug）
+  // 不会建 action_log 行，于是失败动作在 debug 时间轴上找不到、失败反思成了孤儿 trigger。
+  // 这里补记一条 failed action_log（不发 Godot），让失败动作有完整锚点。
+  // 判据：error result（createErrorToolResult）的 details 里没有 actionId；Godot 提交后失败的
+  // result 带 actionId，已有行，不重复记。
+  private recordPreSubmitToolFailure(toolName: string, result: unknown): void {
+    const details = objectValue(objectValue(result)?.details);
+    if (details && typeof details.actionId === "string" && details.actionId) {
+      return; // Godot 已落行
+    }
+    const error = formatContentText(objectValue(result)?.content) ?? `${toolName} failed`;
+    try {
+      this.options.ctx.actions().recordFailed({
+        characterId: this.options.characterId,
+        action: toolName as CharacterAction,
+        target: {},
+        gameTime: this.latestObservedGameTime,
+      }, error);
+    } catch (error) {
+      this.options.logger?.warn({
+        error,
+        townId: this.options.townId,
+        characterId: this.options.characterId,
+        agentKind: this.options.agentKind,
+        toolName,
+      }, "failed to record pre-submit tool failure");
+    }
   }
 
   // --- Turn 调度 ---
@@ -382,6 +442,9 @@ export class ActionTrackSession {
     this.turnInFlight = true;
     try {
       while (true) {
+        // tool 失败后暂停：不消费任何 reason（事件照常入队），等 thinking 反思写完由
+        // enqueueReflectionTurn 解除暂停并续轮。避免失败后还没反思就抢着起新 action turn。
+        if (this.pausedForReflection) return;
         // 优先按 push 顺序消费 reasons；空了就退出（不做 idle）。
         const reason = this.pendingReasons.shift();
         if (!reason) return;
@@ -446,8 +509,8 @@ export class ActionTrackSession {
   // 每次 LLM call 都是独立 "iteration"：重读 working_memory + 当前感知，重装配 messages，
   // 渲染新 user message 后调 agent.prompt()。afterToolCall 强制 abort pi-agent-core 的内部
   // 续航，控制权回到这里 → 下一轮拿到的就是 thinking 写完之后最新的 working_memory。
-  // 历史 user message 文本在 assembleMessagesForModel 里被占位符化，避免老 brief 误导 LLM；
-  // toolResult / assistant 完整保留。
+  // 不再回喂历史 transcript：assembleMessagesForModel 只返回置顶 Memory pin，过去做过什么
+  // 由本轮 user message 的历史/近期事件段承担（transcript 仍持久化，只是不进 LLM 消息序列）。
   //
   // pendingEvents（感知缓冲）随每个迭代「随到随显随清」：迭代顶部抓当前 live 快照渲染，user
   // message 持久化后立即从缓冲移除。这样 turn 进行中（如连烤数炉、跨数游戏分钟）陆续到达的
@@ -645,7 +708,21 @@ export class ActionTrackSession {
       this.activeToolExecutions = Math.max(0, this.activeToolExecutions - 1);
       this.toolExecutedThisLlmCall = true;
       void this.continuedActions.markToolResult(event.toolName, event.result);
-      if (event.toolName === "do_nothing" && !event.isError && isDoNothingToolResult(event.result)) {
+      // tool 真失败（pi-agent-core 标 isError）→ 立刻停下本 turn，交给 thinking 轨同步反思这次失败，
+      // 反思写完 working_memory 后由 onReflectionWritten → enqueueReflectionTurn 带新 brief 续上。
+      // 仅 npc（有 requestBlockingReflection 注入）走这条；同 turn 只触发一次（pausedForReflection 闸）。
+      if (event.isError && this.options.requestBlockingReflection && !this.pausedForReflection) {
+        // 进慢思考前，先确保这次失败有完整 action 落在时间轴上（用户要求：先有 tool_response/
+        // 完整 action 再 thinking）。预提交校验失败（如工具名翻不出 slug）的 error result 里没有
+        // actionId，说明没建过 action_log 行——这里补记一条 failed action，反思才有锚点。
+        this.recordPreSubmitToolFailure(event.toolName, event.result);
+        this.pausedForReflection = true;
+        this.stopFurtherToolsThisTurn = true;
+        this.stopAgentLoopThisTurn = true;
+        this.stopFurtherToolsReason = t("error.tool_failure_reflecting", getActiveLocale());
+        queueMicrotask(() => this.abortAgentWithReason("tool_failure_reflect"));
+        void this.runFailureReflection(`action_tool_failure:${event.toolName}`);
+      } else if (event.toolName === "do_nothing" && !event.isError && isDoNothingToolResult(event.result)) {
         this.stopFurtherToolsThisTurn = true;
         this.stopAgentLoopThisTurn = true;
         this.stopFurtherToolsReason = t("error.do_nothing_loop_stopped", getActiveLocale());

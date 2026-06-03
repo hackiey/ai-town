@@ -18,9 +18,15 @@ import type { GameTimeSnapshot } from "./protocol.js";
 import type { TradeLine } from "./actions.js";
 
 // Common base fields present in every event payload.
+// `actionId` (when present) is the originating action_log.actionId that produced
+// this event. It is the stable key that joins a self event back to its
+// action_log.result (private effects). Stamped by Godot's emit_world_event from
+// the runner's active action. Absent for events not tied to a single action
+// (e.g. player_command, or fast-tool say_to success which carries no effects).
 export type WorldEventDataBase = {
   actorId: string;
   affectedCharacterIds: string[];
+  actionId?: string;
   gameTime?: GameTimeSnapshot;
 };
 
@@ -169,6 +175,21 @@ export type PublicFinishEventData = WorldEventDataBase & {
 // The typed command text lives on WorldEventRecord.spokenText.
 export type PlayerCommandEventData = WorldEventDataBase;
 
+// ─── action_failed ───────────────────────────────────────────────────
+// An actor's action was rejected (lua mechanic refused, distance check failed,
+// pre-submit validation failed…). Self-only by construction: affectedCharacterIds
+// = [actor], so observers never perceive it. Renders as a private "（未成）…" line
+// in the actor's own timeline. `action` is the original action type, `target` the
+// original ActionTarget, `error` the reject reason, `spokenText` the attempted
+// words for a failed say_to. Emitted by Godot (mechanic/distance rejects) or by
+// the backend (pre-submit failures in recordFailedAction).
+export type ActionFailedEventData = WorldEventDataBase & {
+  action: string;
+  target?: Record<string, unknown>;
+  error: string;
+  spokenText?: string;
+};
+
 // ─── exhaustive map ──────────────────────────────────────────────────
 export type WorldEventDataByType = {
   say_to: SayToEventData;
@@ -198,6 +219,7 @@ export type WorldEventDataByType = {
   move_to_location: PublicFinishEventData;
   plan_farm_work: PublicFinishEventData;
   player_command: PlayerCommandEventData;
+  action_failed: ActionFailedEventData;
 };
 
 export type WorldEventDataType = keyof WorldEventDataByType;
@@ -233,4 +255,5 @@ const WORLD_EVENT_TYPE_MARKER: Record<WorldEventDataType, true> = {
   move_to_location: true,
   plan_farm_work: true,
   player_command: true,
+  action_failed: true,
 };

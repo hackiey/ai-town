@@ -1,5 +1,6 @@
 import { getActiveLocale, type Locale, t } from "../../../../i18n/index.js";
-import type { WorldEventRecord } from "../../../../godot-link/protocol.js";
+import type { ActionLogRecord, WorldEventRecord } from "../../../../godot-link/protocol.js";
+import { renderActionResultCharacterChangeLines } from "../../../../agent-shared/game-tools/character-changes.js";
 import { isCharacterContextEvent } from "../../../../agent-shared/prompt-context/events.js";
 import { renderEventLine } from "../../../../agent-shared/event-descriptions/index.js";
 import type {
@@ -101,12 +102,12 @@ export function renderAgentEventsContext(context: GameAgentContext): string {
       startHours: formatHours(recentHours),
       endHours: formatHours(context.relevantEventWindowHours),
     }),
-    renderEventTimeline(historicalEvents, context.characterId, locale),
+    renderEventTimeline(historicalEvents, context.characterId, locale, context.selfActionResults),
   );
   appendSection(
     sections,
     t("prompt.context.label.recent_events_format", locale, { hours: formatHours(recentHours) }),
-    renderEventTimeline(recentEvents, context.characterId, locale),
+    renderEventTimeline(recentEvents, context.characterId, locale, context.selfActionResults),
   );
   return sections.join("\n\n");
 }
@@ -221,10 +222,23 @@ function parseSkillSeedBookId(memoryId: string): string | undefined {
   return m ? m[1] : undefined;
 }
 
-function renderEventTimeline(events: WorldEventRecord[], viewerId: string, locale: Locale): string {
+function renderEventTimeline(
+  events: WorldEventRecord[],
+  viewerId: string,
+  locale: Locale,
+  selfActionResults: ActionLogRecord[] = [],
+): string {
   if (events.length === 0) {
     return t("prompt.context.distance_band_none", locale);
   }
+
+  // item-3：删 transcript 后自身动作的效果（饱食/产出/消耗）只剩在 action_log.result，
+  // world_event.data 不带。这里把本角色 action_log 按 actionId 建索引，渲染自身事件行时按
+  // event.data.actionId 精确 join 取对应记录，把效果作为缩进子行附在事件下。
+  // 历史上用过"类型+gameTime 邻近"的模糊配对，会在 say_to 扎堆时把失败原因贴错到别人的对话上
+  // （[[project_event_vs_actionlog_data]]）；现在 Godot 给每条动作事件盖了来源 actionId，改成精确键。
+  // 失败动作不再走这里——它们由 Godot 发成独立的 action_failed 事件，作为主行渲染。
+  const matcher = new SelfActionResultMatcher(selfActionResults, viewerId);
 
   const grouped = new Map<string, string[]>();
   for (const event of [...events].sort((a, b) => eventSortValue(a) - eventSortValue(b))) {
@@ -233,12 +247,39 @@ function renderEventTimeline(events: WorldEventRecord[], viewerId: string, local
     const time = gameTime ? `${gameTime.hour}:${pad2(gameTime.minute)}` : t("prompt.context.time.unknown", locale);
     const lines = grouped.get(date) ?? [];
     lines.push(`${time} ${renderEventLine(event, viewerId, locale)}`);
+    for (const sub of matcher.effectSubLinesFor(event)) {
+      lines.push(`  → ${sub}`);
+    }
     grouped.set(date, lines);
   }
 
   return [...grouped.entries()]
     .map(([date, lines]) => `${date}：\n${lines.join("\n")}`)
     .join("\n\n");
+}
+
+// 把本角色 action_log（带 result）按 actionId 建索引，按 event.data.actionId 精确 join 到
+// 自身授权的事件行上，产出成功效果子行（属性变动/背包变动）。匹配不到 → 不附（优雅降级）。
+// 失败不在此处理：失败动作由 Godot/backend 发成 action_failed 事件，作为独立主行渲染。
+class SelfActionResultMatcher {
+  private readonly byActionId = new Map<string, ActionLogRecord>();
+
+  constructor(results: ActionLogRecord[], private readonly viewerId: string) {
+    for (const rec of results) {
+      // action_log 主键是 actionId（rec.id），全局唯一 → 直接覆盖式建表。
+      if (rec.id) this.byActionId.set(rec.id, rec);
+    }
+  }
+
+  effectSubLinesFor(event: WorldEventRecord): string[] {
+    // 只给本角色自己授权的动作类事件补效果；他人事件/纯感知事件不动。
+    if (!event.actorId || event.actorId !== this.viewerId) return [];
+    const actionId = typeof event.data?.actionId === "string" ? event.data.actionId : "";
+    if (!actionId) return [];
+    const rec = this.byActionId.get(actionId);
+    if (!rec) return [];
+    return renderActionResultCharacterChangeLines(rec.result);
+  }
 }
 
 function splitContextEvents(context: GameAgentContext): {
