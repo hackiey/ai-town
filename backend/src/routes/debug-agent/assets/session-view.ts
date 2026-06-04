@@ -9,6 +9,7 @@ import {
   formatRealTime,
   prettyJson,
   tokenCountFromUsage,
+  toolResultIsFailure,
   truncate,
 } from "./shared.js";
 import {
@@ -554,7 +555,7 @@ function computeInnerSegments(messages) {
       const name = pending
         ? pending.name
         : ((messageRecord.message && (messageRecord.message.toolName || messageRecord.message.name)) || "?");
-      const isError = !!(messageRecord.message && messageRecord.message.isError);
+      const isError = toolResultIsFailure(messageRecord.message);
       segments.push({
         kind: "tool",
         startMs,

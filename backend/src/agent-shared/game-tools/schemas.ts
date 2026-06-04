@@ -319,7 +319,7 @@ function createUpdateMemorySchema() {
     operation: StringEnum(["add", "edit", "remove"], {
       description: td("update_memory.param.operation"),
     }),
-    kind: StringEnum(["self_knowledge", "skill", "other"], {
+    kind: StringEnum(["self_knowledge", "common_sense", "skill", "other"], {
       description: td("update_memory.param.kind"),
     }),
     old_string: Type.Optional(Type.String({

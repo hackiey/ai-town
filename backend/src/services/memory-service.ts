@@ -3,6 +3,7 @@ import { parseJsonColumn, type AppDb } from "../db/sqlite.js";
 import { type Locale, SOURCE_LOCALE, t } from "../i18n/index.js";
 import {
   COMMON_SENSE_SKILL_BOOKS,
+  getCommonSense,
   readSkillBookEntries,
 } from "../agent-shared/entity-descriptions/lore.js";
 import {
@@ -53,6 +54,7 @@ type SeededMemoryEntry = {
 };
 
 const SELF_KNOWLEDGE_IMPORTANCE = 0.95;
+const COMMON_SENSE_IMPORTANCE = 0.9;
 const SKILL_IMPORTANCE = 0.8;
 const SEEDED_OTHER_IMPORTANCE = 0.7;
 const ID_PREFIX = "seed:";
@@ -149,6 +151,7 @@ function seedMemoriesForCharacter(
   const bookIds = seededSkillBookIds(entry);
   const expectedMemories = [
     ...selfKnowledgeSeedEntries(characterId, entry, locale),
+    ...commonSenseSeedEntries(characterId, locale),
     ...skillSeedEntries(characterId, bookIds, locale),
     ...otherSeedEntries(characterId, entry, locale),
   ];
@@ -331,6 +334,18 @@ function seededSkillBookIds(entry: NpcEntry): string[] {
 }
 
 const COMMON_SENSE_SKILL_BOOKS_SET: Set<string> = new Set(COMMON_SENSE_SKILL_BOOKS);
+
+// 全员通识"常识"——以前固定写在 system prompt，现改成每个角色的可变 memory（kind=common_sense），
+// 这样 LLM 能用 update_memory 增删改。内容来源同 getCommonSense（i18n prompt.common_sense
+// 基础条目 + COMMON_SENSE_SKILL_BOOKS 教材），与 system 渲染脱钩后 system 那段已移除。
+function commonSenseSeedEntries(characterId: string, locale: Locale): SeededMemoryEntry[] {
+  return getCommonSense(locale).map((text, idx) => ({
+    id: `${ID_PREFIX}common_sense:${idx}_${characterId}`,
+    kind: "common_sense",
+    text,
+    importance: COMMON_SENSE_IMPORTANCE,
+  }));
+}
 
 function skillSeedEntries(
   characterId: string,

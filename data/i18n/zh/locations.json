@@ -2,51 +2,67 @@
   "location": {
     "blacksmith_shop": {
       "alias": "巴克利铁匠铺",
-      "description": "上城的铁匠铺，户主欧文·巴克利带着学徒蒂尔达·斯帕克斯。铺角自带炭窑、熔炉、铁砧和工作台，从矿石到铁铲整条链都自己来；做活讲究、收价偏高，王室和讲究品质的客户常来这里。"
+      "description": "上城的铁匠铺，户主欧文·巴克利带着学徒蒂尔达·斯帕克斯，做活讲究、收价偏高，王室和讲品质的客户常来；铺角自带整条锻造链。",
+      "direction": "集市南侧",
+      "access": "铺子是巴克利家的产业，借用工具需主人同意，动手要有相应手艺。"
     },
     "forge_yard": {
       "alias": "霍洛锻造场",
-      "description": "下城的铁匠铺，加尔·霍洛和艾达·凡斯两个外乡人合伙——加尔主打铁、艾达管账兼烧炭。同样自带炭窑、熔炉、铁砧和工作台；走量、价低、什么活都接，急单农户上城排不上号会来这里。和上城巴克利铁匠铺是竞争对手。"
+      "description": "下城的铁匠铺，加尔·霍洛与艾达·凡斯合伙——走量、价低、什么活都接，和上城巴克利铁匠铺打对台；自带整条锻造链。",
+      "direction": "酒馆东南",
+      "access": "霍洛家的产业，借用工具需主人同意，动手要有相应手艺。"
     },
     "tavern": {
       "alias": "酒馆",
-      "description": "镇上的酒馆。吃饭、喝酒、打听消息和雇短工的去处。"
+      "description": "吃饭、喝酒、打听消息、雇短工的去处。",
+      "direction": "下城",
+      "access": "公共。"
     },
     "inn": {
       "alias": "客栈",
-      "description": "接待外来商队、过路客和信使的客栈，也是镇上处理进口货物的入口。"
+      "description": "接待外来商队、过路客和信使，也是镇上进口货物的入口。",
+      "direction": "酒馆南侧",
+      "access": "公共。"
     },
     "livestock": {
       "alias": "畜牧场",
-      "description": "镇上牲畜、鸡舍和饲料的集中地，肉源和蛋源大多从这里出。"
+      "description": "牲畜、鸡舍和饲料的集中地，镇上肉源和蛋源大多出自这里，由奥斯里克·贝尔、梅芙·库普等照管。",
+      "direction": "下城偏南",
+      "access": ""
     },
     "well": {
       "alias": "水井",
       "description": "镇民日常打水的公共水井，井边常聚人聊天。"
     },
-    "guard_post": {
-      "alias": "守卫岗",
-      "description": "镇中心守卫驻点。报案、问路、查通缉的去处。"
-    },
     "market_square": {
       "alias": "集市",
-      "description": "露天集市，行商在这里摆摊卖外来货，集市边还有占卜师摊位。"
+      "description": "露天市场，行商在此摆摊卖外来货，集市边还有占卜师的摊位。",
+      "direction": "上城区中心",
+      "access": "镇中心公共场所，人人可逛、可买卖。"
     },
     "saint_candle_chapel": {
       "alias": "圣烛教堂",
-      "description": "圣烛教堂，位于市区。晨祷、婚丧、节庆仪式和教会账册都在这里处理，是城内最正式的教堂事务中心。"
+      "description": "城内最正式的教堂，晨祷、婚丧、节庆仪式和教会账册都在这里办。",
+      "direction": "上城东南",
+      "access": "公共，可入内祈祷。"
     },
     "general_store": {
       "alias": "杂货店",
-      "description": "卖日常杂货：绳索、亚麻、油灯、针线、干粮等。本地老字号，也是铁匠铺补绳的固定去处；店外有一副晾晒架，可把番茄果实和亚麻束留种。"
+      "description": "绳索、亚麻、油灯、针线、干粮等日用杂货，本地老字号；店外有一副晾晒架，可把番茄、亚麻留种。",
+      "direction": "集市东侧",
+      "access": "可购买。"
     },
     "hale_bakery": {
       "alias": "面包店",
-      "description": "出炉面包、糕点和粮饼，清晨最热闹。"
+      "description": "出炉面包、糕点和粮饼，清晨最热闹。",
+      "direction": "集市西南",
+      "access": "可购买。"
     },
     "notice_board": {
       "alias": "告示板",
-      "description": "镇里的公告和悬赏张贴处，旁边有小丑卖艺凑热闹。"
+      "description": "镇里张贴公告与悬赏的地方。",
+      "direction": "集市东侧",
+      "access": "公共，谁都能看。"
     },
     "graveyard": {
       "alias": "墓地",
@@ -58,35 +74,39 @@
     },
     "north_wall_wheat_plot": {
       "alias": "北墙麦圃",
-      "description": "要塞北侧城墙内的三块小田，靠近城墙，空间较窄，主要种谷物、豆类和少量草药。"
+      "description": "城墙内三块小田，地窄，主种谷物、豆类和少量草药，维尔一家（奥伦·维尔等）耕作。",
+      "direction": "外城最北、靠北城墙",
+      "access": "维尔家的田，下地需主人同意或受雇。"
     },
     "north_wall_field_1": {
       "alias": "北墙麦圃1号农田",
-      "description": "北墙麦圃第1块农田。"
+      "description": "可耕种田块，到田边用 plan_farm_work 下工单。"
     },
     "north_wall_field_2": {
       "alias": "北墙麦圃2号农田",
-      "description": "北墙麦圃第2块农田。"
+      "description": "可耕种田块，到田边用 plan_farm_work 下工单。"
     },
     "north_wall_field_3": {
       "alias": "北墙麦圃3号农田",
-      "description": "北墙麦圃第3块农田。"
+      "description": "可耕种田块，到田边用 plan_farm_work 下工单。"
     },
     "greystone_farmstead": {
       "alias": "灰石农圃",
-      "description": "要塞城墙内最大的农圃，由五块混合作物田组成，不限定小麦，轮种谷物、豆类、菜蔬和饲草，是要塞粮仓与酒馆热食的核心来源。"
+      "description": "城墙内最大的农圃，三块混种田轮种谷、豆、菜、饲草，是要塞粮仓与酒馆热食的核心，罗恩家经营（户主埃尔斯佩思·罗恩一家加帮工布拉姆·霍尔特）；西接米尔沃德磨坊。",
+      "direction": "北墙麦圃南侧",
+      "access": "罗恩家私田，下地需主人同意或受雇。"
     },
     "greystone_field_1": {
       "alias": "灰石农圃1号农田",
-      "description": "灰石农圃第1块农田。"
+      "description": "可耕种田块，到田边用 plan_farm_work 下工单。"
     },
     "greystone_field_2": {
       "alias": "灰石农圃2号农田",
-      "description": "灰石农圃第2块农田。"
+      "description": "可耕种田块，到田边用 plan_farm_work 下工单。"
     },
     "greystone_field_3": {
       "alias": "灰石农圃3号农田",
-      "description": "灰石农圃第3块农田。"
+      "description": "可耕种田块，到田边用 plan_farm_work 下工单。"
     },
     "greystone_field_4": {
       "alias": "灰石农圃4号农田",
@@ -98,67 +118,77 @@
     },
     "millward_mill": {
       "alias": "米尔沃德磨坊",
-      "description": "灰石农圃东面的米尔沃德家族磨坊，自带两块田地，麦子就地收割就地磨粉，省了搬运损耗。"
+      "description": "米尔沃德家族的磨坊，自带两块田，麦子就地收割就地磨粉。",
+      "direction": "灰石农圃西侧",
+      "access": "磨坊与田是米尔沃德家的，借用需主人同意。"
     },
     "millward_field_1": {
       "alias": "米尔沃德磨坊1号农田",
-      "description": "米尔沃德磨坊第1块农田。"
+      "description": "可耕种田块，到田边用 plan_farm_work 下工单。"
     },
     "millward_field_2": {
       "alias": "米尔沃德磨坊2号农田",
-      "description": "米尔沃德磨坊第2块农田。"
+      "description": "可耕种田块，到田边用 plan_farm_work 下工单。"
     },
     "saint_bell_chapel": {
       "alias": "圣钟教堂",
-      "description": "要塞南侧的郊区教堂。平日接待附近病人和求助者，也管理旁边的两块田地与草药储备。"
+      "description": "南侧郊区教堂，接待附近病人和求助者，管着旁边的菜园与草药。",
+      "direction": "外城最南、郊区",
+      "access": "公共，可入内求助。"
     },
     "saint_bell_garden": {
       "alias": "圣钟菜园",
-      "description": "圣钟教堂旁边的两块田地，主要种菜和草药，供教堂日常医护与饮食使用。"
+      "description": "教堂的两块菜园，主种菜蔬与草药，供教堂医护和饮食。",
+      "direction": "圣钟教堂旁",
+      "access": "教堂的地，耕作需教堂许可或受雇。"
     },
     "saint_bell_field_1": {
       "alias": "圣钟菜园1号农田",
-      "description": "圣钟菜园第1块农田。"
+      "description": "可耕种田块，到田边用 plan_farm_work 下工单。"
     },
     "saint_bell_field_2": {
       "alias": "圣钟菜园2号农田",
-      "description": "圣钟菜园第2块农田。"
+      "description": "可耕种田块，到田边用 plan_farm_work 下工单。"
     },
     "fishing_dock": {
       "alias": "渔码头",
-      "description": "镇外水边的小码头，捕鱼人和驯水的小妖精都在这里。"
+      "description": "镇外水边的小码头，捕鱼人和驯水的小妖精都在此，可在此捕鱼。",
+      "direction": "外城水边",
+      "access": ""
     },
     "lumberyard": {
       "alias": "伐木场",
-      "description": "镇外的伐木点和木料堆场。铁匠铺常从这里拿木材，削成铁铲、铁镐和斧头用的木杆。"
+      "description": "镇外的伐木点和木料堆场，铁匠铺常来取木材削柄，由赛拉斯·科皮斯打理。",
+      "direction": "南郊居中",
+      "access": ""
     },
     "granary": {
       "alias": "粮仓",
       "description": "存放镇上的公粮和农户寄存的余粮。"
     },
     "butcher": {
-      "alias": "肉铺",
-      "description": "屠宰牲畜并售卖生肉的铺子。每日清晨处理鲜肉，供应酒馆和住户。"
+      "alias": "屠户铺",
+      "description": "买卖鲜肉与下水。",
+      "direction": "集市内"
     },
     "tailor": {
-      "alias": "裁缝",
-      "description": "做衣服、改衣服和缝补被褥的铺子。当前先接亚麻原料、补丁和衣物消费入口，后续可接布匹与成衣配方。"
+      "alias": "裁缝铺",
+      "description": "成衣与布料。",
+      "direction": "集市内"
     },
     "herbalist": {
       "alias": "草药铺",
       "description": "卖草药和草药制剂，跟药房（apothecary）的区别是只用本地植物，不做实验性药剂。"
     },
     "jeweler": {
-      "alias": "珠宝店",
-      "description": "高端商铺，卖宝石、戒指、项链。能鉴定真伪。"
-    },
-    "fishmonger": {
-      "alias": "鱼摊",
-      "description": "卖当日鲜鱼。早市和午市最忙，过午货源就少。"
+      "alias": "珠宝铺",
+      "description": "金银首饰加工与买卖。",
+      "direction": "集市内"
     },
     "bookstore": {
       "alias": "书店",
-      "description": "卖书、笔墨、抄本。修士在这里替镇民抄录手稿。"
+      "description": "书籍与技能书。",
+      "direction": "集市内"
     },
     "barber": {
       "alias": "理发店",
@@ -166,23 +196,33 @@
     },
     "apothecary": {
       "alias": "药房",
-      "description": "调配药剂和实验性药水，跟草药铺（herbalist）的区别是涉及炼金。镇上的法师在这里干活。"
+      "description": "草药与成药买卖。",
+      "direction": "集市东北",
+      "access": "可购买。"
     },
     "training_ground": {
       "alias": "训练场",
-      "description": "守卫训练和武器演练的开阔场地。"
+      "description": "守卫操练、武器演练的开阔场地。",
+      "direction": "圣钟教堂北侧",
+      "access": ""
     },
     "iron_mine": {
       "alias": "铁矿",
-      "description": "镇外山脚的铁矿坑，出产铁矿石。铁矿石送到锻造场加木炭冶成铁锭，是铁铲、铁镐和铁斧的源头。"
+      "description": "山脚的铁矿坑，出产铁矿石，送到锻造场加木炭冶成铁锭，由梅林·凯恩看矿。",
+      "direction": "南郊西侧",
+      "access": "下井需带镐。"
     },
     "gold_mine": {
       "alias": "金矿",
-      "description": "镇外山脚下的金矿坑，归领主所有。带镐方可下井开采，每天产出有限。挖到的矿石会自动入库到领主国库，矿工不必自己背回来。"
+      "description": "山脚下的金矿坑，归领主所有；挖到的矿石自动入库领主国库，矿工不必自己背回。东北邻银矿。",
+      "direction": "城东北高地",
+      "access": "下井需带镐。"
     },
     "silver_mine": {
       "alias": "银矿",
-      "description": "镇外另一侧的银矿坑，与金矿同归领主。出产较金矿稳定，是镇上银币的源头之一。挖到的矿石同样自动入库。"
+      "description": "另一处矿坑，同归领主，出产比金矿稳定，是镇上银币来源之一；矿石同样自动入库。",
+      "direction": "金矿东北",
+      "access": "下井需带镐。"
     },
     "pasture": {
       "alias": "牧场",
@@ -190,7 +230,9 @@
     },
     "saltworks": {
       "alias": "沿海盐场",
-      "description": "靠海的盐场，把海水熬晒成盐。酒馆、肉铺和保藏食品链都依赖这里。"
+      "description": "靠海的盐场，把海水熬晒成盐，酒馆、肉铺和保藏食品链都靠它，由艾奥娜·布莱恩经营。",
+      "direction": "南郊东侧沿海",
+      "access": ""
     },
     "town_gate": {
       "alias": "城门",
@@ -198,15 +240,15 @@
     },
     "jail": {
       "alias": "监狱",
-      "description": "镇上的简易牢房和看守室，钥匙和交接记录由监狱看守负责。"
-    },
-    "patrol_route": {
-      "alias": "巡逻路线",
-      "description": "守卫在集市、酒馆、面包店和客栈之间来回巡查的路线。"
+      "description": "关押犯人的牢房，由狱卒奥斯温·洛克看守。",
+      "direction": "上城东南",
+      "access": "寻常人无事不入，不能擅自进入。"
     },
     "treasury": {
       "alias": "财库",
-      "description": "领主国库。矿工挖到的金银矿、铸出来的金银币、账册都自动收进来；铁门由王室钥匙开，财政大臣玛格达·凯尔常年带钥匙，发饷、收租、补给铁镐都从这里走。"
+      "description": "领主国库，金银矿石、铸出的钱币与账册都自动收进来；铁门由王室钥匙开，财政大臣玛格达·凯尔常年带钥匙，发饷、收租、补给铁镐都从这里走。",
+      "direction": "银矿北侧",
+      "access": "寻常人无钥匙不得入。"
     }
   }
 }

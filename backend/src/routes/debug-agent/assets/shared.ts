@@ -224,6 +224,12 @@ export function escapeHtml(text) {
     .replace(/'/g, "&#39;");
 }
 
+export function toolResultIsFailure(message) {
+  if (!message) return false;
+  if (message.isError) return true;
+  return !!(message.details && message.details.status === "failed");
+}
+
 export function extractText(content) {
   if (content == null) return "";
   if (typeof content === "string") return content;

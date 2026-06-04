@@ -226,7 +226,7 @@ export type AgentCurrentContext = {
   lastUpdatedAt?: string;
 };
 
-export type AgentMemoryKind = "self_knowledge" | "skill" | "other";
+export type AgentMemoryKind = "self_knowledge" | "common_sense" | "skill" | "other";
 export type StoredAgentMemoryKind = AgentMemoryKind | "profile" | "long_term" | "reflection";
 
 export type AgentMemoryRecord = {
@@ -247,6 +247,7 @@ export type PromptMemoryRecord = Omit<AgentMemoryRecord, "kind"> & {
 
 export type PromptMemorySections = {
   selfKnowledge: PromptMemoryRecord[];
+  commonSense: PromptMemoryRecord[];
   skills: PromptMemoryRecord[];
   other: PromptMemoryRecord[];
   all: PromptMemoryRecord[];

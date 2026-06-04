@@ -1,5 +1,12 @@
 {
   "blacksmith_shop": {
+    "zone": "upper_city",
+    "children": [
+      "forge@blacksmith_shop",
+      "anvil@blacksmith_shop",
+      "workbench@blacksmith_shop",
+      "charcoal_kiln@blacksmith_shop"
+    ],
     "category": "workshop",
     "primaryNpcs": [
       "owen_barclay",
@@ -7,6 +14,13 @@
     ]
   },
   "forge_yard": {
+    "zone": "lower_city",
+    "children": [
+      "forge@forge_yard",
+      "anvil@forge_yard",
+      "workbench@forge_yard",
+      "charcoal_kiln@forge_yard"
+    ],
     "category": "workshop",
     "primaryNpcs": [
       "garr_hollow",
@@ -14,6 +28,10 @@
     ]
   },
   "tavern": {
+    "zone": "lower_city",
+    "children": [
+      "stove@tavern"
+    ],
     "category": "social",
     "primaryNpcs": [
       "garron_potter",
@@ -21,6 +39,7 @@
     ]
   },
   "inn": {
+    "zone": "lower_city",
     "category": "logistics",
     "primaryNpcs": [
       "vera_clay",
@@ -28,6 +47,7 @@
     ]
   },
   "livestock": {
+    "zone": "lower_city",
     "category": "service",
     "primaryNpcs": [
       "osric_bell",
@@ -40,17 +60,19 @@
     "category": "civic",
     "primaryNpcs": []
   },
-  "guard_post": {
-    "category": "military",
-    "primaryNpcs": [
-      "keir_march"
-    ]
-  },
   "market_square": {
+    "zone": "upper_city",
+    "children": [
+      "butcher",
+      "tailor",
+      "jeweler",
+      "bookstore"
+    ],
     "category": "commerce",
     "primaryNpcs": []
   },
   "saint_candle_chapel": {
+    "zone": "upper_city",
     "category": "civic",
     "primaryNpcs": [
       "aldric_voss",
@@ -58,12 +80,17 @@
     ]
   },
   "general_store": {
+    "zone": "upper_city",
     "category": "commerce",
     "primaryNpcs": [
       "cora_reed"
     ]
   },
   "hale_bakery": {
+    "zone": "upper_city",
+    "children": [
+      "stove@hale_bakery"
+    ],
     "category": "commerce",
     "primaryNpcs": [
       "edda_hale",
@@ -71,6 +98,7 @@
     ]
   },
   "notice_board": {
+    "zone": "upper_city",
     "category": "civic",
     "primaryNpcs": []
   },
@@ -83,6 +111,13 @@
     "primaryNpcs": []
   },
   "north_wall_wheat_plot": {
+    "zone": "outer_city",
+    "children": [
+      "north_wall_field_1",
+      "north_wall_field_2",
+      "north_wall_field_3",
+      "stove@north_wall_wheat_plot"
+    ],
     "category": "production",
     "primaryNpcs": [
       "oren_vale",
@@ -103,6 +138,14 @@
     "primaryNpcs": []
   },
   "greystone_farmstead": {
+    "zone": "outer_city",
+    "children": [
+      "greystone_field_1",
+      "greystone_field_2",
+      "greystone_field_3",
+      "drying_rack@greystone_farmstead",
+      "stove@greystone_farmstead"
+    ],
     "category": "production",
     "primaryNpcs": [
       "elspeth_rowan",
@@ -124,6 +167,13 @@
     "primaryNpcs": []
   },
   "millward_mill": {
+    "zone": "outer_city",
+    "children": [
+      "mill@millward_mill",
+      "millward_field_1",
+      "millward_field_2",
+      "stove@millward_mill"
+    ],
     "category": "workshop",
     "primaryNpcs": [
       "selma_millward",
@@ -140,6 +190,7 @@
     "primaryNpcs": []
   },
   "saint_bell_chapel": {
+    "zone": "outer_city",
     "category": "civic",
     "primaryNpcs": [
       "greta_moss",
@@ -148,6 +199,11 @@
     ]
   },
   "saint_bell_garden": {
+    "zone": "outer_city",
+    "children": [
+      "saint_bell_field_1",
+      "saint_bell_field_2"
+    ],
     "category": "production",
     "primaryNpcs": []
   },
@@ -160,10 +216,15 @@
     "primaryNpcs": []
   },
   "fishing_dock": {
+    "zone": "outer_city",
     "category": "production",
     "primaryNpcs": []
   },
   "lumberyard": {
+    "zone": "south_outskirts",
+    "children": [
+      "lumberyard_workstation@lumberyard"
+    ],
     "category": "production",
     "primaryNpcs": [
       "silas_coppice"
@@ -196,10 +257,6 @@
     "category": "commerce",
     "primaryNpcs": []
   },
-  "fishmonger": {
-    "category": "commerce",
-    "primaryNpcs": []
-  },
   "bookstore": {
     "category": "commerce",
     "primaryNpcs": []
@@ -209,10 +266,12 @@
     "primaryNpcs": []
   },
   "apothecary": {
+    "zone": "upper_city",
     "category": "commerce",
     "primaryNpcs": []
   },
   "training_ground": {
+    "zone": "outer_city",
     "category": "military",
     "primaryNpcs": [
       "keir_march",
@@ -222,18 +281,30 @@
     ]
   },
   "iron_mine": {
+    "zone": "south_outskirts",
+    "children": [
+      "iron_mine_workstation@iron_mine"
+    ],
     "category": "production",
     "primaryNpcs": [
       "merrin_cairn"
     ]
   },
   "gold_mine": {
+    "zone": "castle",
+    "children": [
+      "gold_mine_workstation@gold_mine"
+    ],
     "category": "production",
     "primaryNpcs": [
       "tomas_pike"
     ]
   },
   "silver_mine": {
+    "zone": "castle",
+    "children": [
+      "silver_mine_workstation@silver_mine"
+    ],
     "category": "production",
     "primaryNpcs": [
       "harlan_dunn",
@@ -241,6 +312,10 @@
     ]
   },
   "treasury": {
+    "zone": "castle",
+    "children": [
+      "treasury_vault"
+    ],
     "category": "logistics",
     "primaryNpcs": [
       "magda_kerr"
@@ -256,6 +331,10 @@
     ]
   },
   "saltworks": {
+    "zone": "south_outskirts",
+    "children": [
+      "saltworks_pan@saltworks"
+    ],
     "category": "production",
     "primaryNpcs": [
       "iona_brine"
@@ -268,16 +347,10 @@
     ]
   },
   "jail": {
+    "zone": "upper_city",
     "category": "military",
     "primaryNpcs": [
       "oswin_locke"
-    ]
-  },
-  "patrol_route": {
-    "category": "military",
-    "primaryNpcs": [
-      "sona_ward",
-      "iva_stone"
     ]
   }
 }

@@ -12,11 +12,14 @@ export {
 export {
   locationName,
   locationDescription,
+  locationDirection,
+  locationAccess,
   locationNameAliases,
   resolveLocationIdByName,
 } from "./location.js";
 export {
   workstationName,
+  workstationDescription,
   workstationNameAliases,
   resolveWorkstationIdByName,
 } from "./workstation.js";

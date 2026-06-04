@@ -5,8 +5,9 @@
 
 import { getActiveLocale, type Locale, t } from "../../i18n/index.js";
 import { craftForSkillId, craftForWorkstationVerb, skillIdForCraft } from "../game-tools/craft-registry.js";
-import { characterName, localizeText, locationName } from "../name-resolver/index.js";
-import { workstationName } from "../name-resolver/workstation.js";
+import { characterName, localizeText, locationName, locationDescription, locationDirection, locationAccess } from "../name-resolver/index.js";
+import { workstationName, workstationDescription } from "../name-resolver/workstation.js";
+import { locationDescriptors, type LocationDescriptor } from "../name-resolver/source-data.js";
 import { ownerSuffixedSiteName } from "../entity-descriptions/site-naming.js";
 import { getReactionsForCraft, type ReactionMeta } from "../../services/world-state/reaction-catalog.js";
 import type {
@@ -46,10 +47,6 @@ export function renderNearbyEnvironmentSections(
   locale: Locale = getActiveLocale(),
 ): RenderedContextSection[] {
   return [
-    {
-      title: t("prompt.context.label.known_locations", locale),
-      body: renderKnownLocationsLines(current, locale),
-    },
     {
       title: t("prompt.context.label.nearby_buildings", locale),
       body: renderLocationDistanceBandLines(current.nearbyBuildings, current, {
@@ -348,18 +345,90 @@ function formatCharacterStatusLabel(
   }
 }
 
-// 全城地图：列出顶层地点（depth===0 / 无 parentId），全局可见——给 move_to_location 当合法目的地。
-// 子地点不在此段，它们靠"周围地点"（perceivedLocations 实时感知）按 near/far 呈现。
-// move_to_location 去掉 enum 后，没有这段 LLM 就只能走向感知到的近处地点（[[feedback_agent_locations_source_of_truth]]）。
-function renderKnownLocationsLines(current: AgentCurrentContext, locale: Locale): string {
-  const topLevel = current.visibleLocations.filter((location) => location.depth === 0 && !location.parentId);
-  if (topLevel.length === 0) {
-    return t("prompt.context.distance_band_none", locale);
+// 城镇地图：静态全城地点总览，给 LLM 全局意识 + move_to_location 的合法目的地名单。
+// 纯数据驱动——结构（zone + children）读 backend/data/town/locations.json，文案（介绍/方位/
+// 限制）读 i18n catalog；本函数只负责"读数据→按区分组→拼 markdown"，零硬编码文案。
+// 同一份内容对所有 NPC 一致，故挂在 system prompt（稳定可缓存），不随 turn 变。
+// 设计见 [[project_town_map_zones]]。返回 undefined 表示无任何带 zone 的地点（不送空段）。
+//
+// 子地点（农田 / 集市摊位 / 作坊工具）不靠 DB 父子关系推导——通用工作台（forge/stove…）
+// 跨铺子合并成单一逻辑地点，无法归属某栋建筑，故在 locations.json 的 children 里显式编排。
+const TOWN_MAP_ZONE_ORDER = ["upper_city", "lower_city", "outer_city", "castle", "south_outskirts"] as const;
+
+export function renderTownMap(locale: Locale = getActiveLocale()): string | undefined {
+  const descriptors = locationDescriptors();
+  const byZone = new Map<string, string[]>();
+  for (const [id, descriptor] of Object.entries(descriptors)) {
+    if (!descriptor.zone) continue;
+    const list = byZone.get(descriptor.zone) ?? [];
+    list.push(id);
+    byZone.set(descriptor.zone, list);
   }
-  const sep = t("prompt.context.distance_band_separator", locale);
-  const names = topLevel.map((location) => displayLocationContextEntry(location.id, current));
-  // 去重：同名顶层地点（理论上不应有，但保险）合一。
-  return Array.from(new Set(names)).join(sep);
+  const zoneBlocks: string[] = [];
+  for (const zone of TOWN_MAP_ZONE_ORDER) {
+    const ids = byZone.get(zone);
+    if (!ids || ids.length === 0) continue;
+    const lines: string[] = [`## ${t(`prompt.context.townmap.zone.${zone}`, locale)}`];
+    const intro = optionalCatalog(`prompt.context.townmap.zone_intro.${zone}`, locale);
+    if (intro) lines.push(`> ${intro}`);
+    for (const id of ids) lines.push(renderTownMapLocation(id, descriptors[id], descriptors, locale));
+    zoneBlocks.push(lines.join("\n"));
+  }
+  if (zoneBlocks.length === 0) return undefined;
+  const intro = optionalCatalog("prompt.context.townmap.intro", locale);
+  return [intro, zoneBlocks.join("\n\n")].filter(Boolean).join("\n\n");
+}
+
+function renderTownMapLocation(
+  id: string,
+  descriptor: LocationDescriptor,
+  descriptors: Record<string, LocationDescriptor>,
+  locale: Locale,
+): string {
+  const dir = locationDirection(id, locale);
+  let head = `- **${locationName(id, undefined, locale)}**`;
+  if (dir) head += `（${dir}）`;
+  const body = [locationDescription(id, locale), locationAccess(id, locale)].filter(Boolean).join("");
+  const headLine = body ? `${head}：${body}` : head;
+  const childLines = renderTownMapChildren(descriptor.children ?? [], descriptors, locale);
+  return childLines.length > 0 ? `${headLine}\n${childLines.join("\n")}` : headLine;
+}
+
+// 子节点行：解析每个 child 的名字 + 描述（在 locations.json 里 = 子地点，否则按 workstation 类型解析），
+// 相邻且描述相同的折叠成一行（如三块农田 → 一行）。
+function renderTownMapChildren(
+  childIds: string[],
+  descriptors: Record<string, LocationDescriptor>,
+  locale: Locale,
+): string[] {
+  const resolved = childIds.map((cid) => {
+    // 有主工作台组合 id "<def>@<group>"：名字走 locationName（拼成"铁砧（巴克利铁匠铺）"），
+    // 描述按 def 取工作台描述。move_to_location 用这个完整名字。
+    const at = cid.indexOf("@");
+    if (at > 0) {
+      return { name: locationName(cid, undefined, locale), desc: workstationDescription(cid.slice(0, at), locale) ?? "" };
+    }
+    const isLocation = Object.prototype.hasOwnProperty.call(descriptors, cid);
+    const name = isLocation ? locationName(cid, undefined, locale) : workstationName(cid);
+    const desc = (isLocation ? locationDescription(cid, locale) : workstationDescription(cid, locale)) ?? "";
+    return { name, desc };
+  });
+  const out: string[] = [];
+  let i = 0;
+  while (i < resolved.length) {
+    let j = i;
+    while (j + 1 < resolved.length && resolved[j + 1].desc === resolved[i].desc) j++;
+    const names = resolved.slice(i, j + 1).map((r) => `**${r.name}**`).join("、");
+    const desc = resolved[i].desc;
+    out.push(desc ? `  - ${names}：${desc}` : `  - ${names}`);
+    i = j + 1;
+  }
+  return out;
+}
+
+function optionalCatalog(key: string, locale: Locale): string | undefined {
+  const value = t(key, locale);
+  return value === key ? undefined : value;
 }
 
 function renderLocationDistanceBandLines(
@@ -376,12 +445,10 @@ function renderLocationDistanceBandLines(
   ].join("\n");
 }
 
+// 地点 id → 显示名：统一走 locationName（已覆盖普通地点 / 组合工作台 / 工作台兜底）。
+// 不再自己拼 fallback 链——历史上那套 + visibleLocation.alias override 会让组合 id
+// 漏成原始串进 prompt。aliasOverride 仍传，但 locationName 会忽略等于 id 的脏值。
 export function displayLocationContextEntry(entry: string, current: AgentCurrentContext): string {
-  const visibleLocation = current.visibleLocations.find((location) => location.id === entry);
-  const localized = locationName(entry, visibleLocation?.alias);
-  if (localized !== entry) return localized;
-  const workstation = current.interactiveSites.find((site) => site.kind === "workstation" && site.workstationId === entry);
-  if (workstation) return workstation.displayName;
-  const localizedWorkstation = workstationName(entry);
-  return localizedWorkstation !== entry ? localizedWorkstation : localized;
+  const override = current.visibleLocations.find((location) => location.id === entry)?.alias;
+  return locationName(entry, override);
 }

@@ -183,12 +183,24 @@ function addToolCallSummary(turn: TurnSummary, message: Record<string, unknown>)
     turn.toolCallSummary.push(summary);
   }
   summary.count += 1;
-  if (message.isError) summary.errorCount += 1;
+  if (isToolResultFailure(message)) summary.errorCount += 1;
 }
 
 function toolResultName(message: Record<string, unknown>): string {
   const name = stringValue(message.toolName) ?? stringValue(message.name);
   return name && name.trim() ? name.trim() : "unknown";
+}
+
+// 工具失败 = pi-agent-core 机制层失败（isError），或 Godot 判定动作失败 / 预提交失败
+// （两者都把 action_log.status 写成 "failed"，经 formatActionToolResult 放进 details.status）。
+function isToolResultFailure(message: Record<string, unknown> | null | undefined): boolean {
+  if (!message) return false;
+  if (message.isError) return true;
+  const details = message.details;
+  if (details && typeof details === "object") {
+    return stringValue((details as Record<string, unknown>).status) === "failed";
+  }
+  return false;
 }
 
 function stringValue(value: unknown): string | undefined {
@@ -507,7 +519,7 @@ export const debugAgentRoutes: FastifyPluginAsync = async (app) => {
         turn.toolCallCount += 1;
         const message = tryParse();
         addToolCallSummary(turn, message);
-        if (message && message.isError) turn.hasError = true;
+        if (isToolResultFailure(message)) turn.hasError = true;
       }
     }
     for (const turn of openTurns.values()) closeTurn(turn);

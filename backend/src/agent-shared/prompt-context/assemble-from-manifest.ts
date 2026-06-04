@@ -144,13 +144,13 @@ export function assembleAgentContextFromManifest(
   const nearbyShelves = nearbyShelvesBuilt.map((b) => b.context);
   const ownedShelves = ownedShelvesBuilt.map((b) => b.context);
 
-  // workstation 跟 location 共享 _logical_ids（Godot 让 workstation 也能当 location 用，
-  // 比如导航终点）。但 i18n catalog 分两份——按 isWorkstation 分流去对应 catalog 找名字，
-  // 否则 workstation id 在 locations.json 找不到，alias 退化成 id，prompt 显示和 move enum
-  // 不一致（LLM 看"金矿矿井"调 move，schema enum 只有 "gold_mine_workstation"，校验失败）。
+  // 地点名一律走 names.location（= 统一的 locationName：普通地点 / 组合工作台 "<def>@<group>"
+  // / 工作台兜底全覆盖）。**不要**再按 isWorkstation 分流去调 names.workstation —— 组合 id
+  // 在工作台目录里查不到会吐回原始串（"gold_mine_workstation@gold_mine"），正是它漏进 prompt
+  // 的根因。见 name-resolver/location.ts locationName。
   const visibleLocations = locationViews.map<VisibleLocationContext>((location) => ({
     id: location.locationId,
-    alias: location.isWorkstation ? names.workstation(location.locationId) : names.location(location.locationId),
+    alias: names.location(location.locationId),
     parentId: location.parentLocationId,
     depth: location.parentLocationId ? 1 : 0,
     childIds: [],

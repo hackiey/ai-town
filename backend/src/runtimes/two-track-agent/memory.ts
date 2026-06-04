@@ -32,6 +32,7 @@ export type UpdateTwoTrackAgentMemoryResult = {
 };
 
 const SELF_KNOWLEDGE_IMPORTANCE = 0.95;
+const COMMON_SENSE_IMPORTANCE = 0.9;
 const SKILL_IMPORTANCE = 0.8;
 const DEFAULT_OTHER_IMPORTANCE = 0.5;
 const DEFAULT_OTHER_MEMORY_LIMIT = 20;
@@ -48,6 +49,7 @@ export async function loadTwoTrackAgentPromptMemories(
 
   const seen = new Set<string>();
   const selfKnowledge: PromptMemoryRecord[] = [];
+  const commonSense: PromptMemoryRecord[] = [];
   const skills: PromptMemoryRecord[] = [];
   const other: PromptMemoryRecord[] = [];
 
@@ -63,6 +65,10 @@ export async function loadTwoTrackAgentPromptMemories(
       selfKnowledge.push(normalized);
       continue;
     }
+    if (normalized.kind === "common_sense") {
+      commonSense.push(normalized);
+      continue;
+    }
     if (normalized.kind === "skill") {
       skills.push(normalized);
       continue;
@@ -70,12 +76,14 @@ export async function loadTwoTrackAgentPromptMemories(
     other.push(normalized);
   }
 
+  // common_sense 与 self/skill 一样不受 other 上限约束（全员基础知识，不该被截断）。
   const limitedOther = other.slice(0, otherLimit);
   return {
     selfKnowledge,
+    commonSense,
     skills,
     other: limitedOther,
-    all: [...selfKnowledge, ...skills, ...limitedOther],
+    all: [...selfKnowledge, ...commonSense, ...skills, ...limitedOther],
   };
 }
 
@@ -141,7 +149,7 @@ export async function updateTwoTrackAgentMemory(
 }
 
 function normalizeStoredMemoryKind(kind: string, id?: string): AgentMemoryKind {
-  if (kind === "self_knowledge" || kind === "skill" || kind === "other") {
+  if (kind === "self_knowledge" || kind === "common_sense" || kind === "skill" || kind === "other") {
     return kind;
   }
   if (kind === "profile") {
@@ -216,6 +224,7 @@ function memoryStorageKey(id: string): string {
 
 function defaultImportance(kind: AgentMemoryKind): number {
   if (kind === "self_knowledge") return SELF_KNOWLEDGE_IMPORTANCE;
+  if (kind === "common_sense") return COMMON_SENSE_IMPORTANCE;
   if (kind === "skill") return SKILL_IMPORTANCE;
   return DEFAULT_OTHER_IMPORTANCE;
 }

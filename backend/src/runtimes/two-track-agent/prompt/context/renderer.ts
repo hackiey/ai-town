@@ -13,9 +13,10 @@ import {
   renderInteractiveSitesSection,
   renderNearbyEnvironmentSections,
   renderProficiencySection,
+  renderTownMap,
 } from "../../../../agent-shared/prompt-context/sections.js";
 import { characterName, localizeText, locationDescription } from "../../../../agent-shared/name-resolver/index.js";
-import { getCommonSense, getFactBoundaryRules } from "../../../../agent-shared/entity-descriptions/lore.js";
+import { getFactBoundaryRules } from "../../../../agent-shared/entity-descriptions/lore.js";
 import { getSkillForBook } from "../../../../agent-shared/entity-descriptions/skill-catalog.js";
 import type { PromptMemoryRecord } from "../../../../agent-shared/prompt-context/types.js";
 import {
@@ -43,8 +44,14 @@ export function renderAgentSystemContext(context: GameAgentContext): string {
 
   const locale = getActiveLocale();
   appendSection(sections, t("prompt.context.label.world_lore", locale), context.worldLore.map((line) => `- ${line}`).join("\n"));
-  appendSection(sections, t("prompt.context.label.common_sense", locale), renderMemoryLines(getCommonSense()));
+  // 「常识」不再写在 system —— 已改成每个角色 kind=common_sense 的可变 memory（可被 update_memory
+  // 增删改），渲染在下方 pinned memory message 的「常识」段，见 renderMemorySection。
+  // 事实边界仍留 system：那是防幻觉硬约束，不该让 agent 自己改。
   appendSection(sections, t("prompt.context.label.fact_boundary", locale), renderMemoryLines(getFactBoundaryRules()));
+  // 城镇地图：静态全城地点总览（按区分组），对所有 NPC 一致 → 放 system prompt（稳定可缓存）。
+  // 纯数据驱动，不依赖 manifest / db；空时跳过。见 renderTownMap / [[project_town_map_zones]]。
+  const townMap = renderTownMap(locale);
+  if (townMap) appendSection(sections, t("prompt.context.townmap.title", locale), townMap);
   // working_memory 不在这里渲染 —— 它每次 thinking 都会变（默认 15 game-min 一次），
   // 放进 system prompt 会污染 prompt cache。改由 user message 头每 turn 重新拼装，见
   // renderTwoTrackAgentWorkingMemoryBlock / messages.ts 的 turn user message 装配。
@@ -167,6 +174,9 @@ function renderMemorySection(context: GameAgentContext, locale: Locale): string 
     "",
     `## ${t("prompt.context.memory.self_knowledge", locale)}`,
     renderPromptMemories(context.memory.selfKnowledge, locale),
+    "",
+    `## ${t("prompt.context.memory.common_sense", locale)}`,
+    renderPromptMemories(context.memory.commonSense, locale),
     "",
     `## ${t("prompt.context.memory.skill", locale)}`,
     renderSkillMemoriesByAxis(context.memory.skills, locale),

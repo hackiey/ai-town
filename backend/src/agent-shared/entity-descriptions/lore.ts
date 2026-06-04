@@ -2,7 +2,7 @@
 // 这些是游戏世界的共同认知，不是某个 agent 的策略；放共享。
 // 文本本身存在 backend i18n（prompts.json），这里只是把多行 string 切成数组方便 prompt 拼装。
 
-import { getActiveLocale, t } from "../../i18n/index.js";
+import { getActiveLocale, type Locale, t } from "../../i18n/index.js";
 
 // "人人默认懂"的 skill book —— 这些条目以 common_sense 形式注入 prompt，
 // 不进 NPC 个体 skill seed（即使在某个 skill_id 的 books 列表里也会被 memory-service 过滤掉）。
@@ -20,8 +20,9 @@ export function getFactBoundaryRules(): string[] {
   return t("prompt.fact_boundary", getActiveLocale()).split("\n");
 }
 
-export function getCommonSense(): string[] {
-  const locale = getActiveLocale();
+// 常识条目（基础 i18n 条目 + 全员通识教材）。现作为 kind=common_sense 的可变 memory
+// seed 给每个角色（见 memory-service.commonSenseSeedEntries），不再固定写在 system prompt。
+export function getCommonSense(locale: Locale = getActiveLocale()): string[] {
   const base = t("prompt.common_sense", locale).split("\n");
   const fromBooks: string[] = [];
   for (const bookId of COMMON_SENSE_SKILL_BOOKS) {

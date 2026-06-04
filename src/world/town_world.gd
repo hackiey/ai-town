@@ -17,7 +17,6 @@ const LOCATION_ALIASES := {
 	"饭馆": "tavern",
 	"小酒馆": "tavern",
 	"水井": "well",
-	"守卫岗": "guard_post",
 	"集市": "market_square",
 	"圣烛教堂": "saint_candle_chapel",
 	"教堂": "saint_candle_chapel",
@@ -35,7 +34,6 @@ const LOCATION_ALIASES := {
 	"城门": "town_gate",
 	"大门": "town_gate",
 	"监狱": "jail",
-	"巡逻路线": "patrol_route",
 	"墓地": "graveyard",
 	"农场": "farm",
 	"北墙麦圃": "north_wall_wheat_plot",
@@ -66,7 +64,6 @@ const LOCATION_ALIASES := {
 	"裁缝": "tailor",
 	"草药铺": "herbalist",
 	"珠宝店": "jeweler",
-	"鱼摊": "fishmonger",
 	"书店": "bookstore",
 	"理发店": "barber",
 	"药房": "apothecary",
@@ -531,21 +528,27 @@ func _register_workstations() -> void:
 		# 优先用 workstation_id 当 logical location id —— 同 id 的多个节点（比如两口都标 well 的水井）
 		# 自动合并成多 anchor，可前往地点列表里只显示一个 "well"，move 时挑最近 anchor。
 		# 只有未填 workstation_id 的旧节点才退回 node name 兜底。
-		var id := String(ws.workstation_id)
-		if id.is_empty():
-			id = String(ws.name)
+		var base := String(ws.workstation_id)
+		if base.is_empty():
+			base = String(ws.name)
+		var resolved_group := _resolve_workstation_owner_group(ws)
+		# 有主工作台按 owner 拆成独立逻辑地点（id = "<def>@<group>"），不再跨铺子按类型合并：
+		# 这样铁砧/灶台等会显示成"名字（group）"，move_to_location 也按 owner 精确定位。
+		# 公共工作台（owner_group 空，如各处水井）仍按 def id 合并，move 时就近选锚点。
+		# backend locationName 见到 "@" 会拆出 def+group 用 ownerSuffixedSiteName 算显示名。
+		var id := base if resolved_group.is_empty() else "%s@%s" % [base, resolved_group]
 		# anchor 存 Approach marker 而非 ws 本身：NPC 寻路目标走 marker.global_position，
 		# 子类 .tscn 可以 override Approach.transform 把到达点推到工作台 collider 外，
 		# 避免本体落在 navmesh 洞里导致 corridor planner unreachable。
 		var approach_node: Node3D = ws.get_approach_node()
-		var resolved_group := _resolve_workstation_owner_group(ws)
 		if _anchors_by_id.has(id):
 			var existing_is_workstation: bool = _workstation_location_ids.get(id, false)
 			if not existing_is_workstation:
 				push_warning("[TownWorld] workstation '%s' id collides with existing location; skipping" % id)
 				continue
 			(_anchors_by_id[id] as Array).append(approach_node)
-			if not ws.display_name.is_empty() and not _workstation_aliases.has(id):
+			# 仅公共工作台（resolved_group 空）存通用别名；owned 走烘焙的 location.<id>.alias。
+			if resolved_group.is_empty() and not ws.display_name.is_empty() and not _workstation_aliases.has(id):
 				_workstation_aliases[id] = ws.display_name
 			continue
 		_anchors_by_id[id] = [approach_node]
@@ -555,7 +558,9 @@ func _register_workstations() -> void:
 		_logical_ids.append(id)
 		_top_level_location_ids.append(id)
 		_owner_group_by_id[id] = resolved_group
-		if not ws.display_name.is_empty():
+		# owned 工作台（id 形如 "anvil@blacksmith_shop"）不存 _workstation_aliases，显示名走
+		# 烘焙进 catalog 的 location.<id>.alias；公共工作台（水井）仍存通用别名供反查。
+		if resolved_group.is_empty() and not ws.display_name.is_empty():
 			_workstation_aliases[id] = ws.display_name
 
 
@@ -778,6 +783,15 @@ func resolve_location_id(location_name: String) -> String:
 
 
 func location_alias(location_id: String) -> String:
+	# 有主工作台组合 id "<def>@<group>"：拼成"铁砧（巴克利铁匠铺）"。Godot 与 backend 各在
+	# 自己运行时拼（GDScript/TS 没法共享代码）——但都读同一份 workstations/groups i18n
+	# catalog、同样的全角括号格式（镜像 backend ownerSuffixedSiteName），与"每个名字本就在
+	# 两端各 tr()/t() 一遍"的常态一致。供 debug「前往」面板等显示。见 [[project_town_map_zones]]。
+	var at := location_id.find("@")
+	if at > 0:
+		var ws_name := _i18n_or(("workstation.%s.name" % location_id.substr(0, at)), location_id.substr(0, at))
+		var grp_name := _i18n_or(("group.%s.name" % location_id.substr(at + 1)), location_id.substr(at + 1))
+		return "%s（%s）" % [ws_name, grp_name]
 	if _workstation_aliases.has(location_id):
 		return str(_workstation_aliases[location_id])
 	var key := "location.%s.alias" % location_id
@@ -788,6 +802,12 @@ func location_alias(location_id: String) -> String:
 		if str(LOCATION_ALIASES[alias]) == location_id:
 			return str(alias)
 	return ""
+
+
+# tr() 查 i18n key，命中返回译文，否则返回 fallback（tr 未命中会原样返回 key）。
+func _i18n_or(key: String, fallback: String) -> String:
+	var v := tr(key)
+	return v if v != key and not v.is_empty() else fallback
 
 
 func parent_location_id(location_id: String) -> String:

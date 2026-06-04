@@ -10,6 +10,7 @@ import {
   formatUsage,
   prettyJson,
   tokenCountFromUsage,
+  toolResultIsFailure,
 } from "./shared.js";
 import { formatGameTime } from "./time.js";
 
@@ -334,7 +335,7 @@ function renderToolResultBody(message) {
     '<span class="pill">tool=' + escapeHtml(toolName) + "</span>",
     '<span class="pill">id=' + escapeHtml(toolCallId) + "</span>",
   ];
-  if (message.isError) meta.push('<span class="badge-error">error</span>');
+  if (toolResultIsFailure(message)) meta.push('<span class="badge-error">error</span>');
 
   let body;
   const content = extractText(message.content);

@@ -12,9 +12,16 @@
 
 import { readFileSync } from "node:fs";
 
-type LocationDescriptor = {
+export type LocationDescriptor = {
   category?: string;
   primaryNpcs?: string[];
+  // 城镇地图分区（上城/下城/外城/城堡/南郊）。只有顶层地点标 zone；子地点（摊位/农田/
+  // 工作台）靠 parent 的 children 列表渲染，自身不带 zone。见 [[project_town_map_zones]]。
+  zone?: string;
+  // 该地点下挂的子项，有序：可混 workstation 类型 id（forge/stove…，跨铺子共享）与
+  // 子地点 id（农田 / 集市摊位）。工作台类型合并成单一逻辑地点，无法从 DB 父子关系推导，
+  // 故在此显式编排。
+  children?: string[];
 };
 
 type CharacterDescriptor = {

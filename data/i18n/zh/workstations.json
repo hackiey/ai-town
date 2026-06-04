@@ -2,27 +2,33 @@
   "workstation": {
     "anvil": {
       "name": "铁砧",
-      "prompt": "按 E 打造"
+      "prompt": "按 E 打造",
+      "description": "把金属锭打成部件、工具。需锻造手艺。"
     },
     "forge": {
       "name": "熔炉",
-      "prompt": "按 E 锻造"
+      "prompt": "按 E 锻造",
+      "description": "把矿石熔成金属锭。需冶炼手艺。"
     },
     "charcoal_kiln": {
       "name": "炭窑",
-      "prompt": "按 E 烧炭"
+      "prompt": "按 E 烧炭",
+      "description": "烧制木炭（燃料）。"
     },
     "drying_rack": {
       "name": "晾晒架",
-      "prompt": "按 E 查看"
+      "prompt": "按 E 查看",
+      "description": "晾晒留种（番茄、亚麻等）。"
     },
     "mill": {
       "name": "磨盘",
-      "prompt": "按 E 研磨"
+      "prompt": "按 E 研磨",
+      "description": "把麦子研磨成面粉。"
     },
     "stove": {
       "name": "灶台",
-      "prompt": "按 E 烹饪"
+      "prompt": "按 E 烹饪",
+      "description": "烹饪、烘烤热食。需烹饪手艺。"
     },
     "well": {
       "name": "水井",
@@ -30,23 +36,28 @@
     },
     "workbench": {
       "name": "工作台",
-      "prompt": "按 E 组装"
+      "prompt": "按 E 组装",
+      "description": "把部件组装成成品。"
     },
     "gold_mine_workstation": {
       "name": "金矿矿井",
-      "prompt": "按 E 采矿（需带镐）"
+      "prompt": "按 E 采矿（需带镐）",
+      "description": "下井开采金矿石。需带镐，每日产出有限。"
     },
     "silver_mine_workstation": {
       "name": "银矿矿井",
-      "prompt": "按 E 采矿（需带镐）"
+      "prompt": "按 E 采矿（需带镐）",
+      "description": "下井开采银矿石。需带镐。"
     },
     "iron_mine_workstation": {
       "name": "铁矿矿井",
-      "prompt": "按 E 采矿（需带镐）"
+      "prompt": "按 E 采矿（需带镐）",
+      "description": "下井开采铁矿石。需带镐。"
     },
     "saltworks_pan": {
       "name": "盐锅",
-      "prompt": "按 E 熬盐"
+      "prompt": "按 E 熬盐",
+      "description": "熬煮海水出盐。需相应手艺。"
     },
     "mint": {
       "name": "铸币炉",
@@ -54,11 +65,13 @@
     },
     "treasury_vault": {
       "name": "领主国库",
-      "prompt": "按 E 查看"
+      "prompt": "按 E 查看",
+      "description": "金银与账册的存取处。"
     },
     "lumberyard_workstation": {
       "name": "伐木台",
-      "prompt": "按 E 砍木（需带斧）"
+      "prompt": "按 E 砍木（需带斧）",
+      "description": "把原木砍成木料、木杆。需带斧。"
     }
   }
 }
