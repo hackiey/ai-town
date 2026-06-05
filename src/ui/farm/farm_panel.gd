@@ -285,7 +285,7 @@ func _on_seed_dropped(idx: int, seed_id: String) -> void:
 		return
 	# 校验背包里仍有这份可种植物（拖完可能被别处用掉了）
 	var have: int = 0
-	if _player.has_method("count_item"):
+	if _player.has_method("inventory_ops"):
 		have = int(_player.inventory_ops().count_item(seed_id))
 	if have <= 0:
 		_status.text = tr("ui.farm.status.no_seed")

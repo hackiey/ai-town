@@ -37,12 +37,12 @@ static func inject(lua: LuaState, _ctx: Dictionary, collected: Array) -> void:
 			"amount": float(amount),
 		})
 
-	# 解除某个 condition（按 type 移除所有匹配条目）。
-	affect_tbl["remove_condition"] = func(target, condition_id):
+	# 解除某个 status（按 type 移除所有匹配条目）。
+	affect_tbl["remove_status"] = func(target, status_id):
 		collected.append({
-			"type": "remove_condition",
+			"type": "remove_status",
 			"target": target,
-			"condition_id": str(condition_id),
+			"status_id": str(status_id),
 		})
 
 	# Lua 只声明 alive 翻转；GDScript 在 Character.alive setter 里做物理善后
@@ -187,41 +187,13 @@ static func inject(lua: LuaState, _ctx: Dictionary, collected: Array) -> void:
 				result = { "ok": false, "message": "trade_op: unknown op '%s'" % op_str }
 		return LuaConv.to_lua(lua, result)
 
-	# Shelf 业务封装入口（Step 6.3）。Listings 写路径形状跟普通 slot 不同（有 price
-	# 元数据 + DB 持久），不能塞进 InventoryAdapter；这里 wrap 现有 Shelves API
-	# 让 lua 调度。返回 GDScript dict（含 ok/message/result/changes 等），转 lua table。
-	affect_tbl["shelf_op"] = func(actor, shelf, op, args):
-		if not (shelf is ShelfNode):
-			return LuaConv.to_lua(lua, { "ok": false, "message": "shelf_op: shelf is not ShelfNode" })
-		if not (actor is Character):
-			return LuaConv.to_lua(lua, { "ok": false, "message": "shelf_op: actor is not Character" })
-		var args_d: Dictionary = LuaConv.to_dict(args)
-		var shelf_id := (shelf as ShelfNode).effective_shelf_id()
-		var op_str := str(op)
-		var result: Dictionary
-		match op_str:
-			"update":
-				var ops_v: Variant = args_d.get("ops", [])
-				var ops_arr: Array = ops_v if ops_v is Array else []
-				result = Shelves.update_shelf(actor as Character, shelf_id, ops_arr)
-			"buy":
-				result = Shelves.buy_from_shelf(
-					actor as Character, shelf_id,
-					str(args_d.get("listing_id", "")),
-					int(args_d.get("quantity", 1)),
-					int(args_d.get("total_price_centi", -1)),
-				)
-			_:
-				result = { "ok": false, "message": "shelf_op: unknown op '%s'" % op_str }
-		return LuaConv.to_lua(lua, result)
-
-	# 给角色挂 condition（buff/debuff）。expires_total_hours 用 GameClock.total_game_hours()
+	# 给角色挂 status（buff/debuff）。expires_total_hours 用 GameClock.total_game_hours()
 	# 体系——0 表示永久。source 是个标签，方便后续按来源批量清。
-	affect_tbl["add_condition"] = func(target, condition_id, expires_total_hours, source):
+	affect_tbl["add_status"] = func(target, status_id, expires_total_hours, source):
 		collected.append({
-			"type": "add_condition",
+			"type": "add_status",
 			"target": target,
-			"condition_id": str(condition_id),
+			"status_id": str(status_id),
 			"expires_total_hours": int(expires_total_hours),
 			"source": str(source),
 		})
@@ -278,10 +250,8 @@ static func inject(lua: LuaState, _ctx: Dictionary, collected: Array) -> void:
 
 	# 查 holder 里所有匹配 query 的 slot。返回 lua array of dict，每条 =
 	# {slot_index, item_id, qty, quality, container_content}。query 同 inventory 套件 schema。
-	# 注：Shelf holder 投影 slot 时会在槽上挂 view-only 字段 _listing_price_centi /
-	# _listing_id / _listing_owner_character_id（参见 Shelves.adapter_listing_slots），
-	# 但 world.find_items 不把它们暴露到 lua —— 6.3 buy_listing 走 affect.shelf_op 直接
-	# 用 listing_id，不依赖 lua 端反查 slot.properties。
+	# 货架已统一为容器（ShelfNode extends ContainerNode），走容器 adapter；标价是槽位
+	# listing_price_centi aspect，不暴露给 lua。
 	world_tbl["find_items"] = func(holder, query):
 		var adapter := InventoryAdapter.for_holder(holder)
 		if adapter == null:

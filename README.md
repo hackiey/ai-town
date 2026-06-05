@@ -34,8 +34,8 @@ See [`docs/design-doc.md`](docs/design-doc.md) for the full design and [`docs/ar
 ## What Is Here
 
 - Godot 4.6 project for the client, headless runtime, UI, world simulation, farming, crafting, commerce, and local interaction systems.
-- Node.js backend using Fastify, Redis, SQLite, and WebSocket links to the Godot runtime.
-- Agent worker/runtime code for event-driven NPC thinking, memory, prompt context, and action submission.
+- Node.js backend using Fastify and SQLite, with WebSocket links to the Godot runtime. The agent runtime runs in-process (no Redis, single process).
+- Agent runtime code for event-driven NPC thinking, memory, prompt context, and action submission.
 - Seed data, Chinese localization, architecture notes, and development scripts.
 
 ## Repository Layout
@@ -44,7 +44,7 @@ See [`docs/design-doc.md`](docs/design-doc.md) for the full design and [`docs/ar
 src/        Godot gameplay, UI, runtime/client logic, simulation systems
 assets/     Project-owned or generated assets plus Godot resource wrappers
 data/       Game mechanics, recipes, localization, and resource definitions
-backend/    Node.js backend, worker, SQLite schema, agent runtime
+backend/    Node.js backend, SQLite schema, in-process agent runtime
 docs/       Design notes and implementation-grounded architecture docs
 scripts/    Local setup, Godot launch, and maintenance helpers
 addons/     Godot addon manifests; large binaries are installed separately
@@ -64,8 +64,8 @@ This repository can be opened as source, but it is not a complete redistributabl
 - Godot 4.6 or newer with the Jolt physics backend available.
 - Node.js 22 or newer.
 - pnpm 9.x.
-- Docker, only if you want the dev script to start Redis for you.
-- Redis, either local on `127.0.0.1:6379` or via Docker Compose.
+
+No external services are required — the backend is a single Node process and state lives in a local SQLite file.
 
 Optional agent providers require API keys in `backend/.env`. Do not commit real `.env` files.
 
@@ -80,7 +80,7 @@ cd ai-town
 ./scripts/dev setup
 ```
 
-`./scripts/dev setup` copies `backend/.env.example` to `backend/.env` when needed, installs backend dependencies, and ensures Redis is reachable.
+`./scripts/dev setup` copies `backend/.env.example` to `backend/.env` when needed and installs backend dependencies.
 
 If Godot is not installed at the default macOS app path and no `godot` command is on `PATH`, set:
 
@@ -90,19 +90,19 @@ export GODOT_BIN=/path/to/Godot
 
 ## Running Locally
 
-Start the backend gateway and worker:
+Start the Godot server + backend together (single command; tables are created on first run, backend serves `/debug`):
 
 ```bash
 ./scripts/dev all
 ```
 
-Start the authoritative Godot runtime in another terminal:
+To archive the current world and start a fresh one, add `--INIT` (old `state.db` is moved to `backend/data/archive/`):
 
 ```bash
-./scripts/dev server --INIT
+./scripts/dev all --INIT
 ```
 
-Start a player client in a third terminal:
+Start a player client in another terminal:
 
 ```bash
 ./scripts/dev client
@@ -121,12 +121,11 @@ curl http://127.0.0.1:3000/ready
 ```bash
 cd backend
 cp .env.example .env
-docker compose up -d
 pnpm install
 pnpm dev
 ```
 
-See `backend/README.md` for backend responsibilities and protocol details.
+This is a single process — gateway + agent runtime + `/debug` page — with no external services. See `backend/README.md` for backend responsibilities and protocol details.
 
 ## Secrets And Local Data
 

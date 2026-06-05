@@ -8,7 +8,6 @@ import {
   createAssembleTool,
   createBoilSaltTool,
   createBurnCharcoalTool,
-  createBuyFromShelfTool,
   createCookTool,
   createCreateItemTool,
   createDoNothingTool,
@@ -20,28 +19,20 @@ import {
   createOfferTool,
   createPickUpItemTool,
   createPlanFarmWorkTool,
+  createPutTakeTool,
   createReadTool,
   createRespondTool,
   createSayToTool,
   createSleepTool,
   createSmeltTool,
   createSmithTool,
-  createUpdateShelfTool,
-  createUseContainerTool,
   createUseItemTool,
-  createViewShelfTool,
+  createViewContainerTool,
   createWoodworkTool,
   createWriteTool,
 } from "./tool-factories.js";
 import type { AgentCurrentContext } from "../prompt-context/types.js";
 import type { AgentToolInterrupts, CreateGameAgentToolsOptions } from "./types.js";
-
-// 能用 update_shelf(上架/补货) 的判定走 group：角色属于某个"管理着货架的 group"才暴露这个工具，
-// 其余 NPC 只看到 view_shelf / buy_from_shelf。货架真正的归属/权限由 Godot 端 owner_group +
-// Db.can_access 裁决，这里只决定要不要把 tool 给 LLM 看（省 token + 防误调）。
-// 目前镇上只有黑尔面包店有货架（town.tscn bakery_bread_shelf，owner_group = hale_bakery）。
-// 以后新开货架，把它的 owner_group 加进来即可。
-const SHELF_MANAGER_GROUP_IDS = new Set<string>(["hale_bakery"]);
 
 // craft slug → 对应工厂函数。所有 craft tool 工厂签名一致；通过这张表统一过滤注册。
 type AxisToolFactory = (
@@ -114,10 +105,12 @@ export function createSharedGameAgentTools(options: CreateGameAgentToolsOptions)
   }
 
   // 通用交互工具（不归 craft，无 proficiency 门槛）：
-  //   - use_container：三件套 wire action，全员可用
+  //   - put_take：货架/容器统一存取（存入+取出合一），全员可用
+  //   - view_container：查看货架/容器内容（货架带标价），全员可用
   //   - draw_water：井边直接使用型，无手艺
-  // 未来想加 proficiency gating 到 craft 工具时，**不要**误伤这两个。
-  tools.push(createUseContainerTool(options, characterId, options.currentContext, interrupts));
+  // 未来想加 proficiency gating 到 craft 工具时，**不要**误伤这些。
+  tools.push(createPutTakeTool(options, characterId, options.currentContext, interrupts));
+  tools.push(createViewContainerTool(options.currentContext));
   tools.push(createDrawWaterTool(options, characterId, options.currentContext, interrupts));
 
   // 通信 / 交易 / 休息 / 兜底
@@ -129,16 +122,6 @@ export function createSharedGameAgentTools(options: CreateGameAgentToolsOptions)
   // schema 在对应集合为空时降级成 free-form string，调用是否合法（有 trade /
   // 有 owned shelf / 在 shelf 旁）一律由 Godot 端校验后返回 tool error。
   tools.push(createRespondTool(options, characterId, options.currentContext, gameTime, interrupts));
-  // 货架看货/购买全员可用：附近货架 view_shelf 看货，buy_from_shelf 购买。
-  tools.push(createViewShelfTool(options.currentContext));
-  tools.push(createBuyFromShelfTool(options, characterId, options.currentContext, gameTime, interrupts));
-  // 上架/补货(update_shelf)只给"管理着货架的 group"成员暴露——其余 NPC 根本看不到这个工具。
-  // 角色所属 group 来自 currentContext.groups（= manifest.characterGroupIds）。在不在货架旁 /
-  // 是否真有货 / 是否真有权限仍由 Godot 端 owner_group + Db.can_access 裁决。
-  const characterGroups = options.currentContext?.groups ?? [];
-  if (characterGroups.some((g) => SHELF_MANAGER_GROUP_IDS.has(g))) {
-    tools.push(createUpdateShelfTool(options, characterId, options.currentContext, gameTime, interrupts));
-  }
   // 常驻注册 plan_farm_work：让 LLM 始终知道这工具存在；不在田边时由 Godot 端的 farm
   // runner 拒掉错误回到 LLM 当作行为信号。schema 在 farm 名 enum 为空时自动降级成自由
   // string，不会因为 currentContext 不全而崩。

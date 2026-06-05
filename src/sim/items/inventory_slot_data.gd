@@ -11,6 +11,7 @@ extends RefCounted
 #   freshness_tier, freshness_age_hours,                # null = 不腐
 #   durability,                                         # null = 无耐久概念
 #   base_effects, displayed_effects,                    # null = 无 use 效果
+#   listing_price_centi,                                # null = 无标价（货架陈列时才有，仅展示）
 # }
 #
 # 原 `properties` sub-dict **完全消失**——aspect 字段平铺到 slot 顶层。
@@ -52,6 +53,7 @@ static func empty() -> Dictionary:
 		"durability": null,
 		"base_effects": null,
 		"displayed_effects": null,
+		"listing_price_centi": null,
 	}
 
 
@@ -124,6 +126,7 @@ static func normalize(slot: Dictionary) -> Dictionary:
 	slot["durability"] = _coerce_int_or_null(slot.get("durability", null))
 	slot["base_effects"] = _coerce_dict_or_null(slot.get("base_effects", null))
 	slot["displayed_effects"] = _coerce_dict_or_null(slot.get("displayed_effects", null))
+	slot["listing_price_centi"] = _coerce_int_or_null(slot.get("listing_price_centi", null))
 	return slot
 
 
@@ -218,6 +221,10 @@ func durability() -> Variant:
 
 func base_effects() -> Variant:
 	return slot.get("base_effects", null)
+
+# 货架标价（centi 银）。null = 无标价（普通容器或未定价）。仅展示，付钱靠 trade/give。
+func listing_price_centi() -> Variant:
+	return slot.get("listing_price_centi", null)
 
 func displayed_effects() -> Variant:
 	return slot.get("displayed_effects", null)
@@ -333,6 +340,7 @@ func to_backend_dict() -> Dictionary:
 		"durability": durability(),
 		"baseEffects": _nullable_dict_dup(slot.get("base_effects", null)),
 		"displayedEffects": _nullable_dict_dup(slot.get("displayed_effects", null)),
+		"listingPriceCenti": slot.get("listing_price_centi", null),
 	}
 
 

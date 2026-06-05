@@ -50,7 +50,7 @@ Manifest 是个"目录"，不是 "snapshot"。`message type = character.percepti
 > **任何 `send_world_event` 调用之前，相关状态变更必须已经写到共享 sqlite，且相关 character 的 manifest 已经反映此刻能感知到的所有实体。**
 
 manifest 本身只列 id，所以"反映状态"主要体现在两件事：
-1. **状态变更先 UPSERT 进 sqlite**：改 condition / inventory / attribute / farm_plot / workstation_state 等都**必须同步发生在 `send_world_event` 之前**，且不得 `await` / `call_deferred` 错开调用栈——保证之后任何 SELECT 读到的是新值
+1. **状态变更先 UPSERT 进 sqlite**：改 status / inventory / attribute / farm_plot / workstation_state 等都**必须同步发生在 `send_world_event` 之前**，且不得 `await` / `call_deferred` 错开调用栈——保证之后任何 SELECT 读到的是新值
 2. **manifest flush 在事件之前**：`send_world_event` wrapper 内部先按 `actorId + affectedCharacterIds` flush manifest，再发事件
 3. 通过 WebSocket 单连接 in-order 保证 backend 收到顺序：manifest 先到入 cache，event 后到处理时读 cache 必然 ≥ 事件时点；同 turn 内 SELECT 读到的 sqlite 行也已经是新值
 
@@ -68,7 +68,7 @@ backend.send_world_event("item_used", "", {...})    # 再 emit；wrapper 内 flu
 
 **本帧去重**：character 维护 `_perception_manifest_pushed_this_frame` flag，一帧内多次 flush 只推第一次（同帧主线程未让出，manifest 内容相同）。每帧末 `_process` 尾 reset。
 
-**Backend 端**：`AgentHostStateCache.manifestByCharacter` 按 `townId + characterId` 缓存最新 manifest；订阅 `character.perception_manifests:*` Redis bus 无条件覆盖；`getManifest` 直接读 cache。**无 pull 路径**——cache miss 时返回 null，调用方自行判定是否 fallback（一般 character `_ready` 时已 push 过初始 manifest，cache miss 仅在启动竞争窗口内出现）。
+**Backend 端**：`AgentHostStateCache.manifestByCharacter` 按 `townId + characterId` 缓存最新 manifest；订阅 `character.perception_manifest:*` 进程内 bus 无条件覆盖；`getManifest` 直接读 cache。**无 pull 路径**——cache miss 时返回 null，调用方自行判定是否 fallback（一般 character `_ready` 时已 push 过初始 manifest，cache miss 仅在启动竞争窗口内出现）。
 
 具体状态查询走 `backend/src/services/world-state/*-repo.ts`：runtime 拿到 manifest 后用其中的 id 列表批量调 repo SELECT，得到 view 对象，再交给 prompt assembler 拼 LLM context。
 

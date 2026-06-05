@@ -143,6 +143,13 @@ export const SCHEMA_STATEMENTS = [
 
   // NOTE: character_groups 由 Godot 端建表（src/autoload/db.gd 的 _GAME_WORLD_SCHEMA）。
   // backend service (services/character-groups-service.ts) 只 SELECT/INSERT/DELETE，不 CREATE。
+
+  // debug_settings：backend 自有的 debug-only KV。目前只存 agent-run-filter（调 /debug 页面
+  // 勾选只跑哪些 NPC）。删 Redis 合并单进程后从 Redis KV 迁来这里，跨重启保留。
+  `CREATE TABLE IF NOT EXISTS debug_settings (
+    key TEXT PRIMARY KEY,
+    value TEXT NOT NULL          -- JSON
+  )`,
 ];
 
 // 新增列的幂等迁移；首次运行成功，之后失败被吞掉。

@@ -1,4 +1,4 @@
-import type { Redis } from "ioredis";
+import type { MessageBus } from "../plugins/message-bus.js";
 import type { PerceptionManifestPayload } from "../godot-link/perception-manifest.js";
 
 export const WORLD_EVENT_BUS_PATTERN = "world.events:*";
@@ -20,20 +20,20 @@ export function parseWorldEventBusChannel(channel: string): string | null {
   return match?.[1] ?? null;
 }
 
-export async function publishWorldEventToBus(
-  redis: Redis,
+export function publishWorldEventToBus(
+  bus: MessageBus,
   townId: string,
   eventId: string,
   perception?: Record<string, PerceptionManifestPayload>,
-): Promise<number> {
+): number {
   const payload: WorldEventBusPayload = perception && Object.keys(perception).length > 0
     ? { eventId, perception }
     : { eventId };
-  return redis.publish(worldEventBusChannel(townId), JSON.stringify(payload));
+  return bus.publish(worldEventBusChannel(townId), payload);
 }
 
-export function parseWorldEventBusPayload(raw: string): WorldEventBusPayload {
-  const payload = JSON.parse(raw) as Partial<WorldEventBusPayload>;
+export function parseWorldEventBusPayload(raw: unknown): WorldEventBusPayload {
+  const payload = (raw ?? {}) as Partial<WorldEventBusPayload>;
   if (!payload.eventId || typeof payload.eventId !== "string") {
     throw new Error("world event bus payload missing eventId");
   }

@@ -1,5 +1,4 @@
 import type { AgentTool, AgentToolResult, AgentToolUpdateCallback } from "@mariozechner/pi-agent-core";
-import type { ShelfOp } from "../../godot-link/actions.js";
 import type { GameTimeSnapshot } from "../../godot-link/protocol.js";
 import { getActiveLocale, t } from "../../i18n/index.js";
 import { localizeStringValue } from "../name-resolver/index.js";
@@ -13,24 +12,21 @@ import {
   submitToolAction,
 } from "./action-results.js";
 import {
-  buyFromShelfSchema,
   createAssembleSchema,
   createBoilSaltSchema,
   createBurnCharcoalSchema,
   createCookSchema,
   createDrawWaterSchema,
   createItemSchema,
-  createBuyFromShelfSchema,
   createMillGrainSchema,
   createMineSchema,
   createMoveToLocationSchema,
   createPlanFarmWorkSchema,
+  createPutTakeSchema,
   createSayToSchema,
   createSmeltSchema,
   createSmithSchema,
-  createUpdateShelfSchema,
-  createUseContainerSchema,
-  createViewShelfSchema,
+  createViewContainerSchema,
   createWoodworkSchema,
   doNothingSchema,
   dropItemSchema,
@@ -39,14 +35,11 @@ import {
   readSchema,
   respondSchema,
   sleepSchema,
-  updateShelfSchema,
   useItemSchema,
-  viewShelfSchema,
   writeSchema,
   type AssembleParams,
   type BoilSaltParams,
   type BurnCharcoalParams,
-  type BuyFromShelfParams,
   type CookParams,
   type CreateItemParams,
   type DoNothingParams,
@@ -59,16 +52,15 @@ import {
   type OfferParams,
   type PickUpItemParams,
   type PlanFarmWorkParams,
+  type PutTakeParams,
   type ReadParams,
   type RespondParams,
   type SayToParams,
   type SleepParams,
   type SmeltParams,
   type SmithParams,
-  type UpdateShelfParams,
-  type UseContainerParams,
   type UseItemParams,
-  type ViewShelfParams,
+  type ViewContainerParams,
   type WoodworkParams,
   type WriteParams,
 } from "./schemas.js";
@@ -76,16 +68,15 @@ import {
   isMoveTargetError,
   normalizePlanFarmWorkOps,
   normalizeWorkstationActionInputs,
+  resolveContainerOrShelfTarget,
   resolveCraftWorkstation,
   resolveItemByIndex,
   resolveItemTarget,
   resolveMoveTarget,
   resolveOptionalKnownTargetName,
   resolvePlanFarm,
-  resolveShelfTarget,
   resolveSpeechTarget,
   resolveTradeTarget,
-  resolveUseWorkstationName,
 } from "./targets.js";
 import { getCraftSpec, verbForWorkstation, type CraftSlug } from "./craft-registry.js";
 import type { ActionName, WorkstationActionTarget } from "../../godot-link/actions.js";
@@ -502,9 +493,10 @@ export function createBoilSaltTool(
   };
 }
 
-// 容器 (take/put/inspect) —— 从旧 use_workstation 路由层剥离成独立工具，schema 把 verb 一级化。
-// 三个 wire action（deposit_to_container / withdraw_from_container / inspect_container）不变。
-export function createUseContainerTool(
+// put_take —— 货架/容器统一存取：一次调用同时存入(put)+取出(take)，批量。
+// put 项从背包取（resolve backpack 索引）；take 项从容器/货架取（按 kind 选 scope）。
+// price_silver 仅货架的 put 项有意义（标价，仅展示）。单个 wire action put_take_container。
+export function createPutTakeTool(
   runtime: ToolRuntime,
   characterId: string,
   currentContext?: AgentCurrentContext,
@@ -512,48 +504,89 @@ export function createUseContainerTool(
 ): AgentTool<any, CharacterActionToolDetails> {
   const gameTime = currentContext?.gameTime;
   return {
-    label: td("use_container.label"),
-    name: "use_container",
-    description: td("use_container.description"),
-    parameters: createUseContainerSchema(),
+    label: td("put_take.label"),
+    name: "put_take",
+    description: td("put_take.description"),
+    parameters: createPutTakeSchema(),
     execute: async (_toolCallId, rawArgs, signal, onUpdate) => {
-      const args = rawArgs as UseContainerParams;
-      // 容器型 workstation 在 nearbyWorkstations 里：id === workstationId === containerId
-      // （见 assemble-from-manifest.ts:457-460）。沿用 resolveUseWorkstationName 已有逻辑。
-      const workstation = resolveUseWorkstationName(args.container, currentContext);
-      if (isMoveTargetError(workstation)) throw new Error(workstation.error);
-      // inspect: 直接发 inspect_container。
-      if (args.verb === "inspect") {
-        return submitToolAction(
-          runtime.actions,
-          characterId,
-          "inspect_container",
-          { containerId: workstation.id },
-          args.reason ?? td("inspect_container.reason_format", { label: workstation.label }),
-          { toolName: "use_container", displayTarget: workstation.label, gameTime, signal, onUpdate, interrupts },
-        );
+      const args = rawArgs as PutTakeParams;
+      const site = resolveContainerOrShelfTarget(args.container, currentContext);
+      if (isMoveTargetError(site)) throw new Error(site.error);
+      const takeScope = site.kind === "shelf"
+        ? { kind: "shelf" as const, shelfId: site.id }
+        : { kind: "container" as const, containerId: site.id };
+
+      const put = (args.put ?? []).map((entry) => {
+        const r = resolveItemByIndex(entry.item, "backpack", currentContext);
+        if (isMoveTargetError(r)) throw new Error(r.error);
+        const out: { itemId: string; quantity: number; actorSlotIndex?: number; priceCenti?: number } = {
+          itemId: r.id, quantity: entry.quantity,
+        };
+        if (r.slotIndex != null) out.actorSlotIndex = r.slotIndex;
+        if (entry.price_silver != null) out.priceCenti = Math.round(entry.price_silver * 100);
+        return out;
+      });
+      const take = (args.take ?? []).map((entry) => {
+        const r = resolveItemByIndex(entry.item, takeScope, currentContext);
+        if (isMoveTargetError(r)) throw new Error(r.error);
+        const out: { itemId: string; quantity: number; containerSlotIndex?: number } = {
+          itemId: r.id, quantity: entry.quantity,
+        };
+        if (r.slotIndex != null) out.containerSlotIndex = r.slotIndex;
+        return out;
+      });
+      if (put.length === 0 && take.length === 0) {
+        throw new Error(td("put_take.error_empty"));
       }
-      // take / put：必须给 item + quantity。
-      if (!args.item?.name?.trim()) {
-        throw new Error(td(args.verb === "take" ? "withdraw_from_container.error_missing_item" : "deposit_to_container.error_missing_item"));
-      }
-      const resolved = args.verb === "put"
-        ? resolveItemByIndex(args.item, "backpack", currentContext)
-        : resolveItemByIndex(args.item, { kind: "container", containerId: workstation.id }, currentContext);
-      if (isMoveTargetError(resolved)) throw new Error(resolved.error);
-      const quantity = args.quantity ?? 1;
-      const actionKind = args.verb === "take" ? "withdraw_from_container" : "deposit_to_container";
-      const reasonKey = args.verb === "take" ? "withdraw_from_container.reason_format" : "deposit_to_container.reason_format";
-      const target: { containerId: string; itemId: string; quantity: number; containerSlotIndex?: number; actorSlotIndex?: number } = {
-        containerId: workstation.id, itemId: resolved.id, quantity,
-      };
-      if (args.verb === "take" && resolved.slotIndex != null) target.containerSlotIndex = resolved.slotIndex;
-      if (args.verb === "put" && resolved.slotIndex != null) target.actorSlotIndex = resolved.slotIndex;
       return submitToolAction(
-        runtime.actions, characterId, actionKind, target,
-        args.reason ?? td(reasonKey, { label: workstation.label }),
-        { toolName: "use_container", displayTarget: workstation.label, gameTime, signal, onUpdate, interrupts },
+        runtime.actions,
+        characterId,
+        "put_take_container",
+        { containerId: site.id, put, take },
+        args.reason ?? td("put_take.reason_format", { label: site.label }),
+        { toolName: "put_take", displayTarget: site.label, gameTime, signal, onUpdate, interrupts },
       );
+    },
+  };
+}
+
+// view_container —— 查看货架/容器内容（货架额外显示标价）。只读，从 currentContext 渲染，不发 action。
+export function createViewContainerTool(
+  currentContext?: AgentCurrentContext,
+): AgentTool<any, { containerId: string; itemCount: number }> {
+  return {
+    label: td("view_container.label"),
+    name: "view_container",
+    description: td("view_container.description"),
+    parameters: createViewContainerSchema(),
+    execute: async (_toolCallId, rawArgs) => {
+      const args = rawArgs as ViewContainerParams;
+      const site = resolveContainerOrShelfTarget(args.container, currentContext);
+      if (isMoveTargetError(site)) throw new Error(site.error);
+      let lines: string[];
+      let count = 0;
+      if (site.kind === "shelf") {
+        const shelf = (currentContext?.nearbyShelves ?? []).find((s) => s.id === site.id);
+        const listings = shelf?.listings ?? [];
+        count = listings.length;
+        lines = listings.length === 0
+          ? [td("view_container.result_empty")]
+          : listings.map((l) => {
+              const price = l.priceText ?? (l.priceSilver > 0 ? `${l.priceSilver.toFixed(2)} 银` : "");
+              return `[${l.index ?? "?"}] ${l.displayName ?? l.itemId} x${l.quantity}${price ? ` @ ${price}` : ""}`;
+            });
+      } else {
+        const ws = (currentContext?.nearbyWorkstations ?? []).find((w) => w.id === site.id);
+        const items = ws?.items ?? [];
+        count = items.length;
+        lines = items.length === 0
+          ? [td("view_container.result_empty")]
+          : items.map((it) => `[${it.index}] ${localizeStringValue(it.itemId)} x${it.quantity}`);
+      }
+      return {
+        content: [{ type: "text", text: [td("view_container.result_header", { label: site.label }), lines.join("；")].join("\n") }],
+        details: { containerId: site.id, itemCount: count },
+      };
     },
   };
 }
@@ -738,151 +771,6 @@ export function createDropItemTool(
           ...(args.quantity != null ? { quantity: args.quantity } : {}),
         },
         td("drop_item.reason_format", { item: item.label }),
-        { displayTarget: item.label, gameTime, signal, onUpdate, interrupts },
-      );
-    },
-  };
-}
-
-export function createUpdateShelfTool(
-  runtime: ToolRuntime,
-  characterId: string,
-  currentContext?: AgentCurrentContext,
-  gameTime?: GameTimeSnapshot,
-  interrupts?: AgentToolInterrupts,
-): AgentTool<typeof updateShelfSchema, CharacterActionToolDetails> {
-  return {
-    label: td("update_shelf.label"),
-    name: "update_shelf",
-    description: td("update_shelf.description"),
-    parameters: createUpdateShelfSchema(),
-    execute: async (_toolCallId: string, args: UpdateShelfParams, signal, onUpdate) => {
-      const shelf = resolveShelfTarget(args.shelf, currentContext, "owned");
-      if (isMoveTargetError(shelf)) {
-        throw new Error(shelf.error);
-      }
-      // add 从我的背包补到货架 → entry.item 走 backpack 索引，slotIndex 透传让 Godot 取对那份；
-      // update / remove 操作的是这个货架已有 listing → entry.item 走 shelf 索引，listingId 透传。
-      const shelfScope = { kind: "shelf" as const, shelfId: shelf.id };
-      const resolveAdd = (entry: { item: { name: string; index: number } }) => {
-        const r = resolveItemByIndex(entry.item, "backpack", currentContext);
-        if (isMoveTargetError(r)) throw new Error(r.error);
-        return r;
-      };
-      const resolveShelf = (entry: { item: { name: string; index: number } }) => {
-        const r = resolveItemByIndex(entry.item, shelfScope, currentContext);
-        if (isMoveTargetError(r)) throw new Error(r.error);
-        return r;
-      };
-      const ops: ShelfOp[] = [
-        ...(args.add ?? []).map((entry) => {
-          const r = resolveAdd(entry);
-          return {
-            type: "add" as const,
-            itemId: r.id,
-            ...(r.slotIndex != null ? { slotIndex: r.slotIndex } : {}),
-            quantity: entry.quantity,
-            priceSilver: entry.price_silver,
-          };
-        }),
-        ...(args.update ?? []).map((entry) => {
-          const r = resolveShelf(entry);
-          return {
-            type: "update" as const,
-            itemId: r.id,
-            ...(r.listingId != null ? { listingId: r.listingId } : {}),
-            quantity: entry.quantity,
-            priceSilver: entry.price_silver,
-          };
-        }),
-        ...(args.remove ?? []).map((entry) => {
-          const r = resolveShelf(entry);
-          return {
-            type: "remove" as const,
-            itemId: r.id,
-            ...(r.listingId != null ? { listingId: r.listingId } : {}),
-            ...(entry.quantity != null ? { quantity: entry.quantity } : {}),
-          };
-        }),
-      ];
-      if (ops.length <= 0) {
-        throw new Error("update_shelf 至少需要 add、update、remove 其中一组");
-      }
-      return submitToolAction(
-        runtime.actions,
-        characterId,
-        "update_shelf",
-        { shelfId: shelf.id, ops },
-        args.reason ?? td("update_shelf.reason_format", { label: shelf.label }),
-        { displayTarget: shelf.label, gameTime, signal, onUpdate, interrupts },
-      );
-    },
-  };
-}
-
-export function createViewShelfTool(
-  currentContext?: AgentCurrentContext,
-): AgentTool<typeof viewShelfSchema, { shelfId: string; listingCount: number }> {
-  return {
-    label: td("view_shelf.label"),
-    name: "view_shelf",
-    description: td("view_shelf.description"),
-    parameters: createViewShelfSchema(),
-    execute: async (_toolCallId: string, args: ViewShelfParams) => {
-      const shelf = resolveShelfTarget(args.shelf, currentContext, "nearby");
-      if (isMoveTargetError(shelf)) {
-        throw new Error(shelf.error);
-      }
-      const shelfContext = (currentContext?.nearbyShelves ?? []).find((entry) => entry.id === shelf.id);
-      if (!shelfContext) {
-        throw new Error(td("view_shelf.error_not_visible"));
-      }
-      const lines = shelfContext.listings.length === 0
-        ? [td("view_shelf.result_empty")]
-        : shelfContext.listings.map((listing) => (
-          `[${listing.index ?? "?"}] ${listing.displayName ?? listing.itemId ?? listing.listingId} x${listing.quantity} @ ${listing.priceText ?? `${listing.priceSilver.toFixed(2)} 银`}`
-        ));
-      return {
-        content: [{ type: "text", text: [`# 货架内容`, `货架：${shelf.label}`, `内容：${lines.join("；")}`].join("\n") }],
-        details: {
-          shelfId: shelfContext.id,
-          listingCount: shelfContext.listings.length,
-        },
-      };
-    },
-  };
-}
-
-export function createBuyFromShelfTool(
-  runtime: ToolRuntime,
-  characterId: string,
-  currentContext?: AgentCurrentContext,
-  gameTime?: GameTimeSnapshot,
-  interrupts?: AgentToolInterrupts,
-): AgentTool<typeof buyFromShelfSchema, CharacterActionToolDetails> {
-  return {
-    label: td("buy_from_shelf.label"),
-    name: "buy_from_shelf",
-    description: td("buy_from_shelf.description"),
-    parameters: createBuyFromShelfSchema(),
-    execute: async (_toolCallId: string, args: BuyFromShelfParams, signal, onUpdate) => {
-      const shelf = resolveShelfTarget(args.shelf, currentContext, "nearby");
-      if (isMoveTargetError(shelf)) {
-        throw new Error(shelf.error);
-      }
-      const item = resolveItemByIndex(args.item, { kind: "shelf", shelfId: shelf.id }, currentContext);
-      if (isMoveTargetError(item)) {
-        throw new Error(item.error);
-      }
-      if (item.listingId == null) {
-        throw new Error(t("error.unknown_shelf_listing", getActiveLocale(), { listing: args.item.name }));
-      }
-      return submitToolAction(
-        runtime.actions,
-        characterId,
-        "buy_from_shelf",
-        { shelfId: shelf.id, listingId: item.listingId, quantity: args.quantity },
-        args.reason ?? td("buy_from_shelf.reason_format", { label: item.label }),
         { displayTarget: item.label, gameTime, signal, onUpdate, interrupts },
       );
     },

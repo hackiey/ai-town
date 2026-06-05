@@ -31,7 +31,7 @@ var _bg: ColorRect
 var _icon: TextureRect
 var _name_overlay: Label
 var _qty: Label
-var _price: Label  # 货架场景下显示单价（slot dict 含 _listing_price_centi 时自动渲染）
+var _price: Label  # 货架场景下显示标价（slot dict 含 listing_price_centi 时自动渲染）
 var _menu: PopupMenu
 
 
@@ -84,8 +84,8 @@ func _init() -> void:
 	_qty.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(_qty)
 
-	# 货架 listing 用：slot dict 含 _listing_price_centi 时自动显示在左下角；
-	# 普通背包 slot 不带这个字段，label 保持隐藏。
+	# 货架标价用：slot dict 含 listing_price_centi（非 null）时自动显示在左下角；
+	# 普通背包 / 容器 slot 该字段为 null，label 保持隐藏。
 	_price = Label.new()
 	_price.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_price.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
@@ -144,9 +144,10 @@ func set_slot(index: int, slot_data: Dictionary) -> void:
 		_name_overlay.text = name_for_tip
 		_name_overlay.visible = true
 	_qty.text = str(quantity) if quantity > 1 else ""
-	# Shelves.adapter_listing_slots 在 listing dict 上叠 _listing_price_centi（centi 整数）；
-	# 普通背包 dict 不带这个字段，price label 自动隐藏。
-	var price_centi := int(slot_data.get("_listing_price_centi", -1))
+	# 货架槽位带 listing_price_centi（centi 整数标价）；普通背包/容器 dict 该字段为 null，
+	# price label 自动隐藏。货架已统一为容器（slot aspect），不再有独立 listing 投影。
+	var price_v: Variant = slot_data.get("listing_price_centi", null)
+	var price_centi := int(price_v) if price_v != null else -1
 	if price_centi >= 0:
 		_price.text = Money.format_silver_from_centi(price_centi)
 		_price.visible = true

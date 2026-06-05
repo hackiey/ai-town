@@ -40,18 +40,18 @@
     },
     "mine": {
       "label": "挖矿",
-      "description": "需要在矿场（gold_mine / silver_mine / iron_mine）附近。在矿场挖矿——按附近矿场名指定。挖矿走 dig 反应，按矿种不同产出对应矿石，要求背包里有铁镐（pick_head_on_shaft）；挖矿会持续多次尝试直到体力不够或被打断，每次尝试都消耗体力并可能损耗工具。state 矿场（金/银矿）产出归国家金库，私矿（铁矿）归个人。",
+      "description": "需要站在矿场附近（如金矿矿井、银矿矿井、铁矿矿井）。在矿场挖矿产出对应矿石，背包里需有铁镐；会持续多次尝试，直到体力不够或被打断。",
       "param": {
-        "mine": "目标矿场名；必须使用 user prompt 中 # 当前附近工作台 段列出的矿场名（gold_mine / silver_mine / iron_mine 类）。角色不在附近时调用会失败。"
+        "mine": "目标矿井名；必须照抄 user prompt 中 # 当前附近工作台 段里列出的矿井名（例如「金矿矿井」，若名字带括号后缀也要一并照抄）。不要填英文 id。角色不在附近时调用会失败。"
       },
       "reason_default_format": "在 {label} 挖矿",
       "result_note": "result 含此次尝试的累计 outputs / 体力消耗 / 工具损坏情况；矿脉枯竭或体力耗尽会停止。"
     },
     "woodwork": {
       "label": "木工",
-      "description": "需要在伐木场（lumberyard）或工作台（workbench）附近。lumberyard 选 workstation=lumberyard_workstation 砍木材，不需 inputs；workbench 选 workstation=workbench + sub_option=plank/shaft 把木材削成木板或木柄，inputs 必填（要削的木头）。属于 woodworking 手艺轴，会累积熟练度。",
+      "description": "需要在伐木场或工作台附近。在伐木场砍木材（workstation 填伐木场名，不需 inputs）；在工作台削木（workstation 填工作台名 + sub_option=plank/shaft，inputs 必填要削的木头）。",
       "param": {
-        "workstation": "目标工作台；必须使用 user prompt 中 # 当前附近工作台 段列出的伐木场或工作台（lumberyard_workstation 或 workbench）。角色不在附近时调用会失败。",
+        "workstation": "目标工作台；必须照抄 user prompt 中 # 当前附近工作台 段里列出的伐木场或工作台名（带括号后缀也一并照抄）。不要填英文 id。角色不在附近时调用会失败。",
         "sub_option": "在 workbench 削木时必填：plank=木板，shaft=木柄。",
         "input_item": "从 # 背包 选择的输入材料（{name, index}）；name=显示名，index=背包中该行 [N] 序号。",
         "inputs_array": "削木时的材料清单。lumberyard 砍伐不需要填。"
@@ -61,7 +61,7 @@
     },
     "burn_charcoal": {
       "label": "烧炭",
-      "description": "需要在炭窑（charcoal_kiln）附近。把木材烧成木炭——1 木→4 炭，木炭性价比是木材 4 倍。属于 charcoal_making 手艺轴，会累积熟练度；难度 45（中等技术活），生手做容易失败。inputs 必填（要烧的木材）。",
+      "description": "需要在炭窑附近。把木材烧成木炭。inputs 必填（要烧的木材）。",
       "param": {
         "input_item": "从 # 背包 选择的木材（{name, index}）。",
         "inputs_array": "要烧的木材清单。"
@@ -71,18 +71,18 @@
     },
     "smelt": {
       "label": "冶炼",
-      "description": "需要在熔炉（forge）或铸币所（mint）附近。forge 把矿石熔成金属锭（forge_smelt 单矿冶炼 / forge_alloy 合金）；mint 把金属铸成硬币（gold_coin / silver_coin）。同属 smelting 手艺轴，熟练度共用。inputs 必填，反应按 inputs 自动匹配（铁矿→铁锭，金银混合→合金等）。",
+      "description": "需要在熔炉或铸币所附近。熔炉把矿石熔成金属锭，铸币所把金属锭铸成硬币。inputs 必填，反应按 inputs 自动匹配。",
       "param": {
-        "workstation": "目标工作台；必须使用 user prompt 中 # 当前附近工作台 段列出的 forge 或 mint。角色不在附近时调用会失败。",
+        "workstation": "目标工作台；必须照抄 user prompt 中 # 当前附近工作台 段里列出的熔炉或铸币所名（带括号后缀也一并照抄）。不要填英文 id。角色不在附近时调用会失败。",
         "input_item": "从 # 背包 选择的输入材料（{name, index}）。",
         "inputs_array": "要冶炼的矿石/金属清单。同种材料需要多个单位时重复填写。"
       },
       "reason_default_format": "在 {label} 冶炼",
-      "result_note": "result 含产出和熟练度变化；火候不够会失败浪费材料。"
+      "result_note": "result 含产出和熟练度变化。"
     },
     "smith": {
       "label": "锻造",
-      "description": "需要在铁砧（anvil）附近。把金属锭锻打成兵器/工具部件——sub_option=blade（刀片）/axe_head（斧头）/pick_head（镐头）。属于 smithing 手艺轴，难度 50-55（工匠级），新手做容易毁料。inputs 必填（金属锭），且需要燃料。",
+      "description": "需要在铁砧附近。把金属锭锻打成部件——sub_option=blade（刀片）/axe_head（斧头）/pick_head（镐头）。inputs 必填（金属锭 + 燃料）。",
       "param": {
         "sub_option": "锻造部件：blade=刀片 / axe_head=斧头 / pick_head=镐头。",
         "input_item": "从 # 背包 选择的输入材料（{name, index}）。",
@@ -93,7 +93,7 @@
     },
     "assemble": {
       "label": "装配",
-      "description": "需要在工作台（workbench）附近。把零件组装成完整工具——sub_option=axe/knife/pick/sickle/shovel/rope（rope 用麻搓绳）。属于 assembly 手艺轴，难度 15-30（简单到中等），inputs 是各零件（如 axe_head + wood_shaft）。",
+      "description": "需要在工作台附近。把零件组装成成品——sub_option=axe/knife/pick/sickle/shovel/rope。inputs 是各零件。",
       "param": {
         "sub_option": "成品类型：axe=斧头 / knife=刀 / pick=镐 / sickle=镰 / shovel=铲 / rope=绳。",
         "input_item": "从 # 背包 选择的输入零件（{name, index}）。",
@@ -104,7 +104,7 @@
     },
     "cook": {
       "label": "烹饪",
-      "description": "需要在炉灶（stove）附近。verb=bake 烤（面包/烤肉/煎蛋）；verb=mix 拌煮（面团/果酱/炖菜）。属于 cooking 手艺轴，难度 10-35。inputs 必填，反应按 inputs 自动匹配具体菜式；多数菜需要燃料（木材 / 木炭）。",
+      "description": "需要在炉灶附近。verb=bake 烤 / mix 拌煮。inputs 必填，反应按 inputs 自动匹配菜式。",
       "param": {
         "verb": "烹饪方式：bake=烤 / mix=拌煮。具体菜式按 inputs 自动匹配。",
         "input_item": "从 # 背包 选择的食材（{name, index}）。",
@@ -115,7 +115,7 @@
     },
     "mill_grain": {
       "label": "磨粉",
-      "description": "需要在石磨（mill）附近。把谷物磨成粉（grain→flour）。属于 milling 手艺轴，难度 10（简单体力活）。inputs 是谷物。",
+      "description": "需要在石磨附近。把谷物磨成面粉。inputs 是谷物。",
       "param": {
         "input_item": "从 # 背包 选择的谷物（{name, index}）。",
         "inputs_array": "要磨的谷物清单。"
@@ -125,28 +125,42 @@
     },
     "boil_salt": {
       "label": "煮盐",
-      "description": "需要在盐田（saltworks_pan）附近。把盐水熬煮浓缩成盐——inputs 是盛盐水的木桶（liquid_container）。属于 salt_making 手艺轴，难度 25（简单手艺，火候要稳）。",
+      "description": "需要在盐田附近。把盐水熬煮浓缩成盐。",
       "param": {
-        "input_item": "从 # 背包 选择的木桶（{name, index}）。",
-        "inputs_array": "盛盐水的木桶（liquid_container）。"
+        "input_item": "从 # 背包 选择的燃料（{name, index}）。",
+        "inputs_array": "燃料（木炭或木头）。海水/卤水是盐场环境资源，不用背。"
       },
       "reason_default_format": "在 {label} 煮盐",
-      "result_note": "result 含产出盐和熟练度变化；火候不够浪费盐水。"
+      "result_note": "result 含产出盐和熟练度变化。"
     },
-    "use_container": {
-      "label": "使用容器",
-      "description": "用容器存取物品。container 指定要操作的容器（必须在附近），verb=take 取出 / put 存入 / inspect 查看。take/put 必填 item 和 quantity；inspect 不需要。容器型工作台（如金库）需要有访问权限才能用；上锁的容器需要背包里有对应钥匙。",
+    "put_take": {
+      "label": "存取（货架/容器）",
+      "description": "在货架或容器里一次性存入(put)和/或取出(take)物品。container 指定目标（必须在附近）。put：把背包里的物品放进去，item 指向背包 [N]；货架上的 put 可带 price_silver 给该物品标价（仅展示）。take：把里面的物品拿出来，item 指向该货架/容器内列表 [N]（可先 view_container 看一眼）。\n买东西时，付钱优先用 offer 直接付给店主——这样钱有明确归属、最稳妥。只有当店主不在场、实在找不到人付钱时，才退而求其次：用 put_take 把对应的银币(silver_coin) 放进货架、同时 take 走想要的货；但留在货架上的钱可能被别人顺走，不保险。\n货架人人可存取；上锁的容器需要背包里有对应钥匙。",
       "param": {
-        "container": "目标容器；必须使用 user prompt 中 # 当前附近工作台 段列出的容器型工作台（如金库、储物箱）。角色不在附近时调用会失败。",
-        "verb": "操作：take=取出 / put=存入 / inspect=查看库存。",
-        "item": "take/put 必填：要取/存的物品。take 时 item 指向容器内列表 [N]（先 inspect 一次拿到列表）；put 时 item 指向背包 [N]。",
-        "quantity": "take/put 必填：取/存数量；inspect 忽略。"
+        "container": "目标货架或容器；必须使用 user prompt 中 # 当前附近 列出的货架 / 容器型工作台（如面包店货架、金库）。角色不在附近时调用会失败。",
+        "put": "要存入的物品列表（从背包取）。每项 {item, quantity, price_silver?}。",
+        "take": "要取出的物品列表（从货架/容器取）。每项 {item, quantity}。",
+        "put_item": "要存入的物品；item 指向背包 [N]。",
+        "take_item": "要取出的物品；item 指向该货架/容器内列表 [N]。",
+        "put_quantity": "存入数量。",
+        "take_quantity": "取出数量。",
+        "price_silver": "可选，仅货架有效：给这件商品标价（银，支持小数，如 0.5）。仅作展示参考，不强制扣钱。"
       },
-      "reason_default_format": "在 {label} 操作容器"
+      "reason_format": "在 {label} 存取物品",
+      "error_empty": "至少要指定一项 put 或 take。"
+    },
+    "view_container": {
+      "label": "查看（货架/容器）",
+      "description": "查看货架或容器里有什么。货架会额外显示每件商品的标价。container 指定目标（必须在附近）。",
+      "param": {
+        "container": "目标货架或容器；必须使用 user prompt 中 # 当前附近 列出的货架 / 容器型工作台。"
+      },
+      "result_header": "{label} 里：",
+      "result_empty": "（空的）"
     },
     "draw_water": {
       "label": "打水",
-      "description": "需要在水井（well）附近。把背包里的木桶（wood_bucket 等 liquid_container）装满水（默认 100 单位）。into 指定要装水的木桶。",
+      "description": "需要在水井附近。把背包里的木桶装满水（默认 100 单位）。into 指定要装水的木桶。",
       "param": {
         "into": "要装水的容器（{name, index}）—— 必须是背包里的 liquid_container（如 wood_bucket）。"
       },
@@ -225,77 +239,6 @@
       "error": {
         "unsupported_kind": "respond 不支持 kind \"{kind}\"。当前仅支持 \"trade\"。"
       }
-    },
-    "update_shelf": {
-      "param": {
-        "shelf": "自己的货架；必须使用 user prompt 中 # 我的货架 段列出的货架名/id。",
-        "add": "批量新增上架列表。每项 item 走 # 背包 索引，从背包补到这个货架上。",
-        "add_item": "要新增到货架上的背包物品。# 背包 列表中该物品的显示名 + 行首 [N] 序号。",
-        "add_quantity": "本次要额外上架到货架上的数量。",
-        "add_price_silver": "新增上架后该物品在货架上的一口价，单位为银币最小单位。",
-        "update": "批量更新列表。每项 item 走该货架 listings 索引，把对应 listing 的数量改成指定值并同步更新价格。",
-        "update_item": "要更新的货架 listing。该货架 listings 中该条目的显示名 + 行首 [N] 序号；同种物品分多份上架时按 index 区分。",
-        "update_quantity": "该 listing 最终应保留的总数量。",
-        "update_price_silver": "更新后该 listing 的一口价，单位为银币最小单位。",
-        "remove": "批量下架列表。每项 item 走该货架 listings 索引；数量不填则默认下架该 listing 的全部库存。",
-        "remove_item": "要从货架下架的 listing。该货架 listings 中该条目的显示名 + 行首 [N] 序号。",
-        "remove_quantity": "本次要下架的数量；不填则默认下架该 listing 的全部库存。"
-      },
-      "label": "更新货架",
-      "description": "管理自己的货架。只能对 # 我的货架 中列出的货架使用；运行时会检查你是否在货架 3 米内。`add` 用来把背包里的货补到货架，`update` 用来把某种货的货架总数量和价格改成目标值，`remove` 用来按物品名把货架库存取回背包。",
-      "reason_format": "更新货架 {label}"
-    },
-    "view_shelf": {
-      "param": {
-        "shelf": "3 米内可查看的货架；必须使用 user prompt 中 # 可交互地点&工作台&货架 段列出的货架名/id（自己的货架也可走 # 我的货架）。"
-      },
-      "label": "查看货架",
-      "description": "读取 3 米内货架的当前 listing 列表。只读，不会修改世界状态。",
-      "result_empty": "这个货架现在是空的。",
-      "error_not_visible": "当前上下文里没有这个可查看的货架。"
-    },
-    "buy_from_shelf": {
-      "param": {
-        "shelf": "3 米内可购买的货架；必须使用 user prompt 中 # 可交互地点&工作台&货架 段列出的货架名/id。",
-        "item": "要购买的 listing：该货架 listings 中该条目的显示名 + 行首 [N] 序号。同种物品分多份上架（不同品质 / 价格）时按 index 区分。",
-        "quantity": "本次要买的数量。"
-      },
-      "label": "购买货架物品",
-      "description": "按货架的一口价直接购买 3 米内货架上的货物。item 用 {name, index} 指定该货架第几行 listing。成交时会从买家身上扣钱、从货架扣货，并把钱直接打给卖家。",
-      "reason_format": "购买货架物品 {label}"
-    },
-    "deposit_to_container": {
-      "param": {
-        "container": "要存入的容器名（如「领主国库」「treasury_vault」）。必须站在容器旁边才能下手。",
-        "item": "要存入的物品名。必须是你背包里实际有的物品。",
-        "quantity": "本次存入的数量。"
-      },
-      "label": "存入容器",
-      "description": "把背包里指定数量的物品放进 3 米内你能动的容器（多数容器只有特定主人能存取）。装不下会原样退回背包。",
-      "reason_format": "存入容器 {label}",
-      "error_missing_container": "deposit_to_container 缺少 container 名。",
-      "error_missing_item": "deposit_to_container 缺少 item 名。"
-    },
-    "withdraw_from_container": {
-      "param": {
-        "container": "要取出物品的容器名。必须站在容器旁边才能下手。",
-        "item": "要取出的物品名。",
-        "quantity": "本次要取的数量。"
-      },
-      "label": "从容器取出",
-      "description": "从 3 米内你能动的容器里取出指定数量的物品到背包。背包装不下会留在容器里。",
-      "reason_format": "从容器取出 {label}",
-      "error_missing_container": "withdraw_from_container 缺少 container 名。",
-      "error_missing_item": "withdraw_from_container 缺少 item 名。"
-    },
-    "inspect_container": {
-      "param": {
-        "container": "要查看的容器名。必须站在容器旁边才能看里面。"
-      },
-      "label": "查看容器",
-      "description": "看一下 3 米内你能动的容器里都装了什么。只读，不会改世界状态。",
-      "reason_format": "查看容器 {label}",
-      "error_missing_container": "inspect_container 缺少 container 名。"
     },
     "write": {
       "param": {

@@ -36,7 +36,7 @@ import {
   splitEventsAtCutoff,
 } from "./prompt/context/renderer.js";
 import { formatGameTime, gameTimeSortValue, normalizeGameTime } from "../../agent-shared/prompt-context/time.js";
-import { getActiveLocale } from "../../i18n/index.js";
+import { getActiveLocale, t } from "../../i18n/index.js";
 import type { WorkingMemorySnapshot } from "../../agent-shared/prompt-context/types.js";
 import type { PiAgentRuntimeLogger } from "./runtime.js";
 import { WORKING_MEMORY_STORAGE_KEY, readWorkingMemoryFromStorage } from "./runtime.js";
@@ -63,16 +63,16 @@ export type ThinkingTrackSessionOptions = {
 type WriteWorkingMemoryParams = Static<ReturnType<typeof createWriteWorkingMemorySchema>>;
 
 function createWriteWorkingMemorySchema() {
+  const locale = getActiveLocale();
   return Type.Object({
     content: Type.String({
       minLength: 1,
       maxLength: WORKING_MEMORY_MAX_LENGTH,
-      description:
-        "你给行动模块（另一个你）看的工作备忘。写当前局势、目标、值得注意的人事、未完成的承诺、可能的下一步打算。中文自然语言，可以分段，不需要结构化。",
+      description: t("prompt.agent.thinking_track.write_tool.param.content", locale),
     }),
     intent: Type.Optional(Type.String({
       maxLength: 200,
-      description: "可选：本次更新的主要意图或最大变化，一句话。",
+      description: t("prompt.agent.thinking_track.write_tool.param.intent", locale),
     })),
   });
 }
@@ -204,17 +204,17 @@ export class ThinkingTrackSession {
     const startedAtIso = new Date().toISOString();
     const startedAtMs = Date.now();
 
+    const locale = getActiveLocale();
     const writeTool: AgentTool<ReturnType<typeof createWriteWorkingMemorySchema>> = {
       label: "Write Working Memory",
       name: WRITE_WORKING_MEMORY_TOOL_NAME,
-      description:
-        "把你最新整理的工作记忆写下来，给行动模块（另一个你）看。每次思考只调一次本工具，写完就结束本次思考。如果还要 update_memory 写长期记忆，请先写完再调这个。",
+      description: t("prompt.agent.thinking_track.write_tool.description", locale),
       parameters: createWriteWorkingMemorySchema(),
       execute: async (_id: string, args: WriteWorkingMemoryParams): Promise<AgentToolResult<{ ok: true }>> => {
         writtenContent = args.content.trim();
         writtenIntent = typeof args.intent === "string" ? args.intent.trim() || undefined : undefined;
         return {
-          content: [{ type: "text", text: "working_memory 已写入。本次思考结束。" }],
+          content: [{ type: "text", text: t("prompt.agent.thinking_track.write_tool.result", locale) }],
           details: { ok: true as const },
         };
       },
@@ -377,63 +377,7 @@ function errorMessage(error: unknown): string {
 // 角色感知 / 周围环境 / 属性 / 背包 / 当前时间 / 事件 → 全部在 turn user prompt 里，
 // 这样 system prompt 跨 turn 可以稳定走 prompt cache（update_memory 也不污染）。
 function renderThinkingSystemPrompt(context: ReturnType<AgentContextBuilder["build"]> extends Promise<infer T> ? T : never): string {
-  const header = [
-    "你是 NPC 的「慢思考模块」。你和另一个负责行动的「你」分开运作：",
-    "- 你看到所有感知和近期事件，但你不直接行动、不说话、不动手。",
-    "- 你比行动模块有更多 thinking budget。你的核心职责有两件，缺一不可：",
-    "  1. 维护长期 Memory（跨思考周期一直在），把会持续影响判断的内容沉淀下来；",
-    "  2. 把当前局势整理成一段「工作记忆」给行动模块用（短期，每次思考覆写）。",
-    "",
-    "════════════════════════════════════",
-    "一、长期 Memory 维护（重要职责，主动调用 update_memory）",
-    "════════════════════════════════════",
-    "update_memory 写的内容会进入消息序列里的置顶 Memory 块，跨多个思考周期一直存在。",
-    "下面三件事你必须主动沉淀进 Memory，不要只盯着「眼前发生了什么」：",
-    "",
-    "1. **中长期目标**：你希望几小时 / 几天 / 几周后达成什么？此刻在朝向哪个方向？",
-    "   - 没有的话，结合身份、处境、近况主动定一个；目标变了 edit 旧的、add 新的。",
-    "   - 目标要可执行（「攒够 50 银买把好镐」而不是「过得好」）。",
-    "",
-    "2. **行为反思**：复盘最近的行动 —— 哪些是徒劳的、低效的、违背自己处境的、与目标方向不符的？",
-    "   - 把结论写下来供下次决策参考，例如：「上次试图 X 没成功，原因是 Y，下次别再这么做」、",
-    "     「连续 N 次 do_nothing 但目标没推进，需要换个思路」。",
-    "   - 这不是日记 —— 只写「会改变下次行为」的判断。",
-    "",
-    "3. **环境与规则理解**：对所处地点、周围人、可用资源、社会关系、社会规则的判断。",
-    "   - **特别要重视工具使用规律的沉淀**：行动模块每轮发的 tool call、收到的 tool result / 错误信号、",
-    "     完成或被拒的反应事件，是你最重要的反思素材。把以下这类判断稳定地 add 进 Memory：",
-    "     · 哪些 tool 在什么前置条件下才会成功（距离/所有权/背包内容/group 权限/手艺门槛）",
-    "     · 哪些 tool 反复失败、失败信号说明什么 —— 不要让行动模块下一轮再撞同一堵墙",
-    "     · 多个 tool 之间的因果链（要先 A 才能 B；C 失败后通常需要走 D 兜底）",
-    "   - 是规律性认识，不是一次性观察。",
-    "",
-    "操作规则：",
-    "- 同一思考里可以连续多次 update_memory（add / edit / remove）。过时的 edit/remove，新沉淀的 add。",
-    "- 严格基于上下文中已明示的信息，不要编造或扩写；无明确新事实不要改 self_knowledge。",
-    "- kind=self_knowledge 只装稳定自我认知（姓名/职业/性格/重要关系），上面三件事一般归 kind=other。",
-    "",
-    "════════════════════════════════════",
-    "二、工作记忆 write_working_memory（一次性收尾）",
-    "════════════════════════════════════",
-    "工作记忆是给行动模块下一轮决策看的「此刻脑内状态」，每次思考覆写，篇幅几段以内：",
-    "- 此刻最该关注的人或事是什么、为什么；",
-    "- 最近关键事件给你留下什么印象、改变了什么打算；",
-    "- 未完成的承诺、欠下的人情、约定要做的事；",
-    "- 当下情绪、身体状态、临时挂着的牵挂；",
-    "- 短期下一步打算（不要写成命令清单 —— 给行动模块判断空间）。",
-    "",
-    "写作原则：",
-    "- 中文第一人称，像在脑子里跟自己说话；",
-    "- 不复述上下文里已有的事实，只写经过你「消化」后值得保留的判断；",
-    "- 不要写成行动清单或时间表 —— 那是行动模块的事；",
-    "- 跨思考周期还成立的判断写 Memory，几分钟就过期的状态写工作记忆。",
-    "",
-    "════════════════════════════════════",
-    "流程",
-    "════════════════════════════════════",
-    "先（按需）多次 update_memory 整理长期 Memory（中长期目标 / 行为反思 / 环境理解）",
-    "→ 最后调用 write_working_memory 提交本次工作记忆，思考即结束。每次思考只调一次 write_working_memory。",
-  ].join("\n");
+  const header = t("prompt.agent.thinking_track.system", getActiveLocale());
   return `${header}\n\n${renderAgentSystemContext(context)}`;
 }
 
@@ -448,35 +392,36 @@ function renderThinkingUserPrompt(
   // 跨 turn 会变，不适合进 system prompt 的 cache 段；同时跟 action 轨布局一致。
   // renderAgentTurnContext 已经不渲染事件（事件由 renderAgentEventsContext 单独负责），
   // 这里只用现状块即可；事件由下面按"上次思考以来"自己切段。
+  const locale = getActiveLocale();
+
   parts.push(renderAgentTurnContext(context));
 
-  parts.push(`# 思考触发原因\n${reason}`);
+  parts.push(`${t("prompt.agent.thinking_track.user.turn_reason_header", locale)}\n${reason}`);
 
   if (previous && previous.content) {
     const updatedAt = formatGameTime(previous.gameTime) ?? previous.updatedAt;
-    parts.push(`# 上一份工作记忆（更新于 ${updatedAt}）\n${previous.content}`);
+    parts.push(`${t("prompt.agent.thinking_track.user.previous_memory_header_format", locale, { updatedAt })}\n${previous.content}`);
   } else {
-    parts.push("# 上一份工作记忆\n（尚无。本次是首次思考。）");
+    parts.push(t("prompt.agent.thinking_track.user.previous_memory_empty", locale));
   }
 
   const cutoffMinutes = previousMemoryCutoffMinutes(previous);
   const { since, before } = splitEventsAtCutoff(context.relevantEvents, cutoffMinutes);
 
-  const locale = getActiveLocale();
   const viewerId = context.characterId;
   const selfActions = context.selfActionResults;
   if (cutoffMinutes != null) {
-    const sinceBody = since.length > 0 ? renderEventTimeline(since, viewerId, locale, selfActions) : "（这段时间内没有相关事件。）";
-    parts.push(`# 自上次思考以来发生的事\n${sinceBody}`);
+    const sinceBody = since.length > 0 ? renderEventTimeline(since, viewerId, locale, selfActions) : t("prompt.agent.thinking_track.user.events_since_empty", locale);
+    parts.push(`${t("prompt.agent.thinking_track.user.events_since_header", locale)}\n${sinceBody}`);
     if (before.length > 0) {
-      parts.push(`# 更早的背景事件（上次思考之前，仅供回顾）\n${renderEventTimeline(before, viewerId, locale, selfActions)}`);
+      parts.push(`${t("prompt.agent.thinking_track.user.events_before_header", locale)}\n${renderEventTimeline(before, viewerId, locale, selfActions)}`);
     }
   } else {
-    const allBody = since.length > 0 ? renderEventTimeline(since, viewerId, locale, selfActions) : "（没有相关事件。）";
-    parts.push(`# 近期事件（首次思考，没有 cutoff，全量给出）\n${allBody}`);
+    const allBody = since.length > 0 ? renderEventTimeline(since, viewerId, locale, selfActions) : t("prompt.agent.thinking_track.user.events_none", locale);
+    parts.push(`${t("prompt.agent.thinking_track.user.events_all_header", locale)}\n${allBody}`);
   }
 
-  parts.push("基于以上当前感知 + 上一份工作记忆 + 自上次思考以来发生的事，更新或重写工作记忆并调用 write_working_memory 提交。可以保留仍成立的内容，也可以彻底改写。");
+  parts.push(t("prompt.agent.thinking_track.user.closing_instruction", locale));
   return parts.join("\n\n");
 }
 

@@ -3,11 +3,7 @@ import { handleActionCancelDelivery, handleActionDelivery } from "../services/ac
 import { ACTION_BUS_PATTERN, parseActionBusChannel, parseActionBusPayload } from "../services/action-bus.js";
 
 export const actionBusPlugin = fp(async (app) => {
-  const onActionMessage = (pattern: string, channel: string, raw: string) => {
-    if (pattern !== ACTION_BUS_PATTERN) {
-      return;
-    }
-
+  const onActionMessage = (channel: string, raw: unknown) => {
     const townId = parseActionBusChannel(channel);
     if (!townId) {
       app.log.warn({ channel }, "received action bus message on malformed channel");
@@ -24,17 +20,15 @@ export const actionBusPlugin = fp(async (app) => {
 
     const delivery = payload.kind === "cancel"
       ? handleActionCancelDelivery(app.db, app.agentConnections, townId, payload.actionId)
-      : handleActionDelivery(app.db, app.redis, app.agentConnections, townId, payload.actionId);
+      : handleActionDelivery(app.db, app.bus, app.agentConnections, townId, payload.actionId);
     delivery.catch((error) => {
       app.log.error({ error, townId, actionId: payload.actionId, kind: payload.kind }, "failed to deliver action bus message");
     });
   };
 
-  app.subRedis.on("pmessage", onActionMessage);
-  await app.subRedis.psubscribe(ACTION_BUS_PATTERN);
+  app.bus.psubscribe(ACTION_BUS_PATTERN, onActionMessage);
 
   app.addHook("onClose", async () => {
-    app.subRedis.off("pmessage", onActionMessage);
-    await app.subRedis.punsubscribe(ACTION_BUS_PATTERN);
+    app.bus.punsubscribe(ACTION_BUS_PATTERN, onActionMessage);
   });
 });

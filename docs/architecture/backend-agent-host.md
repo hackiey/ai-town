@@ -2,7 +2,7 @@
 
 > Status: **partial** — godot-link / agent-host / runtimes 目录分层、AgentRuntime 抽象、two-track-agent runtime、perception-manifest + world-state repo、agent-shared 共享模块链路已落地。仍未完成的是多 worker 黏附/failover、以及把 two-track-agent 完全改成只依赖 host 暴露的 GameTool 接口。
 >
-> Two-track-agent 是当前唯一 LLM runtime（worker.ts 默认 `"two-track-agent"`）；本文档只描述 **host 通用层**——runtime 内部模型见 [two-track-agent-session.md](./two-track-agent-session.md)，runtime 之间共享的非策略代码见 [agent-shared.md](./agent-shared.md)。
+> Two-track-agent 是当前唯一 LLM runtime（agent-runtime 插件默认 `"two-track-agent"`）；本文档只描述 **host 通用层**——runtime 内部模型见 [two-track-agent-session.md](./two-track-agent-session.md)，runtime 之间共享的非策略代码见 [agent-shared.md](./agent-shared.md)。
 
 Backend 在新架构下的角色：作为 **agent host**——Godot 协议适配器 + agent runtime 容器。
 
@@ -58,7 +58,7 @@ backend/src/
     types.ts          AgentKind / AgentSessionRecord / AgentToolSnapshot 等共享类型
 
   services/world-state/   按 manifest id 列表 SELECT sqlite 真值（每 repo 一类 entity）
-    character-repo.ts     character_states (hp/stamina/hunger/rest/pos/equipped/conditions)
+    character-repo.ts     character_states (hp/stamina/hunger/rest/pos/equipped/statuses)
     inventory-repo.ts     item_instances (按 ownerKind/ownerId 过滤)
     farm-repo.ts          farm_states + farm_plots（locationId / totalSlots / 每格 variety / pest / moisture）
     workstation-repo.ts   workstation_states（运行时 busy/operator + boot seed 的静态字段）
@@ -70,8 +70,8 @@ backend/src/
     types.ts              所有 view 类型集中
     crops-catalog.ts      crop variety 的非派生展示常量（displayName + moisture 区间）+ stage 显示名 i18n fallback 链；stage 公式 / stages 数组 / maturation 全部下沉 Lua，由 Godot 算 stage 直接写 farm_plots.stage，backend 不镜像（[[feedback_godot_is_authority]]）
 
-  services/perception-manifest-bus.ts   Godot → Redis → worker 路由 manifest
-  services/world-event-bus.ts           world event 同样的 pubsub
+  services/perception-manifest-bus.ts   Godot → 进程内 bus → agent runtime 路由 manifest
+  services/world-event-bus.ts           world event 同样的进程内 pubsub
   services/action-bus.ts / action-log-service.ts / etc.
 
   runtimes/           具体 agent 实现，可插拔
@@ -82,14 +82,14 @@ backend/src/
       prompt/               system / user prompt 编排（多复用 agent-shared）
       runtime.ts            AgentRuntime 实现，attach/detach + onGameTime tick
     null/             空实现，testing / 角色"放空"用
-    index.ts          轻量 registry（当前 worker 仍直接创建 two-track-agent）
+    index.ts          轻量 registry（当前 agent-runtime 插件仍直接创建 two-track-agent）
 
   plugins/
+    message-bus.ts         进程内事件总线（EventEmitter），取代 Redis pub/sub
     godot-agent-client.ts  backend 主动连接 Godot agent-host WebSocket
-    action-bus.ts          Redis action bus → Godot action.submit/action.cancel
-    character-status-bus.ts  worker thinking 状态 → Godot agent.thinking
-
-  worker.ts           订阅 Redis event / perception-manifest / game-time bus，懒创建 AgentHost
+    action-bus.ts          进程内 action bus → Godot action.submit/action.cancel
+    character-status-bus.ts  agent runtime thinking 状态 → Godot agent.thinking
+    agent-runtime.ts    订阅进程内 event / perception-manifest / game-time bus，懒创建 AgentHost（原 worker.ts）
 
   routes/             HTTP（health, list runtimes, dev tools）
   db/                 SQLite schema + records（仅 backend 自有表；game-world 表由 Godot CREATE）
@@ -109,7 +109,7 @@ backend/src/
 {
   "keir_march": {
     "name": "Keir March",
-    "agent_runtime": "two-track-agent",   // 缺省 "two-track-agent"（项目默认，见 worker.ts）
+    "agent_runtime": "two-track-agent",   // 缺省 "two-track-agent"（项目默认，见 plugins/agent-runtime.ts）
     "agent_models": {                       // ⚠ two-track 必填——缺则 fatal
       "action":   "dashscope:glm-5.1/off",  // action 轨模型（建议关 thinking）
       "thinking": "dashscope:glm-5.1"       // thinking 轨模型（建议带 reasoning）
@@ -119,9 +119,9 @@ backend/src/
 }
 ```
 
-**Boot 时**：`worker.ts` 一次性调 `loadNpcRuntimeConfig()` 拿 npcs 快照，传入 `createTwoTrackAgentRuntime({ ..., npcConfigs })`。AgentHost 用 `loadNpcRuntimeRouter()` 同源加载，按 `agent_runtime` 路由事件，Router 新增 `npcConfigFor(id)` 方法暴露原始 config。
+**Boot 时**：`plugins/agent-runtime.ts` 一次性调 `loadNpcRuntimeConfig()` 拿 npcs 快照，传入 `createTwoTrackAgentRuntime({ ..., npcConfigs })`。AgentHost 用 `loadNpcRuntimeRouter()` 同源加载，按 `agent_runtime` 路由事件，Router 新增 `npcConfigFor(id)` 方法暴露原始 config。
 
-**Default 路由**：worker 用 `defaultRuntime: "two-track-agent"`——常量在 `router.ts` `DEFAULT_AGENT_RUNTIME`，memory-service 同源消费保证命名空间一致。NPC 可在 npcs.json 用 `"agent_runtime": "null"` 把单个角色暂时挂空。
+**Default 路由**：agent-runtime 插件用 `defaultRuntime: "two-track-agent"`——常量在 `router.ts` `DEFAULT_AGENT_RUNTIME`，memory-service 同源消费保证命名空间一致。NPC 可在 npcs.json 用 `"agent_runtime": "null"` 把单个角色暂时挂空。
 
 **模型选择**：
 
@@ -133,7 +133,7 @@ backend/src/
 
 **Player**：玩家自然语言 `player.command` 也走同一个 runtime（two-track 的 player agentKind session，共用 NPC 的 action 模型），所以 player 角色也要在 `npcs.json` 配 `agent_models`。
 
-**MVP 不支持热加载**：改 npcs.json 要重启 worker。Router 和 two-track runtime 各自持自己的 npcs 快照，不共享对象引用。
+**MVP 不支持热加载**：改 npcs.json 要重启 backend 进程。Router 和 two-track runtime 各自持自己的 npcs 快照，不共享对象引用。
 
 ## 5. 持久化收缩
 
@@ -141,7 +141,7 @@ backend/src/
 
 | 数据 | 处理 |
 |---|---|
-| 最新 perception manifest（id 清单 + 自身位置/睡眠状态） | **不持久化**，`AgentHostStateCache.manifestByCharacter` 内存缓存最新一份；Godot push（character `_ready` + 每次 `send_world_event` 前 flush，详见 [godot-agent-protocol.md §3.1](./godot-agent-protocol.md#31-perception-manifest)）；worker 不主动 pull |
+| 最新 perception manifest（id 清单 + 自身位置/睡眠状态） | **不持久化**，`AgentHostStateCache.manifestByCharacter` 内存缓存最新一份；Godot push（character `_ready` + 每次 `send_world_event` 前 flush，详见 [godot-agent-protocol.md §3.1](./godot-agent-protocol.md#31-perception-manifest)）；agent runtime 不主动 pull |
 | 各实体当前状态（hp / 库存 / 农田每格 / 工作台 busy ...）| **Godot owner 的 sqlite 表**：`character_states / item_instances / farm_states / farm_plots / workstation_states / container_states / location_markers / shelf_listings / trade_offers`。Backend 只 SELECT，不 CREATE / UPSERT。每 turn 用 manifest 的 id 列表批量查 |
 | world event 流 | SQLite `world_events`；Godot 写，backend 读，runtime 用做 relevance 排序 |
 | in-flight action 记录 | SQLite `action_log`；状态为 `submitted / pushed / accepted / cancelling / completed / failed / cancelled`，用于观测、工具等待 terminal ack 和 cancel |
@@ -160,7 +160,7 @@ interface AgentRuntime {
   attach(ctx: AgentRuntimeContext): void;
   onEvent(event: WorldEvent, ctx: AgentRuntimeContext): Promise<void>;
   detach(ctx: AgentRuntimeContext): Promise<void>;
-  // 可选：游戏时间 tick。当前 worker 直接对每个 runtime 调（不走 AgentHost），
+  // 可选：游戏时间 tick。当前 agent-runtime 插件直接对每个 runtime 调（不走 AgentHost），
   // 用于 thinking-track 定时 fire / sleep summary 等周期任务。
   // 本接口未来想统一到 AgentRuntime 上但 v1 还没收口。
   onGameTime?(townId: string, gameTime: GameTimeSnapshot, enabledCharacterIds?: Set<string> | null): Promise<void>;
@@ -197,7 +197,7 @@ type GameTool = {
 - Memory 类 tool 是 **runtime 内部的**（pi-mono 的 `update_memory`、未来 BT 的 state save 各自不同），不在 GameTool 列表里。Runtime 用 `storage()` 实现持久化。
 - `storage()` 是 runtime 自己持久化的通道，host 不规定 schema；i18n catalog / events 等 host 已经做好的能力直接用。
 - Runtime **不**经 host 拿 LLM SDK：runtime 自己 import anthropic / openai。Host 不假设 runtime 用 LLM。
-- `currentContext()` 是个 factory hook：host 启动时由 worker 注入（`AgentHost` 构造参数），实现里组合 manifest + `services/world-state/*-repo`。Runtime 拿到的是已经渲染好的 view，不需要自己写 SQL。
+- `currentContext()` 是个 factory hook：host 启动时由 agent-runtime 插件注入（`AgentHost` 构造参数），实现里组合 manifest + `services/world-state/*-repo`。Runtime 拿到的是已经渲染好的 view，不需要自己写 SQL。
 
 ## 7. 与现有代码的对应
 
@@ -205,18 +205,18 @@ type GameTool = {
 
 - `godot-link/perception-manifest.ts` / `actions.ts` / `events.ts` 定义 typed protocol vocabulary
 - `agent-host/runtime.ts` 定义 `AgentRuntime` / `AgentRuntimeContext`
-- `agent-host/host.ts` 负责 event ring buffer 与 runtime 路由；perception manifest 通过 `AgentHostStateCache.manifestByCharacter` 缓存最新一份供 runtime 读；`currentContext` 由 worker 注入的 factory 当场 SELECT sqlite 拼好
+- `agent-host/host.ts` 负责 event ring buffer 与 runtime 路由；perception manifest 通过 `AgentHostStateCache.manifestByCharacter` 缓存最新一份供 runtime 读；`currentContext` 由 agent-runtime 插件注入的 factory 当场 SELECT sqlite 拼好
 - `agent-host/router.ts` 支持按 `backend/data/town/npcs.json` 的 `agent_runtime` 选 runtime + `agent_models` 字段解析 + `npcConfigFor(id)` 暴露原始 config
 - `agent-host/game-tools/*` 将 Godot action 封装成 tool，最终走 `submitAction()` / `action_log`；所有 tool 一直 expose 给 runtime
 - `agent-shared/*`（[agent-shared.md](./agent-shared.md)）抽出 entity 名字解析 / 事件描述 / 通用 game tool / perception 装配等"非策略"代码
 - `services/world-state/*-repo.ts` 完整覆盖 character / inventory / farm / workstation / container / shelf / location / trade 八类 view + `DisplayNameResolver` 统一 id→名翻译
 - `runtimes/two-track-agent/`（[two-track-agent-session.md](./two-track-agent-session.md)）：action + thinking 双 session 模型，共享 `runtime_storage.working_memory`，per-NPC 双模型由 `agent_models` 配置
 - `agents/model-registry.ts`：`resolveTwoTrackAgentModels` 按 npcs.json `agent_models` 解析 + 校验在 `AGENT_AVAILABLE_MODELS` 里，缺则 fatal
-- `worker.ts` 订阅 Redis bus（`world.events:*` / `character.perception_manifests:*` / game time），驱动 `AgentHost.onEvent/onGameTime`；收到 manifest 一律 `ingestManifest` 写入 cache；启动时一次性 `loadNpcRuntimeConfig()` 快照传给 two-track，**改 npcs.json 要重启 worker**
+- `plugins/agent-runtime.ts` 订阅进程内 bus（`world.events:*` / `character.perception_manifest:*` / game time），驱动 `AgentHost.onEvent/onGameTime`；收到 manifest 一律 `ingestManifest` 写入 cache；启动时一次性 `loadNpcRuntimeConfig()` 快照传给 two-track，**改 npcs.json 要重启进程**
 
 **仍待收口**：
 
-- `runtimes/index.ts` 还没有成为唯一注册表；worker 仍直接创建 two-track-agent
+- `runtimes/index.ts` 还没有成为唯一注册表；agent-runtime 插件仍直接创建 two-track-agent
 - two-track-agent 仍直接 import `createSharedGameAgentTools`，没有完全只通过 `AgentRuntimeContext.gameTools()` 工作
 - `agent-host/catalog.ts` 是 identity fallback；真实 i18n / catalog 在 `agent-shared/name-resolver/` + `services/world-state/name-resolver.ts`
 - `nearbyContainers` 内容（container_states + 其 item_instances）尚未渲染进 prompt
@@ -224,8 +224,8 @@ type GameTool = {
 
 ## 8. 下一步
 
-1. 把 `runtimes/index.ts` 补成真正 runtime registry，让 worker 不再手写 runtime map。
-2. 让 two-track-agent 通过 `AgentRuntimeContext.gameTools()` 获取工具，减少 runtime 对 action-log-service / Redis 的直接耦合。
+1. 把 `runtimes/index.ts` 补成真正 runtime registry，让 agent-runtime 插件不再手写 runtime map。
+2. 让 two-track-agent 通过 `AgentRuntimeContext.gameTools()` 获取工具，减少 runtime 对 action-log-service / 总线的直接耦合。
 3. 把 prompt catalog / i18n resolution 收口到 `agent-host/catalog.ts` 和 `services/world-state/name-resolver.ts`。
 4. 定义多 worker 黏附与 failover：characterId → worker mapping、session 恢复、in-flight LLM call 丢弃策略。
 5. 为 `action_log` 的非终态记录定义重启策略：启动时 fail 掉、显式 resumable，或由 Godot replay/ack 修复。

@@ -23,7 +23,7 @@
 | 机制 | 节奏 | 用途 | 实现 |
 |---|---|---|---|
 | **Fast tick** | 2-4 Hz | 热传导、燃烧、电导、phase change、力学反应 | `physics_tick.gd` + active_objects set，只 tick 被扰动的物体 |
-| **Slow tick** | 1 / game-hour | moisture decay、pest_load 累积、growth_progress 推进、condition 衰减、温度回归 ambient | `simulation_tick.gd`，扫所有 simulated entities |
+| **Slow tick** | 1 / game-hour | moisture decay、pest_load 累积、growth_progress 推进、status 衰减、温度回归 ambient | `simulation_tick.gd`，扫所有 simulated entities |
 | **Scheduled events** | one-shot at game-time | 短时 buff 到期、约定的事件、"3 day 后腐烂"、"30 day 后生锈" | priority queue keyed by game-time，复用 active_effects 的 schema（加 `fire_at` 字段） |
 
 scheduled events 和 active_effects 是同一个东西的两面（持久 vs 一次性），共用一张表 + 一个 tick loop。详见 [§2.6](#26-scheduled-events--active_effects-合并)。
@@ -152,7 +152,7 @@ NPC 一天 8 game-hour 工作时间，自然形成劳动力瓶颈——50 株番
 
 **Additive 类（可叠加，过量有代价）**：
 - `water`、`fertilize`、`pest_control` 都是 additive
-- 多个 NPC 同时执行 → 物理量叠加 → 超过阈值 → 触发延迟 / 持续 condition
+- 多个 NPC 同时执行 → 物理量叠加 → 超过阈值 → 触发延迟 / 持续 status
 - 例：2 NPC 同浇 dry crop (0.3) → moisture 1.3 → oversaturated → 触发 root_rot 计时
 - **不需要 lock，自然惩罚**
 
@@ -171,9 +171,9 @@ func harvest(crop):
 
 #### 2.6.2 过量伤害是延迟 + 持续的（关键）
 
-如果过浇只是 `health -= X`，玩家 / NPC 看不到学不到。要触发**持续的 active_condition**，治疗要付出真实成本：
+如果过浇只是 `health -= X`，玩家 / NPC 看不到学不到。要触发**持续的 active_status**，治疗要付出真实成本：
 
-| Condition | 触发 | 后果 | 恢复 |
+| Status | 触发 | 后果 | 恢复 |
 |---|---|---|---|
 | `root_rot` | moisture > 1.2 持续 > 24 game-h | health -= 0.05/day（缓慢致命）；growth -50% | 必须 dry out 7 day + NPC 做 `treat_rot`（30 min + 药材） |
 | `nutrient_leached` | 每次在 moisture > 1.0 时 water → soil_fertility -= 0.1 | 下个 stage growth 减慢 | 重新施肥（一袋肥 + 1h） |
@@ -248,13 +248,13 @@ ActiveEffects.create({
 
 | 状态 | 视觉契约 | NPC 自感知 |
 |---|---|---|
-| moisture < 0.2 持续 | sprite 蔫黄 | active_condition: "wilting" |
+| moisture < 0.2 持续 | sprite 蔫黄 | active_status: "wilting" |
 | pest_load > 0.5 | 虫粒子 / 叶斑 | "I noticed pests on the tomatoes" |
 | root_rot 中 | 茎部霉斑 | "the crop near the well always rots" |
 | dead_crop | 枯黑残骸（直到清理） | "I lost three plots last month" |
 | 着火 | 火焰粒子 + 焦黑 substance 转换 | "Tomas's barn burned down" |
 
-NPC 自感知通过 [entity-model.md §2.3](./entity-model.md#23-active-conditions状态条件-vs-数字-buffdebuff) 的 active_conditions 系统挂——视觉是 sprite/材质效果，认知是文本条件，**两套表达同源**。
+NPC 自感知通过 [entity-model.md §2.3](./entity-model.md#23-active-statuses状态条件-vs-数字-buffdebuff) 的 active_statuses 系统挂——视觉是 sprite/材质效果，认知是文本条件，**两套表达同源**。
 
 ## 4. Implementation status
 
@@ -281,7 +281,7 @@ NPC 自感知通过 [entity-model.md §2.3](./entity-model.md#23-active-conditio
    ↓
 10. 协作元数据 + 感知集成
    ↓
-11. 过量伤害 conditions (root_rot 等)
+11. 过量伤害 statuses (root_rot 等)
 ```
 
 每一步都可独立可玩可验证，不要跳跃。

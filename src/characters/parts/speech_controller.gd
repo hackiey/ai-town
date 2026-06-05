@@ -63,7 +63,7 @@ func emit_say(text: String, volume: String, target_character_id: String = "") ->
 
 	# 大声喊话（far / shout）能把睡觉的人吵醒：speech.lua 已经按 waking_volumes 把睡着的
 	# id 放进 affected。这里给每个原本在睡觉、且被 say_to 命中的 NPC fire 唤醒流程
-	# （remove sleeping condition + woke_up event）。say_to event 已经发出，woke_up 事件
+	# （remove sleeping status + woke_up event）。say_to event 已经发出，woke_up 事件
 	# 紧随其后；backend 按 event 顺序处理，merge 窗会把两个 trigger 合并成同一次 LLM turn。
 	var sleeping_ids := {}
 	for cand_v in candidates:

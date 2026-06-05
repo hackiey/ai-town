@@ -340,14 +340,10 @@ func _is_instant_action(action: String) -> bool:
 		"use_item",
 		"pick_up_item",
 		"drop_item",
-		"update_shelf",
-		"buy_from_shelf",
 		"offer",
 		"respond",
 		"create_item",
-		"deposit_to_container",
-		"withdraw_from_container",
-		"inspect_container",
+		"put_take_container",
 		"write",
 		"read",
 	]
@@ -393,16 +389,8 @@ func _complete_instant_action(action_request: Dictionary) -> void:
 			structured = character.trade_runner().run_offer(action_request, finish)
 		"respond":
 			structured = character.trade_runner().run_respond(action_request)
-		"update_shelf":
-			structured = ShelfHandlers.run_update(character, action_request)
-		"buy_from_shelf":
-			structured = ShelfHandlers.run_buy(character, action_request)
-		"deposit_to_container":
-			structured = ContainerHandlers.run_deposit(character, action_request)
-		"withdraw_from_container":
-			structured = ContainerHandlers.run_withdraw(character, action_request)
-		"inspect_container":
-			structured = ContainerHandlers.run_inspect(character, action_request)
+		"put_take_container":
+			structured = ContainerHandlers.run_put_take(character, action_request)
 		"write":
 			structured = LedgerHandlers.run_write(character, action_request)
 		"read":

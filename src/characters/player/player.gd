@@ -49,8 +49,8 @@ var anim_state: String = "idle":
 # ─ 容器/货架分页查看（owner-private 同步，挂在 InventorySync）────────────────
 # client 永远只持有「正在看的那一页」——整容器/货架内容绝不整发（treasury_vault 999 槽
 # 序列化会超 ENet MTU）。server 逐帧把权威节点属性切片到 view_slots 推给 owner peer。
-# 货架页里每条 slot 带 _listing_id / _listing_price_centi overlay。
-var view_kind: String = ""          # "" | "container" | "shelf"
+# 货架已统一为容器：货架槽位带 listing_price_centi aspect（标价），随 slot 一起同步。
+var view_kind: String = ""          # "" | "container"（货架也是容器）
 var view_target_id: String = ""
 var view_page: int = 0
 var view_page_size: int = 24
@@ -699,7 +699,7 @@ func _complete_use_item_slot(slot_index: int, expected_item_id: String, food_onl
 	inventory_ops().remove_item(slot_index, 1)
 	var item := use.get("item") as Item
 	if item != null and item.kind == "food":
-		refresh_conditions()  # hunger 上升后立即清除 hungry condition
+		refresh_statuses()  # hunger 上升后立即清除 hungry status
 	perception().send_manifest()
 	var message := ItemUse.completion_message(item, self)
 	_emit_player_action_completed_owner(message)
@@ -998,9 +998,9 @@ func request_farm_test(seed_id: String) -> void:
 
 # /timewarp <mult> → 改 GameClock.time_scale。debug only，无权限分级。
 # /cast <mech> [arg1] [arg2] ... → 把当前玩家作为 caster，调用对应 mechanic 的 on_cast hook。
-# ctx 给 lua: { caster, caster_id, candidates=[{id,distance,conditions,character}], args=[...],
+# ctx 给 lua: { caster, caster_id, candidates=[{id,distance,statuses,character}], args=[...],
 #               game_hour, game_day, total_game_hours }。
-# Lua 端 affect.* 已经够用（add_condition / world_event / give_item / stamina / hunger / ...）。
+# Lua 端 affect.* 已经够用（add_status / world_event / give_item / stamina / hunger / ...）。
 @rpc("any_peer", "call_remote", "reliable")
 func request_cast_spell(mech_name: String, args: PackedStringArray) -> void:
 	if not RunMode.is_runtime():
@@ -1020,8 +1020,8 @@ func request_cast_spell(mech_name: String, args: PackedStringArray) -> void:
 		candidates.append({
 			"id": other_id,
 			"distance": global_position.distance_to(node.global_position),
-			"conditions": other.snapshots().active_condition_ids() if other != null else [],
-			"character": other,  # lua 用作 affect.add_condition 的 target 句柄
+			"statuses": other.snapshots().active_status_ids() if other != null else [],
+			"character": other,  # lua 用作 affect.add_status 的 target 句柄
 		})
 	var args_arr: Array = []
 	for s in args:
@@ -1407,51 +1407,11 @@ func request_container_put(container_id: String, player_slot_index: int, qty: in
 			_fail_owner(str(place.get("message", "容器装不下")))
 
 
-# ==============================================================================
-# Shelf UI RPCs (server-authoritative; client ShelfPanel 调，server 校验后 commit)
-# ==============================================================================
-# 货架逻辑全部在 Shelves autoload 内：buy_from_shelf 已经做 3m 校验、wallet 转账、
-# inventory 搬运、shelf_item_sold world event（含附近 NPC affectedCharacterIds）；
-# update_shelf 已经做 is_managed_by(owner_group) 校验 + add/update/remove ops。
-# 这里只做 owner 鉴权 + 转发 + 通知玩家。
-
-@rpc("any_peer", "call_remote", "reliable")
-func request_buy_from_shelf(shelf_id: String, listing_id: String, qty: int) -> void:
-	if not RunMode.is_runtime():
-		return
-	if _reject_if_not_owner("request_buy_from_shelf"):
-		return
-	if qty <= 0:
-		return
-	var result := Shelves.buy_from_shelf(self, shelf_id, listing_id, qty)
-	if not bool(result.get("ok", false)):
-		_fail_owner(str(result.get("message", "购买失败")))
-		return
-	_ok_owner(str(result.get("message", "购买成功")))
-
-
-@rpc("any_peer", "call_remote", "reliable")
-func request_update_shelf(shelf_id: String, ops: Array) -> void:
-	if not RunMode.is_runtime():
-		return
-	if _reject_if_not_owner("request_update_shelf"):
-		return
-	if ops.is_empty():
-		return
-	var result := Shelves.update_shelf(self, shelf_id, ops)
-	if not bool(result.get("ok", false)):
-		_fail_owner(str(result.get("message", "货架操作失败")))
-		return
-	# 上架/下架改了自己 inventory，要让 NPC 重新感知（buy_from_shelf 后端事件已自己处理，
-	# update_shelf 没有等价 affectedCharacterIds 触发链路，所以这里显式推一次 manifest）。
-	perception().send_manifest()
-	_ok_owner(str(result.get("message", "货架已更新")))
-
-
 # ─ 容器/货架分页查看 ──────────────────────────────────────────────────────
-# 面板打开/翻页/关闭时由 ContainerPanel / ShelfPanel 调（client→server 控制信号，
-# 同其它 request_* 动作）。页数据经 owner-private synchronizer（view_slots）回传，
-# 不走 RPC 发数据。kind="" 关闭查看。
+# 货架已统一为无锁容器（ShelfNode extends ContainerNode），面板/存取全走 ContainerPanel
+# + request_container_take/put。面板打开/翻页/关闭时由 ContainerPanel 调（client→server
+# 控制信号）。页数据经 owner-private synchronizer（view_slots）回传，不走 RPC 发数据。
+# kind="" 关闭查看。
 @rpc("any_peer", "call_remote", "reliable")
 func request_view(kind: String, target_id: String, page: int, page_size: int) -> void:
 	if not RunMode.is_runtime():
@@ -1466,7 +1426,7 @@ func request_view(kind: String, target_id: String, page: int, page_size: int) ->
 
 
 # server-only：把当前查看目标的权威内容切到 view_page 这一页，写进 view_slots（同步给 owner）。
-# 逐帧调（_physics_process）以反映 NPC 上架/买卖；on_change 同步，同内容不会重发。
+# 逐帧调（_physics_process）以反映 NPC 存取；on_change 同步，同内容不会重发。
 func _recompute_view() -> void:
 	if view_kind.is_empty():
 		if not view_slots.is_empty():
@@ -1475,17 +1435,10 @@ func _recompute_view() -> void:
 		return
 	var all_slots: Array = []
 	if view_kind == "container":
+		# 货架也是 ContainerNode，统一从 Containers 查（含货架标价 listing_price_centi）。
 		var node := Containers.find_container_node(view_target_id)
 		if node != null:
 			all_slots = Containers.adapter_slots(node)
-	elif view_kind == "shelf":
-		var node := Shelves.find_shelf_node(view_target_id)
-		if node != null:
-			# 货架按「非空 listing」分页（行视图），不是按 slot_index 网格。
-			for s in Shelves.adapter_listing_slots(node):
-				var slot: Dictionary = s
-				if int(slot.get("quantity", 0)) > 0 and not str(slot.get("item_id", "")).is_empty():
-					all_slots.append(slot)
 	var total := all_slots.size()
 	var size := maxi(view_page_size, 1)
 	view_page_count = maxi(1, int(ceil(float(total) / float(size))))

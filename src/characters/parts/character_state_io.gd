@@ -2,8 +2,8 @@ class_name CharacterStateIO
 extends RefCounted
 
 # Character ↔ SQLite character_states 行映射。两个方向：
-# - hydrate()：_ready 时 Db.take_character_state(cid) → 覆盖位姿/数值/装备/conditions/wallet。
-# - persist()：事件触发（slow tick 末、refresh_conditions、wallet 操作、子类位姿稳定点）写回 Db。
+# - hydrate()：_ready 时 Db.take_character_state(cid) → 覆盖位姿/数值/装备/statuses/wallet。
+# - persist()：事件触发（slow tick 末、refresh_statuses、wallet 操作、子类位姿稳定点）写回 Db。
 # 不周期 flush；写次数与角色态变化次数同阶。
 #
 # Server-only：RunMode.is_runtime()==false 时全部 no-op。客户端不连 DB。
@@ -54,14 +54,14 @@ func hydrate() -> void:
 		if not v.is_empty():
 			eq[pair[0]] = v
 	_character.equipped = eq
-	# Conditions：直接装回（hungry/sleeping 等都被保留）
-	var conds_v: Variant = row.get("activeConditions", [])
+	# Statuses：直接装回（hungry/sleeping 等都被保留）
+	var conds_v: Variant = row.get("activeStatuses", [])
 	if conds_v is Array:
 		var typed: Array[Dictionary] = []
 		for c in (conds_v as Array):
 			if c is Dictionary:
 				typed.append(c as Dictionary)
-		_character.active_conditions = typed
+		_character.active_statuses = typed
 	_character.wallet_centi = maxi(0, int(row.get("silverCentiBalance", 0)))
 
 
@@ -99,6 +99,6 @@ func persist() -> void:
 		"equippedLeftHand": str(_character.equipped.get("left_hand", "")),
 		"equippedBody": str(_character.equipped.get("body", "")),
 		"equippedHead": str(_character.equipped.get("head", "")),
-		"activeConditions": _character.active_conditions,
+		"activeStatuses": _character.active_statuses,
 		"silverCentiBalance": _character.wallet_centi,
 	})

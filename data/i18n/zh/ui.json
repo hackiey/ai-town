@@ -25,14 +25,14 @@
     },
     "status": {
       "meter_format": "%s %.0f / %.0f",
-      "condition_with_effect_format": "%s（%s）",
-      "condition": {
+      "status_with_effect_format": "%s（%s）",
+      "status": {
         "hungry": "饥饿",
         "sleeping": "睡眠",
         "burning": "燃烧",
         "dead": "死亡"
       },
-      "condition_effect": {
+      "status_effect": {
         "hungry": "降低体力上限和恢复速度",
         "sleeping": "恢复精力",
         "burning": "持续受伤",
@@ -141,7 +141,7 @@
         "ignition": "点燃点",
         "sleeping": "睡眠",
         "burning": "燃烧",
-        "conditions": "附加状态",
+        "statuses": "附加状态",
         "groups": "所属群组"
       },
       "slot": {

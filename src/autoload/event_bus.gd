@@ -39,9 +39,6 @@ signal workstation_proximity_changed(workstation: Node, entered: bool)
 # 进入半径 entered=true，退出 entered=false。FarmPanel 监听决定"E 键能否开农场面板"。
 signal farm_proximity_changed(farm: Node, entered: bool)
 
-# 货架 proximity（client only）：shelf_node.gd 的 Area3D 在本地玩家进/出时触发。
-# 由 ShelfPanel 监听决定"E 键当前能开哪个货架"。同 workstation 的模式，不走 polling。
-signal shelf_proximity_changed(shelf: Node, entered: bool)
 
 # Craft 进度生命周期（client only）：server 通过 Player RPC → EventBus 中转，ActionPanel 渲染进度条。
 # - started：制作开始，duration_sec 是预计耗时

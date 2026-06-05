@@ -109,7 +109,7 @@ func _use_slot(slot_index: int, food_only: bool = false, expected_item_id: Strin
 	_character.inventory_ops().remove_item(slot_index, 1)
 	var item := use.get("item") as Item
 	if item != null and item.kind == "food":
-		_character.refresh_conditions()
+		_character.refresh_statuses()
 	var actor_id := _character.backend_character_id()
 	_character.emit_world_event("use_item", {
 		"actorId": actor_id,

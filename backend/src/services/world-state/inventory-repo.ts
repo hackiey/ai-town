@@ -11,7 +11,8 @@ const SELECT_BY_OWNER = `
          containerAmount, containerContent,
          freshnessTier, freshnessAgeHours,
          durability,
-         baseEffects, displayedEffects
+         baseEffects, displayedEffects,
+         listingPriceCenti
   FROM item_instances
   WHERE townId = ? AND ownerKind = ? AND ownerId = ?
   ORDER BY slotIndex ASC
@@ -36,6 +37,7 @@ function rowToInventoryItem(r: Record<string, unknown>): InventoryItemRow {
     itemDefId: String(r.itemDefId ?? ""),
     stackCount: Number(r.stackCount ?? 0),
     quality: r.quality == null ? undefined : Number(r.quality),
+    listingPriceCenti: r.listingPriceCenti == null ? undefined : Number(r.listingPriceCenti),
     ...rowToAspects(r),
   };
 }

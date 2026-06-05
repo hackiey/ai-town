@@ -1,16 +1,12 @@
 export const DEBUG_AGENT_DETAIL_MODULE = String.raw`
 import {
   escapeHtml,
-  extractReasoning,
-  extractText,
-  extractToolCalls,
   formatCostUsd,
   formatTokenCount,
-  formatUsage,
   getCharacterDisplayName,
   getCharacterGroupNames,
-  prettyJson,
 } from "./shared.js";
+import { buildMessage, buildSectionCard, collapsibleText } from "./message-renderers.js";
 import { buildSessionDetailView } from "./session-view.js";
 import { formatDuration, formatGameTime } from "./time.js";
 
@@ -101,96 +97,35 @@ function renderThinkingDetailBody(app, detail) {
   const body = app.$("detail-body");
   body.innerHTML = "";
 
-  body.appendChild(thinkingSectionCard("thinking-system", "system prompt", collapsibleTextNode(detail.systemPrompt || "(empty)")));
-  body.appendChild(thinkingSectionCard("thinking-user", "user prompt", collapsibleTextNode(detail.userPrompt || "(empty)")));
+  // 与 action 轨用同一套 message 渲染：把 thinking turn 表示成「一条 user prompt + 一条 assistant 回复」，
+  // 复用 buildMessage（含 reasoning / content / tool_calls / system 折叠区的统一样式）。
+  // systemPrompt 走 assistant 的 llmSystemPrompt，折叠在 "messages at LLM call" 里，和 action 一致。
+  body.appendChild(buildMessage(app, {
+    role: "user",
+    seq: 1,
+    gameTime: detail.startGameTime || null,
+    turnReason: detail.triggerReason || null,
+    message: { content: detail.userPrompt || "" },
+  }));
 
-  if (detail.assistantMessage) {
-    const message = detail.assistantMessage;
-    const meta = [];
-    if (message.usage) meta.push(formatUsage(message.usage));
-    if (message.stopReason) meta.push('<span class="pill">stop_reason=' + escapeHtml(String(message.stopReason)) + "</span>");
+  body.appendChild(buildMessage(app, {
+    role: "assistant",
+    seq: 2,
+    gameTime: detail.endGameTime || detail.startGameTime || null,
+    turnReason: detail.triggerReason || null,
+    message: detail.assistantMessage || {},
+    llmSystemPrompt: detail.systemPrompt || "",
+  }));
 
-    const assistantBody = document.createElement("div");
-    const reasoning = extractReasoning(message);
-    if (reasoning) {
-      assistantBody.appendChild(thinkingSubsection("reasoning", reasoning));
-    }
-    const text = extractText(message.content);
-    if (text) {
-      assistantBody.appendChild(thinkingSubsection("content", text));
-    }
-    const toolCalls = extractToolCalls(message);
-    for (const toolCall of toolCalls) {
-      const args = toolCall.args !== undefined ? prettyJson(toolCall.args) : "(no args)";
-      assistantBody.appendChild(thinkingSubsection(
-        "tool_call " + (toolCall.name || "unknown"),
-        args,
-      ));
-    }
-    if (message.errorMessage) {
-      assistantBody.appendChild(thinkingSubsection("error", String(message.errorMessage)));
-    }
-    body.appendChild(thinkingSectionCard("thinking-assistant", "assistant", assistantBody, meta.join(" ")));
-  } else {
-    body.appendChild(thinkingSectionCard("thinking-assistant", "assistant", collapsibleTextNode("(no assistant message captured)")));
-  }
-
+  // thinking 专属产出：写出的 working_memory（即 write_working_memory 的入参），单独高亮一张卡。
   if (detail.writtenContent) {
-    body.appendChild(thinkingSectionCard("thinking-written", "written working_memory", collapsibleTextNode(detail.writtenContent)));
+    body.appendChild(buildSectionCard("thinking-written", "written working_memory", collapsibleText(detail.writtenContent)));
   }
   if (detail.error) {
     const pre = document.createElement("pre");
     pre.className = "error";
     pre.textContent = detail.error;
-    body.appendChild(thinkingSectionCard("thinking-error", "error", pre));
+    body.appendChild(buildSectionCard("thinking-error", "error", pre));
   }
-}
-
-function thinkingSectionCard(kind, title, bodyNode, metaHtml) {
-  const card = document.createElement("section");
-  card.className = "section section-card " + kind;
-  const head = document.createElement("div");
-  head.className = "section-head";
-  head.innerHTML = '<span class="section-title">' + escapeHtml(title) + "</span>"
-    + (metaHtml ? '<span class="section-meta">' + metaHtml + "</span>" : "");
-  card.appendChild(head);
-  const inner = document.createElement("div");
-  inner.className = "section-body";
-  if (typeof bodyNode === "string") inner.innerHTML = bodyNode;
-  else if (bodyNode) inner.appendChild(bodyNode);
-  card.appendChild(inner);
-  return card;
-}
-
-function thinkingSubsection(title, text) {
-  const details = document.createElement("details");
-  details.open = true;
-  details.className = "llm-message-card";
-  details.innerHTML = "<summary><span class=\"role\">" + escapeHtml(title) + "</span></summary>";
-  const pre = document.createElement("pre");
-  pre.textContent = text;
-  details.appendChild(pre);
-  return details;
-}
-
-function collapsibleTextNode(text) {
-  const wrap = document.createElement("div");
-  const pre = document.createElement("pre");
-  pre.textContent = text;
-  wrap.appendChild(pre);
-  if (text && text.length > 1200) {
-    wrap.classList.add("truncate-wrap", "collapsed");
-    const toggle = document.createElement("div");
-    toggle.className = "truncate-toggle";
-    toggle.textContent = "展开 (" + text.length + " 字符)";
-    toggle.addEventListener("click", () => {
-      wrap.classList.toggle("collapsed");
-      toggle.textContent = wrap.classList.contains("collapsed")
-        ? "展开 (" + text.length + " 字符)"
-        : "收起";
-    });
-    wrap.appendChild(toggle);
-  }
-  return wrap;
 }
 `;

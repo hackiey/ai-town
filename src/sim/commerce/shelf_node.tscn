@@ -31,3 +31,13 @@ collision_mask = 2
 [node name="CollisionShape3D" type="CollisionShape3D" parent="Area3D"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 0)
 shape = SubResource("CylinderShape_proximity")
+
+[node name="Prompt" type="Label3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.9, 0)
+billboard = 1
+no_depth_test = true
+pixel_size = 0.006
+text = "按 E 查看"
+font_size = 28
+outline_size = 6
+modulate = Color(0.9, 0.9, 0.7, 1)

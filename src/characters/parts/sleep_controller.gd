@@ -40,7 +40,7 @@ func start(action_request: Dictionary, completion: Callable) -> String:
 		hours = 1
 	var expires_total_hours: int = GameClock.total_game_hours() + hours
 
-	# Lua 决定能不能 sleep + 加 condition + 发 went_to_sleep event
+	# Lua 决定能不能 sleep + 加 status + 发 went_to_sleep event
 	var result := MechanicVerb.resolve("sleep", {
 		"actor": _character,
 		"actor_id": actor_id,
@@ -88,7 +88,7 @@ func preempt() -> void:
 
 # 外部刺激（loud speech 等）唤醒 sleep action。fire completion with (false, reason, {}) 让
 # dispatcher 把当前 action 当 cancelled 收尾。返回 true 表示走的是 action 路径（character
-# 拿到 false 后自己走 condition-only 路径）。
+# 拿到 false 后自己走 status-only 路径）。
 func wake_from_stimulus(reason: String) -> bool:
 	if _active.is_empty():
 		return false
@@ -108,7 +108,7 @@ func _commit() -> void:
 	_active = {}
 	var minutes: int = _elapsed_minutes(active)
 	var actor_id: String = str(active.get("actor_id", _character.backend_character_id()))
-	# Lua 移除 condition + 发 woke_up event
+	# Lua 移除 status + 发 woke_up event
 	MechanicVerb.resolve("sleep", {
 		"actor": _character,
 		"actor_id": actor_id,
@@ -162,10 +162,10 @@ func _elapsed_minutes(active: Dictionary) -> int:
 	return maxi(1, int(ceil(elapsed_seconds / GameClock.SECONDS_PER_GAME_MINUTE)))
 
 
-# ─── sleep condition state（与 sleep action 解耦的常驻字段操作）─────────
-# active_conditions 数组仍住 Character（多 condition 共用），但 sleeping 这条 type 的
-# 增删 / 查询 / rest 恢复速率全归本 controller 管。boot 时直接放 sleeping condition、
-# 不走 action 路径的早期 NPC 用 add_sleeping_condition 直调。
+# ─── sleep status state（与 sleep action 解耦的常驻字段操作）─────────
+# active_statuses 数组仍住 Character（多 status 共用），但 sleeping 这条 type 的
+# 增删 / 查询 / rest 恢复速率全归本 controller 管。boot 时直接放 sleeping status、
+# 不走 action 路径的早期 NPC 用 add_sleeping_status 直调。
 
 func rest_recovery_per_game_second() -> float:
 	var needed_seconds := maxf(_character.sleep_needed_hours, 0.1) * GameClock.SECONDS_PER_GAME_HOUR
@@ -180,12 +180,12 @@ func recover_rest_points(points: int) -> int:
 	return int(_character.rest - before)
 
 
-func add_sleeping_condition(duration_game_minutes: int, source_id: String) -> void:
-	_character.remove_condition_type("sleeping")
+func add_sleeping_status(duration_game_minutes: int, source_id: String) -> void:
+	_character.remove_status_type("sleeping")
 	var hours: int = ceili(float(duration_game_minutes) / 60.0)
 	if hours < 1:
 		hours = 1
-	_character.active_conditions.append({
+	_character.active_statuses.append({
 		"type": "sleeping",
 		"started_at": Time.get_ticks_msec() / 1000.0,
 		"expires_total_hours": GameClock.total_game_hours() + hours,
@@ -195,21 +195,21 @@ func add_sleeping_condition(duration_game_minutes: int, source_id: String) -> vo
 	_character.state_io().persist()
 
 
-func remove_sleeping_condition() -> void:
+func remove_sleeping_status() -> void:
 	if not is_sleeping():
 		return
-	_character.remove_condition_type("sleeping")
+	_character.remove_status_type("sleeping")
 	_character.head_status().sync_to_clients()
 	_character.state_io().persist()
 
 
 func is_sleeping() -> bool:
-	return _character.has_condition("sleeping")
+	return _character.has_status("sleeping")
 
 
 # 外部刺激（loud speech 等）唤醒。Server-only。两种睡眠来源统一退出路径：
 # - sleep action 起的睡 → wake_from_stimulus 走 sleep.lua on_commit 标准退出 + fire completion
-# - boot/condition-only 睡（没 action 在跑，只是 sleeping condition）→ 直接 remove + 手动发 woke_up event
+# - boot/status-only 睡（没 action 在跑，只是 sleeping status）→ 直接 remove + 手动发 woke_up event
 # 没在睡 / 不在 runtime → no-op。
 func wake_from_external_stimulus(reason: String) -> void:
 	if not RunMode.is_runtime():
@@ -219,8 +219,8 @@ func wake_from_external_stimulus(reason: String) -> void:
 	if wake_from_stimulus(reason):
 		# sleep 是 action 路径：completion 已 fire（runner.finish 收尾），这里啥都不用做。
 		return
-	# condition-only 路径
-	remove_sleeping_condition()
+	# status-only 路径
+	remove_sleeping_status()
 	_character.emit_world_event("woke_up", {
 		"actorId": _character.backend_character_id(),
 		"affectedCharacterIds": [_character.backend_character_id()],

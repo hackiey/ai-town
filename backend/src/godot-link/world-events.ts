@@ -81,39 +81,13 @@ export type WokeUpEventData = WorldEventDataBase & {
   reason?: string;
 };
 
-// ─── container ───────────────────────────────────────────────────────
-// deposited/withdrawn carry the moved item; inspected reports itemCount only.
-export type ContainerInspectedEventData = WorldEventDataBase & {
+// ─── container / shelf（统一）─────────────────────────────────────────
+// put_take：一次存取动作，puts/takes 各列出移动的物品。货架与容器共用（货架=无锁容器）。
+// 附近的人据此感知"谁往这个容器/货架存了/取了什么"。
+export type ContainerPutTakeEventData = WorldEventDataBase & {
   containerId: string;
-  itemCount: number;
-};
-
-export type ContainerMoveEventData = WorldEventDataBase & {
-  containerId: string;
-  itemId: string;
-  quantity: number;
-};
-
-// ─── shelf ───────────────────────────────────────────────────────────
-export type ShelfUpdatedEventData = WorldEventDataBase & {
-  shelfId: string;
-  locationId?: string;
-  changes: string[];
-};
-
-export type ShelfItemSoldEventData = WorldEventDataBase & {
-  shelfId: string;
-  listingId: string;
-  buyerCharacterId: string;
-  sellerCharacterId: string;
-  item: Record<string, unknown>;
-  quantity: number;
-  // priceCenti 是 DB / wire 真值（int, 1 silver = 100 centi）。
-  // priceSilver = priceCenti / 100 是用于显示的 float silver。
-  priceCenti: number;
-  priceSilver: number;
-  locationId?: string;
-  tradeId?: string;
+  puts: Array<{ itemId: string; quantity: number }>;
+  takes: Array<{ itemId: string; quantity: number }>;
 };
 
 // ─── item / workstation ──────────────────────────────────────────────
@@ -197,11 +171,7 @@ export type WorldEventDataByType = {
   respond_to_trade: RespondToTradeEventData;
   went_to_sleep: WentToSleepEventData;
   woke_up: WokeUpEventData;
-  container_inspected: ContainerInspectedEventData;
-  container_deposited: ContainerMoveEventData;
-  container_withdrawn: ContainerMoveEventData;
-  shelf_updated: ShelfUpdatedEventData;
-  shelf_item_sold: ShelfItemSoldEventData;
+  container_put_take: ContainerPutTakeEventData;
   use_item: UseItemEventData;
   // 9 个 axis event + draw_water —— 全部共用 WorkstationEventData shape。
   mine: WorkstationEventData;
@@ -234,11 +204,7 @@ const WORLD_EVENT_TYPE_MARKER: Record<WorldEventDataType, true> = {
   respond_to_trade: true,
   went_to_sleep: true,
   woke_up: true,
-  container_inspected: true,
-  container_deposited: true,
-  container_withdrawn: true,
-  shelf_updated: true,
-  shelf_item_sold: true,
+  container_put_take: true,
   use_item: true,
   mine: true,
   woodwork: true,

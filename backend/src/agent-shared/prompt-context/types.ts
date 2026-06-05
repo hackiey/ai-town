@@ -114,14 +114,13 @@ export type WorkstationContext = {
 
 export type ShelfListingContext = {
   // index = LLM 看到的 [N] 序号（与 itemIndex.shelves[shelfId] 对齐）；
-  // listingId = 货架 listing 表真 id，update/remove 走 wire 给 Godot。
+  // slotIndex = 货架（容器）槽位真 id，put_take take 走 wire 给 Godot。
   index?: number;
-  listingId: string;
   slotIndex?: number;
   itemId?: string;
   displayName?: string;
   quantity: number;
-  // priceCenti 是 DB 真值（int, 1 silver = 100 centi）；priceSilver = centi/100 是显示用 silver(float)。
+  // 标价（仅展示，付钱靠 trade/give）。无标价时 priceCenti/priceSilver = 0、priceText 省略。
   priceCenti: number;
   priceSilver: number;
   priceText?: string;
@@ -217,7 +216,6 @@ export type AgentCurrentContext = {
   nearbyFarms: FarmContext[];
   nearbyWorkstations: WorkstationContext[];
   nearbyShelves: ShelfContext[];
-  ownedShelves: ShelfContext[];
   interactiveSites: InteractiveSiteContext[];
   inventory: string[];
   backpack: string[];

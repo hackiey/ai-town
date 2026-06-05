@@ -1,0 +1,17 @@
+[gd_scene format=3 uid="uid://kksavnjlwg0f"]
+
+[ext_resource type="PackedScene" uid="uid://dxtak3npqr4tj" path="res://src/sim/commerce/shelf_node.tscn" id="1_base"]
+[ext_resource type="PackedScene" uid="uid://co1b5rc0exiiw" path="res://third-party/polygon-fantasy-kingdom/Assets/PolygonFantasyKingdom/Prefabs/Props/SM_Prop_Market_Stall_05.tscn" id="2_stall"]
+
+[node name="GroceryShelf" instance=ExtResource("1_base")]
+
+[node name="Title" parent="." index="0"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 4.6, 0)
+
+[node name="Approach" parent="." index="1"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 2.2)
+
+[node name="Prompt" parent="." index="3"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.6, 1.6)
+
+[node name="Stall" parent="." index="4" instance=ExtResource("2_stall")]

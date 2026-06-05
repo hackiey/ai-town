@@ -7,7 +7,7 @@ Node + TypeScript backend for platform services and the character agent gateway.
 - HTTP endpoints for health checks and operational/debug introspection (e.g. `/agent-connections`).
 - Agent host client for the Godot server's WebSocket protocol — the only channel used for game traffic.
 - SQLite for durable game facts, event history, and agent session state.
-- Redis for Worker-to-Agent-host pub/sub and rate limits.
+- The character agent runtime (LLM "brain"), running in-process. The gateway and runtime talk over an in-process event bus (`plugins/message-bus.ts`) — no Redis, no second process.
 
 Godot still executes high-level character actions inside the world: navigation, animation, collision, combat, and local interaction checks.
 
@@ -16,10 +16,11 @@ Godot still executes high-level character actions inside the world: navigation, 
 ```bash
 cd backend
 cp .env.example .env
-docker compose up -d
 pnpm install
 pnpm dev
 ```
+
+This is a single Node process — gateway + agent runtime + `/debug` page — with no external services (SQLite is a local file). To launch the Godot server alongside it in one command, use `../scripts/dev all`.
 
 Health checks:
 

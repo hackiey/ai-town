@@ -134,7 +134,7 @@ SQLite 只存**实例态**：
 
 可先放 JSON，后续再拆：
 
-- `activeConditions`
+- `activeStatuses`
 - `derivedStats`
 
 理由：
@@ -514,7 +514,7 @@ CREATE TABLE IF NOT EXISTS character_states (
   alive INTEGER NOT NULL,                -- 0 / 1
   temperature REAL,
   burning INTEGER NOT NULL DEFAULT 0,    -- 0 / 1
-  activeConditions TEXT,                 -- JSON
+  activeStatuses TEXT,                 -- JSON
   derivedStats TEXT,                     -- JSON
   equippedRightHandItemId TEXT,
   equippedLeftHandItemId TEXT,
@@ -533,7 +533,7 @@ CREATE INDEX IF NOT EXISTS idx_character_states_town_alive
 说明：
 
 - `alive` / `burning` 用 `INTEGER` 存布尔，和 SQLite 习惯一致。
-- `activeConditions` 先保留 JSON，等我们把 condition / effect 的边界彻底理顺后再决定是否完全并到 `active_effects`。
+- `activeStatuses` 先保留 JSON，等我们把 status / effect 的边界彻底理顺后再决定是否完全并到 `active_effects`。
 - 装备槽先内联在这张表里，能更快落地；真要扩很多槽位，再拆 `character_equipment`。
 
 ### 10.3 `item_instances`
@@ -701,7 +701,7 @@ CREATE INDEX IF NOT EXISTS idx_active_effects_town_type
 - 装备槽是先放在 `character_states` 列里，还是一开始就拆 `character_equipment`
 - `position` 要不要进库，还是 MVP 先只存 `currentLocationId`
 - `farm_plots` 和未来 `crop_instances` 是不是现在就统一
-- `active_conditions` 是直接挂 `character_states` JSON，还是复用 `active_effects`
+- `active_statuses` 是直接挂 `character_states` JSON，还是复用 `active_effects`
 - 非终态 action 未来是否要引入 `resumable` 标记；如果要，哪些 action 允许恢复
 
 ## 修订记录

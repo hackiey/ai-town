@@ -101,7 +101,7 @@ func _ready() -> void:
 	# 接收 MultiplayerSynchronizer 推过来的 position/rotation/anim_state。
 	# 用 RunMode 而非 is_multiplayer_authority，避免 multiplayer_peer 还没建好的窗口期。
 	if RunMode.is_runtime():
-		_boot_wake_enabled = _has_initial_wake_sleep_condition()
+		_boot_wake_enabled = _has_initial_wake_sleep_status()
 		head_status().sync_to_clients()
 
 
@@ -212,23 +212,23 @@ func _schedule_boot_wake() -> void:
 		_boot_awake = true
 		_boot_wake_game_minute = now_minutes
 		_boot_wake_published = true
-		sleep_controller().remove_sleeping_condition()
+		sleep_controller().remove_sleeping_status()
 		perception().send_manifest()
 		return
 	var delay_minutes := wake_minute_of_day - now_minute_of_day
 	var day_start := now_minutes - now_minute_of_day
 	_boot_wake_game_minute = day_start + wake_minute_of_day
-	sleep_controller().add_sleeping_condition(delay_minutes, "boot_sleep")
+	sleep_controller().add_sleeping_status(delay_minutes, "boot_sleep")
 	_publish_boot_sleep_to_backend()
 
 
-func _has_initial_wake_sleep_condition() -> bool:
-	for condition_v in active_conditions:
-		if not (condition_v is Dictionary):
+func _has_initial_wake_sleep_status() -> bool:
+	for status_v in active_statuses:
+		if not (status_v is Dictionary):
 			continue
-		var condition: Dictionary = condition_v as Dictionary
-		var source := str(condition.get("source_id", ""))
-		if str(condition.get("type", "")) == "sleeping" and (source == "initial_wake_time" or source == "boot_sleep"):
+		var status: Dictionary = status_v as Dictionary
+		var source := str(status.get("source_id", ""))
+		if str(status.get("type", "")) == "sleeping" and (source == "initial_wake_time" or source == "boot_sleep"):
 			return true
 	return false
 
@@ -246,7 +246,7 @@ func _maybe_wake_from_boot() -> void:
 	if _current_total_game_minutes() < _boot_wake_game_minute:
 		return
 	_boot_awake = true
-	sleep_controller().remove_sleeping_condition()
+	sleep_controller().remove_sleeping_status()
 	rest = max_rest
 	stamina = minf(max_stamina, snapshots().effective_stamina_max())
 	state_io().persist()

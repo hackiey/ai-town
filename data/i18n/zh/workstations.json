@@ -20,6 +20,11 @@
       "prompt": "按 E 查看",
       "description": "晾晒留种（番茄、亚麻等）。"
     },
+    "fermenting_barrel": {
+      "name": "酒桶",
+      "prompt": "按 E 查看",
+      "description": "把麦芽放进去发酵酿成麦芽酒（约 2 游戏日），酿好的酒也存放在桶里，随时取用。"
+    },
     "mill": {
       "name": "磨盘",
       "prompt": "按 E 研磨",

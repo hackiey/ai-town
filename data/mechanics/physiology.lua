@@ -11,8 +11,8 @@
 
 rest_decay_per_game_hour    = 2.0   -- 100 → 0 约 50 小时清醒
 stamina_regen_per_tick      = 5.0   -- 标准恢复速度：每 10 游戏分钟 +5
-hungry_threshold            = 50    -- hunger ≤ 50 → 加 hungry condition
-clear_threshold             = 70    -- hunger ≥ 70 → 清 hungry condition（hysteresis 防抖）
+hungry_threshold            = 50    -- hunger ≤ 50 → 加 hungry status
+clear_threshold             = 70    -- hunger ≥ 70 → 清 hungry status（hysteresis 防抖）
 starving_hp_loss_per_hour   = 2.0   -- hunger == 0 时每小时扣血
 
 -- 线性 hunger 衰减：醒着 5/h，睡觉 1.25/h（睡眠 = 清醒 25%，慢但不为零防止"睡觉省饭"）
@@ -26,9 +26,9 @@ hunger_decay_sleep_per_hour = 1.25
 local function _check_hungry_threshold(target, hunger, has_hungry)
     if hunger <= hungry_threshold and not has_hungry then
         -- expires_total_hours = 0 → 永久（由阈值清理，不靠过期 tick）
-        affect.add_condition(target, "hungry", 0, "hunger_decay")
+        affect.add_status(target, "hungry", 0, "hunger_decay")
     elseif hunger >= clear_threshold and has_hungry then
-        affect.remove_condition(target, "hungry")
+        affect.remove_status(target, "hungry")
     end
 end
 

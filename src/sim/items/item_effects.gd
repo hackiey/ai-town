@@ -101,7 +101,7 @@ static func apply_to_caster(caster, effects: Dictionary) -> Array:
 			"rest":
 				effect = {"type": "modify_rest", "target": caster, "amount": amount}
 			"sickness":
-				# 走 add_condition。expires_total_hours 用 GameClock 体系；6 game-hour 后失效。
+				# 走 add_status。expires_total_hours 用 GameClock 体系；6 game-hour 后失效。
 				# 注：当前所有食物都不输出 sickness（compute_effects 不会主动产）；这个分支是
 				# 给将来"吃馊东西致病"那类 lua compute_effects 用的占位。
 				var expires := 6
@@ -111,9 +111,9 @@ static func apply_to_caster(caster, effects: Dictionary) -> Array:
 					if clk != null and clk.has_method("total_game_hours"):
 						expires = int(clk.call("total_game_hours")) + 6
 				effect = {
-					"type": "add_condition",
+					"type": "add_status",
 					"target": caster,
-					"condition_id": "sickness",
+					"status_id": "sickness",
 					"expires_total_hours": expires,
 					"source": "rotten_food",
 				}

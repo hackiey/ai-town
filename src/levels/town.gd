@@ -18,7 +18,6 @@ const TIME_HUD_SCENE := preload("res://src/ui/hud/time_hud.tscn")
 const ACTION_PANEL_SCENE := preload("res://src/ui/action_panel/action_panel.tscn")
 const CONTAINER_PANEL_SCENE := preload("res://src/ui/container/container_panel.tscn")
 const FARM_PANEL_SCENE := preload("res://src/ui/farm/farm_panel.tscn")
-const SHELF_PANEL_SCENE := preload("res://src/ui/shelf/shelf_panel.tscn")
 const NAV_TEST_PANEL_SCENE := preload("res://src/ui/dev/nav_test_panel.tscn")
 const HEAD_NAMEPLATE_LAYER_SCRIPT := preload("res://src/ui/head_nameplate_layer.gd")
 const WORKSTATION_NAMEPLATE_LAYER_SCRIPT := preload("res://src/ui/workstation_nameplate_layer.gd")
@@ -49,7 +48,6 @@ var _time_hud: TimeHud = null
 var _action_panel: Node = null  # ActionPanel; 用 Node 避免 class_name cache 未刷新的 parse 错
 var _container_panel: Node = null  # ContainerPanel; 同上理由用 Node 类型
 var _farm_panel: Node = null
-var _shelf_panel: Node = null
 var _head_nameplate_layer: CanvasLayer = null
 var _workstation_nameplate_layer: CanvasLayer = null
 var _shelf_nameplate_layer: CanvasLayer = null
@@ -230,7 +228,7 @@ func _init_client() -> void:
 	_character_panel = CHARACTER_PANEL_SCENE.instantiate()
 	add_child(_character_panel)
 
-	# 状态条 HUD：HP / 体力 / 饱食 + active_conditions 标签。同样等本地 avatar spawn 后绑。
+	# 状态条 HUD：HP / 体力 / 饱食 + active_statuses 标签。同样等本地 avatar spawn 后绑。
 	_status_bars = STATUS_BARS_SCENE.instantiate()
 	add_child(_status_bars)
 
@@ -254,9 +252,7 @@ func _init_client() -> void:
 	_farm_panel = FARM_PANEL_SCENE.instantiate()
 	add_child(_farm_panel)
 
-	# 货架 ShelfPanel：靠近 ShelfNode（Area3D 触发 shelf_proximity_changed）+ 按 E 打开。
-	_shelf_panel = SHELF_PANEL_SCENE.instantiate()
-	add_child(_shelf_panel)
+	# 货架已统一为容器：靠近 ShelfNode（containers group）由 ContainerPanel 接管，无独立货架面板。
 
 	# 交易面板：右键 NPC → "提出交易" 时由 _on_npc_trade_selected 弹出。
 	_trade_panel = TRADE_PANEL_SCRIPT.new()
@@ -401,8 +397,6 @@ func _bind_local_player(node: Node) -> void:
 		_ground_item_hover_status.set_player(node)
 	if _farm_panel != null:
 		_farm_panel.set_player(node)
-	if _shelf_panel != null:
-		_shelf_panel.set_player(node)
 	if _trade_panel != null:
 		_trade_panel.set_player(node)
 	if _field_status_bubble_layer != null:
@@ -431,8 +425,6 @@ func _on_player_despawned(node: Node) -> void:
 			_container_panel.set_player(null)
 		if _farm_panel != null:
 			_farm_panel.set_player(null)
-		if _shelf_panel != null:
-			_shelf_panel.set_player(null)
 		if _trade_panel != null:
 			_trade_panel.set_player(null)
 		if _field_status_bubble_layer != null:

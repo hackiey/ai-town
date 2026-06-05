@@ -8,7 +8,6 @@ export type AppConfig = {
   port: number;
   logLevel: LogLevel;
   dbPath: string;
-  redisUrl: string;
   agentHostToken: string;
   agentHost: AgentHostConnectionConfig;
   agent: AgentConfig;
@@ -108,7 +107,6 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     port: parsePort(env.PORT ?? "3000"),
     logLevel: parseLogLevel(env.LOG_LEVEL ?? "info"),
     dbPath: env.DB_PATH ?? "./data/state.db",
-    redisUrl: env.REDIS_URL ?? "redis://localhost:6379",
     agentHostToken,
     agentHost,
     agent,

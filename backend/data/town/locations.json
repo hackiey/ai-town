@@ -58,6 +58,7 @@
   },
   "well": {
     "category": "civic",
+    "zone": "public",
     "primaryNpcs": []
   },
   "market_square": {
@@ -314,7 +315,7 @@
   "treasury": {
     "zone": "castle",
     "children": [
-      "treasury_vault"
+      "treasury_vault@royal_house"
     ],
     "category": "logistics",
     "primaryNpcs": [

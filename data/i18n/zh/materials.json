@@ -45,6 +45,12 @@
     "flour": {
       "name": "面粉"
     },
+    "malt": {
+      "name": "麦芽"
+    },
+    "beer": {
+      "name": "麦芽酒"
+    },
     "hemp": {
       "name": "麻"
     },

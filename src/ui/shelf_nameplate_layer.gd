@@ -6,8 +6,8 @@ extends CanvasLayer
 #   - 玩家走进 Area3D 半径后再显示 "按 E 查看" 副标题
 # 名字 + 按键提示都拼到货架 Title Label3D 的屏幕投影位置。
 #
-# 注意：prompt 显示走 shelf_proximity_changed 信号（玩家身体 vs Area3D）而不是
-# camera-to-shelf 距离 —— 第三人称相机离玩家有距离，否则玩家贴脸了 prompt 还不出。
+# 注意：货架已统一为 ContainerNode/WorkstationNode，proximity 走 workstation_proximity_changed
+# 信号（玩家身体 vs Area3D），这里过滤出 ShelfNode；camera-to-shelf 距离只控名字显隐。
 
 const SCREEN_MARGIN := 64.0
 const NAME_VISIBLE_DISTANCE := 10.0
@@ -20,12 +20,12 @@ var _proximate_shelf_ids: Dictionary = {}  # instance_id → true，本地玩家
 func _ready() -> void:
 	layer = 3
 	process_mode = Node.PROCESS_MODE_ALWAYS
-	EventBus.shelf_proximity_changed.connect(_on_proximity_changed)
+	EventBus.workstation_proximity_changed.connect(_on_proximity_changed)
 	set_process(true)
 
 
 func _on_proximity_changed(shelf: Node, entered: bool) -> void:
-	if shelf == null:
+	if not (shelf is ShelfNode):
 		return
 	var id := shelf.get_instance_id()
 	if entered:
@@ -106,7 +106,7 @@ func _update_widget(widget: Dictionary, shelf: Node3D, camera: Camera3D) -> void
 		prompt_label.visible = false
 		return
 
-	var display_name := String(shelf.display_name).strip_edges() if "display_name" in shelf else ""
+	var display_name := String(shelf.effective_display_name()).strip_edges() if shelf.has_method("effective_display_name") else ""
 	if display_name.is_empty():
 		name_label.visible = false
 		prompt_label.visible = false

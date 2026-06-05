@@ -1,19 +1,21 @@
-import type { Redis } from "ioredis";
+import type { AppDb } from "../db/sqlite.js";
 
-const DEBUG_AGENT_ENABLED_CHARACTER_IDS_KEY = "debug:agent:enabled-character-ids";
+const DEBUG_AGENT_ENABLED_CHARACTER_IDS_KEY = "agent:enabled-character-ids";
 
 export type DebugAgentRunFilter = {
   configured: boolean;
   enabledCharacterIds: Set<string>;
 };
 
-export async function getDebugAgentRunFilter(redis: Redis): Promise<DebugAgentRunFilter> {
-  const raw = await redis.get(DEBUG_AGENT_ENABLED_CHARACTER_IDS_KEY);
-  if (raw == null) {
+export function getDebugAgentRunFilter(db: AppDb): DebugAgentRunFilter {
+  const row = db
+    .prepare("SELECT value FROM debug_settings WHERE key = ?")
+    .get(DEBUG_AGENT_ENABLED_CHARACTER_IDS_KEY) as { value: string } | undefined;
+  if (row == null) {
     return { configured: false, enabledCharacterIds: new Set() };
   }
   try {
-    const parsed = JSON.parse(raw) as unknown;
+    const parsed = JSON.parse(row.value) as unknown;
     const ids = Array.isArray(parsed)
       ? parsed.filter((id): id is string => typeof id === "string" && id.length > 0)
       : [];
@@ -23,9 +25,12 @@ export async function getDebugAgentRunFilter(redis: Redis): Promise<DebugAgentRu
   }
 }
 
-export async function setDebugAgentRunFilter(redis: Redis, characterIds: string[]): Promise<string[]> {
+export function setDebugAgentRunFilter(db: AppDb, characterIds: string[]): string[] {
   const ids = Array.from(new Set(characterIds.map((id) => id.trim()).filter(Boolean))).sort();
-  await redis.set(DEBUG_AGENT_ENABLED_CHARACTER_IDS_KEY, JSON.stringify(ids));
+  db.prepare(
+    `INSERT INTO debug_settings (key, value) VALUES (?, ?)
+     ON CONFLICT(key) DO UPDATE SET value = excluded.value`,
+  ).run(DEBUG_AGENT_ENABLED_CHARACTER_IDS_KEY, JSON.stringify(ids));
   return ids;
 }
 

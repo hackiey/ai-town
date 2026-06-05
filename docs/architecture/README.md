@@ -17,13 +17,13 @@ Agent 系统、脚本层、实体模型的活文档。当前在迭代，**未完
 跨域问题理解从上往下读；找具体契约或 schema 直接跳到对应文档。
 
 1. [system-architecture.md](./system-architecture.md) — 当前代码结构下的系统总览：Godot client/runtime、backend、目录责任、关键链路
-2. [runtime-layers.md](./runtime-layers.md) — 脑(worker) / 身(Godot) 分层、战斗 cadence、headless server per town
+2. [runtime-layers.md](./runtime-layers.md) — 脑(agent runtime) / 身(Godot) 分层、战斗 cadence、headless server per town
 3. [game-mechanics.md](./game-mechanics.md) — 玩家机制百科：按当前实装规则整理小镇、数值、制作、农场与互动系统
 4. Agent runtime 两件套（一起读）：
    - [two-track-agent-session.md](./two-track-agent-session.md) — **当前唯一 LLM runtime**；action 轨 + thinking 轨双 session 并发，working_memory KV 单向传递，无打断机
    - [agent-shared.md](./agent-shared.md) — runtime 之间共享的非策略代码模块（name-resolver / event-descriptions / game-tools / prompt-context 等）+ per-agent 边界
 5. [scripting-layer.md](./scripting-layer.md) — Lua VM + ScriptExecutor 公共契约 + spec.ts 设计原则
-6. [entity-model.md](./entity-model.md) — Substance + Character + Wand + active_conditions
+6. [entity-model.md](./entity-model.md) — Substance + Character + Wand + active_statuses
 7. [simulation-layer.md](./simulation-layer.md) — 三种 tick 节奏 + emergent 反应 + Crop / NPC 行动 + 失败可观测性
 8. [crafting-interaction.md](./crafting-interaction.md) — 动词系统 + 工作站 + 万能 ActionPanel UI；玩家怎么触发反应表
 9. [reaction-schema.md](./reaction-schema.md) — 反应表的 Resource schema：Material / Verb / Reaction / Item 实例化 / 匹配语法 / 代价 + 失败模型
@@ -45,7 +45,7 @@ Agent 系统、脚本层、实体模型的活文档。当前在迭代，**未完
 | Agent session (two-track) | [two-track-agent-session.md](./two-track-agent-session.md) | landed | 唯一 LLM runtime；`ActionTrackSession` + `ThinkingTrackSession` 双轨；`runtime_storage.working_memory` KV 单向传递 brief；per-NPC 双模型配置；think-first 路径（woke_up）+ significant 事件异步触发 thinking |
 | Agent shared modules | [agent-shared.md](./agent-shared.md) | landed | `agent-shared/` 9 个子模块清单 + 共享 vs per-agent 边界规则 |
 | Scripting layer | [scripting-layer.md](./scripting-layer.md) | partial | Lua VM + `ScriptExecutor.execute()` + 1 个 effect type + 沙箱白名单 |
-| Entity model | [entity-model.md](./entity-model.md) | partial | Substance（8 种）+ Character（hp/stamina/conditions/equipped）+ NPC extends Character |
+| Entity model | [entity-model.md](./entity-model.md) | partial | Substance（8 种）+ Character（hp/stamina/statuses/equipped）+ NPC extends Character |
 | Simulation layer | [simulation-layer.md](./simulation-layer.md) | drafting | 仅设计稿；fast/slow tick + scheduled events + Crop 状态机 + NPC 行动 additive/possessive 分类 |
 | Crafting & interaction | [crafting-interaction.md](./crafting-interaction.md) | drafting | 仅设计稿；动词系统 + 工作站 + 万能 ActionPanel + Recipe-as-shortcut + 经济闭环；端到端铁铲示例 |
 | Reaction schema | [reaction-schema.md](./reaction-schema.md) | drafting | 仅设计稿；Material/Verb/Reaction Resource、匹配语法、verb 策略、品质 + 体力 + 时间 + 失败、物品实例化（无堆叠）|
@@ -54,7 +54,7 @@ Agent 系统、脚本层、实体模型的活文档。当前在迭代，**未完
 | State persistence | [state-persistence-plan.md](./state-persistence-plan.md) | partial | 计划文档；2026 主体已落地（Godot 持有 game-world schema，backend 通过 world-state repos SELECT-only） |
 | Godot↔agent protocol | [godot-agent-protocol.md](./godot-agent-protocol.md) | partial | envelope version、typed TS action / perception-manifest / event、Godot agent-host WS、action lifecycle；Godot 侧仍是 Dictionary 校验 |
 | Backend agent host | [backend-agent-host.md](./backend-agent-host.md) | partial | godot-link / agent-host / runtimes / services-world-state 分层、AgentRuntime 抽象、two-track-agent runtime、action_log/action bus、perception-manifest cache |
-| Combat system | [combat-system.md](./combat-system.md) | drafting | 仅设计稿；三层时间线（frame/fast-tick/LLM）+ Spell/Wand Resource + Lua on_cast/on_hit 契约 + 行为树 + LLM 战斗边界 + P0→P4 路径 |
+| Combat system | [combat-system.md](./combat-system.md) | drafting | 仅设计稿；三层时间线（frame/fast-tick/LLM）+ **三层职责（Spell 投递 / Reaction 物理 / Wand 装备）**：effect/难度/学派复用 reaction-schema，威力四因子，角色无 mana 耗魔杖储能，react.apply 桥 + channel 三段契约 + 投递层物理 API + 行为树 + LLM 战斗边界 + P0→P4 |
 
 ## 跨域待决问题（高优先级）
 

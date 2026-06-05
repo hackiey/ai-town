@@ -195,10 +195,11 @@ func _runtime_groups() -> PackedStringArray:
 	return PackedStringArray(["workstations"])
 
 
-# 该角色能不能用本工作台（group 维度，作为"可见/可寻路"基准）。
-# 实际使用还要叠 is_unlocked_by（钥匙维度）；外部要 combined 检查请用 can_actually_use。
-func can_be_used_by(character: Node) -> bool:
-	return Access.can_be_used_by(character, owner_group)
+# 工作台对所有人可用：现实里谁都能用别人的工作台，被赶走是社交反应（反应层处理），
+# 不是硬权限闸门。group 不再作为使用门槛。锁（lock_item_id/钥匙）维度仍生效，见 is_unlocked_by。
+# owner_group 保留仅供招牌 flavor 文案，不闸门。
+func can_be_used_by(_character: Node) -> bool:
+	return true
 
 
 func is_locked() -> bool:
@@ -210,7 +211,7 @@ func is_locked() -> bool:
 func is_unlocked_by(character: Node) -> bool:
 	if not is_locked():
 		return true
-	if character == null or not character.has_method("count_item"):
+	if character == null or not character.has_method("inventory_ops"):
 		return false
 	return character.inventory_ops().count_item(lock_item_id.strip_edges()) > 0
 

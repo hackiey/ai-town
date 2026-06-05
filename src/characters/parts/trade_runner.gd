@@ -387,13 +387,8 @@ func _run_give(recipient_id: String, offer_lines: Array) -> Dictionary:
 	if not any_transferred:
 		return {"ok": false, "message": "%s 装不下任何递交的物品" % _character_display_name(recipient_id)}
 
-	# 货架被白送扣减过 → 刷新货架 context，让 giver 的 # 我的货架 / 旁人感知同步更新。
-	for entry_v in consumed_shelf_entries:
-		if typeof(entry_v) != TYPE_DICTIONARY:
-			continue
-		var shelf := (entry_v as Dictionary).get("shelf") as ShelfNode
-		if shelf != null and Shelves != null and Shelves.has_method("refresh_contexts_for_shelf"):
-			Shelves.refresh_contexts_for_shelf(shelf.effective_shelf_id(), [giver_id, recipient_id])
+	# 货架被白送扣减过的感知：靠下面的 give world_event（affectedCharacterIds 含旁观者）传达，
+	# 不再单独 push 货架 context。consumed_shelf_entries 仅用于内部记账。
 
 	# affectedCharacterIds 包含 giver + recipient + voice_far visibility 旁观者：
 	# giver=ignored / recipient=direct_speech / bystander=ambient_sensory（backend classification.ts）。
@@ -471,10 +466,9 @@ func _give_transfer_one(recipient: Character, item_id: String, count: float, slo
 	return float(transferred)
 
 
-# 白送时从 giver 自家附近货架取 item_id 最多 want 件给 recipient，按实际接收量即时扣减 listing。
-# gift 是 best-effort 即时转移、无回滚：取一件给一件扣一件。committed 的货架条目记入
-# shelf_entries_out 供调用方收尾刷新货架 context。返回实际转移件数。候选复用交易那套
-# _eligible_trade_shelf_candidates（只要货架主本人在自家货架 3 米内）。
+# 白送时从 giver 附近货架（= 无锁容器）取 item_id 最多 want 件给 recipient，按实际接收量即时
+# 从货架扣减。gift 是 best-effort 即时转移、无回滚：取一件给一件扣一件。返回实际转移件数。
+# 候选复用 _eligible_trade_shelf_candidates（站在货架 3 米内即可，不再要求"自家"）。
 func _give_from_shelf(recipient: Character, item_id: String, want: int, shelf_entries_out: Array) -> int:
 	if want <= 0:
 		return 0
@@ -485,27 +479,23 @@ func _give_from_shelf(recipient: Character, item_id: String, want: int, shelf_en
 		if typeof(candidate_v) != TYPE_DICTIONARY:
 			continue
 		var candidate: Dictionary = candidate_v as Dictionary
-		var listing: Dictionary = candidate.get("listing", {})
-		var slot: Dictionary = listing.get("slot", {})
-		if str(slot.get("item_id", "")) != item_id:
+		var shelf := candidate.get("shelf") as ShelfNode
+		var slot: Dictionary = candidate.get("slot", {})
+		if shelf == null or str(slot.get("item_id", "")) != item_id:
 			continue
 		var available := int(slot.get("quantity", 0))
 		if available <= 0:
 			continue
 		var take := mini(available, want - transferred)
-		# 复制货架 listing 的 instance 全字段给 recipient.add_instance。
+		# 复制货架槽位 instance 全字段给 recipient.add_instance。
 		var inst_copy: Dictionary = slot.duplicate(true)
 		var leftover := recipient.inventory_ops().add_instance(inst_copy, take)
 		var actually := take - leftover
 		if actually <= 0:
 			continue
-		var entry := {
-			"listing": listing,
-			"shelf": candidate.get("shelf"),
-			"quantity": actually,
-		}
-		_commit_trade_shelf_entries([entry])
-		shelf_entries_out.append(entry)
+		# 从货架实扣（system_withdraw 跳过距离/钥匙，按 item_id 跨槽扣）。
+		Containers.system_withdraw(shelf.effective_container_id(), item_id, actually)
+		shelf_entries_out.append({"shelf": shelf, "item_id": item_id, "quantity": actually})
 		transferred += actually
 	return transferred
 
@@ -606,28 +596,15 @@ func _commit_trade_shelf_entries(entries: Array) -> void:
 		if typeof(entry_v) != TYPE_DICTIONARY:
 			continue
 		var entry: Dictionary = entry_v as Dictionary
-		var listing: Dictionary = entry.get("listing", {})
 		var shelf := entry.get("shelf") as ShelfNode
 		if shelf == null:
 			continue
+		var item_id := str(entry.get("item_id", ""))
 		var quantity := int(entry.get("quantity", 0))
-		var slot: Dictionary = (listing.get("slot", {}) as Dictionary).duplicate(true)
-		var available := int(slot.get("quantity", 0))
-		var listing_id := str(listing.get("listing_id", ""))
-		var seller_id := str(listing.get("owner_character_id", ""))
-		if quantity >= available:
-			Db.delete_shelf_listing(listing_id)
-		else:
-			slot["quantity"] = available - quantity
-			Db.save_shelf_listing(
-				shelf.effective_shelf_id(),
-				int(listing.get("slot_index", 0)),
-				listing_id,
-				seller_id,
-				int(listing.get("price_centi", 0)),
-				slot,
-				shelf.effective_location_id()
-			)
+		if item_id.is_empty() or quantity <= 0:
+			continue
+		# 货架 = 无锁容器。按 item_id 跨槽实扣（delivery 已用拷贝交付，这里只负责从货架移除）。
+		Containers.system_withdraw(shelf.effective_container_id(), item_id, quantity)
 
 
 # owner 用"自己的背包 + 自己附近货架"履约这些交易条目（货币从 owner 钱包扣）。
@@ -731,88 +708,67 @@ func _extract_named_trade_item_across_inventory(owner: Character, item_id: Strin
 	}
 
 
-# 只要货架主(owner)本人站在自家货架 3 米内即可，不再要求交易对手也站在旁边——
-# 货从货架主自己的货架上扣，对手在不在场跟"能不能扣这座货架"无关。
+# owner 站在货架 3 米内即可从该货架取货履约（货架已无主——无锁容器，谁站旁边都能取）。
+# 候选 = 附近每座货架的每个非空槽位 {shelf, slot}。slot 是 ShelfNode.contents 的运行时副本视图。
 func _eligible_trade_shelf_candidates(owner: Character) -> Array:
 	var candidates: Array = []
 	if owner == null:
 		return candidates
-	if Shelves == null or not Shelves.has_method("find_shelf_node"):
+	var tree := owner.get_tree()
+	if tree == null:
 		return candidates
-	var owner_id := owner.backend_character_id()
-	for snapshot_v in owner.perception().owned_shelf_snapshots():
-		if typeof(snapshot_v) != TYPE_DICTIONARY:
-			continue
-		var snapshot: Dictionary = snapshot_v as Dictionary
-		var shelf_id := str(snapshot.get("id", "")).strip_edges()
-		if shelf_id.is_empty():
-			continue
-		var shelf := Shelves.find_shelf_node(shelf_id)
-		if shelf == null:
+	for n in tree.get_nodes_in_group("shelves"):
+		var shelf := n as ShelfNode
+		if shelf == null or not is_instance_valid(shelf):
 			continue
 		if not _is_character_near_shelf(owner, shelf):
 			continue
-		for listing in Db.list_shelf_listings(shelf_id):
-			if str(listing.get("owner_character_id", "")).strip_edges() != owner_id:
+		for slot_v in shelf.contents:
+			var slot: Dictionary = slot_v as Dictionary
+			if InventorySlotData.of(slot).is_empty():
 				continue
 			candidates.append({
 				"shelf": shelf,
-				"listing": listing,
+				"slot": slot.duplicate(true),
 			})
 	return candidates
 
 
+# 从附近货架候选 reserve quantity 件 item_id。reserve 阶段不碰货架真值——只规划 shelf_entries
+# （成交后才 _commit_trade_shelf_entries 用 system_withdraw 实扣）。reserved_by_candidate 按候选下标
+# 记已规划量，避免同一槽被重复 reserve。delivery_stacks 收交付拷贝。返回未满足的剩余件数。
 func _reserve_trade_shelf_items(
 	candidates: Array,
 	item_id: String,
 	quantity: int,
-	reserved_by_listing: Dictionary,
+	reserved_by_candidate: Dictionary,
 	shelf_entries: Array,
-	shelf_entry_indices: Dictionary,
+	_shelf_entry_indices: Dictionary,
 	delivery_stacks: Array
 ) -> int:
 	var remaining := maxi(quantity, 0)
-	for candidate_v in candidates:
+	for i in candidates.size():
 		if remaining <= 0:
 			break
-		if typeof(candidate_v) != TYPE_DICTIONARY:
-			continue
-		var candidate: Dictionary = candidate_v as Dictionary
-		var listing: Dictionary = candidate.get("listing", {})
-		var slot: Dictionary = listing.get("slot", {})
+		var candidate: Dictionary = candidates[i] as Dictionary
+		var slot: Dictionary = candidate.get("slot", {})
 		if str(slot.get("item_id", "")) != item_id:
 			continue
-		var listing_id := str(listing.get("listing_id", "")).strip_edges()
-		if listing_id.is_empty():
-			continue
-		var reserved := int(reserved_by_listing.get(listing_id, 0))
+		var reserved := int(reserved_by_candidate.get(i, 0))
 		var available := int(slot.get("quantity", 0)) - reserved
 		if available <= 0:
 			continue
 		var take := mini(available, remaining)
-		reserved_by_listing[listing_id] = reserved + take
-		if shelf_entry_indices.has(listing_id):
-			var existing_index := int(shelf_entry_indices.get(listing_id, -1))
-			if existing_index >= 0 and existing_index < shelf_entries.size():
-				var existing: Dictionary = shelf_entries[existing_index] as Dictionary
-				var sold_stack: Dictionary = existing.get("sold_stack", {})
-				sold_stack["quantity"] = int(sold_stack.get("quantity", 0)) + take
-				existing["quantity"] = int(existing.get("quantity", 0)) + take
-				existing["sold_stack"] = sold_stack
-				shelf_entries[existing_index] = existing
-			else:
-				shelf_entry_indices.erase(listing_id)
-		else:
-			var sold_stack := slot.duplicate(true)
-			sold_stack["quantity"] = take
-			shelf_entry_indices[listing_id] = shelf_entries.size()
-			shelf_entries.append({
-				"listing": listing.duplicate(true),
-				"shelf": candidate.get("shelf"),
-				"quantity": take,
-				"sold_stack": sold_stack,
-			})
-			delivery_stacks.append(sold_stack)
+		reserved_by_candidate[i] = reserved + take
+		var sold_stack := slot.duplicate(true)
+		sold_stack["quantity"] = take
+		shelf_entries.append({
+			"shelf": candidate.get("shelf"),
+			"item_id": item_id,
+			"quantity": take,
+			"sold_stack": sold_stack,
+		})
+		delivery_stacks.append(sold_stack)
 		remaining -= take
 	return remaining
 
@@ -834,17 +790,12 @@ func _refresh_trade_contexts(trade: Dictionary, shelf_entries: Array = []) -> vo
 		var node := _character.find_other_character(character_id)
 		if node != null and node.has_method("send_perception_manifest"):
 			node.call_deferred("send_perception_manifest")
-	for entry_v in shelf_entries:
-		if typeof(entry_v) != TYPE_DICTIONARY:
-			continue
-		var entry: Dictionary = entry_v as Dictionary
-		var shelf := entry.get("shelf") as ShelfNode
-		if shelf != null and Shelves != null and Shelves.has_method("refresh_contexts_for_shelf"):
-			Shelves.refresh_contexts_for_shelf(shelf.effective_shelf_id(), [buyer_id, seller_id])
+	# 货架扣减的旁观感知靠成交 world_event 传达；这里只刷新买卖双方的 context。
+	# shelf_entries 参数保留兼容签名，不再单独 push 货架 context。
 
 
 func _is_character_near_shelf(other: Character, shelf: ShelfNode) -> bool:
 	if other == null or shelf == null:
 		return false
-	var radius := maxf(float(shelf.interaction_radius), 3.0)
+	var radius := Containers.INTERACTION_RADIUS
 	return other.global_position.distance_squared_to(shelf.get_approach_node().global_position) <= radius * radius

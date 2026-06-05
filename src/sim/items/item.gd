@@ -89,3 +89,11 @@ var display_name: String:
 @export var dries_into: String = ""
 @export var drying_hours: float = 0.0
 @export var drying_yield_qty: int = 1
+
+# === 被动发酵（酒桶用）===
+# 与 drying 完全平行：非空 + fermenting_hours > 0 → 在 passive_tags 含 "fermenting" 的容器
+# 槽里累计 fermenting_age_hours，达到 fermenting_hours 时 swap 成 ferments_into 模板。
+# 走 data/mechanics/fermenting.lua + Containers.tick_fermenting（每 game-hour 一次）。
+@export var ferments_into: String = ""
+@export var fermenting_hours: float = 0.0
+@export var fermenting_yield_qty: int = 1

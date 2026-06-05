@@ -143,76 +143,6 @@ function createRespondSchema() {
   });
 }
 
-// add: 从我的背包补到货架 → 走 backpack 索引（item.index 指向 # 背包）。
-// update / remove: 操作的是货架已有 listing → 走 shelf 索引（item.index 指向该货架 listings 列表）。
-function createUpdateShelfEntrySchema(mode: "add" | "update") {
-  return Type.Object({
-    item: createItemRefSchema(`update_shelf.param.${mode}_item`),
-    quantity: Type.Integer({
-      minimum: 1,
-      description: td(`update_shelf.param.${mode}_quantity`),
-    }),
-    // 价格支持小数：medieval cut coinage 允许银币被剪开（1 silver = 100 centi 精度）。
-    // 例：7.5 表示 7 银 50 分。GDScript 层 round 到 centi int 存储。
-    price_silver: Type.Number({
-      minimum: 0,
-      multipleOf: 0.01,
-      description: td(`update_shelf.param.${mode}_price_silver`),
-    }),
-  });
-}
-
-function createUpdateShelfRemoveEntrySchema() {
-  return Type.Object({
-    item: createItemRefSchema("update_shelf.param.remove_item"),
-    quantity: Type.Optional(Type.Integer({
-      minimum: 1,
-      description: td("update_shelf.param.remove_quantity"),
-    })),
-  });
-}
-
-export function createUpdateShelfSchema() {
-  return Type.Object({
-    shelf: Type.String({ minLength: 1, description: td("update_shelf.param.shelf") }),
-    add: Type.Optional(Type.Array(createUpdateShelfEntrySchema("add"), {
-      minItems: 1,
-      maxItems: 16,
-      description: td("update_shelf.param.add"),
-    })),
-    update: Type.Optional(Type.Array(createUpdateShelfEntrySchema("update"), {
-      minItems: 1,
-      maxItems: 16,
-      description: td("update_shelf.param.update"),
-    })),
-    remove: Type.Optional(Type.Array(createUpdateShelfRemoveEntrySchema(), {
-      minItems: 1,
-      maxItems: 16,
-      description: td("update_shelf.param.remove"),
-    })),
-    reason: Type.Optional(Type.String({ description: toolReasonDescription() })),
-  });
-}
-
-export function createViewShelfSchema() {
-  return Type.Object({
-    shelf: Type.String({ minLength: 1, description: td("view_shelf.param.shelf") }),
-  });
-}
-
-export function createBuyFromShelfSchema() {
-  return Type.Object({
-    shelf: Type.String({ minLength: 1, description: td("buy_from_shelf.param.shelf") }),
-    // 买的是货架上的 listing → {name, index} 指向该货架的 listings 第 N 行。
-    item: createItemRefSchema("buy_from_shelf.param.item"),
-    quantity: Type.Integer({
-      minimum: 1,
-      description: td("buy_from_shelf.param.quantity"),
-    }),
-    reason: Type.Optional(Type.String({ description: toolReasonDescription() })),
-  });
-}
-
 // ───────────────────────────── 工作台 axis schemas ─────────────────────────────
 // 12 个按 proficiency skill axis 拆分的工具替代旧 use_workstation —— 见 craft-registry.ts +
 // docs/proficiency_system.md。每个 schema 只暴露该 axis 真用得到的字段；workstation 检测仍
@@ -294,13 +224,37 @@ export function createBoilSaltSchema() {
   });
 }
 
-export function createUseContainerSchema() {
+// put 项：从背包放进容器/货架。item.index 指向 # 背包。price_silver 仅货架有意义（标价，仅展示）。
+function createPutTakeEntrySchema(kind: "put" | "take") {
+  if (kind === "put") {
+    return Type.Object({
+      item: createItemRefSchema("put_take.param.put_item"),
+      quantity: Type.Integer({ minimum: 1, description: td("put_take.param.put_quantity") }),
+      // 价格支持小数（1 silver = 100 centi 精度），例 0.5 = 5 分。仅货架生效，普通容器忽略。
+      price_silver: Type.Optional(Type.Number({ minimum: 0, multipleOf: 0.01, description: td("put_take.param.price_silver") })),
+    });
+  }
   return Type.Object({
-    container: Type.String({ minLength: 1, description: td("use_container.param.container") }),
-    verb: StringEnum(["take", "put", "inspect"], { description: td("use_container.param.verb") }),
-    item: Type.Optional(createItemRefSchema("use_container.param.item")),
-    quantity: Type.Optional(Type.Integer({ minimum: 1, description: td("use_container.param.quantity") })),
+    item: createItemRefSchema("put_take.param.take_item"),
+    quantity: Type.Integer({ minimum: 1, description: td("put_take.param.take_quantity") }),
+  });
+}
+
+// put_take：一次调用同时存入(put)+取出(take)。货架与容器统一（货架=无锁容器，多个标价）。
+// put / take 各自可为空（甚至空数组都行），但**不能同时为空**——这条由 createPutTakeTool 运行时
+// 校验报 error_empty，不在 schema 层用 minItems（否则空数组会被误判成"少于 1 项"）。
+export function createPutTakeSchema() {
+  return Type.Object({
+    container: Type.String({ minLength: 1, description: td("put_take.param.container") }),
+    put: Type.Optional(Type.Array(createPutTakeEntrySchema("put"), { maxItems: 16, description: td("put_take.param.put") })),
+    take: Type.Optional(Type.Array(createPutTakeEntrySchema("take"), { maxItems: 16, description: td("put_take.param.take") })),
     reason: Type.Optional(Type.String({ description: toolReasonDescription() })),
+  });
+}
+
+export function createViewContainerSchema() {
+  return Type.Object({
+    container: Type.String({ minLength: 1, description: td("view_container.param.container") }),
   });
 }
 
@@ -379,9 +333,8 @@ export const pickUpItemSchema = createPickUpItemSchema();
 export const dropItemSchema = createDropItemSchema();
 export const offerSchema = createOfferSchema();
 export const respondSchema = createRespondSchema();
-export const updateShelfSchema = createUpdateShelfSchema();
-export const viewShelfSchema = createViewShelfSchema();
-export const buyFromShelfSchema = createBuyFromShelfSchema();
+export const putTakeSchema = createPutTakeSchema();
+export const viewContainerSchema = createViewContainerSchema();
 export const updateMemorySchema = createUpdateMemorySchema();
 export const createItemSchema = createCreateItemSchema();
 export const doNothingSchema = createDoNothingSchema();
@@ -418,13 +371,14 @@ export type AssembleParams = { sub_option: string; inputs: ItemRefParam[]; reaso
 export type CookParams = { verb: string; inputs: ItemRefParam[]; reason?: string };
 export type MillGrainParams = { inputs: ItemRefParam[]; reason?: string };
 export type BoilSaltParams = { inputs: ItemRefParam[]; reason?: string };
-export type UseContainerParams = {
+export type PutTakeEntryParam = { item: ItemRefParam; quantity: number; price_silver?: number };
+export type PutTakeParams = {
   container: string;
-  verb: "take" | "put" | "inspect";
-  item?: ItemRefParam;
-  quantity?: number;
+  put?: PutTakeEntryParam[];
+  take?: PutTakeEntryParam[];
   reason?: string;
 };
+export type ViewContainerParams = { container: string };
 export type DrawWaterParams = { into: ItemRefParam; reason?: string };
 // 每个 axis Params 在 tool factory 里被 normalize 成 WorkstationActionTarget 形态发给 Godot。
 export type AxisToolParams =
@@ -440,9 +394,6 @@ export type PickUpItemParams = Static<typeof pickUpItemSchema>;
 export type DropItemParams = Static<typeof dropItemSchema>;
 export type OfferParams = Static<typeof offerSchema>;
 export type RespondParams = Static<typeof respondSchema>;
-export type UpdateShelfParams = Static<typeof updateShelfSchema>;
-export type ViewShelfParams = Static<typeof viewShelfSchema>;
-export type BuyFromShelfParams = Static<typeof buyFromShelfSchema>;
 export type UpdateMemoryParams = Static<typeof updateMemorySchema>;
 export type CreateItemParams = Static<typeof createItemSchema>;
 export type DoNothingParams = Static<typeof doNothingSchema>;

@@ -1,4 +1,4 @@
-import type { Redis } from "ioredis";
+import type { MessageBus } from "../plugins/message-bus.js";
 import type { GameTimeSnapshot } from "../godot-link/protocol.js";
 
 export const GAME_TIME_BUS_PATTERN = "game.time:*";
@@ -17,20 +17,20 @@ export function parseGameTimeBusChannel(channel: string): string | null {
   return match?.[1] ?? null;
 }
 
-export async function publishGameTimeToBus(
-  redis: Redis,
+export function publishGameTimeToBus(
+  bus: MessageBus,
   townId: string,
   gameTime: GameTimeSnapshot,
   observedAt = new Date().toISOString(),
-): Promise<number> {
-  return redis.publish(gameTimeBusChannel(townId), JSON.stringify({
+): number {
+  return bus.publish(gameTimeBusChannel(townId), {
     gameTime,
     observedAt,
-  } satisfies GameTimeBusPayload));
+  } satisfies GameTimeBusPayload);
 }
 
-export function parseGameTimeBusPayload(raw: string): GameTimeBusPayload {
-  const payload = JSON.parse(raw) as Partial<GameTimeBusPayload>;
+export function parseGameTimeBusPayload(raw: unknown): GameTimeBusPayload {
+  const payload = (raw ?? {}) as Partial<GameTimeBusPayload>;
   if (!payload.gameTime || typeof payload.gameTime !== "object" || Array.isArray(payload.gameTime)) {
     throw new Error("game time bus payload missing gameTime");
   }

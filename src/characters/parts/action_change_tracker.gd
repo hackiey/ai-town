@@ -24,6 +24,7 @@ static func capture(character: Character) -> Dictionary:
 			"burning": bool(character.burning),
 		},
 		"backpack": _capture_backpack(character),
+		"wallet_centi": int(character.wallet_centi),
 	}
 
 
@@ -35,9 +36,28 @@ static func build(before: Dictionary, after: Dictionary) -> Dictionary:
 	if not attributes.is_empty():
 		changes["attributes"] = attributes
 	var backpack := _backpack_changes(before.get("backpack", {}), after.get("backpack", {}))
+	# 钱包不在 inventory 里（wallet_centi 单独存），交易/买卖的银币进出必须单独 diff，
+	# 否则 character_changes 只剩物品那半，渲染出"获得 木炭"却没有"失去 银币"。
+	# 以 silver_coin 入项并入 backpack 段，复用 backend quantity 渲染（delta 走 silver 浮点）。
+	_append_wallet_change(backpack, before.get("wallet_centi", 0), after.get("wallet_centi", 0))
 	if not backpack.is_empty():
 		changes["backpack"] = backpack
 	return changes
+
+
+static func _append_wallet_change(out: Array[Dictionary], before_v: Variant, after_v: Variant) -> void:
+	var before_centi := int(before_v)
+	var after_centi := int(after_v)
+	if before_centi == after_centi:
+		return
+	out.append({
+		"kind": "quantity",
+		"item_id": "silver_coin",
+		"display_name": "",
+		"before": before_centi / 100.0,
+		"after": after_centi / 100.0,
+		"delta": (after_centi - before_centi) / 100.0,
+	})
 
 
 static func _capture_backpack(character: Character) -> Dictionary:

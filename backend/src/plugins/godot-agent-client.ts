@@ -159,7 +159,7 @@ export const godotAgentClientPlugin = fp(async (app) => {
 });
 
 async function seedAgentHostData(app: FastifyInstance, townId: string): Promise<void> {
-  // 同步 worker.ts 起 AgentHost 时的路由约定——按角色实际要走的 runtimeName 写 seed，
+  // 同步 agent-runtime 插件起 AgentHost 时的路由约定——按角色实际要走的 runtimeName 写 seed，
   // 否则 seed 写在错的命名空间，agent 启动读不到自己的 soul。
   const router = loadNpcRuntimeRouter();
   const { seeded, characters } = ensureMemoriesSeededForTown(

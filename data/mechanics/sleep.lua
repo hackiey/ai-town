@@ -22,7 +22,7 @@ function on_resolve(ctx)
     if ctx.duration_minutes <= 0 then
         return { ok = false, message = "sleep duration_game_minutes must be > 0" }
     end
-    affect.add_condition(ctx.actor, "sleeping", ctx.expires_total_hours, ctx.action_id)
+    affect.add_status(ctx.actor, "sleeping", ctx.expires_total_hours, ctx.action_id)
     return {
         ok = true,
         message = "",
@@ -38,7 +38,7 @@ end
 
 
 function on_commit(ctx)
-    affect.remove_condition(ctx.actor, "sleeping")
+    affect.remove_status(ctx.actor, "sleeping")
     return {
         ok = true,
         message = "",

@@ -16,14 +16,14 @@
 
 | 层 | 角色 | 内容 |
 |---|---|---|
-| **Worker（脑）** | 决策、记忆、规划、生成 | LLM 调用、AgentSession（[two-track-agent-session.md](./two-track-agent-session.md)）、character memory、action tool 编排。Worker 进程内部进一步分层为 godot-link / agent-host / agent-shared / runtimes 四层，详见 [backend-agent-host.md](./backend-agent-host.md)；当前唯一 LLM runtime 是 `two-track-agent`（双轨：action + thinking 并发，同时服务 NPC 和 player command）。Runtime 之间共享的非策略代码（entity 名字解析、事件描述、通用 game tool、perception 装配等）集中在 `agent-shared/` 模块，见 [agent-shared.md](./agent-shared.md) |
+| **Agent runtime（脑）** | 决策、记忆、规划、生成 | LLM 调用、AgentSession（[two-track-agent-session.md](./two-track-agent-session.md)）、character memory、action tool 编排。runtime 作为 Fastify 插件在网关同进程内运行（原 `worker.ts` 已并入，见 [backend-agent-host.md](./backend-agent-host.md)），内部分层为 godot-link / agent-host / agent-shared / runtimes 四层；当前唯一 LLM runtime 是 `two-track-agent`（双轨：action + thinking 并发，同时服务 NPC 和 player command）。Runtime 之间共享的非策略代码（entity 名字解析、事件描述、通用 game tool、perception 装配等）集中在 `agent-shared/` 模块，见 [agent-shared.md](./agent-shared.md) |
 | **Godot 服务端 runtime（身）** | 模拟、执行、Game-world sqlite owner | 物理（温度、燃烧、碰撞）、空间索引、动画、effect 应用、Lua 执行（[scripting-layer.md](./scripting-layer.md)）、世界 tick；所有 game-world 表（character_states / farm_plots / workstation_states 等）持续 UPSERT |
-| **SQLite（档案/真值）** | 持久化 + 共享真值层 | 既是 Godot owner 的 game-world 真值表（backend 只读），又是 backend 自有表（runtime_storage / action_log / agent_sessions / agent_session_messages） |
-| **Redis（神经）** | 协调 | action / world event / perception manifest / game time / character status pub/sub、gateway↔worker 协调 |
+| **SQLite（档案/真值）** | 持久化 + 共享真值层 | 既是 Godot owner 的 game-world 真值表（backend 只读），又是 backend 自有表（runtime_storage / action_log / agent_sessions / agent_session_messages / runtime_characters / debug_settings） |
+| **进程内 MessageBus（神经）** | 协调 | action / world event / perception manifest / game time / character status 各条 bus，连接网关与同进程 agent runtime（`plugins/message-bus.ts`，取代原 Redis pub/sub） |
 
 **关键边界**：
-- Worker **完全不拥有**任何数字游戏状态（hp、temperature、position、inventory 数字）；每次决策前用最新 perception manifest 的 id 列表当场 SELECT 共享 sqlite
-- Worker 主要通过 manifest + sqlite SELECT + event / context 文本做决策，不能预测 action 结果
+- Agent runtime **完全不拥有**任何数字游戏状态（hp、temperature、position、inventory 数字）；每次决策前用最新 perception manifest 的 id 列表当场 SELECT 共享 sqlite
+- Agent runtime 主要通过 manifest + sqlite SELECT + event / context 文本做决策，不能预测 action 结果
 - Godot 是"游戏世界里发生的事"的唯一权威源；同时是 sqlite game-world schema 的 owner，状态变更必须**同步** UPSERT 进表后再 emit world event（详见 [godot-agent-protocol.md §3.1](./godot-agent-protocol.md#31-perception-manifest)）
 
 ### 2.2 战斗 cadence：tick-based pseudo-real-time
@@ -53,14 +53,15 @@
 
 ### 3.1 三进程拆分（已落地 2026-05-06）
 
+> 更新（2026-06-04）：backend 原先的 gateway + worker 两个 Node 进程已合并为**单进程**（删 Redis，改进程内 MessageBus）。进程总数从 4 降到 3：backend / godot server / godot client。
+
 ```
-worker (Node) ↘
-                backend (Node) ←── JSON / WebSocket ──→ godot server (headless, 权威)
-   curl /admin ↗                                                ↑
-                                                     ENet + @rpc │
-                                                   + Synchronizer│
-                                                                 ↓
-                                                     godot client (观察 + 输入)
+curl / debug ──→ backend (Node, 单进程)        ←── JSON / WebSocket ──→ godot server (headless, 权威)
+                 gateway + agent runtime                                        ↑
+                 进程内 MessageBus（原 worker+Redis 已并入）           ENet + @rpc │
+                                                                    + Synchronizer│
+                                                                                 ↓
+                                                                     godot client (观察 + 输入)
 ```
 
 两个不变量：
@@ -72,8 +73,7 @@ worker (Node) ↘
 
 | 进程 | 入口 | 职责 |
 |---|---|---|
-| backend gateway | `pnpm dev` | HTTP API、SQLite / Redis、Godot agent-host WS client、action 投递、event/snapshot/ack 入库 |
-| agent worker | `pnpm worker:dev` | Redis 订阅、AgentHost、two-track-agent runtime、LLM tool 调用 |
+| backend（单进程） | `pnpm dev` | HTTP API、SQLite、Godot agent-host WS client、action 投递、event/snapshot/ack 入库；**同进程内** AgentHost、two-track-agent runtime、LLM tool 调用；网关与 runtime 走进程内 MessageBus |
 | godot server | `./scripts/dev server` | town 场景、NPC 物理 / nav / 动画状态机、玩家 avatar 物理、监听 agent-host WebSocket |
 | godot client | `./scripts/dev client` | 渲染 NPC + 其他玩家、相机跟随本地 avatar、点击 → @rpc |
 
@@ -143,7 +143,7 @@ scripts/dev                             # server / client 子命令
 
 ### 3.2 仍未实现 / 未完成
 
-- 多 worker 下的 AgentSession 黏附 / failover（当前 worker 进程内存持有 session，靠 SQLite 恢复历史）
+- 多 backend 实例下的 AgentSession 黏附 / failover（当前单进程内存持有 session，靠 SQLite 恢复历史）
 - 物理 tick（[entity-model.md §2.1](./entity-model.md) 的属性都是静态字段，没人在 tick 里更新温度等）
 - 战斗 tick / combat behavior 脚本路径
 - 多镇路由 / 多 godot server 编排
@@ -153,7 +153,7 @@ scripts/dev                             # server / client 子命令
 ## 4. Open questions
 
 - Headless Godot 部署 / 编排（每镇 1 进程，supervise / 重启策略 / 镜像分发）
-- Worker→character 黏附 mapping 用 Redis 什么 key 形状
+- Agent runtime→character 黏附 mapping 的 key 形状
 - Tick 频率最终值（2Hz vs 4Hz vs 动态）
 - Combat behavior 脚本怎么生成（手写 vs LLM 离线生成 vs 预制库）
 - 玩家 avatar 输入授权模型——MVP 是 server-authoritative + 无 prediction，后期是否需要 prediction + reconciliation 视手感而定

@@ -49,7 +49,7 @@ export async function handleGodotMessage(app: FastifyInstance, townId: string, r
         const payload = message.payload as RuntimeHeartbeatPayload;
         app.log.debug({ townId, payload }, "runtime heartbeat");
         if (payload.gameTime) {
-          await publishGameTimeToBus(app.redis, townId, payload.gameTime);
+          publishGameTimeToBus(app.bus, townId, payload.gameTime);
         }
       }
       app.agentConnections.send(townId, SERVER_MESSAGE.pong, { serverTime: new Date().toISOString() });
@@ -118,7 +118,7 @@ function handleReactionCatalogSync(app: FastifyInstance, payload: ReactionCatalo
 
 function handleRequestAvailableModels(app: FastifyInstance, townId: string): void {
   // AI-takeover pickers need the model whitelist; backend is the single source
-  // of truth (AGENT_AVAILABLE_MODELS). Mirror worker.ts's `.map((m) => m.raw)`.
+  // of truth (AGENT_AVAILABLE_MODELS). Mirror the agent-runtime plugin's `.map((m) => m.raw)`.
   const models = app.config.agent.availableModels.map((model) => model.raw);
   app.agentConnections.send(townId, SERVER_MESSAGE.availableModels, { models });
 }
@@ -162,7 +162,7 @@ async function handlePerceptionManifest(app: FastifyInstance, townId: string, pa
   if (!normalized.ok) {
     throw new Error(normalized.error);
   }
-  await publishPerceptionManifestToBus(app.redis, townId, normalized.manifest);
+  publishPerceptionManifestToBus(app.bus, townId, normalized.manifest);
 }
 
 async function handleActionRequest(app: FastifyInstance, townId: string, payload: ActionRequestPayload): Promise<void> {
@@ -174,7 +174,7 @@ async function handleActionRequest(app: FastifyInstance, townId: string, payload
   if (!isKnownActionName(action)) {
     throw new Error(`unsupported action: ${action}`);
   }
-  await submitAction(app.db, app.redis, {
+  await submitAction(app.db, app.bus, {
     townId,
     characterId,
     action,
@@ -191,7 +191,7 @@ async function handleActionAck(app: FastifyInstance, townId: string, payload: Ac
     throw new Error(`unsupported action ack status: ${payload.status}`);
   }
   app.agentConnections.markAck(townId, payload.ackSeq);
-  await recordActionAck(app.db, app.redis, townId, payload);
+  await recordActionAck(app.db, townId, payload);
 }
 
 async function handlePlayerCommand(app: FastifyInstance, townId: string, payload: PlayerCommandPayload): Promise<void> {
@@ -271,7 +271,7 @@ async function recordAndPublishWorldEvent(app: FastifyInstance, townId: string, 
     record.createdAt,
     toJsonColumn(record.gameTime),
   );
-  await publishWorldEventToBus(app.redis, townId, record.id, normalizeEventPerception(payload.perception, now));
+  publishWorldEventToBus(app.bus, townId, record.id, normalizeEventPerception(payload.perception, now));
   return true;
 }
 

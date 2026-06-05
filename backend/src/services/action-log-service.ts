@@ -1,4 +1,4 @@
-import type { Redis } from "ioredis";
+import type { MessageBus } from "../plugins/message-bus.js";
 import { rowToActionLog } from "../db/records.js";
 import { toJsonColumn, type AppDb } from "../db/sqlite.js";
 import {
@@ -42,7 +42,7 @@ const RESULT_TIMEOUT_MS = 180_000;
 
 export async function submitAction(
   db: AppDb,
-  redis: Redis,
+  bus: MessageBus,
   input: SubmitActionInput,
   options: SubmitActionOptions = {},
 ): Promise<ActionLogRecord> {
@@ -65,9 +65,9 @@ export async function submitAction(
 
   insertActionLog(db, record);
   if (options.preempt) {
-    await requestCancelOpenActionForCharacter(db, redis, record.townId, record.characterId, record.id);
+    requestCancelOpenActionForCharacter(db, bus, record.townId, record.characterId, record.id);
   }
-  await publishActionToBus(redis, record.townId, record.id);
+  publishActionToBus(bus, record.townId, record.id);
   return record;
 }
 
@@ -149,7 +149,7 @@ export function recordFailedAction(db: AppDb, input: SubmitActionInput, error: s
 
 export async function handleActionDelivery(
   db: AppDb,
-  _redis: Redis,
+  _bus: MessageBus,
   registry: AgentConnectionRegistry,
   townId: string,
   actionId: string,
@@ -204,7 +204,7 @@ export async function handleActionCancelDelivery(
 
 export async function requestCancelAction(
   db: AppDb,
-  redis: Redis,
+  bus: MessageBus,
   action: ActionLogRecord,
   reason: string,
 ): Promise<ActionLogRecord> {
@@ -224,13 +224,12 @@ export async function requestCancelAction(
     `UPDATE action_log SET status = 'cancelling', error = ?
      WHERE townId = ? AND actionId = ? AND status IN ('pushed', 'accepted', 'cancelling')`,
   ).run(reason, action.townId, action.id);
-  await publishActionCancelToBus(redis, action.townId, action.id);
+  publishActionCancelToBus(bus, action.townId, action.id);
   return findAction(db, action.townId, action.id) ?? { ...action, status: "cancelling", error: reason };
 }
 
 export async function recordActionAck(
   db: AppDb,
-  _redis: Redis,
   townId: string,
   payload: ActionAckPayload,
 ): Promise<void> {
@@ -274,7 +273,6 @@ export async function recordActionAck(
 
 export async function waitForActionTerminalStatus(
   db: AppDb,
-  _redis: Redis,
   action: ActionLogRecord,
   options: WaitForActionTerminalStatusOptions = {},
 ): Promise<ActionLogRecord> {
@@ -340,13 +338,13 @@ function findAction(db: AppDb, townId: string, actionId: string): ActionLogRecor
   return row ? rowToActionLog(row) : null;
 }
 
-async function requestCancelOpenActionForCharacter(
+function requestCancelOpenActionForCharacter(
   db: AppDb,
-  redis: Redis,
+  bus: MessageBus,
   townId: string,
   characterId: string,
   replacementId: string,
-): Promise<void> {
+): void {
   const rows = db.prepare(
     `SELECT actionId FROM action_log
      WHERE townId = ? AND characterId = ? AND status IN ('pushed', 'accepted')`,
@@ -355,7 +353,7 @@ async function requestCancelOpenActionForCharacter(
     db.prepare(
       `UPDATE action_log SET status = 'cancelling', error = ? WHERE townId = ? AND actionId = ?`,
     ).run(`preempted by ${replacementId}`, townId, row.actionId);
-    await publishActionCancelToBus(redis, townId, row.actionId);
+    publishActionCancelToBus(bus, townId, row.actionId);
   }
 }
 

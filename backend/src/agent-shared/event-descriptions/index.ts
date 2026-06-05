@@ -13,11 +13,7 @@ import type { Locale } from "../../i18n/index.js";
 import { SAY_TO_ACTION } from "../../godot-link/actions.js";
 import type { WorldEventRecord } from "../../godot-link/protocol.js";
 import { renderActionFailedEventLine } from "./action-failed.js";
-import {
-  renderContainerDepositedEventLine,
-  renderContainerInspectedEventLine,
-  renderContainerWithdrawnEventLine,
-} from "./container.js";
+import { renderContainerPutTakeEventLine } from "./container.js";
 import { renderFallbackEventLine } from "./fallback.js";
 import { renderPlanFarmWorkEventLine } from "./farm.js";
 import {
@@ -30,7 +26,6 @@ import { renderGiveEventLine } from "./give.js";
 import { renderDropItemEventLine, renderUseItemEventLine } from "./item.js";
 import { renderMoveToLocationEventLine } from "./move.js";
 import { renderSayToEventLine } from "./say.js";
-import { renderShelfItemSoldEventLine, renderShelfUpdatedEventLine } from "./shelf.js";
 import { renderWentToSleepEventLine, renderWokeUpEventLine } from "./sleep.js";
 import { renderOfferTradeEventLine, renderRespondToTradeEventLine } from "./trade.js";
 import { renderUseWorkstationEventLine } from "./workstation.js";
@@ -43,11 +38,7 @@ const RENDERERS: Record<string, EventLineRenderer> = {
   respond_to_trade: renderRespondToTradeEventLine,
   went_to_sleep: renderWentToSleepEventLine,
   woke_up: renderWokeUpEventLine,
-  container_inspected: renderContainerInspectedEventLine,
-  container_deposited: renderContainerDepositedEventLine,
-  container_withdrawn: renderContainerWithdrawnEventLine,
-  shelf_updated: renderShelfUpdatedEventLine,
-  shelf_item_sold: renderShelfItemSoldEventLine,
+  container_put_take: renderContainerPutTakeEventLine,
   use_item: renderUseItemEventLine,
   // 9 个 axis event + draw_water 全部走同一个 workstation 渲染器（事件数据 shape 相同）。
   // 见 docs/proficiency_system.md + agent-shared/game-tools/craft-registry.ts。

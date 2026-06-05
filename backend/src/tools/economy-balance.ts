@@ -475,6 +475,7 @@ const ECONOMY = {
     iron_ore: 2,
     salt: 0.5,
     flax_bundle: 0.5,
+    malt: 1.0,            // 小麦晾晒制麦，¼ 银网格
     raw_meat: 2,
     egg: 0.5,
     berry: 0.25,
@@ -497,12 +498,13 @@ const ECONOMY = {
     cured_stew: 2.0,      // 28 hunger
     berry_jam: 1.25,      // 15 hunger
     tomato_fruit: 0.5,    // 10 hunger
+    beer: 2.5,            // 麦芽发酵奢侈饮品，5 hunger + 12 stamina
   } as Dict<number>,
   // 所有锚都 fixed，recipe 推导不覆盖。
   fixedPriceItems: [
     "silver_coin", "gold_coin", "silver_ore", "gold_ore",
     "wheat", "flour", "bread", "wood", "charcoal", "iron_ore", "salt", "flax_bundle",
-    "raw_meat", "egg", "berry", "tomato_fruit",
+    "raw_meat", "egg", "berry", "tomato_fruit", "malt", "beer",
     "cooked_meat", "cured_meat", "omelet", "cured_omelet", "veg_stew", "cured_stew", "berry_jam",
   ],
   defaultMargin: 0.18,

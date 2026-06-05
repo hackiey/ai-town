@@ -152,7 +152,7 @@ export function buildDetailsBlock(title, innerHtml, open) {
   return details;
 }
 
-function buildMessage(app, record) {
+export function buildMessage(app, record) {
   const div = document.createElement("div");
   div.className = "msg " + record.role;
   div.dataset.messageSeq = String(record.seq);
@@ -191,7 +191,8 @@ function buildMessage(app, record) {
 
 function renderUserBody(message) {
   const text = extractText(message.content);
-  return collapsibleText(text || "(empty)");
+  // user message 默认展开（超长仍提供「收起」），看消息时不用先点开。
+  return collapsibleText(text || "(empty)", { defaultExpanded: true });
 }
 
 function renderAssistantBody(container, message, toolsSnapshot, llmMessages, llmSystemPrompt) {
@@ -350,22 +351,23 @@ function renderToolResultBody(message) {
   return wrap;
 }
 
-function collapsibleText(text, options) {
+export function collapsibleText(text, options) {
   const wrap = document.createElement("div");
   const pre = document.createElement("pre");
   pre.textContent = text;
   wrap.appendChild(pre);
   const shouldTruncate = !options || options.truncate !== false;
   if (shouldTruncate && text.length > 800) {
-    wrap.classList.add("truncate-wrap", "collapsed");
+    const startExpanded = !!(options && options.defaultExpanded);
+    wrap.classList.add("truncate-wrap");
+    if (!startExpanded) wrap.classList.add("collapsed");
+    const collapsedLabel = "展开 (" + text.length + " 字符)";
     const toggle = document.createElement("div");
     toggle.className = "truncate-toggle";
-    toggle.textContent = "展开 (" + text.length + " 字符)";
+    toggle.textContent = wrap.classList.contains("collapsed") ? collapsedLabel : "收起";
     toggle.addEventListener("click", () => {
       wrap.classList.toggle("collapsed");
-      toggle.textContent = wrap.classList.contains("collapsed")
-        ? "展开 (" + text.length + " 字符)"
-        : "收起";
+      toggle.textContent = wrap.classList.contains("collapsed") ? collapsedLabel : "收起";
     });
     wrap.appendChild(toggle);
   }

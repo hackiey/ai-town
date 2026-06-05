@@ -11,7 +11,7 @@ const SCREEN_PADDING := 12.0
 
 var _panel: PanelContainer = null
 var _title: Label = null
-var _condition_label: Label = null
+var _status_label: Label = null
 var _rows: Dictionary = {}
 var _hovered: Character = null
 
@@ -75,12 +75,12 @@ func _build_ui() -> void:
 	_add_meter_row(grid, "hunger", Color(0.91, 0.64, 0.22, 1.0))
 	_add_meter_row(grid, "rest", Color(0.34, 0.56, 0.96, 1.0))
 
-	_condition_label = Label.new()
-	_condition_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_condition_label.add_theme_font_size_override("font_size", 12)
-	_condition_label.add_theme_color_override("font_color", Color(1.0, 0.72, 0.42, 1.0))
-	_condition_label.visible = false
-	vbox.add_child(_condition_label)
+	_status_label = Label.new()
+	_status_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_status_label.add_theme_font_size_override("font_size", 12)
+	_status_label.add_theme_color_override("font_color", Color(1.0, 0.72, 0.42, 1.0))
+	_status_label.visible = false
+	vbox.add_child(_status_label)
 
 
 func _add_meter_row(parent: GridContainer, attribute_id: String, color: Color) -> void:
@@ -154,9 +154,9 @@ func _render(character: Character) -> void:
 	_set_meter("hunger", character.hunger, character.max_hunger)
 	_set_meter("rest", character.rest, character.max_rest)
 
-	var conditions := _condition_labels(character)
-	_condition_label.visible = conditions.size() > 0
-	_condition_label.text = "  ".join(conditions)
+	var statuses := _status_labels(character)
+	_status_label.visible = statuses.size() > 0
+	_status_label.text = "  ".join(statuses)
 
 
 func _set_meter(attribute_id: String, current: float, max_value: float) -> void:
@@ -173,22 +173,22 @@ func _set_meter(attribute_id: String, current: float, max_value: float) -> void:
 	value.text = "%.0f / %.0f" % [current, max_value]
 
 
-func _condition_labels(character: Character) -> Array[String]:
+func _status_labels(character: Character) -> Array[String]:
 	var labels: Array[String] = []
 	if not character.alive:
-		labels.append(tr("ui.status.condition.dead"))
+		labels.append(tr("ui.status.status.dead"))
 	if character.burning:
-		labels.append(tr("ui.status.condition.burning"))
-	for condition_v in character.active_conditions:
-		if not (condition_v is Dictionary):
+		labels.append(tr("ui.status.status.burning"))
+	for status_v in character.active_statuses:
+		if not (status_v is Dictionary):
 			continue
-		var condition: Dictionary = condition_v as Dictionary
-		var condition_type := str(condition.get("type", ""))
-		if condition_type.is_empty():
+		var status: Dictionary = status_v as Dictionary
+		var status_type := str(status.get("type", ""))
+		if status_type.is_empty():
 			continue
-		var key := "ui.status.condition.%s" % condition_type
+		var key := "ui.status.status.%s" % status_type
 		var localized := tr(key)
-		labels.append(localized if localized != key else condition_type)
+		labels.append(localized if localized != key else status_type)
 	return labels
 
 

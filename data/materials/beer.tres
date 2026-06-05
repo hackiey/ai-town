@@ -1,0 +1,27 @@
+[gd_resource type="Resource" script_class="Substance" format=3 uid="uid://bmatbeer0001"]
+
+[ext_resource type="Script" path="res://src/sim/materials/substance.gd" id="1_mat"]
+
+[resource]
+script = ExtResource("1_mat")
+id = "beer"
+category = "food"
+hardness = 0
+density = 1.01
+melting_point = -1.0
+ignite_temperature = -1.0
+flammable = false
+thermal_capacity = 4000.0
+thermal_conductivity = 0.55
+brittleness = 0.0
+electrical_conductivity = 0.05
+default_state = 1
+hazards = PackedStringArray()
+tint = Color(0.80, 0.55, 0.15, 1)
+visual_fallback = ""
+transforms = {}
+alloys = {}
+shelf_life_hours = 720.0
+rotten_into = "rotten_food"
+tags = PackedStringArray("drink", "alcohol", "liquid")
+extra = {}

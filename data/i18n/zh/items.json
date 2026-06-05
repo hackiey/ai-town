@@ -9,6 +9,15 @@
     "bread": {
       "name": "面包"
     },
+    "malt": {
+      "name": "麦芽"
+    },
+    "beer": {
+      "name": "麦芽酒"
+    },
+    "beer_fermenting": {
+      "name": "麦芽酒（酿造中）"
+    },
     "charcoal": {
       "name": "木炭"
     },

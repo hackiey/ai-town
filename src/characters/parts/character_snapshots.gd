@@ -3,7 +3,7 @@ extends RefCounted
 
 # Character 只读 snapshot 收口。全部为派生量 —— 不写状态，不持有缓存。
 # 包括：
-# - 向 UI / context 上报的 vitals / profile / equipment / conditions
+# - 向 UI / context 上报的 vitals / profile / equipment / statuses
 # - physiology 派生的 effective_stamina_max / effective_move_speed_mult
 # - 角色身份 soul_snapshot（给 prompt 用）
 # - 钟表 snapshot（GameClock 转发）
@@ -77,7 +77,7 @@ func ui_profile() -> Dictionary:
 		"burning": _character.burning,
 		"sleeping": _character.sleep_controller().is_sleeping(),
 		"sleepNeededHours": _character.sleep_needed_hours,
-		"conditionIds": active_condition_ids(),
+		"statusIds": active_status_ids(),
 		"groupIds": group_ids,
 		"equipment": equipment,
 		"vitals": {
@@ -118,15 +118,15 @@ func equipped_items() -> Array[Dictionary]:
 	return out
 
 
-func active_condition_ids() -> Array[String]:
+func active_status_ids() -> Array[String]:
 	var out: Array[String] = []
-	for condition_v in _character.active_conditions:
-		if typeof(condition_v) != TYPE_DICTIONARY:
+	for status_v in _character.active_statuses:
+		if typeof(status_v) != TYPE_DICTIONARY:
 			continue
-		var condition: Dictionary = condition_v as Dictionary
-		var condition_type := str(condition.get("type", ""))
-		if not condition_type.is_empty():
-			out.append(condition_type)
+		var status: Dictionary = status_v as Dictionary
+		var status_type := str(status.get("type", ""))
+		if not status_type.is_empty():
+			out.append(status_type)
 	return out
 
 

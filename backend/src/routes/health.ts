@@ -9,11 +9,9 @@ export const healthRoutes: FastifyPluginAsync = async (app) => {
 
   app.get("/ready", async () => {
     app.db.prepare("SELECT 1").get();
-    await app.redis.ping();
     return {
       ok: true,
       sqlite: "ok",
-      redis: "ok",
     };
   });
 };

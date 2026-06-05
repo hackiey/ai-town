@@ -91,7 +91,7 @@ const _GAME_WORLD_SCHEMA: Array[String] = [
 		savedAt TEXT NOT NULL
 	)""",
 
-	# character_states: 角色当前态真值（位姿 / 数值 / 装备 / conditions）。
+	# character_states: 角色当前态真值（位姿 / 数值 / 装备 / statuses）。
 	# 每角色一行；存在即代表"该角色已被持久化过"——start-up seed（npcs.json /
 	# Player STARTER_KIT）在该行存在时跳过。复原顺序：scene 静态 spawn → _ready
 	# 调 Db.take_character_state 拿这一行覆盖默认。
@@ -118,7 +118,7 @@ const _GAME_WORLD_SCHEMA: Array[String] = [
 		equippedLeftHand TEXT,
 		equippedBody TEXT,
 		equippedHead TEXT,
-		activeConditions TEXT,
+		activeStatuses TEXT,
 		silverCentiBalance INTEGER NOT NULL DEFAULT 0,
 		-- currentActivity*：旁人能直接看出来的"身体动作"真值。
 		-- kind 是 slug 枚举（using_workstation / working_at_farm / ...），target 是关联 entity 的 slug
@@ -132,8 +132,9 @@ const _GAME_WORLD_SCHEMA: Array[String] = [
 	)""",
 	"CREATE INDEX IF NOT EXISTS idx_character_states_town_alive ON character_states (townId, alive)",
 
-	# item_instances: 背包 / 装备 / 货架 / 预留地面物品。本期 ownerKind 用
-	# 'character'（背包）和 'shelf'（货架），ownerKind='world' 列预留给后续地面玩法。
+	# item_instances: 背包 / 装备 / 容器（含货架）/ 预留地面物品。ownerKind 用
+	# 'character'（背包）和 'container'（容器+货架统一），ownerKind='world' 列预留给后续地面玩法。
+	# listingPriceCenti: 货架陈列标价（centi 银），null = 普通容器/未定价。仅展示，付钱靠 trade/give。
 	#
 	# Schema 三层（见 project_item_state_architecture）：
 	#   reaction 涌现身份（generate 冻结）：shapeType / tags / materials / physicsProps
@@ -170,6 +171,8 @@ const _GAME_WORLD_SCHEMA: Array[String] = [
 		baseEffects TEXT,
 		displayedEffects TEXT,
 
+		listingPriceCenti INTEGER,
+
 		createdAt TEXT NOT NULL,
 		updatedAt TEXT NOT NULL
 	)""",
@@ -178,25 +181,11 @@ const _GAME_WORLD_SCHEMA: Array[String] = [
 	"""CREATE UNIQUE INDEX IF NOT EXISTS idx_items_char_slot
 		ON item_instances (townId, ownerKind, ownerId, slotIndex)
 		WHERE ownerKind = 'character'""",
-	"""CREATE UNIQUE INDEX IF NOT EXISTS idx_items_shelf_slot
-		ON item_instances (townId, ownerKind, ownerId, slotIndex)
-		WHERE ownerKind = 'shelf'""",
+	# 货架已统一为容器（ShelfNode extends ContainerNode），内容物走 ownerKind='container'。
+	# 货架陈列的"标价"作为槽位 aspect listingPriceCenti 随 item_instances 一起存，不再有独立 listing 表。
 	"""CREATE UNIQUE INDEX IF NOT EXISTS idx_items_container_slot
 		ON item_instances (townId, ownerKind, ownerId, slotIndex)
 		WHERE ownerKind = 'container'""",
-
-	# shelf_listings: 货架 listing 元数据，物品真值仍在 item_instances(ownerKind='shelf')。
-	"""CREATE TABLE IF NOT EXISTS shelf_listings (
-		id TEXT PRIMARY KEY,
-		townId TEXT NOT NULL,
-		shelfId TEXT NOT NULL,
-		slotIndex INTEGER NOT NULL,
-		ownerCharacterId TEXT NOT NULL,
-		priceCenti INTEGER NOT NULL,
-		createdAt TEXT NOT NULL,
-		updatedAt TEXT NOT NULL
-	)""",
-	"CREATE UNIQUE INDEX IF NOT EXISTS idx_shelf_listings_slot ON shelf_listings (townId, shelfId, slotIndex)",
 
 	# trade_offers: offer_trade/respond_to_trade 的 pending 状态真值。
 	# offerJson/requestJson 保留 LLM 文本，requestedShelfItemsJson 存结构化的 listing+数量。
@@ -353,9 +342,9 @@ const _GAME_WORLD_SCHEMA: Array[String] = [
 		PRIMARY KEY (townId, containerId)
 	)""",
 
-	# shelves: 场景里 ShelfNode 的静态配置（位置 / owner_group / 容量 / 交互半径）。
-	# Backend perception 按 shelfId 或 ownerGroup 查这张表，listings 走 shelf_listings 单独 join。
-	# 空货架在本表仍有一行——backend 据此输出 "nearbyShelves / ownedShelves" 的空架 context。
+	# shelves: 场景里 ShelfNode 的静态配置（位置 / owner_group / 容量 / 交互半径）。仅作"这个容器是货架"
+	# 的标记 + 命名来源。货架已统一为容器（ShelfNode extends ContainerNode），内容物走 item_instances
+	# (ownerKind='container')，标价走槽位 listingPriceCenti。Backend 按本表 shelfId 查内容 + 标价。
 	# displayName 不存这里——参见 workstation_states 注释，货架同理走 i18n locations.json。
 	"""CREATE TABLE IF NOT EXISTS shelves (
 		townId TEXT NOT NULL,
@@ -543,6 +532,7 @@ func _apply_schema_migrations() -> void:
 	_ensure_column("item_instances", "freshnessAgeHours", "REAL")
 	_ensure_column("item_instances", "baseEffects", "TEXT")
 	_ensure_column("item_instances", "displayedEffects", "TEXT")
+	_ensure_column("item_instances", "listingPriceCenti", "INTEGER")
 	# farm_plots.stage：把派生量 stage 落盘，让 backend 直接读不再镜像公式 / variety
 	# catalog。Godot tick / hydrate / harvest 算完 stage 后随 persist 一起写。
 	_ensure_column("farm_plots", "stage", "TEXT")
@@ -808,9 +798,9 @@ func _initial_character_state_fields(character_id: String, conf: Dictionary, sle
 		rest = clampf(100.0 * minf(1.0, slept_by_start / maxf(sleep_needed_hours, 0.1)), 0.0, 100.0)
 	var hunger := _MORNING_INITIAL_HUNGER
 	var stamina := _initial_effective_stamina_max(hunger, rest)
-	var conditions := []
+	var statuses := []
 	if wake_minute > _MORNING_START_GAME_MINUTE:
-		conditions.append({
+		statuses.append({
 			"type": "sleeping",
 			"started_at": Time.get_ticks_msec() / 1000.0,
 			"expires_total_hours": ceili(float(wake_minute) / 60.0),
@@ -831,7 +821,7 @@ func _initial_character_state_fields(character_id: String, conf: Dictionary, sle
 		"temperature": 36.5,
 		"burning": false,
 		"alive": true,
-		"activeConditions": conditions,
+		"activeStatuses": statuses,
 		"silverCentiBalance": maxi(0, int(round(float(conf.get("starting_wallet_silver", 0)) * 100.0))),
 	}
 
@@ -969,8 +959,11 @@ func can_access(character_id: String, owner_group: String) -> bool:
 	if owner_group.is_empty():
 		return true
 	if _db == null:
-		# DB 没开：保守放行（dev 期免得卡死所有交互）；server 模式下应该不会走到
-		return true
+		# 权限闸门 fail-closed：判不了就拒绝。can_access 只该 server 调（_db 必非空），
+		# 走到这里说明要么在 client 误调、要么 server DB 加载失败——两种都要立刻暴露，
+		# 不能静默放行（那会让所有 owner_group 形同虚设）。
+		push_error("[Db] can_access 在 _db==null 时被调用 —— 拒绝访问（fail-closed）；caller 应只在 server 调")
+		return false
 	var groups := get_character_groups(character_id)
 	if groups.has(GOD_GROUP):
 		return true
@@ -1084,14 +1077,14 @@ func take_character_state(character_id: String) -> Dictionary:
 
 # UPSERT 当前角色态。fields 期望键：currentLocationId / posX/Y/Z / rotY / animState /
 # hp / stamina / hunger / rest / sleepNeededHours / temperature / burning(bool) / alive(bool) / equipped*(4) /
-# activeConditions(Array)。缺字段按 SQL 默认值 / 上一次值（用 COALESCE 兜底太重，
+# activeStatuses(Array)。缺字段按 SQL 默认值 / 上一次值（用 COALESCE 兜底太重，
 # MVP 先要求 caller 传齐主字段）。
 func save_character_state(character_id: String, fields: Dictionary) -> void:
 	if _db == null or character_id.is_empty():
 		return
 	var now := Time.get_datetime_string_from_system(true)
-	var conditions_json := JSON.stringify(fields.get("activeConditions", []))
-	var sql := "INSERT INTO character_states (townId, characterId, currentLocationId, posX, posY, posZ, rotY, animState, hp, maxHp, stamina, maxStamina, hunger, maxHunger, rest, maxRest, sleepNeededHours, temperature, burning, alive, equippedRightHand, equippedLeftHand, equippedBody, equippedHead, activeConditions, silverCentiBalance, updatedAt) VALUES ('%s', '%s', %s, %f, %f, %f, %f, %s, %f, %f, %f, %f, %f, %f, %f, %f, %f, %f, %d, %d, %s, %s, %s, %s, %s, %d, '%s') ON CONFLICT(townId, characterId) DO UPDATE SET currentLocationId = excluded.currentLocationId, posX = excluded.posX, posY = excluded.posY, posZ = excluded.posZ, rotY = excluded.rotY, animState = excluded.animState, hp = excluded.hp, maxHp = excluded.maxHp, stamina = excluded.stamina, maxStamina = excluded.maxStamina, hunger = excluded.hunger, maxHunger = excluded.maxHunger, rest = excluded.rest, maxRest = excluded.maxRest, sleepNeededHours = excluded.sleepNeededHours, temperature = excluded.temperature, burning = excluded.burning, alive = excluded.alive, equippedRightHand = excluded.equippedRightHand, equippedLeftHand = excluded.equippedLeftHand, equippedBody = excluded.equippedBody, equippedHead = excluded.equippedHead, activeConditions = excluded.activeConditions, silverCentiBalance = excluded.silverCentiBalance, updatedAt = excluded.updatedAt" % [
+	var statuses_json := JSON.stringify(fields.get("activeStatuses", []))
+	var sql := "INSERT INTO character_states (townId, characterId, currentLocationId, posX, posY, posZ, rotY, animState, hp, maxHp, stamina, maxStamina, hunger, maxHunger, rest, maxRest, sleepNeededHours, temperature, burning, alive, equippedRightHand, equippedLeftHand, equippedBody, equippedHead, activeStatuses, silverCentiBalance, updatedAt) VALUES ('%s', '%s', %s, %f, %f, %f, %f, %s, %f, %f, %f, %f, %f, %f, %f, %f, %f, %f, %d, %d, %s, %s, %s, %s, %s, %d, '%s') ON CONFLICT(townId, characterId) DO UPDATE SET currentLocationId = excluded.currentLocationId, posX = excluded.posX, posY = excluded.posY, posZ = excluded.posZ, rotY = excluded.rotY, animState = excluded.animState, hp = excluded.hp, maxHp = excluded.maxHp, stamina = excluded.stamina, maxStamina = excluded.maxStamina, hunger = excluded.hunger, maxHunger = excluded.maxHunger, rest = excluded.rest, maxRest = excluded.maxRest, sleepNeededHours = excluded.sleepNeededHours, temperature = excluded.temperature, burning = excluded.burning, alive = excluded.alive, equippedRightHand = excluded.equippedRightHand, equippedLeftHand = excluded.equippedLeftHand, equippedBody = excluded.equippedBody, equippedHead = excluded.equippedHead, activeStatuses = excluded.activeStatuses, silverCentiBalance = excluded.silverCentiBalance, updatedAt = excluded.updatedAt" % [
 		_esc(RunMode.town_id), _esc(character_id),
 		_sql_str_or_null(fields.get("currentLocationId", "")),
 		float(fields.get("posX", 0.0)), float(fields.get("posY", 0.0)), float(fields.get("posZ", 0.0)),
@@ -1109,7 +1102,7 @@ func save_character_state(character_id: String, fields: Dictionary) -> void:
 		_sql_str_or_null(fields.get("equippedLeftHand", "")),
 		_sql_str_or_null(fields.get("equippedBody", "")),
 		_sql_str_or_null(fields.get("equippedHead", "")),
-		_sql_str_or_null(conditions_json),
+		_sql_str_or_null(statuses_json),
 		int(fields.get("silverCentiBalance", 0)),
 		now,
 	]
@@ -1408,161 +1401,7 @@ func prune_orphan_container_storage(valid_container_ids: Array[String]) -> void:
 		push_warning("[Db] prune_orphan_container_storage failed: %s" % _db.error_message)
 
 
-# ─── Public API: shelves / trade_offers ──────────────────────────────
-
-func save_shelf_listing(
-	shelf_id: String,
-	slot_index: int,
-	listing_id: String,
-	owner_character_id: String,
-	price_centi: int,
-	slot: Dictionary,
-	location_id: String = ""
-) -> void:
-	if _db == null or shelf_id.is_empty() or listing_id.is_empty() or owner_character_id.is_empty():
-		return
-	var item_id := str(slot.get("item_id", ""))
-	var qty := int(slot.get("quantity", 0))
-	if item_id.is_empty() or qty <= 0 or price_centi < 0:
-		delete_shelf_listing(listing_id)
-		return
-	var now := Time.get_datetime_string_from_system(true)
-	var item_sql := _build_item_instance_upsert(listing_id, item_id, "shelf", shelf_id, location_id, slot_index, slot, now)
-	if not _db.query(item_sql):
-		push_warning("[Db] save_shelf_listing item_instances failed: %s" % _db.error_message)
-		return
-	var listing_sql := "INSERT INTO shelf_listings (id, townId, shelfId, slotIndex, ownerCharacterId, priceCenti, createdAt, updatedAt) VALUES ('%s', '%s', '%s', %d, '%s', %d, '%s', '%s') ON CONFLICT(id) DO UPDATE SET shelfId = excluded.shelfId, slotIndex = excluded.slotIndex, ownerCharacterId = excluded.ownerCharacterId, priceCenti = excluded.priceCenti, updatedAt = excluded.updatedAt" % [
-		_esc(listing_id), _esc(RunMode.town_id), _esc(shelf_id), slot_index,
-		_esc(owner_character_id), price_centi, now, now,
-	]
-	if not _db.query(listing_sql):
-		push_warning("[Db] save_shelf_listing shelf_listings failed: %s" % _db.error_message)
-
-
-func delete_shelf_listing(listing_id: String) -> void:
-	if _db == null or listing_id.is_empty():
-		return
-	var listing_sql := "DELETE FROM shelf_listings WHERE townId = '%s' AND id = '%s'" % [
-		_esc(RunMode.town_id), _esc(listing_id),
-	]
-	if not _db.query(listing_sql):
-		push_warning("[Db] delete_shelf_listing shelf_listings failed: %s" % _db.error_message)
-	var item_sql := "DELETE FROM item_instances WHERE townId = '%s' AND ownerKind = 'shelf' AND id = '%s'" % [
-		_esc(RunMode.town_id), _esc(listing_id),
-	]
-	if not _db.query(item_sql):
-		push_warning("[Db] delete_shelf_listing item_instances failed: %s" % _db.error_message)
-
-
-func prune_shelf_storage(valid_shelf_ids: Array[String]) -> void:
-	if _db == null:
-		return
-	var valid: Array[String] = []
-	for shelf_id_v in valid_shelf_ids:
-		var shelf_id := str(shelf_id_v).strip_edges()
-		if not shelf_id.is_empty():
-			valid.append("'%s'" % _esc(shelf_id))
-	var shelf_where := "townId = '%s'" % _esc(RunMode.town_id)
-	if not valid.is_empty():
-		shelf_where += " AND shelfId NOT IN (%s)" % ", ".join(valid)
-	var delete_listing_sql := "DELETE FROM shelf_listings WHERE %s" % shelf_where
-	if not _db.query(delete_listing_sql):
-		push_warning("[Db] prune_shelf_storage shelf_listings failed: %s" % _db.error_message)
-	var item_where := "townId = '%s' AND ownerKind = 'shelf'" % _esc(RunMode.town_id)
-	if not valid.is_empty():
-		item_where += " AND ownerId NOT IN (%s)" % ", ".join(valid)
-	var delete_items_sql := "DELETE FROM item_instances WHERE %s" % item_where
-	if not _db.query(delete_items_sql):
-		push_warning("[Db] prune_shelf_storage item_instances failed: %s" % _db.error_message)
-	var shelves_where := "townId = '%s'" % _esc(RunMode.town_id)
-	if not valid.is_empty():
-		shelves_where += " AND shelfId NOT IN (%s)" % ", ".join(valid)
-	var delete_shelves_sql := "DELETE FROM shelves WHERE %s" % shelves_where
-	if not _db.query(delete_shelves_sql):
-		push_warning("[Db] prune_shelf_storage shelves failed: %s" % _db.error_message)
-
-
-func update_shelf_listing_price(listing_id: String, price_centi: int) -> void:
-	if _db == null or listing_id.is_empty():
-		return
-	var now := Time.get_datetime_string_from_system(true)
-	var sql := "UPDATE shelf_listings SET priceCenti = %d, updatedAt = '%s' WHERE townId = '%s' AND id = '%s'" % [
-		maxi(price_centi, 0), now, _esc(RunMode.town_id), _esc(listing_id),
-	]
-	if not _db.query(sql):
-		push_warning("[Db] update_shelf_listing_price failed: %s" % _db.error_message)
-
-
-func list_shelf_listings(shelf_id: String) -> Array[Dictionary]:
-	if _db == null or shelf_id.is_empty():
-		return []
-	var sql := "SELECT l.id AS listingId, l.shelfId, l.slotIndex, l.ownerCharacterId, l.priceCenti, %s FROM shelf_listings l LEFT JOIN item_instances i ON i.id = l.id WHERE l.townId = '%s' AND l.shelfId = '%s' ORDER BY l.slotIndex ASC" % [
-		_item_instance_select_columns("i"), _esc(RunMode.town_id), _esc(shelf_id),
-	]
-	if not _db.query(sql):
-		push_warning("[Db] list_shelf_listings failed: %s" % _db.error_message)
-		return []
-	var out: Array[Dictionary] = []
-	for row_v in (_db.query_result as Array):
-		var row: Dictionary = row_v as Dictionary
-		var slot := _item_row_to_slot(row)
-		if str(slot.get("item_id", "")).is_empty():
-			continue
-		out.append({
-			"listing_id": str(row.get("listingId", "")),
-			"shelf_id": str(row.get("shelfId", shelf_id)),
-			"slot_index": int(row.get("slotIndex", -1)),
-			"owner_character_id": str(row.get("ownerCharacterId", "")),
-			"price_centi": int(row.get("priceCenti", 0)),
-			"slot": slot,
-		})
-	return out
-
-
-func get_shelf_listing(listing_id: String) -> Dictionary:
-	if _db == null or listing_id.is_empty():
-		return {}
-	var sql := "SELECT l.id AS listingId, l.shelfId, l.slotIndex, l.ownerCharacterId, l.priceCenti, %s FROM shelf_listings l LEFT JOIN item_instances i ON i.id = l.id WHERE l.townId = '%s' AND l.id = '%s' LIMIT 1" % [
-		_item_instance_select_columns("i"), _esc(RunMode.town_id), _esc(listing_id),
-	]
-	if not _db.query(sql):
-		push_warning("[Db] get_shelf_listing failed: %s" % _db.error_message)
-		return {}
-	var rows: Array = _db.query_result as Array
-	if rows.is_empty():
-		return {}
-	var row: Dictionary = rows[0] as Dictionary
-	var slot := _item_row_to_slot(row)
-	if str(slot.get("item_id", "")).is_empty():
-		return {}
-	return {
-		"listing_id": str(row.get("listingId", "")),
-		"shelf_id": str(row.get("shelfId", "")),
-		"slot_index": int(row.get("slotIndex", -1)),
-		"owner_character_id": str(row.get("ownerCharacterId", "")),
-		"price_centi": int(row.get("priceCenti", 0)),
-		"slot": slot,
-	}
-
-
-func next_empty_shelf_slot(shelf_id: String, slot_count: int) -> int:
-	if _db == null or shelf_id.is_empty() or slot_count <= 0:
-		return -1
-	var sql := "SELECT slotIndex FROM shelf_listings WHERE townId = '%s' AND shelfId = '%s' ORDER BY slotIndex ASC" % [
-		_esc(RunMode.town_id), _esc(shelf_id),
-	]
-	if not _db.query(sql):
-		push_warning("[Db] next_empty_shelf_slot failed: %s" % _db.error_message)
-		return -1
-	var used := {}
-	for row_v in (_db.query_result as Array):
-		var row: Dictionary = row_v as Dictionary
-		used[int(row.get("slotIndex", -1))] = true
-	for idx in slot_count:
-		if not used.has(idx):
-			return idx
-	return -1
-
+# ─── Public API: trade_offers ────────────────────────────────────────
 
 func create_trade_offer(
 	from_character_id: String,
@@ -2032,7 +1871,7 @@ func _hydrate_character_states(town_id: String) -> void:
 		"hp", "maxHp", "stamina", "maxStamina", "hunger", "maxHunger", "rest", "maxRest",
 		"sleepNeededHours", "temperature", "burning", "alive",
 		"equippedRightHand", "equippedLeftHand", "equippedBody", "equippedHead",
-		"activeConditions", "silverCentiBalance",
+		"activeStatuses", "silverCentiBalance",
 	])
 	for r_v in rows:
 		var r: Dictionary = r_v as Dictionary
@@ -2050,7 +1889,7 @@ func _select_character_state(character_id: String) -> Dictionary:
 		"hp", "maxHp", "stamina", "maxStamina", "hunger", "maxHunger", "rest", "maxRest",
 		"sleepNeededHours", "temperature", "burning", "alive",
 		"equippedRightHand", "equippedLeftHand", "equippedBody", "equippedHead",
-		"activeConditions", "silverCentiBalance",
+		"activeStatuses", "silverCentiBalance",
 	])
 	if rows.is_empty():
 		return {}
@@ -2058,12 +1897,12 @@ func _select_character_state(character_id: String) -> Dictionary:
 
 
 func _character_state_row_to_cache(r: Dictionary) -> Dictionary:
-	var conditions: Array = []
-	var raw := str(r.get("activeConditions", ""))
+	var statuses: Array = []
+	var raw := str(r.get("activeStatuses", ""))
 	if not raw.is_empty():
 		var parsed: Variant = JSON.parse_string(raw)
 		if parsed is Array:
-			conditions = parsed as Array
+			statuses = parsed as Array
 	return {
 		"currentLocationId": str(r.get("currentLocationId", "")),
 		"posX": float(r.get("posX", 0.0)),
@@ -2087,7 +1926,7 @@ func _character_state_row_to_cache(r: Dictionary) -> Dictionary:
 		"equippedLeftHand": str(r.get("equippedLeftHand", "")),
 		"equippedBody": str(r.get("equippedBody", "")),
 		"equippedHead": str(r.get("equippedHead", "")),
-		"activeConditions": conditions,
+		"activeStatuses": statuses,
 		"silverCentiBalance": int(r.get("silverCentiBalance", 0)),
 	}
 
@@ -2202,6 +2041,7 @@ func _item_instance_column_list(first: String, second: String) -> Array:
 		"freshnessTier", "freshnessAgeHours",
 		"durability",
 		"baseEffects", "displayedEffects",
+		"listingPriceCenti",
 	]
 
 
@@ -2215,6 +2055,7 @@ func _item_instance_select_columns(alias: String) -> String:
 		"freshnessTier", "freshnessAgeHours",
 		"durability",
 		"baseEffects", "displayedEffects",
+		"listingPriceCenti",
 	]
 	var prefixed: Array = []
 	for c in cols:
@@ -2243,7 +2084,7 @@ func _build_item_instance_upsert(row_id: String, item_id: String, owner_kind: St
 		pos_x_sql = "%f" % pv.x
 		pos_y_sql = "%f" % pv.y
 		pos_z_sql = "%f" % pv.z
-	return "INSERT INTO item_instances (id, townId, itemDefId, ownerKind, ownerId, locationId, posX, posY, posZ, slotIndex, stackCount, quality, shapeType, tags, materials, physicsProps, containerAmount, containerContent, freshnessTier, freshnessAgeHours, durability, baseEffects, displayedEffects, createdAt, updatedAt) VALUES ('%s', '%s', '%s', '%s', '%s', %s, %s, %s, %s, %d, %d, %d, '%s', '%s', '%s', %s, %s, %s, %s, %s, %s, %s, %s, '%s', '%s') ON CONFLICT(id) DO UPDATE SET itemDefId = excluded.itemDefId, ownerId = excluded.ownerId, locationId = excluded.locationId, posX = excluded.posX, posY = excluded.posY, posZ = excluded.posZ, slotIndex = excluded.slotIndex, stackCount = excluded.stackCount, quality = excluded.quality, shapeType = excluded.shapeType, tags = excluded.tags, materials = excluded.materials, physicsProps = excluded.physicsProps, containerAmount = excluded.containerAmount, containerContent = excluded.containerContent, freshnessTier = excluded.freshnessTier, freshnessAgeHours = excluded.freshnessAgeHours, durability = excluded.durability, baseEffects = excluded.baseEffects, displayedEffects = excluded.displayedEffects, updatedAt = excluded.updatedAt" % [
+	return "INSERT INTO item_instances (id, townId, itemDefId, ownerKind, ownerId, locationId, posX, posY, posZ, slotIndex, stackCount, quality, shapeType, tags, materials, physicsProps, containerAmount, containerContent, freshnessTier, freshnessAgeHours, durability, baseEffects, displayedEffects, listingPriceCenti, createdAt, updatedAt) VALUES ('%s', '%s', '%s', '%s', '%s', %s, %s, %s, %s, %d, %d, %d, '%s', '%s', '%s', %s, %s, %s, %s, %s, %s, %s, %s, %s, '%s', '%s') ON CONFLICT(id) DO UPDATE SET itemDefId = excluded.itemDefId, ownerId = excluded.ownerId, locationId = excluded.locationId, posX = excluded.posX, posY = excluded.posY, posZ = excluded.posZ, slotIndex = excluded.slotIndex, stackCount = excluded.stackCount, quality = excluded.quality, shapeType = excluded.shapeType, tags = excluded.tags, materials = excluded.materials, physicsProps = excluded.physicsProps, containerAmount = excluded.containerAmount, containerContent = excluded.containerContent, freshnessTier = excluded.freshnessTier, freshnessAgeHours = excluded.freshnessAgeHours, durability = excluded.durability, baseEffects = excluded.baseEffects, displayedEffects = excluded.displayedEffects, listingPriceCenti = excluded.listingPriceCenti, updatedAt = excluded.updatedAt" % [
 		_esc(row_id), _esc(RunMode.town_id), _esc(item_id), _esc(owner_kind), _esc(owner_id),
 		_sql_str_or_null(location_id),
 		pos_x_sql, pos_y_sql, pos_z_sql,
@@ -2257,6 +2098,7 @@ func _build_item_instance_upsert(row_id: String, item_id: String, owner_kind: St
 		_nullable_int(slot.get("durability", null)),
 		_sql_str_or_null(base_effects_json),
 		_sql_str_or_null(displayed_effects_json),
+		_nullable_int(slot.get("listing_price_centi", null)),
 		now, now,
 	]
 
@@ -2309,6 +2151,7 @@ func _item_row_to_slot(row: Dictionary) -> Dictionary:
 	slot["durability"] = _row_value_or_null(row, "durability")
 	slot["base_effects"] = _parse_json_dict_or_null(row.get("baseEffects", null))
 	slot["displayed_effects"] = _parse_json_dict_or_null(row.get("displayedEffects", null))
+	slot["listing_price_centi"] = _row_value_or_null(row, "listingPriceCenti")
 	# 经 normalize 防止 lua/sqlite 漂移；同时把 freshness_tier 等 int_or_null 走 coerce
 	InventorySlotData.normalize(slot)
 	return slot
@@ -2391,7 +2234,7 @@ func _trade_row_to_snapshot(row: Dictionary) -> Dictionary:
 # ─── helpers ──────────────────────────────────────────────────────────
 
 # 简单的 single-quote 转义。godot-sqlite 的 query() 不带 prepared statement
-# 模板，select_rows 的 conditions 也是字符串拼接，所以这里手动 escape。
+# 模板，select_rows 的 statuses 也是字符串拼接，所以这里手动 escape。
 # 我们的 character_id / group_id 都是 snake_case 标识符，不允许引号是合理约束。
 func _esc(s: String) -> String:
 	return s.replace("'", "''")

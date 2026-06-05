@@ -1,6 +1,6 @@
 # Entity model
 
-> Status: **partial** — Substance + Character schema 已 landed；Wand / Item / active_conditions tick / active_effects 未做。
+> Status: **partial** — Substance + Character schema 已 landed；Wand / Item / active_statuses tick / active_effects 未做。
 
 世界里"东西"的统一数据模型。所有物理对象、角色、物品都基于这一层。
 
@@ -53,7 +53,7 @@ Character extends PhysicalProperties {
 
   hp, max_hp,
   stamina, max_stamina, stamina_regen_per_sec,
-  active_conditions: [...],
+  active_statuses: [...],
 
   alive, faction, inventory_id,
   equipped: { right_hand?, left_hand?, body?, head? },
@@ -66,33 +66,37 @@ Character extends PhysicalProperties {
 Wand extends Item, PhysicalProperties {
   substance: "wood" | "crystal" | "bone" | ...,
 
-  spell_energy, spell_energy_max,
-  spell_energy_regen_per_sec,
-  channel_efficiency,                     // 0.5-2.0，stamina→spell energy 转换比
-  school_affinity: { fire?: 0.8, mind?: 1.5 },  // 学派加成
+  power,                                   // 威力倍率（spell_power 因子③）
+  affinity: { fire?: 0.8, mind?: 1.5 },    // 学派契合，按 reaction.school 取值（因子④）
 
-  durability,                             // 0-1，磨损
+  // 储能（实例字段，随 inventory 持久化）
+  wand_charges, max_wand_charges,          // 独立，不由 power 派生；杖芯材质写入
 }
 ```
 
-**施法资源链**：
+**施法资源链**（[combat-system.md §3](./combat-system.md#3-资源--威力模型) 定稿）：
 
 ```
-玩家施法 fireball (cost=20 spell energy)
+玩家施法 (instant cost=20 / channel drain_per_sec)
   → 检查右手有 wand
-  → wand.spell_energy >= 20？
-      yes → 直接扣 wand
-      no  → 缺额 = 20 - wand.spell_energy
-            从 caster.stamina 抽 (缺额 / channel_efficiency) 灌进 wand 再扣
-            stamina 也不够 → fail("exhausted")
-  → wand.durability -= 0.001
+  → wand.wand_charges >= cost？
+      yes → 扣 wand_charges
+      no  → fail("not_enough_charge")          // 不抽 stamina，施法不吃体力
 ```
+
+**三条与早期设计的纠正**（2026-06-05 回写，对齐用户拍板 + [reaction-schema §7.4b](./reaction-schema.md)）：
+
+- **不自回**：删掉 `spell_energy_regen_per_sec`。储能只靠仪式 / 魔法石 / 药水补
+- **施法不吃 stamina**：删掉 `channel_efficiency` 和"缺能从 stamina 抽"的资源链。魔力（杖）和体力（身体）两轴独立
+- **不复用 durability，用 depleted**：魔杖不走 `durability`/`broken`，独立机制 `wand_charges ≤ 0 → depleted` tag，**不可修复，用完即弃**（[reaction-schema §7.4b](./reaction-schema.md)）
+
+> 命名统一为 `wand_charges` / `max_wand_charges`（原 `spell_energy`/`spell_energy_max` 废弃），三文档同源：本节 + [reaction-schema §7.4b](./reaction-schema.md) + [combat-system §4.2](./combat-system.md#42-wand装备层)。
 
 > 与 [design-doc §3](../design-doc.md) 的偏差：原 design-doc 把 mana 列为第 2 层资源（角色属性）。当前设计把 mana 概念**没消失**但**载体从角色迁到了魔杖**。需要回写 design-doc。
 
-### 2.3 Active conditions：状态条件 vs 数字 buff/debuff
+### 2.3 Active statuses：状态条件 vs 数字 buff/debuff
 
-`active_conditions` 是 Smallville-style **文本/标签流**，不是传统 RPG 的数字 buff/debuff。
+`active_statuses` 是 Smallville-style **文本/标签流**，不是传统 RPG 的数字 buff/debuff。
 
 每条：`{ type: String, started_at: float, duration_sec: float, source_id: String }`，`duration_sec < 0` 表示永久。
 
@@ -123,7 +127,7 @@ ActiveEffect {
 | `src/sim/substance.gd` | `Substance` Resource 类，10 个物理字段 |
 | `src/sim/substances.gd` | `Substances.by_id("flesh")` 静态查表 |
 | `src/sim/substances/{wood,stone,metal,flesh,water,cloth,glass,crystal}.tres` | 8 种基础材质 |
-| `src/characters/character.gd` | `Character extends CharacterBody3D`：物理 + hp/stamina/conditions/equipped |
+| `src/characters/character.gd` | `Character extends CharacterBody3D`：物理 + hp/stamina/statuses/equipped |
 | `src/characters/npcs/npc.gd` | `NPC extends Character`，自动继承所有字段 |
 
 **字段策略**：
@@ -135,7 +139,7 @@ ActiveEffect {
 **未实现**：
 - Wand class（待 spell 系统起来）
 - Item base class（另一个 session 在做）
-- active_conditions 过期 tick
+- active_statuses 过期 tick
 - 持久 active_effects（待第一个光球类法术）
 - body_temperature 自我维持
 - Inventory storage / 装备生效逻辑
@@ -143,7 +147,7 @@ ActiveEffect {
 ## 4. Open questions
 
 - **Strict / degenerate / mixed 魔杖**：没杖能不能施法？倾向 strict
-- **Stamina 耗尽行为**：只是不能行动 vs 昏倒 vs 扣 hp？倾向 "exhausted" condition + 强制冷却
+- **Stamina 耗尽行为**：只是不能行动 vs 昏倒 vs 扣 hp？倾向 "exhausted" status + 强制冷却
 - **Body temperature 是否做**：倾向 MVP 不做，只做"被点燃"
-- **学派切分**：8-12 个学派的具体名字与覆盖范围（影响 Wand.school_affinity 字段）
+- **学派切分**：8-12 个学派的具体名字与覆盖范围（影响 `Wand.affinity` key 和 `Reaction.school`，见 [combat-system §4.4](./combat-system.md#44-reaction-的战斗扩展复用-schema--一个新字段)）
 - **死亡掉落规则**（[design-doc §6 / §11](../design-doc.md)）：影响 `equipped` 在死亡时的处理

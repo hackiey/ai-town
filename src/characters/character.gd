@@ -74,7 +74,7 @@ var alive: bool = true:
 # Smallville-style 状态流（文本/标签，不是数字 buff）
 # 每条: { type: String, started_at: float, expires_total_hours: int, source_id: String }
 # expires_total_hours = -1 表示永久（hungry / sleeping 走显式清理，不到这步）
-var active_conditions: Array[Dictionary] = []
+var active_statuses: Array[Dictionary] = []
 
 # 社交 / 装备 ────────────────────────────────────────
 @export var faction: String = "townsfolk"
@@ -250,7 +250,7 @@ func _ready() -> void:
 	hunger = max_hunger
 	rest = max_rest
 	inventory_ops().init_slots()
-	# Hydrate from SQLite character_states：覆盖位姿 / 数值 / 装备 / conditions。
+	# Hydrate from SQLite character_states：覆盖位姿 / 数值 / 装备 / statuses。
 	# 首次开服的角色初始状态由 Db seed 写入；Character 只读取 DB。
 	if RunMode.is_runtime():
 		state_io().hydrate()
@@ -327,9 +327,9 @@ func apply_ten_minute_tick(total_minute: int) -> void:
 		"rest": rest,
 		"max_rest": max_rest,
 		"is_sleeping": sleep_controller().is_sleeping(),
-		"has_hungry": has_condition("hungry"),
+		"has_hungry": has_status("hungry"),
 	})
-	_expire_timed_conditions()
+	_expire_timed_statuses()
 	head_status().sync_to_clients()
 	if GameClock.minute_of_hour_for_minute(total_minute) == 0:
 		inventory_ops().tick_spoilage()
@@ -337,39 +337,39 @@ func apply_ten_minute_tick(total_minute: int) -> void:
 	state_io().persist()
 
 
-# 清理过期 conditions。expires_total_hours == -1 表示永久（hungry 等永远不到这步）；
+# 清理过期 statuses。expires_total_hours == -1 表示永久（hungry 等永远不到这步）；
 # 其余比对 GameClock.total_game_hours()。每次 slow_tick 末尾跑一次。
-func _expire_timed_conditions() -> void:
+func _expire_timed_statuses() -> void:
 	var now_total: int = GameClock.total_game_hours()
-	for i in range(active_conditions.size() - 1, -1, -1):
-		var c: Dictionary = active_conditions[i]
+	for i in range(active_statuses.size() - 1, -1, -1):
+		var c: Dictionary = active_statuses[i]
 		var exp: int = int(c.get("expires_total_hours", -1))
 		if exp >= 0 and now_total >= exp:
-			active_conditions.remove_at(i)
+			active_statuses.remove_at(i)
 
 
-# ─── condition primitives（active_conditions 公共操作）──
+# ─── status primitives（active_statuses 公共操作）──
 # 数组留 Character，操作是公共 API（sleep_controller / physiology / inventory 都会调）。
 
-func has_condition(type: String) -> bool:
-	for c in active_conditions:
+func has_status(type: String) -> bool:
+	for c in active_statuses:
 		if str(c.get("type", "")) == type:
 			return true
 	return false
 
 
-func remove_condition_type(type: String) -> void:
-	for i in range(active_conditions.size() - 1, -1, -1):
-		if str(active_conditions[i].get("type", "")) == type:
-			active_conditions.remove_at(i)
+func remove_status_type(type: String) -> void:
+	for i in range(active_statuses.size() - 1, -1, -1):
+		if str(active_statuses[i].get("type", "")) == type:
+			active_statuses.remove_at(i)
 
 
 # 头顶气泡当前状态文本（NPC / Player 可 override 插入 "working" / "crafting" 等）。
-# 子类 super._head_status_text() 拿到基类的 condition 文本兜底。
+# 子类 super._head_status_text() 拿到基类的 status 文本兜底。
 func _head_status_text() -> String:
-	if has_condition("sleeping"):
+	if has_status("sleeping"):
 		return tr("ui.head_status.sleeping")
-	if has_condition("hungry"):
+	if has_status("hungry"):
 		return tr("ui.head_status.hungry")
 	return tr("ui.head_status.idle")
 
@@ -386,11 +386,11 @@ func _should_show_head_status_bubble(status_text: String) -> bool:
 
 # 吃 / 喝 / heal 等主动改变 hunger 的路径调一次：让 physiology 复检 hungry 阈值
 # 立即清除"饥饿"状态。effects.gd 不该懂这块业务规则，所以走这里。
-func refresh_conditions() -> void:
+func refresh_statuses() -> void:
 	MechanicHost.invoke("physiology", "on_hunger_changed", {
 		"character": self,
 		"hunger": hunger,
-		"has_hungry": has_condition("hungry"),
+		"has_hungry": has_status("hungry"),
 	})
 	head_status().sync_to_clients()
 	state_io().persist()

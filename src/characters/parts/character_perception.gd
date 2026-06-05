@@ -202,16 +202,27 @@ func nearby_workstation_snapshots(max_distance: float = INTERACTIVE_WORKSTATION_
 	return character.workstation_actions().nearby_snapshots(max_distance)
 
 
+# 货架已统一为无锁容器（ShelfNode extends ContainerNode），但单独以 perceivedShelves 上报，
+# 让 backend 渲染成带标价的货架。只需 id + directlyInteractable；内容/标价 backend 自己查
+# shelves 表 + item_instances(ownerKind='container')。可见性 = 物理距离，无 group/owned 概念。
 func nearby_shelf_snapshots(max_distance: float = INTERACTIVE_SHELF_VISIBLE_RADIUS) -> Array[Dictionary]:
-	if Shelves == null or not Shelves.has_method("nearby_snapshots_for"):
-		return []
-	return Shelves.nearby_snapshots_for(character, max_distance)
-
-
-func owned_shelf_snapshots() -> Array[Dictionary]:
-	if Shelves == null or not Shelves.has_method("owned_snapshots_for"):
-		return []
-	return Shelves.owned_snapshots_for(character)
+	var out: Array[Dictionary] = []
+	var tree := character.get_tree()
+	if tree == null:
+		return out
+	var max_sq := max_distance * max_distance
+	for n in tree.get_nodes_in_group("shelves"):
+		var shelf := n as ShelfNode
+		if shelf == null or not is_instance_valid(shelf):
+			continue
+		var anchor := shelf.get_approach_node().global_position
+		if character.global_position.distance_squared_to(anchor) > max_sq:
+			continue
+		out.append({
+			"id": shelf.effective_shelf_id(),
+			"directlyInteractable": character.global_position.distance_squared_to(anchor) <= Containers.INTERACTION_RADIUS * Containers.INTERACTION_RADIUS,
+		})
+	return out
 
 
 # 容器统一通过 nearby_workstation_snapshots 上报（ContainerNode 进 "workstations" 组，

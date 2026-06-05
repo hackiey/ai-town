@@ -1,4 +1,32 @@
 {
+  "bakery_bread_shelf": {
+    "starting_inventory": [
+      {
+        "item_id": "bread",
+        "quantity": 12,
+        "price_silver": 0.5
+      }
+    ]
+  },
+  "general_store_shelf": {
+    "starting_inventory": [
+      {
+        "item_id": "rope",
+        "quantity": 12,
+        "price_silver": 1.25
+      },
+      {
+        "item_id": "flax_bundle",
+        "quantity": 20,
+        "price_silver": 0.5
+      },
+      {
+        "item_id": "flax_seed",
+        "quantity": 30,
+        "price_silver": 0.25
+      }
+    ]
+  },
   "treasury_vault": {
     "starting_inventory": [
       {

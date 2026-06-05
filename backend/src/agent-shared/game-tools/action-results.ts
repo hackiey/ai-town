@@ -172,13 +172,10 @@ function genericActionName(toolName: string): string {
     case "use_item": return "使用物品";
     case "pick_up_item": return "拾取物品";
     case "drop_item": return "放下物品";
-    case "update_shelf": return "更新货架";
-    case "buy_from_shelf": return "购买货架物品";
+    case "put_take": return "存取货架/容器";
+    case "view_container": return "查看货架/容器";
     case "offer": return "递交 / 交换";
     case "respond": return "回应请求";
-    case "deposit_to_container": return "存入容器";
-    case "withdraw_from_container": return "从容器取出";
-    case "inspect_container": return "查看容器";
     case "write": return "书写";
     case "read": return "阅读";
     case "sleep": return "睡觉";
@@ -206,11 +203,7 @@ function genericActionSummary(
     case "pick_up_item": return `已拾取 ${targetItemLabel(target, displayTarget)}。`;
     case "drop_item": return `已放下 ${targetItemLabel(target, displayTarget)}。`;
     case "use_item": return `已使用 ${targetItemLabel(target, displayTarget)}。`;
-    case "deposit_to_container": return "已把物品存入容器。";
-    case "withdraw_from_container": return "已从容器取出物品。";
-    case "inspect_container": return inspectContainerSummary(record.result);
-    case "buy_from_shelf": return "购买已完成。";
-    case "update_shelf": return "货架已更新。";
+    case "put_take": return "已完成货架/容器存取。";
     case "offer": return "递交动作已提交。";
     case "respond": return respondSummary(record.result, target);
     case "sleep": return sleepSummary(record.result, target);

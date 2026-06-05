@@ -140,6 +140,12 @@ func _seed_workstation_states_to_db() -> void:
 	# 而本次启动 WorkstationNode 全部空闲——seed 前先清零保持镜像一致。
 	Db.clear_all_workstation_operators()
 	var nodes := scene.find_children("*", "WorkstationNode", true, false)
+	# workstation_states / perception manifest 的主键 = 复合逻辑 id（workstation_logical_id），
+	# 与 _register_workstations 的 anchor id 同源。绝不再用 node.name —— 实例化工作台默认沿用
+	# 场景根名（如 4 个 StoveWorkstationNode），跨铺子必然重名，后 seed 的行会覆盖前者，
+	# backend 按 id 反查就拿到错铺子的 owner（曾让巴克利熔炉显示成"霍洛锻造场"）。
+	# 复合 id 含 owner_group，结构上保证有主工作台唯一；公共工作台（无 group）按 def 合并是预期行为。
+	var seen_ids := {}
 	for n in nodes:
 		var ws := n as WorkstationNode
 		if ws == null:
@@ -148,9 +154,16 @@ func _seed_workstation_states_to_db() -> void:
 		# Backend 拼 nearbyWorkstations 时从两张表合并，避免一行写两份。
 		if ws is ContainerNode:
 			continue
-		var node_id := String(ws.name)
+		var node_id := workstation_logical_id(ws)
+		# 有主工作台（id 含 "@"）撞 id = 同一 group 里放了两台同类工作台，多半是内容错误，fail loud；
+		# 公共工作台（无 "@"，如多口水井）撞 id 是合并语义，静默。
+		if seen_ids.has(node_id) and node_id.contains("@"):
+			push_error("[TownWorld] 工作台复合 id '%s' 重复（%s 与 %s）；同 group 内同类工作台会互相覆盖" % [
+				node_id, seen_ids[node_id], ws.get_path(),
+			])
+		seen_ids[node_id] = ws.get_path()
 		var def_id := String(ws.workstation_id)
-		var location_id := def_id if not def_id.is_empty() else node_id
+		var location_id := node_id
 		# 用 Approach marker 当代表位置：和 NPC 寻路终点一致，避免 backend 算"NPC 在工作台旁边"
 		# 时用本体中心导致 NPC 走到 marker 仍判 not near。
 		var pos := ws.get_approach_node().global_position
@@ -188,6 +201,10 @@ func _seed_container_states_to_db() -> void:
 		var c := n as ContainerNode
 		if c == null:
 			continue
+		# 货架是 ContainerNode 子类，但额外写进 shelves 表（标记 + 命名）。这里跳过，避免
+		# 同一个 id 既出现在 container_states 又出现在 shelves，被 backend 重复渲染。
+		if c is ShelfNode:
+			continue
 		var cid := c.effective_container_id()
 		if cid.is_empty():
 			continue
@@ -204,8 +221,8 @@ func _seed_container_states_to_db() -> void:
 
 
 # 把场景里 ShelfNode 的静态配置写进 Db.shelves，给 backend perception 用。
-# 幂等：每次 server 启动都全量覆盖。listings 在 shelf_listings 表（独立持久化），不在此处。
-# 位置用 Approach marker —— 与 nearby/directlyInteractable 判定 anchor 一致。
+# 幂等：每次 server 启动都全量覆盖。内容物在 item_instances(ownerKind='container')，标价在槽位
+# listingPriceCenti，不在此处。位置用 Approach marker —— 与 nearby/directlyInteractable 判定 anchor 一致。
 func _seed_shelf_states_to_db() -> void:
 	var scene := get_tree().current_scene
 	if scene == null:
@@ -223,7 +240,7 @@ func _seed_shelf_states_to_db() -> void:
 			"ownerGroup": String(s.owner_group),
 			"locationId": s.effective_location_id(),
 			"slotCount": s.slot_count,
-			"interactionRadius": s.interaction_radius,
+			"interactionRadius": Containers.INTERACTION_RADIUS,
 			"posX": pos.x,
 			"posY": pos.y,
 			"posZ": pos.z,
@@ -525,18 +542,10 @@ func _register_workstations() -> void:
 		var ws := n as WorkstationNode
 		if ws == null:
 			continue
-		# 优先用 workstation_id 当 logical location id —— 同 id 的多个节点（比如两口都标 well 的水井）
-		# 自动合并成多 anchor，可前往地点列表里只显示一个 "well"，move 时挑最近 anchor。
-		# 只有未填 workstation_id 的旧节点才退回 node name 兜底。
-		var base := String(ws.workstation_id)
-		if base.is_empty():
-			base = String(ws.name)
 		var resolved_group := _resolve_workstation_owner_group(ws)
-		# 有主工作台按 owner 拆成独立逻辑地点（id = "<def>@<group>"），不再跨铺子按类型合并：
-		# 这样铁砧/灶台等会显示成"名字（group）"，move_to_location 也按 owner 精确定位。
-		# 公共工作台（owner_group 空，如各处水井）仍按 def id 合并，move 时就近选锚点。
-		# backend locationName 见到 "@" 会拆出 def+group 用 ownerSuffixedSiteName 算显示名。
-		var id := base if resolved_group.is_empty() else "%s@%s" % [base, resolved_group]
+		# 逻辑 id 同源走 workstation_logical_id：有主工作台按 owner 拆成独立逻辑地点
+		# （id = "<def>@<group>"），公共工作台（owner_group 空，如各处水井）按 def 合并、move 选最近锚点。
+		var id := workstation_logical_id(ws)
 		# anchor 存 Approach marker 而非 ws 本身：NPC 寻路目标走 marker.global_position，
 		# 子类 .tscn 可以 override Approach.transform 把到达点推到工作台 collider 外，
 		# 避免本体落在 navmesh 洞里导致 corridor planner unreachable。
@@ -562,6 +571,21 @@ func _register_workstations() -> void:
 		# 烘焙进 catalog 的 location.<id>.alias；公共工作台（水井）仍存通用别名供反查。
 		if resolved_group.is_empty() and not ws.display_name.is_empty():
 			_workstation_aliases[id] = ws.display_name
+
+
+# 工作台的复合逻辑 id —— anchor 注册 / workstation_states seed / perception manifest / busy
+# 占用镜像四处共用同一函数，绝不用 node.name（实例化默认沿用场景根名，跨铺子必重名）。
+#   有主（owner_group 非空）→ "<def>@<group>"（如 "forge@blacksmith_shop"），结构上唯一；
+#   公共（owner_group 空，如水井）→ "<def>"，多节点按 def 合并、move 选最近锚点。
+#   def 为空的老节点退回 node.name 兜底。backend locationName 见 "@" 会拆 def+group 算显示名。
+func workstation_logical_id(ws: WorkstationNode) -> String:
+	if ws == null:
+		return ""
+	var base := String(ws.workstation_id)
+	if base.is_empty():
+		base = String(ws.name)
+	var resolved_group := _resolve_workstation_owner_group(ws)
+	return base if resolved_group.is_empty() else "%s@%s" % [base, resolved_group]
 
 
 # WorkstationNode.owner_group 解析（语义对齐 LocationMarker）：

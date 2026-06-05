@@ -61,7 +61,7 @@ const ID_PREFIX = "seed:";
 const MEMORY_KEY_PREFIX = "memory:";
 
 // 调用方传入角色 → runtimeName 的解析器。
-// 必须和 worker.ts 起 AgentHost 时用的同一个 AgentRuntimeRouter 保持一致，
+// 必须和 agent-runtime 插件起 AgentHost 时用的同一个 AgentRuntimeRouter 保持一致，
 // 否则 seed 写到一个 runtimeName，运行时读另一个，会出现 soul / 其他记忆为空的 bug。
 export type SeedRuntimeResolver = (characterId: string) => string;
 

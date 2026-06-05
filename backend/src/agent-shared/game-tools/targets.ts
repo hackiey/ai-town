@@ -11,62 +11,89 @@ import {
   resolveNavigableSiteIdByName,
   resolveWorkstationIdByName,
 } from "../name-resolver/index.js";
-import { ownerSuffixedSiteName } from "../entity-descriptions/site-naming.js";
-import type { AgentCurrentContext, ItemIndexEntry } from "../prompt-context/types.js";
+import { renderInteractiveSiteName } from "../entity-descriptions/site-naming.js";
+import type { AgentCurrentContext, InteractiveSiteContext, ItemIndexEntry } from "../prompt-context/types.js";
 import { craftSkipsInputs, getCraftSpec, type CraftSlug } from "./craft-registry.js";
 import { moveToCharacterPrefix, moveToItemPrefix, td } from "./i18n.js";
 import type { ItemRefParam, PlanFarmWorkOpParams } from "./schemas.js";
 import type { MoveTargetError, MoveTargetResolution } from "./types.js";
 import type { PlanFarmWorkOp } from "../../godot-link/actions.js";
 
-// 交易对象解析：先看 near + far，再回退全表 slug 解析（respond_to_trade 的对方可能已离场）
-// 名字 → character slug。是否在附近、能不能交易由 Godot 决定。
+// 名字 → character slug。先看 near + far，再回退全表 slug 解析（对方可能已离场）。
+// 是否在附近、能不能交易/听到由 Godot 决定。trade / speech 共用，只差缺参错误 key。
+function resolveCharacterTarget(
+  character: string,
+  currentContext: AgentCurrentContext | undefined,
+  missingErrorKey: string,
+): { id: string; label: string } | MoveTargetError {
+  if (!character?.trim()) {
+    return { error: t(missingErrorKey, getActiveLocale()) };
+  }
+  const id = resolveCharacterTargetId(character, currentContext);
+  if (!id) {
+    return { error: t("error.unknown_character", getActiveLocale(), { character: character.trim() }) };
+  }
+  return { id, label: characterName(id) };
+}
+
 export function resolveTradeTarget(
   character: string,
   currentContext?: AgentCurrentContext,
 ): { id: string; label: string } | MoveTargetError {
-  if (!character?.trim()) {
-    return { error: t("error.offer_missing_character", getActiveLocale()) };
-  }
-  const id = resolveCharacterTargetId(character, currentContext);
-  if (!id) {
-    return { error: t("error.unknown_character", getActiveLocale(), { character: character.trim() }) };
-  }
-  return { id, label: characterName(id) };
+  return resolveCharacterTarget(character, currentContext, "error.offer_missing_character");
 }
 
-// 名字 → character slug。volume 还是传给 Godot 让它决定能不能听到。
 export function resolveSpeechTarget(
   character: string,
   currentContext?: AgentCurrentContext,
 ): { id: string; label: string } | MoveTargetError {
-  if (!character?.trim()) {
-    return { error: t("error.say_to_missing_character", getActiveLocale()) };
+  return resolveCharacterTarget(character, currentContext, "error.say_to_missing_character");
+}
+
+// ── 交互 site 解析：单一入口 ──────────────────────────────────────────────
+// workstation / container / farm / shelf 全走这里。匹配的 alias 用 renderInteractiveSiteName
+// 产出 —— 与 sections.ts 渲染给 LLM 看的字符串**同源**，所以 LLM 原样 copy 回来必能反查到。
+// 各 tool 的 resolver 只是套一层 filter（按 kind / craft 允许集）+ 决定返回哪个 id。
+// 不做"在不在附近"校验 —— 那是 Godot 的权威（[[feedback_godot_is_authority]]）。
+export type SiteMatch = { site: InteractiveSiteContext; label: string };
+
+export function resolveInteractiveSite(
+  requested: string | undefined,
+  currentContext: AgentCurrentContext | undefined,
+  opts: {
+    filter: (site: InteractiveSiteContext) => boolean;
+    // requested 为空时：候选恰好一个就直接选它（单工作台 craft / 唯一货架等）。
+    autoPickWhenEmpty?: boolean;
+    // 默认取 ctx.interactiveSites（= prompt 渲染的同一份）；货架 owned scope 传显式列表。
+    sites?: InteractiveSiteContext[];
+  },
+): SiteMatch | undefined {
+  const candidates = (opts.sites ?? currentContext?.interactiveSites ?? []).filter(opts.filter);
+  const trimmed = requested?.trim() ?? "";
+  if (!trimmed) {
+    if (opts.autoPickWhenEmpty && candidates.length === 1) {
+      return { site: candidates[0], label: renderInteractiveSiteName(candidates[0]) };
+    }
+    return undefined;
   }
-  const id = resolveCharacterTargetId(character, currentContext);
-  if (!id) {
-    return { error: t("error.unknown_character", getActiveLocale(), { character: character.trim() }) };
+  const normalized = normalizeLocationInput(trimmed);
+  for (const site of candidates) {
+    const name = renderInteractiveSiteName(site);
+    const aliases = [
+      name,
+      site.displayName,
+      site.id,
+      site.workstationId ?? "",
+      site.locationId ?? "",
+      // 旧 resolver 接受的两种合成形式，保留向后兼容（LLM 偶尔把 id 也括在后面）。
+      site.kind === "shelf" ? `${name} (${site.id})` : "",
+      site.kind === "workstation" && site.workstationId ? `${name} (${site.workstationId})` : "",
+    ];
+    if (aliases.some((alias) => alias && normalizeLocationInput(alias) === normalized)) {
+      return { site, label: name };
+    }
   }
-  return { id, label: characterName(id) };
-}
-
-// farm/workstation/shelf 的 display name 算法 —— 给 resolve 路径找 enum-id 用，
-// 不再用于 schema enum（schema 已去 enum 走 free-form，见 schemas.ts 顶部注释）。
-function farmDisplayName(farm: AgentCurrentContext["nearbyFarms"][number], index: number): string {
-  const displayId = farm.locationId ?? farm.id;
-  const localized = locationName(displayId);
-  return localized === displayId ? td("farm.default_format", { n: index + 1 }) : localized;
-}
-
-function workstationDisplayName(workstation: AgentCurrentContext["nearbyWorkstations"][number], index: number): string {
-  const display = workstation.displayName?.trim() || locationName(workstation.id);
-  return display && display !== workstation.id ? display : td("workstation.default_format", { n: index + 1 });
-}
-
-function shelfDisplayName(shelf: AgentCurrentContext["nearbyShelves"][number], index: number): string {
-  const display = shelf.displayName?.trim() || (shelf.locationId ? locationName(shelf.locationId) : "");
-  const name = display && display !== shelf.id ? display : td("shelf.default_format", { n: index + 1 });
-  return `${name} (${shelf.id})`;
+  return undefined;
 }
 
 export function resolveMoveTarget(requestedLocation: string, currentContext?: AgentCurrentContext): MoveTargetResolution | MoveTargetError {
@@ -123,11 +150,16 @@ export function resolvePlanFarm(
     return { error: t("error.plan_farm_work_missing_farm", getActiveLocale()) };
   }
   const trimmed = requestedFarm.trim();
-  const farm = resolveFarmTarget(trimmed, currentContext);
-  if (!farm) {
+  const match = resolveInteractiveSite(trimmed, currentContext, { filter: (s) => s.kind === "farm" });
+  if (match) {
+    return { id: match.site.id, label: match.label };
+  }
+  // 不在附近也尝试名字 → location id 反查（让 Godot 后续判定）。
+  const locationId = resolveLocationIdByName(trimmed);
+  if (!locationId) {
     return { error: t("error.unknown_farm", getActiveLocale(), { farm: trimmed }) };
   }
-  return farm;
+  return { id: locationId, label: locationName(locationId) };
 }
 
 // 名字 → canonical workstation id。显示名在 backend 映射层消化，发给 Godot 的 payload
@@ -137,25 +169,11 @@ export function resolveUseWorkstationName(requested: string | undefined, current
     return { error: t("error.use_workstation_missing_workstation", getActiveLocale()) };
   }
   const trimmed = requested.trim();
-  const normalized = normalizeLocationInput(trimmed);
-  const nearbyWorkstations = currentContext?.nearbyWorkstations ?? [];
-  for (let index = 0; index < nearbyWorkstations.length; index += 1) {
-    const workstation = nearbyWorkstations[index];
-    const label = workstationDisplayName(workstation, index);
-    // sections.ts 渲染 "{label}（{groupName}）"，LLM 经常把整串当 name 传回来——
-    // 把同一组合塞进 alias 列表，让 verbatim copy 也能反查 id。
-    const ownerSuffixed = ownerSuffixedSiteName(label, workstation.ownerGroup);
-    const aliases = [
-      workstation.id,
-      workstation.workstationId,
-      workstation.displayName ?? "",
-      label,
-      ownerSuffixed,
-      workstation.workstationId ? `${label} (${workstation.workstationId})` : "",
-    ];
-    if (aliases.some((alias) => alias && normalizeLocationInput(alias) === normalized)) {
-      return { id: workstation.workstationId, label };
-    }
+  const match = resolveInteractiveSite(trimmed, currentContext, {
+    filter: (s) => s.kind === "workstation" && !!s.workstationId,
+  });
+  if (match?.site.workstationId) {
+    return { id: match.site.workstationId, label: match.label };
   }
   const workstationId = resolveWorkstationIdByName(trimmed);
   if (!workstationId) {
@@ -337,29 +355,31 @@ export function canonicalizeKnownTargetName(target: string | undefined, currentC
   return itemId ?? trimmed;
 }
 
-export function resolveShelfTarget(
+// put_take / view_container 的统一目标解析：货架（kind=shelf）与容器（kind=workstation +
+// interactionMode=container）都能命中。返回 kind 让 caller 决定 take 物品的 scope。
+export function resolveContainerOrShelfTarget(
   requested: string | undefined,
   currentContext?: AgentCurrentContext,
-  scope: "owned" | "nearby" | "any" = "any",
-): { id: string; label: string } | MoveTargetError {
+): { id: string; label: string; kind: "container" | "shelf" } | MoveTargetError {
   if (!requested?.trim()) {
-    return { error: t(`error.${scope === "owned" ? "update_shelf" : "view_shelf"}_missing_shelf`, getActiveLocale()) };
+    return { error: t("error.unknown_container", getActiveLocale(), { container: "" }) };
   }
-  const shelves = scope === "owned"
-    ? (currentContext?.ownedShelves ?? [])
-    : scope === "nearby"
-      ? (currentContext?.nearbyShelves ?? [])
-      : ([...(currentContext?.ownedShelves ?? []), ...(currentContext?.nearbyShelves ?? [])]);
-  const normalized = normalizeLocationInput(requested);
-  for (let index = 0; index < shelves.length; index += 1) {
-    const shelf = shelves[index];
-    const label = shelfDisplayName(shelf, index);
-    const aliases = [shelf.id, shelf.locationId ?? "", shelf.displayName ?? "", label];
-    if (aliases.some((alias) => alias && normalizeLocationInput(alias) === normalized)) {
-      return { id: shelf.id, label };
-    }
+  const match = resolveInteractiveSite(requested, currentContext, {
+    filter: (s) => s.kind === "shelf" || (s.kind === "workstation" && s.interactionMode === "container"),
+  });
+  if (match) {
+    return {
+      id: match.site.id,
+      label: match.label,
+      kind: match.site.kind === "shelf" ? "shelf" : "container",
+    };
   }
-  return { error: t("error.unknown_shelf", getActiveLocale(), { shelf: requested.trim() }) };
+  // 不在感知内也尝试名字 → container id 反查（让 Godot 后续判定 not_nearby）。
+  const containerId = resolveContainerIdByName(requested.trim());
+  if (containerId) {
+    return { id: containerId, label: localizeStringValue(containerId), kind: "container" };
+  }
+  return { error: t("error.unknown_container", getActiveLocale(), { container: requested.trim() }) };
 }
 
 
@@ -372,28 +392,23 @@ export function resolveCraftWorkstation(
   currentContext?: AgentCurrentContext,
 ): { id: string; label: string } | MoveTargetError {
   const workstations = getCraftSpec(craft).workstations;
+  // craft 工作台只有一个时（cook/smith/mill_grain 等），不在附近也返回固定 id。
+  if (!requested?.trim() && workstations.length === 1) {
+    const id = workstations[0];
+    return { id, label: localizeStringValue(id) };
+  }
+  // 附近候选用共享解析（按 craft 允许集过滤）；requested 空且恰一个候选时自动选。
+  const match = resolveInteractiveSite(requested, currentContext, {
+    filter: (s) => s.kind === "workstation" && !!s.workstationId && workstations.includes(s.workstationId),
+    autoPickWhenEmpty: true,
+  });
+  if (match?.site.workstationId) {
+    return { id: match.site.workstationId, label: match.label };
+  }
   if (!requested?.trim()) {
-    if (workstations.length === 1) {
-      const id = workstations[0];
-      return { id, label: localizeStringValue(id) };
-    }
     return { error: t("error.use_workstation_missing_workstation", getActiveLocale()) };
   }
   const trimmed = requested.trim();
-  const normalized = normalizeLocationInput(trimmed);
-  // 优先在附近列表里找（含别名 / displayName / 默认序号文案）。
-  const list = currentContext?.nearbyWorkstations ?? [];
-  for (let index = 0; index < list.length; index += 1) {
-    const ws = list[index];
-    if (!workstations.includes(ws.workstationId)) continue;
-    const label = workstationDisplayName(ws, index);
-    // 同 resolveUseWorkstationName：接受 sections.ts 渲染的 "{label}（{groupName}）" 形式。
-    const ownerSuffixed = ownerSuffixedSiteName(label, ws.ownerGroup);
-    const aliases = [ws.id, ws.workstationId, ws.displayName ?? "", label, ownerSuffixed];
-    if (aliases.some((alias) => alias && normalizeLocationInput(alias) === normalized)) {
-      return { id: ws.workstationId, label };
-    }
-  }
   // 没在附近也尝试名字 → id 反查（让 Godot 后续判定 not_nearby）。
   const id = resolveWorkstationIdByName(trimmed);
   if (id && workstations.includes(id)) {
@@ -452,25 +467,6 @@ function resolveCharacterTargetId(character: string, currentContext?: AgentCurre
     }
   }
   return undefined;
-}
-
-function resolveFarmTarget(farmName: string, currentContext?: AgentCurrentContext): { id: string; label: string } | undefined {
-  const requested = normalizeLocationInput(farmName);
-  for (let index = 0; index < (currentContext?.nearbyFarms ?? []).length; index += 1) {
-    const farm = currentContext!.nearbyFarms[index];
-    const label = farmDisplayName(farm, index);
-    // 同 workstation：接受 sections.ts 渲染的 "{label}（{groupName}）" 形式。
-    const ownerSuffixed = ownerSuffixedSiteName(label, farm.ownerGroup);
-    const aliases = [farm.id, farm.locationId ?? "", label, ownerSuffixed];
-    if (aliases.some((alias) => alias && normalizeLocationInput(alias) === requested)) {
-      return { id: farm.id, label };
-    }
-  }
-  const locationId = resolveLocationIdByName(farmName);
-  if (!locationId) {
-    return undefined;
-  }
-  return { id: locationId, label: locationName(locationId) };
 }
 
 // 用于 move_to_location 的 prefix 路径 / use_item.target / canonicalize 等"按字符串

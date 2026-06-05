@@ -30,6 +30,9 @@ func _process(_delta: float) -> void:
 	for ws in get_tree().get_nodes_in_group("workstations"):
 		if not (ws is Node3D and is_instance_valid(ws)):
 			continue
+		# 货架（ShelfNode）虽在 workstations 组，但由 ShelfNameplateLayer 单独显示其铺面名。
+		if ws is ShelfNode:
+			continue
 		var id := ws.get_instance_id()
 		seen[id] = true
 		var widget: Dictionary = _widgets.get(id, {})

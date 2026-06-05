@@ -141,10 +141,6 @@ export function renderAgentTurnContext(context: GameAgentContext): string {
     appendSection(sections, section.title, section.body);
   }
 
-  if (context.current.ownedShelves.length > 0) {
-    appendSection(sections, t("prompt.context.label.owned_shelves", locale), renderOwnedShelfLines(context.current, locale));
-  }
-
   const interactiveSection = renderInteractiveSitesSection(context.current, locale);
   if (interactiveSection) {
     appendSection(sections, interactiveSection.title, interactiveSection.body);
@@ -400,27 +396,6 @@ function renderCurrentLocationText(current: AgentCurrentContext): string {
 
 function renderCharacterIdentity(characterId: string): string {
   return characterName(characterId);
-}
-
-function renderOwnedShelfLines(
-  current: AgentCurrentContext,
-  locale: Locale,
-): string {
-  if (current.ownedShelves.length === 0) {
-    return t("prompt.context.distance_band_none", locale);
-  }
-  return current.ownedShelves.map((shelf) => {
-    const name = shelf.displayName?.trim() || shelf.id;
-    const nearby = shelf.directlyInteractable
-      ? t("prompt.context.shelf.owner_nearby_yes", locale)
-      : t("prompt.context.shelf.owner_nearby_no", locale);
-    const listings = shelf.listings.length === 0
-      ? t("prompt.context.shelf.summary_empty", locale)
-      : shelf.listings
-        .map((listing) => `[${listing.index ?? "?"}] ${localizeText(listing.displayName ?? listing.itemId ?? listing.listingId)} x${listing.quantity} @ ${listing.priceText ?? `${listing.priceSilver.toFixed(2)} 银`}`)
-        .join("；");
-    return `${name}（${shelf.id}，${nearby}）：${listings}`;
-  }).map((line) => `- ${line}`).join("\n");
 }
 
 function appendSection(sections: string[], title: string, body: string): void {

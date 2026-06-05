@@ -7,6 +7,7 @@
 
 import { getActiveLocale, type Locale } from "../../i18n/index.js";
 import { groupName } from "../name-resolver/group.js";
+import type { InteractiveSiteContext } from "../prompt-context/types.js";
 
 export function ownerSuffixedSiteName(
   displayName: string,
@@ -16,4 +17,15 @@ export function ownerSuffixedSiteName(
   if (!ownerGroup) return displayName;
   const owner = groupName(ownerGroup, locale).trim();
   return owner ? `${displayName}（${owner}）` : displayName;
+}
+
+// 交互 site（workstation / container / farm / shelf）面向 LLM 的**唯一**显示名来源。
+// 渲染层（sections.ts）和解析层（targets.ts resolveInteractiveSite）都调它 —— LLM 看到的
+// 字符串与 resolver 反查的 alias 由同一函数产出，杜绝"渲染加了后缀但 resolver 不认"这类
+// 反复出现的漂移 bug。见 [[feedback_display_format_and_resolver_aliases]]。
+export function renderInteractiveSiteName(
+  site: Pick<InteractiveSiteContext, "displayName" | "ownerGroup">,
+  locale: Locale = getActiveLocale(),
+): string {
+  return ownerSuffixedSiteName(site.displayName, site.ownerGroup, locale);
 }

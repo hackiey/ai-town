@@ -8,7 +8,7 @@ class_name Effects
 #   "modify_hunger":    { target: Character, amount: float }
 #   "modify_rest":      { target: Character, amount: float }
 #   "modify_hp":        { target: Character, amount: float }
-#   "remove_condition": { target: Character, condition_id: String }
+#   "remove_status": { target: Character, status_id: String }
 #   "set_alive":        { target: Character, alive: bool } —— 翻转 alive；Character setter 做善后
 #   "broadcast_speech": { speaker: Character, text, volume, target_id, affected_ids: Array }
 #   "crop_state":       { crop: Crop, fields: Dictionary }
@@ -19,7 +19,7 @@ class_name Effects
 #
 # Inventory 套件 (take_item / transfer_item / set_slot_state) 是 **synchronous**，
 # 不入此 dispatch —— 在 ScriptApi closure 里直接调 InventoryAdapter 并返回值给 lua。
-#   "add_condition":    { target: Character, condition_id: String,
+#   "add_status":    { target: Character, status_id: String,
 #                         expires_total_hours: int (0=永久), source: String }
 #   "world_event":      { event_type: String, text: String, data: Dictionary }
 #
@@ -77,8 +77,8 @@ static func apply(effect: Dictionary) -> Dictionary:
 				"ok": true,
 				"summary": "%s.hp %+.0f → %.0f" % [target.name, target.hp - before, target.hp],
 			}
-		"remove_condition":
-			return _apply_remove_condition(effect)
+		"remove_status":
+			return _apply_remove_status(effect)
 		"set_alive":
 			return _apply_set_alive(effect)
 		"broadcast_speech":
@@ -91,8 +91,8 @@ static func apply(effect: Dictionary) -> Dictionary:
 			return _apply_crop_destroy(effect)
 		"give_item":
 			return _apply_give_item(effect)
-		"add_condition":
-			return _apply_add_condition(effect)
+		"add_status":
+			return _apply_add_status(effect)
 		"world_event":
 			return _apply_world_event(effect)
 		_:
@@ -215,66 +215,66 @@ static func _apply_give_item(effect: Dictionary) -> Dictionary:
 	}
 
 
-# 给角色挂 condition。同 type 已存在 → 续期（取较晚的过期时间），不重复 append。
+# 给角色挂 status。同 type 已存在 → 续期（取较晚的过期时间），不重复 append。
 # expires_total_hours = 0 视为永久（never expire），存负数到 dict 表示永久。
-static func _apply_add_condition(effect: Dictionary) -> Dictionary:
+static func _apply_add_status(effect: Dictionary) -> Dictionary:
 	var target := effect.get("target") as Character
 	if target == null or not is_instance_valid(target):
-		return { "ok": false, "error": "add_condition: target is null/freed" }
-	var condition_id := str(effect.get("condition_id", ""))
-	if condition_id.is_empty():
-		return { "ok": false, "error": "add_condition: condition_id empty" }
+		return { "ok": false, "error": "add_status: target is null/freed" }
+	var status_id := str(effect.get("status_id", ""))
+	if status_id.is_empty():
+		return { "ok": false, "error": "add_status: status_id empty" }
 	var expires_in: int = int(effect.get("expires_total_hours", 0))
 	var expires_total_hours := -1 if expires_in <= 0 else expires_in
 	var source := str(effect.get("source", ""))
 
 	var existing_idx := -1
-	for i in target.active_conditions.size():
-		if str(target.active_conditions[i].get("type", "")) == condition_id:
+	for i in target.active_statuses.size():
+		if str(target.active_statuses[i].get("type", "")) == status_id:
 			existing_idx = i
 			break
 	if existing_idx >= 0:
-		var existing: Dictionary = target.active_conditions[existing_idx]
+		var existing: Dictionary = target.active_statuses[existing_idx]
 		var prev: int = int(existing.get("expires_total_hours", -1))
 		# 永久 (-1) 吸收任何续期；否则取较晚的 expiry
 		if prev != -1 and (expires_total_hours == -1 or expires_total_hours > prev):
 			existing["expires_total_hours"] = expires_total_hours
 	else:
-		target.active_conditions.append({
-			"type": condition_id,
+		target.active_statuses.append({
+			"type": status_id,
 			"started_at": Time.get_ticks_msec() / 1000.0,
 			"expires_total_hours": expires_total_hours,
 			"source_id": source,
 		})
-	target.refresh_conditions()
+	target.refresh_statuses()
 	return {
 		"ok": true,
-		"summary": "%s +condition %s (expires_total_hours=%d)" % [target.name, condition_id, expires_total_hours],
+		"summary": "%s +status %s (expires_total_hours=%d)" % [target.name, status_id, expires_total_hours],
 	}
 
 
-# 解除某个 condition（按 type 移除所有匹配条目）。不存在时静默 no-op，不算错误——
+# 解除某个 status（按 type 移除所有匹配条目）。不存在时静默 no-op，不算错误——
 # lua 一般在做"该不该解除"判断后才声明，但 hot reload / race 下可能慢半拍。
-static func _apply_remove_condition(effect: Dictionary) -> Dictionary:
+static func _apply_remove_status(effect: Dictionary) -> Dictionary:
 	var target := effect.get("target") as Character
 	if target == null or not is_instance_valid(target):
-		return { "ok": false, "error": "remove_condition: target is null/freed" }
-	var condition_id := str(effect.get("condition_id", ""))
-	if condition_id.is_empty():
-		return { "ok": false, "error": "remove_condition: condition_id empty" }
+		return { "ok": false, "error": "remove_status: target is null/freed" }
+	var status_id := str(effect.get("status_id", ""))
+	if status_id.is_empty():
+		return { "ok": false, "error": "remove_status: status_id empty" }
 	var removed := false
-	for i in range(target.active_conditions.size() - 1, -1, -1):
-		if str(target.active_conditions[i].get("type", "")) == condition_id:
-			target.active_conditions.remove_at(i)
+	for i in range(target.active_statuses.size() - 1, -1, -1):
+		if str(target.active_statuses[i].get("type", "")) == status_id:
+			target.active_statuses.remove_at(i)
 			removed = true
 	if removed:
-		# 不走 refresh_conditions —— 那会再触发 physiology hook，产生重复阈值检查。
+		# 不走 refresh_statuses —— 那会再触发 physiology hook，产生重复阈值检查。
 		# 这里只刷 head_status + persist。
 		target.head_status().sync_to_clients()
 		target.state_io().persist()
 	return {
 		"ok": true,
-		"summary": "%s -condition %s%s" % [target.name, condition_id, "" if removed else " (not present)"],
+		"summary": "%s -status %s%s" % [target.name, status_id, "" if removed else " (not present)"],
 	}
 
 

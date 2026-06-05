@@ -1,7 +1,7 @@
 [gd_resource type="Resource" script_class="Item" format=3 uid="uid://dpwnbk7yr6d5v"]
 
 [ext_resource type="Script" uid="uid://dqr5snte2lo05" path="res://src/sim/items/item.gd" id="1_item"]
-[ext_resource type="PackedScene" uid="uid://bgi9wheat0kme" path="res://src/world/ground_item/items/wheat.tscn" id="2_ground"]
+[ext_resource type="PackedScene" uid="uid://bgjawheat0kme" path="res://src/world/ground_item/items/wheat.tscn" id="2_ground"]
 
 [resource]
 script = ExtResource("1_item")
@@ -12,6 +12,7 @@ shape_type = "grain"
 materials = {
 "body": "wheat"
 }
-tags = PackedStringArray("seed")
 world_mesh = ExtResource("2_ground")
 tint = Color(0.85, 0.75, 0.4, 1)
+dries_into = "malt"
+drying_hours = 24.0

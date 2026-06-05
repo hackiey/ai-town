@@ -26,6 +26,7 @@ func _ready() -> void:
 # 在这里追加 dispatch 即可，不改 ContainerNode schema。
 func _on_slow_tick(_total_game_hour: int) -> void:
 	tick_drying()
+	tick_fermenting()
 
 
 # 扫所有 passive_tags 含 "drying" 的容器，给含 item.dries_into 的槽位推进 drying_age_hours，
@@ -69,6 +70,49 @@ func tick_drying() -> void:
 					"tags": Array(target.tags),
 				},
 				"yield_qty": max(1, tmpl.drying_yield_qty),
+			})
+
+
+# 扫所有 passive_tags 含 "fermenting" 的容器（酒桶等），给含 item.ferments_into 的槽位推进
+# fermenting_age_hours，到 item.fermenting_hours 阈值后由 lua swap 成 ferments_into 模板。
+# 结构与 tick_drying 完全平行；转换规则在 data/mechanics/fermenting.lua。
+func tick_fermenting() -> void:
+	for cid_v in _containers_by_id.keys():
+		var node: ContainerNode = _containers_by_id[cid_v] as ContainerNode
+		if node == null or not is_instance_valid(node):
+			continue
+		if not node.has_passive_tag("fermenting"):
+			continue
+		var slots: Array[Dictionary] = node.contents
+		for i in slots.size():
+			var slot: Dictionary = slots[i]
+			if int(slot.get("quantity", 0)) <= 0:
+				continue
+			var iid := str(slot.get("item_id", ""))
+			if iid.is_empty():
+				continue
+			var tmpl: Item = Items.by_id(iid)
+			if tmpl == null:
+				continue
+			var ferments_into := tmpl.ferments_into.strip_edges()
+			if ferments_into.is_empty() or tmpl.fermenting_hours <= 0.0:
+				continue
+			var target: Item = Items.by_id(ferments_into)
+			if target == null:
+				continue
+			MechanicHost.invoke("fermenting", "on_ferment", {
+				"holder": node,
+				"slot_index": i,
+				"slot": slot,
+				"hours": 1.0,
+				"fermenting_hours": tmpl.fermenting_hours,
+				"swap_to": {
+					"item_id": ferments_into,
+					"materials": target.materials.duplicate(true),
+					"shape_type": target.shape_type,
+					"tags": Array(target.tags),
+				},
+				"yield_qty": max(1, tmpl.fermenting_yield_qty),
 			})
 
 
@@ -165,8 +209,8 @@ func unlockable_snapshots_for(character: Character) -> Array[Dictionary]:
 
 
 # ─── Operations ──────────────────────────────────────────────────────
-# Actor-facing deposit/withdraw/inspect 已迁到 data/mechanics/container.lua（Step 6.1）。
-# 这里只剩 system_* 路径供 Mints / Mines / Wages 等 autoload 跳过 access check 使用。
+# Actor-facing 存取走 ContainerHandlers.run_put_take（GDScript，含货币钱包↔coin 物品转换）。
+# 这里的 system_* 路径供 Mints / Mines / Wages 等 autoload 跳过 access check 使用。
 
 # 系统级 deposit — 跳过靠近 / 钥匙检查。Mines / Mints / Wages 等 autoload 用。
 func system_deposit(container_id: String, item_id: String, qty: int, quality: int = 100) -> Dictionary:
@@ -337,6 +381,31 @@ func adapter_set_slot(node: ContainerNode, slot_index: int, fields: Dictionary) 
 	return true
 
 
+# 给容器内某物品的所有槽位盖上货架标价（centi 银）。price_centi <= 0 → 清除标价。
+# put_take 存货到货架时调用：按物品统一定价，避免 merge 后槽位 index 漂移。仅货架有意义，
+# 普通容器调用也无害（标价只是展示）。
+func set_price_for_item(node: ContainerNode, item_id: String, price_centi: int) -> void:
+	if node == null:
+		return
+	var needle := item_id.strip_edges()
+	if needle.is_empty():
+		return
+	_ensure_hydrated(node)
+	var slots: Array[Dictionary] = node.contents
+	var price_val: Variant = price_centi if price_centi > 0 else null
+	var cid := node.effective_container_id()
+	for i in slots.size():
+		var slot := slots[i]
+		if InventorySlotData.of(slot).is_empty():
+			continue
+		if str(slot.get("item_id", "")) != needle:
+			continue
+		slot["listing_price_centi"] = price_val
+		slots[i] = slot
+		Db.save_container_slot(cid, i, slot)
+	_set_contents(node, slots)
+
+
 func _check_access(character: Character, node: ContainerNode) -> Dictionary:
 	if not node.can_be_used_by(character):
 		return {"ok": false, "message": "「%s」不归你管，无权打开" % node.effective_display_name()}
@@ -403,6 +472,7 @@ func _list_items(node: ContainerNode) -> Array:
 			"item_id": str(slot.get("item_id", "")),
 			"quantity": int(slot.get("quantity", 0)),
 			"quality": int(slot.get("quality", 100)),
+			"listing_price_centi": slot.get("listing_price_centi", null),
 		})
 	return out
 
@@ -583,6 +653,9 @@ func _apply_starting_inventory_if_first_boot(node: ContainerNode) -> void:
 		var quality := int(entry.get("quality", 100))
 		var stack := InventorySlotData.from_template(item_id, quality)
 		stack["quantity"] = qty
+		# 货架陈列标价（仅展示）。containers.json 的 starting_inventory entry 可带 price_silver。
+		if entry.has("price_silver"):
+			stack["listing_price_centi"] = Money.silver_to_centi(float(entry.get("price_silver", 0.0)))
 		seed_stacks.append(stack)
 	if seed_stacks.is_empty():
 		Db.mark_container_seeded(cid)

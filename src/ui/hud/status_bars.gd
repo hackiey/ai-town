@@ -15,7 +15,7 @@ extends CanvasLayer
 @onready var _hunger_label: Label = $Root/HungerRow/HungerLabel
 @onready var _rest_bar: ProgressBar = $Root/RestRow/RestBar
 @onready var _rest_label: Label = $Root/RestRow/RestLabel
-@onready var _condition_label: Label = $Root/ConditionLabel
+@onready var _status_label: Label = $Root/StatusLabel
 @onready var _god_badge: Label = $GodBadge
 
 var _player: Character = null
@@ -38,7 +38,7 @@ func _process(_delta: float) -> void:
 func _render() -> void:
 	if _player == null:
 		_god_badge.visible = false
-		_condition_label.text = ""
+		_status_label.text = ""
 		return
 	_god_badge.visible = _player.groups.has("god")
 	_hp_bar.max_value = _player.max_hp
@@ -59,16 +59,16 @@ func _render() -> void:
 
 	var labels: Array[String] = []
 	if not _player.alive:
-		labels.append(tr("ui.status.condition.dead"))
+		labels.append(tr("ui.status.status.dead"))
 	if _player.burning:
-		labels.append(tr("ui.status.condition.burning"))
-	for c in _player.active_conditions:
+		labels.append(tr("ui.status.status.burning"))
+	for c in _player.active_statuses:
 		var t := str(c.get("type", ""))
 		match t:
-			"hungry": labels.append(tr("ui.status.condition.hungry"))
-			"sleeping": labels.append(tr("ui.status.condition.sleeping"))
+			"hungry": labels.append(tr("ui.status.status.hungry"))
+			"sleeping": labels.append(tr("ui.status.status.sleeping"))
 			_: labels.append(t)
-	_condition_label.text = "  ".join(labels) if labels.size() > 0 else ""
+	_status_label.text = "  ".join(labels) if labels.size() > 0 else ""
 
 
 func _meter_label(attribute_id: String, current: float, max_value: float) -> String:

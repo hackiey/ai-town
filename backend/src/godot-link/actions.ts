@@ -11,8 +11,6 @@ export const ACTION_NAMES = [
   SLEEP_ACTION,
   "pick_up_item",
   "drop_item",
-  "update_shelf",
-  "buy_from_shelf",
   // offer：原 offer_trade。request:[] 时是单向赠送（同步转移 + 发 give 事件），
   // request 非空时是议价交易（写 trade_offers，阻塞等对方 respond）。
   "offer",
@@ -39,9 +37,7 @@ export const ACTION_NAMES = [
   "harvest_crop",
   "remove_pest",
   "plan_farm_work",
-  "deposit_to_container",
-  "withdraw_from_container",
-  "inspect_container",
+  "put_take_container",
   "write",
   "read",
 ] as const;
@@ -91,25 +87,6 @@ export type UseItemTarget = {
 };
 
 // priceSilver 是 decimal silver（1 silver = 100 centi）。GDScript 端 round 到 centi int 存储。
-// 例：priceSilver=7.5 → 750 centi。中世纪 cut coinage 允许半币 / 1/4 币找零。
-// add 是从背包补货 → 带 slotIndex（背包 stack id）让 Godot 取对那份。
-// update / remove 针对已有 listing → 带 listingId（货架 listing 表的真 id）。
-export type ShelfOp =
-  | { type: "add"; itemId: string; slotIndex?: number; quantity: number; priceSilver: number }
-  | { type: "update"; itemId: string; listingId?: string; quantity: number; priceSilver: number }
-  | { type: "remove"; itemId: string; listingId?: string; quantity?: number };
-
-export type UpdateShelfTarget = {
-  shelfId: string;
-  ops: ShelfOp[];
-};
-
-export type BuyFromShelfTarget = {
-  shelfId: string;
-  listingId: string;
-  quantity: number;
-};
-
 // Trade line：我方付出 (offer) 时 slotIndex 指向我背包里具体那份 stack；
 // 对方付出 (request) 是描述，对方背包对发起方不可见，slotIndex 留空，对方履约时按 itemId 自选。
 export type TradeLine = { item: string; count: number; slotIndex?: number };
@@ -159,19 +136,21 @@ export type PlanFarmWorkTarget = {
   ops: PlanFarmWorkOp[];
 };
 
-// withdraw_from_container.containerSlotIndex = 容器内 item_instances.slotIndex（take 走这个）；
-// deposit_to_container.actorSlotIndex = 背包 slotIndex（put 走这个）。
-// 没传时 Godot 按 itemId 自选（旧行为兜底）。
-export type ContainerItemTarget = {
-  containerId: string;
+// put_take_container：货架/容器统一存取，一次调用同时存入(put)+取出(take)，批量。
+// put 项 actorSlotIndex = 背包 slotIndex；priceCenti 仅货架（标价，仅展示）。
+// take 项 containerSlotIndex = 容器/货架内 item_instances.slotIndex。没传时 Godot 按 itemId 自选。
+export type PutTakeEntry = {
   itemId: string;
   quantity: number;
-  containerSlotIndex?: number;
   actorSlotIndex?: number;
+  containerSlotIndex?: number;
+  priceCenti?: number;
 };
 
-export type InspectContainerTarget = {
+export type PutTakeContainerTarget = {
   containerId: string;
+  put: PutTakeEntry[];
+  take: PutTakeEntry[];
 };
 
 // write/read: 通用可书写/可阅读物品机制。write 消耗或转化一个可书写道具（比如纸）
@@ -202,8 +181,6 @@ export type ActionTargetByName = {
   sleep: SleepTarget;
   pick_up_item: ItemTarget;
   drop_item: ItemTarget;
-  update_shelf: UpdateShelfTarget;
-  buy_from_shelf: BuyFromShelfTarget;
   offer: OfferTarget;
   respond: RespondTarget;
   create_item: CreateItemTargetUnused;
@@ -224,9 +201,7 @@ export type ActionTargetByName = {
   harvest_crop: FarmingSubActionTargetUnused;
   remove_pest: FarmingSubActionTargetUnused;
   plan_farm_work: PlanFarmWorkTarget;
-  deposit_to_container: ContainerItemTarget;
-  withdraw_from_container: ContainerItemTarget;
-  inspect_container: InspectContainerTarget;
+  put_take_container: PutTakeContainerTarget;
   write: WriteTarget;
   read: ReadTarget;
 };
@@ -274,8 +249,6 @@ export type ActionResultByName = {
   sleep: { wokeAt?: string; interrupted?: boolean; durationGameMinutes?: number; wakeReason?: string };
   pick_up_item: { itemId?: string; quantity?: number };
   drop_item: { itemId?: string; quantity?: number };
-  update_shelf: { shelfId?: string };
-  buy_from_shelf: { shelfId?: string; listingId?: string; quantity?: number };
   // request:[] 时 result 含 recipientCharacterId + transferred:[{itemId, requested, transferred}]；
   // request 非空时仍是 {tradeId?} 走原 trade.lua 路径。
   offer: { tradeId?: string; recipientCharacterId?: string; transferred?: Array<{ itemId: string; requested: number; transferred: number }> };
@@ -297,9 +270,7 @@ export type ActionResultByName = {
   harvest_crop: Record<string, unknown>;
   remove_pest: Record<string, unknown>;
   plan_farm_work: PlanFarmWorkResult;
-  deposit_to_container: { containerId?: string; itemId?: string; quantity?: number };
-  withdraw_from_container: { containerId?: string; itemId?: string; quantity?: number };
-  inspect_container: { containerId?: string; snapshot?: Record<string, unknown> };
+  put_take_container: { containerId?: string; put?: Array<{ itemId: string; quantity: number }>; taken?: Array<{ itemId: string; quantity: number }> };
   write: { itemName?: string; title?: string };
   read: { title?: string; content?: string };
 };

@@ -7,11 +7,7 @@ import {
 } from "../services/character-status-bus.js";
 
 export const characterStatusBusPlugin = fp(async (app) => {
-  const onStatusMessage = (pattern: string, channel: string, raw: string) => {
-    if (pattern !== CHARACTER_STATUS_BUS_PATTERN) {
-      return;
-    }
-
+  const onStatusMessage = (channel: string, raw: unknown) => {
     const townId = parseCharacterStatusBusChannel(channel);
     if (!townId) {
       app.log.warn({ channel }, "received character status bus message on malformed channel");
@@ -32,11 +28,9 @@ export const characterStatusBusPlugin = fp(async (app) => {
     }
   };
 
-  app.subRedis.on("pmessage", onStatusMessage);
-  await app.subRedis.psubscribe(CHARACTER_STATUS_BUS_PATTERN);
+  app.bus.psubscribe(CHARACTER_STATUS_BUS_PATTERN, onStatusMessage);
 
   app.addHook("onClose", async () => {
-    app.subRedis.off("pmessage", onStatusMessage);
-    await app.subRedis.punsubscribe(CHARACTER_STATUS_BUS_PATTERN);
+    app.bus.punsubscribe(CHARACTER_STATUS_BUS_PATTERN, onStatusMessage);
   });
 });

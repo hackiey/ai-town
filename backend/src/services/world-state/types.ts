@@ -32,7 +32,7 @@ export type CharacterStateView = {
     body: string;
     head: string;
   };
-  activeConditions: unknown[];
+  activeStatuses: unknown[];
   // Wallet 余额，centi 单位（1 silver = 100 centi）。silver_coin / gold_coin 不在 inventory
   // 里，而是直接进 wallet。给 LLM 看时 / 100 转 silver 小数。
   walletCenti: number;
@@ -44,7 +44,7 @@ export type CharacterPresenceView = {
   hp: number;
   hunger: number;
   alive: boolean;
-  // 显式投影 sleeping 这条 condition 给 prompt 渲染。其他 condition（hungry/burning...）
+  // 显式投影 sleeping 这条 status 给 prompt 渲染。其他 status（hungry/burning...）
   // 都是私密体验，旁人在邻近列表里看不到；只有 sleeping 是肉眼可辨。
   isSleeping: boolean;
   // "当下在做什么"——由 Godot 各 action runner 在 enter/exit 时写 character_states 两列。
@@ -77,6 +77,8 @@ export type InventoryItemRow = {
   itemDefId: string;
   stackCount: number;
   quality?: number;
+  // 货架陈列标价（centi 银）。仅货架槽位有；普通容器/背包为 undefined。仅展示，付钱靠 trade/give。
+  listingPriceCenti?: number;
 } & ItemInstanceAspects;
 
 // displayName 不存 sqlite 也不在 view 里——所有 entity 的显示名 source-of-truth
@@ -106,8 +108,9 @@ export type ContainerView = {
   contents: InventoryItemRow[];
 };
 
-// 场景里 ShelfNode 的静态镜像（shelves 表一行）。listings 单独从 shelf_listings 取，
-// 由 assemble-from-manifest 在 ShelfContext 装配时 join 回去——空架在本视图仍出现一条。
+// 场景里 ShelfNode 的静态镜像（shelves 表一行）。货架已统一为无锁容器，内容物走
+// item_instances(ownerKind='container', ownerId=shelfId)，标价在槽位 listingPriceCenti。
+// shelves 表只是"这个容器是货架"的标记 + 命名来源（locationId）。
 export type ShelfView = {
   shelfId: string;
   ownerGroup?: string;
@@ -115,6 +118,8 @@ export type ShelfView = {
   slotCount: number;
   interactionRadius: number;
   position: { x: number; y: number; z: number };
+  // 货架内容（item_instances ownerKind='container'），由 shelf-repo 一并查出。
+  contents: InventoryItemRow[];
 };
 
 export type LocationMarkerView = {
@@ -154,22 +159,6 @@ export type FarmView = {
   lastProcessedDay: number;
   plots: FarmPlotView[];
 };
-
-export type ShelfListingView = {
-  listingId: string;
-  shelfId: string;
-  slotIndex: number;
-  itemDefId: string;
-  quantity: number;
-  // priceCenti 是 DB 真值（1 silver = 100 centi，int 避免浮点误差）。
-  // priceSilver = priceCenti / 100 是给 LLM / UI 看的小数 silver。
-  priceCenti: number;
-  priceSilver: number;
-  quality?: number;
-  // shelf listing 上的物品同样是 item_instances 一行（ownerKind='shelf', id=listingId），
-  // 所以共用 ItemInstanceAspects；freshnessTier 仍单列暴露为 backward-compat 便捷字段。
-  freshnessTier?: number;
-} & ItemInstanceAspects;
 
 export type TradeLine = {
   item: string;

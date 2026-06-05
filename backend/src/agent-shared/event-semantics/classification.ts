@@ -7,8 +7,7 @@
 // 重点：到这里的事件都假定接收方是醒着且能感知到的（mechanic 端已 filter，
 // [[feedback_perception_filter_at_source]]）。
 //
-// 关于"shelf_item_sold 这种系统通知怎么也算 hard_interrupt"——
-// 系统通知性质，对方可能不在场，靠 hard 路径强制把它放进 agent 注意范围。
+// woke_up 这类系统通知靠 hard 路径强制把它放进 agent 注意范围（对方可能不在场）。
 
 import { SAY_TO_ACTION } from "../../godot-link/actions.js";
 import { WOKE_UP_EVENT } from "../../godot-link/events.js";
@@ -27,12 +26,11 @@ export type EventClassification = {
 
 export const ALWAYS_INTERRUPTING_EVENTS = new Set<string>([
   WOKE_UP_EVENT,
-  "shelf_item_sold",
 ]);
 
-// give 加进 sensory 集合让旁观者也能落进 ambient_sensory（不打断只入历史）。
-// 收件人/发件人由下面 give 专用分支提前 short-circuit，不会经过这个集合。
-export const SENSORY_EVENT_TYPES = new Set<string>([SAY_TO_ACTION, "move_to_location", "give"]);
+// give / container_put_take 加进 sensory 集合让旁观者落进 ambient_sensory（不打断只入历史）——
+// "附近的人会看到谁往货架/容器存取了什么"。give 的收发件人由专用分支 short-circuit。
+export const SENSORY_EVENT_TYPES = new Set<string>([SAY_TO_ACTION, "move_to_location", "give", "container_put_take"]);
 
 export function classifyEventForCharacter(
   event: WorldEventRecord,

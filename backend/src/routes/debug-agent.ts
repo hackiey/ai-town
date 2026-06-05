@@ -314,7 +314,7 @@ export const debugAgentRoutes: FastifyPluginAsync = async (app) => {
   });
 
   app.get("/debug/api/agent-run-filter", async () => {
-    const filter = await getDebugAgentRunFilter(app.redis);
+    const filter = getDebugAgentRunFilter(app.db);
     return {
       configured: filter.configured,
       characterIds: Array.from(filter.enabledCharacterIds).sort(),
@@ -326,7 +326,7 @@ export const debugAgentRoutes: FastifyPluginAsync = async (app) => {
     async (request) => {
       const rawIds = Array.isArray(request.body?.characterIds) ? request.body.characterIds : [];
       const characterIds = rawIds.filter((id): id is string => typeof id === "string");
-      const saved = await setDebugAgentRunFilter(app.redis, characterIds);
+      const saved = setDebugAgentRunFilter(app.db, characterIds);
       return { ok: true, configured: true, characterIds: saved };
     },
   );
@@ -657,7 +657,7 @@ export const debugAgentRoutes: FastifyPluginAsync = async (app) => {
         ctx,
         current,
       });
-      // 与 worker.ts 起 host 时同一份路由一致：按 character 真实路由的 runtimeName 读 memory，
+      // 与 agent-runtime 插件起 host 时同一份路由一致：按 character 真实路由的 runtimeName 读 memory，
       // 否则会读到错的命名空间显示成空。
       const runtimeName = debugAgentRouter().runtimeFor(session.characterId);
       const storedMemoryRows = app.db

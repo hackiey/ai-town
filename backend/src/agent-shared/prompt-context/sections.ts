@@ -8,7 +8,7 @@ import { craftForSkillId, craftForWorkstationVerb, skillIdForCraft } from "../ga
 import { characterName, localizeText, locationName, locationDescription, locationDirection, locationAccess } from "../name-resolver/index.js";
 import { workstationName, workstationDescription } from "../name-resolver/workstation.js";
 import { locationDescriptors, type LocationDescriptor } from "../name-resolver/source-data.js";
-import { ownerSuffixedSiteName } from "../entity-descriptions/site-naming.js";
+import { renderInteractiveSiteName } from "../entity-descriptions/site-naming.js";
 import { getReactionsForCraft, type ReactionMeta } from "../../services/world-state/reaction-catalog.js";
 import type {
   AgentCurrentContext,
@@ -178,7 +178,7 @@ function renderInteractiveSiteLine(
   locale: Locale,
 ): string {
   const noAccess = site.accessible === false;
-  const name = ownerSuffixedSiteName(site.displayName, site.ownerGroup, locale);
+  const name = renderInteractiveSiteName(site, locale);
   const clauses = collectSiteClauses(site, knownSkillIds, noAccess, locale);
   const body = clauses.length > 0 ? `：${clauses.join("；")}` : "";
   return `${name}${body}`;
@@ -200,8 +200,8 @@ function collectSiteClauses(
 
   // kind === "workstation"
   if (site.interactionMode === "container") {
-    // 容器型工作台（含晾架 / 国库）：唯一工具是 use_container，永远 always-expose（无 skill 闸）。
-    const tools = noAccess ? "" : `${t("prompt.context.workstation.tools_prefix", locale)}use_container`;
+    // 容器型工作台（含晾架 / 国库）：存取走 put_take + view_container，永远 always-expose（无 skill 闸）。
+    const tools = noAccess ? "" : `${t("prompt.context.workstation.tools_prefix", locale)}put_take / view_container`;
     const lock = site.locked
       ? t("prompt.context.workstation.lock_format", locale, { key: site.lockItemId ?? "?" })
       : t("prompt.context.workstation.lock_open", locale);
@@ -353,7 +353,7 @@ function formatCharacterStatusLabel(
 //
 // 子地点（农田 / 集市摊位 / 作坊工具）不靠 DB 父子关系推导——通用工作台（forge/stove…）
 // 跨铺子合并成单一逻辑地点，无法归属某栋建筑，故在 locations.json 的 children 里显式编排。
-const TOWN_MAP_ZONE_ORDER = ["upper_city", "lower_city", "outer_city", "castle", "south_outskirts"] as const;
+const TOWN_MAP_ZONE_ORDER = ["upper_city", "lower_city", "outer_city", "castle", "south_outskirts", "public"] as const;
 
 export function renderTownMap(locale: Locale = getActiveLocale()): string | undefined {
   const descriptors = locationDescriptors();

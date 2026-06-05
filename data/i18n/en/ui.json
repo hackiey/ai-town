@@ -2,14 +2,14 @@
   "ui": {
     "status": {
       "meter_format": "%s %.0f / %.0f",
-      "condition_with_effect_format": "%s (%s)",
-      "condition": {
+      "status_with_effect_format": "%s (%s)",
+      "status": {
         "hungry": "Hungry",
         "sleeping": "Sleeping",
         "burning": "Burning",
         "dead": "Dead"
       },
-      "condition_effect": {
+      "status_effect": {
         "hungry": "lowers stamina cap and recovery speed",
         "sleeping": "recovers rest",
         "burning": "takes ongoing damage",
@@ -48,7 +48,7 @@
         "ignition": "Ignition",
         "sleeping": "Sleeping",
         "burning": "Burning",
-        "conditions": "Conditions",
+        "statuses": "Statuses",
         "groups": "Groups"
       },
       "slot": {

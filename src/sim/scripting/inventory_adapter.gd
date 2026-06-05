@@ -117,10 +117,9 @@ static func for_holder(holder: Object) -> InventoryAdapter:
 		return null
 	if holder is Character:
 		return _CharacterAdapter.new(holder as Character)
+	# 货架（ShelfNode）是 ContainerNode 子类，走容器 adapter（slot 库存 + take/place/set_slot）。
 	if holder is ContainerNode:
 		return _ContainerAdapter.new(holder as ContainerNode)
-	if holder is ShelfNode:
-		return _ShelfAdapter.new(holder as ShelfNode)
 	return null
 
 
@@ -221,33 +220,3 @@ class _ContainerAdapter extends InventoryAdapter:
 
 	func set_slot(slot_index: int, fields: Dictionary) -> bool:
 		return Containers.adapter_set_slot(_node, slot_index, fields)
-
-
-# ─── Shelf adapter（read-only，写走 6.3）─────────────────────────────
-
-class _ShelfAdapter extends InventoryAdapter:
-	var _node: ShelfNode
-
-	func _init(node: ShelfNode) -> void:
-		_node = node
-
-	func slots() -> Array:
-		return Shelves.adapter_listing_slots(_node)
-
-	func display_name() -> String:
-		return _node.effective_display_name()
-
-	func kind() -> String:
-		return "shelf"
-
-	func take(_query: Dictionary, _qty: int) -> Dictionary:
-		push_warning("[InventoryAdapter] shelf take/transfer not supported in §4.1; use buy_from_shelf in Step 6.3")
-		return { "taken_qty": 0, "stacks": [] }
-
-	func place(stacks: Array) -> Dictionary:
-		push_warning("[InventoryAdapter] shelf place not supported in §4.1; use shelf update in Step 6.3")
-		return { "placed_qty": 0, "leftover": stacks }
-
-	func set_slot(_slot_index: int, _fields: Dictionary) -> bool:
-		push_warning("[InventoryAdapter] shelf set_slot not supported")
-		return false

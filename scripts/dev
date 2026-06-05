@@ -41,44 +41,17 @@ ensure_env() {
   fi
 }
 
-# 用 bash 内建 /dev/tcp 测端口，无需 nc
-port_open() {
-  (echo > "/dev/tcp/$1/$2") >/dev/null 2>&1
-}
-
-# 检查本地 redis 是否可达；缺少时才起 docker
-ensure_services() {
-  if port_open 127.0.0.1 6379; then
-    echo "$(c_grn "✓ redis reachable on 127.0.0.1:6379 (local)")"
-    return
-  fi
-  require docker
-  echo "$(c_ylw "==> docker compose up -d redis")"
-  docker compose up -d redis
-  for _ in {1..30}; do
-    port_open 127.0.0.1 6379 && break
-    sleep 0.5
-  done
-}
-
 cmd_setup() {
   require pnpm
   ensure_env
   echo "$(c_grn "==> pnpm install")"
   pnpm install
-  ensure_services
   echo "$(c_grn "setup done")"
 }
 
-cmd_up()   { ensure_env; ensure_services; }
-cmd_down() {
-  require docker
-  # 只停 docker 起的服务；本地 redis 不会被动到
-  docker compose down
-}
-
-cmd_gateway() {
-  require pnpm; ensure_env; ensure_services
+# 单进程 backend（网关 + agent runtime + /debug 页面）。Redis 已删除，无外部依赖。
+cmd_backend() {
+  require pnpm; ensure_env
   reject_backend_init_args "$@"
   if [[ $# -gt 0 ]]; then
     exec pnpm dev -- "$@"
@@ -86,34 +59,39 @@ cmd_gateway() {
   exec pnpm dev
 }
 
-cmd_worker() {
-  require pnpm; ensure_env; ensure_services
-  exec pnpm worker:dev
-}
-
 reject_backend_init_args() {
   for arg in "$@"; do
     if [[ "$arg" == "--INIT" ]]; then
-      echo "$(c_red "--INIT belongs to the Godot server now.")"
-      echo "Run: ./scripts/dev server --INIT"
+      echo "$(c_red "--INIT belongs to the Godot server, not the backend.")"
+      echo "Run: ./scripts/dev all --INIT   (or ./scripts/dev server --INIT)"
       exit 1
     fi
   done
 }
 
 cmd_all() {
-  require pnpm; ensure_env; ensure_services
-  reject_backend_init_args "$@"
-  echo "$(c_grn "==> starting gateway + worker (Ctrl+C to stop both)")"
+  require pnpm; require_godot; ensure_env
+  # 只接受 --INIT，并把它透传给 Godot server（归档旧 state.db 后开新一局）。
+  # 不带 --INIT 则续上现有世界（建表本就是 db.gd 启动时 CREATE IF NOT EXISTS，无需 --INIT）。
+  local init_flag=""
+  for arg in "$@"; do
+    case "$arg" in
+      --INIT) init_flag="--INIT" ;;
+      *) echo "$(c_red "unknown arg for 'all':") $arg $(c_dim "(only --INIT is supported)")"; exit 1 ;;
+    esac
+  done
+  echo "$(c_grn "==> starting godot server + backend (Ctrl+C to stop both)")"
+  [[ -n "$init_flag" ]] && echo "$(c_ylw "   --INIT: 归档旧 state.db 到 backend/data/archive/，开新一局")"
+  echo "$(c_dim "   debug page: $BASE_URL/debug")"
   # Run both in this script's process group so trap can kill the whole tree.
   trap 'kill 0' EXIT INT TERM
   # awk fflush keeps lines flowing live; \033 prefix labels each stream.
-  if [[ $# -gt 0 ]]; then
-    pnpm dev -- "$@" 2>&1 | awk '{ print "\033[32m[gw]\033[0m " $0; fflush() }' &
-  else
-    pnpm dev 2>&1 | awk '{ print "\033[32m[gw]\033[0m " $0; fflush() }' &
-  fi
-  pnpm worker:dev 2>&1 | awk '{ print "\033[33m[wk]\033[0m " $0; fflush() }' &
+  # init_flag 留空时不加引号 → 自动消失（避免 set -u 下空数组展开问题）。
+  ( cd "$ROOT_DIR" && exec "$GODOT_BIN" --headless --path . -- \
+      --mode runtime --town "$TOWN_ID" --port "$GODOT_PORT" $init_flag ) \
+    2>&1 | awk '{ print "\033[36m[godot]\033[0m " $0; fflush() }' &
+  # --INIT 只属于 Godot server；backend 不接受任何运行时 args。
+  pnpm dev 2>&1 | awk '{ print "\033[32m[be]\033[0m " $0; fflush() }' &
   wait
 }
 
@@ -178,46 +156,19 @@ cmd_client() {
     --mode client --connect "$connect" "$@"
 }
 
-cmd_logs() {
-  require docker
-  local svcs=()
-  local running
-  running=$(docker compose ps --status running --services 2>/dev/null || true)
-  echo "$running" | grep -q '^redis$' && svcs+=(redis)
-  if [[ ${#svcs[@]} -eq 0 ]]; then
-    echo "$(c_ylw "no docker redis service running (likely using local redis); nothing to tail")"
-    exit 0
-  fi
-  exec docker compose logs -f "${svcs[@]}"
-}
-
-cmd_redis() {
-  if command -v redis-cli >/dev/null 2>&1 && port_open 127.0.0.1 6379; then
-    exec redis-cli
-  fi
-  require docker
-  exec docker compose exec redis redis-cli
-}
-
 cmd_help() {
   cat <<EOF
 $(c_grn "ai-games dev launcher")
 
 usage: ./scripts/dev <command> [args]
 
-setup                        first time: pnpm install + .env + ensure redis
-up                           ensure redis (start docker only when missing)
-down                         stop docker services (won't touch local redis)
-all                          ensure services + gateway + worker (Ctrl+C stops both)
-gateway [backend-args...]    run gateway only (pnpm dev)
-worker                       run worker only (pnpm worker:dev)
-all [backend-args...]        ensure services + gateway + worker; args go to gateway except --INIT
+setup                        first time: pnpm install + .env
+all [--INIT]                 godot server + backend; Ctrl+C stops both. --INIT archives old state.db & starts a fresh world
+backend [backend-args...]    run backend only (pnpm dev); serves /debug
 status                       hit /health /ready /town-runtimes
 intent <npc> <action> <tgt>  POST a single intent for testing
 server [--INIT]              run headless godot town runtime (game-state authority)
 client                       run godot client (renderer + input only)
-logs                         tail docker redis logs (skips if all-local)
-redis                        redis-cli — uses local if available, else docker exec
 help                         this message
 
 env overrides:
@@ -230,8 +181,8 @@ env overrides:
 
 examples:
   ./scripts/dev setup
-  ./scripts/dev all
-  ./scripts/dev server --INIT
+  ./scripts/dev all                 # continue the current world
+  ./scripts/dev all --INIT          # archive old state.db, start a fresh world
   ./scripts/dev intent mira_blacksmith go_to_position blacksmith_shop
   ./scripts/dev intent mira_blacksmith go_to_position '{"x":-50,"y":30,"z":25}'
   ./scripts/dev status
@@ -243,17 +194,12 @@ main() {
   shift || true
   case "$cmd" in
     setup)   cmd_setup ;;
-    up)      cmd_up ;;
-    down)    cmd_down ;;
     all)     cmd_all "$@" ;;
-    gateway) cmd_gateway "$@" ;;
-    worker)  cmd_worker ;;
+    backend|gateway) cmd_backend "$@" ;;
     status)  cmd_status ;;
     intent)  cmd_intent "$@" ;;
     server)  cmd_server "$@" ;;
     client)  cmd_client "$@" ;;
-    logs)    cmd_logs ;;
-    redis)   cmd_redis ;;
     help|-h|--help) cmd_help ;;
     *) echo "$(c_red "unknown command:") $cmd"; echo; cmd_help; exit 1 ;;
   esac

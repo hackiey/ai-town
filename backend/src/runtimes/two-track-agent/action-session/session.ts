@@ -22,6 +22,7 @@ import type { AgentRuntimeContext } from "../../../agent-host/runtime.js";
 import type { AgentConfig } from "../../../config/env.js";
 import type { GameTimeSnapshot, WorldEventRecord } from "../../../godot-link/protocol.js";
 import type { CharacterAction } from "../../../godot-link/actions.js";
+import { SAY_TO_ACTION } from "../../../godot-link/actions.js";
 import {
   resolveAgentProviderApiKey,
   type AgentModelSelection,
@@ -164,6 +165,9 @@ export class ActionTrackSession {
   private releaseController?: TurnReleaseController;
   private activeToolExecutions = 0;
   private readonly interruptWindow = new InterruptWindow();
+  // tool_execution_end 不带原始入参（只有 toolName/result），但预提交失败补记 action_failed 时
+  // 需要 target（对谁说、说了什么）。在 _start 按 toolCallId 暂存 args，_end 取回后清掉。
+  private readonly pendingToolArgs = new Map<string, unknown>();
 
   constructor(private readonly options: ActionTrackSessionOptions) {
     this.continuedActions = new ContinuedActionManager({
@@ -407,7 +411,7 @@ export class ActionTrackSession {
   // 这里补记一条 failed action_log（不发 Godot），让失败动作有完整锚点。
   // 判据：error result（createErrorToolResult）的 details 里没有 actionId；Godot 提交后失败的
   // result 带 actionId，已有行，不重复记。
-  private recordPreSubmitToolFailure(toolName: string, result: unknown): void {
+  private recordPreSubmitToolFailure(toolName: string, result: unknown, args: unknown): void {
     const details = objectValue(objectValue(result)?.details);
     if (details && typeof details.actionId === "string" && details.actionId) {
       return; // Godot 已落行
@@ -417,7 +421,7 @@ export class ActionTrackSession {
       this.options.ctx.actions().recordFailed({
         characterId: this.options.characterId,
         action: toolName as CharacterAction,
-        target: {},
+        target: buildPreSubmitFailureTarget(toolName, args),
         gameTime: this.latestObservedGameTime,
       }, error);
     } catch (error) {
@@ -703,9 +707,12 @@ export class ActionTrackSession {
       // sequential 模式（agent 构造 toolExecution: "sequential"）下 0↔1 摆动，
       // 同 message 多 tool 时按 emit 顺序串行 start/end，计数永不超过 1。
       this.activeToolExecutions += 1;
+      this.pendingToolArgs.set(event.toolCallId, event.args);
     }
     if (event.type === "tool_execution_end") {
       this.activeToolExecutions = Math.max(0, this.activeToolExecutions - 1);
+      const toolArgs = this.pendingToolArgs.get(event.toolCallId);
+      this.pendingToolArgs.delete(event.toolCallId);
       this.toolExecutedThisLlmCall = true;
       void this.continuedActions.markToolResult(event.toolName, event.result);
       // tool 真失败（pi-agent-core 标 isError）→ 立刻停下本 turn，交给 thinking 轨同步反思这次失败，
@@ -715,7 +722,7 @@ export class ActionTrackSession {
         // 进慢思考前，先确保这次失败有完整 action 落在时间轴上（用户要求：先有 tool_response/
         // 完整 action 再 thinking）。预提交校验失败（如工具名翻不出 slug）的 error result 里没有
         // actionId，说明没建过 action_log 行——这里补记一条 failed action，反思才有锚点。
-        this.recordPreSubmitToolFailure(event.toolName, event.result);
+        this.recordPreSubmitToolFailure(event.toolName, event.result, toolArgs);
         this.pausedForReflection = true;
         this.stopFurtherToolsThisTurn = true;
         this.stopAgentLoopThisTurn = true;
@@ -731,6 +738,8 @@ export class ActionTrackSession {
     }
     if (event.type === "turn_end" || event.type === "agent_end") {
       void this.setPublicThinkingStatus(false);
+      // 中途 abort 的 tool 可能只有 _start 没 _end，残留 args 在此清掉，避免 map 缓慢泄漏。
+      this.pendingToolArgs.clear();
     }
     if (event.type === "turn_end" && this.toolExecutedThisLlmCall) {
       // 整条 assistant message 的 tool 都跑完了，断开 pi-agent-core 续航，把控制权交还 runCurrentTurn
@@ -846,6 +855,19 @@ function isDoNothingToolResult(value: unknown): boolean {
   const result = objectValue(value);
   const details = objectValue(result?.details);
   return details?.didNothing === true;
+}
+
+// 预提交失败补记 action_failed 时，从原始工具入参还原 target，避免 say_to 失败行退化成
+// "你想开口说「」"。args 是 LLM 原始入参（slug 还没解析——解析失败往往正是失败原因），
+// 故 character 此处仍是人类名字；渲染器 characterDisplayName 对非 slug 原样返回，显示无碍。
+// 其他工具的失败行走通用模板（"你尝试{动作}没成"），不需要 target，返回空对象即可。
+function buildPreSubmitFailureTarget(toolName: string, args: unknown): Record<string, unknown> {
+  if (toolName !== SAY_TO_ACTION) return {};
+  const a = objectValue(args) ?? {};
+  const target: Record<string, unknown> = {};
+  if (typeof a.character === "string" && a.character) target.targetCharacterId = a.character;
+  if (typeof a.text === "string" && a.text) target.text = a.text;
+  return target;
 }
 
 function isGlobalAmbientEvent(event: WorldEventRecord): boolean {

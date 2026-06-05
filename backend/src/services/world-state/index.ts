@@ -8,7 +8,7 @@ export { getProficiencyForCharacter } from "./proficiency-repo.js";
 export { getInventoryForCharacter, getInventoryForContainer } from "./inventory-repo.js";
 export { getFarmsByIds } from "./farm-repo.js";
 export { getWorkstationsByIds } from "./workstation-repo.js";
-export { getShelfListingsByShelfIds, getShelvesByIds, getShelvesByOwnerGroups, groupListingsByShelfId } from "./shelf-repo.js";
+export { getShelvesByIds } from "./shelf-repo.js";
 export { getContainersByIds } from "./container-repo.js";
 export { getLocationsByIds, getAllLocations } from "./location-repo.js";
 export { getPendingTradesFor } from "./trade-repo.js";

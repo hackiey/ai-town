@@ -9,13 +9,13 @@ const SELECT_CHARACTER_STATE = `
          hp, maxHp, stamina, maxStamina, hunger, maxHunger, rest, maxRest,
          sleepNeededHours, temperature, burning, alive,
          equippedRightHand, equippedLeftHand, equippedBody, equippedHead,
-         activeConditions, silverCentiBalance
+         activeStatuses, silverCentiBalance
   FROM character_states
   WHERE townId = ? AND characterId = ?
 `;
 
 const SELECT_CHARACTER_PRESENCE_IN = `
-  SELECT characterId, animState, hp, hunger, alive, activeConditions,
+  SELECT characterId, animState, hp, hunger, alive, activeStatuses,
          currentActivityKind, currentActivityTarget
   FROM character_states
   WHERE townId = ? AND characterId IN
@@ -63,7 +63,7 @@ function rowToCharacterStateView(r: Record<string, unknown>): CharacterStateView
       body: String(r.equippedBody ?? ""),
       head: String(r.equippedHead ?? ""),
     },
-    activeConditions: parseJsonArray(r.activeConditions),
+    activeStatuses: parseJsonArray(r.activeStatuses),
     walletCenti: numberOr(r.silverCentiBalance, 0),
   };
 }
@@ -75,7 +75,7 @@ function rowToPresenceView(r: Record<string, unknown>): CharacterPresenceView {
     hp: numberOr(r.hp, 0),
     hunger: numberOr(r.hunger, 0),
     alive: Number(r.alive ?? 1) !== 0,
-    isSleeping: hasSleepingCondition(r.activeConditions),
+    isSleeping: hasSleepingStatus(r.activeStatuses),
     currentActivityKind: emptyToUndefined(r.currentActivityKind),
     currentActivityTarget: emptyToUndefined(r.currentActivityTarget),
   };
@@ -87,7 +87,7 @@ function emptyToUndefined(value: unknown): string | undefined {
   return s.length === 0 ? undefined : s;
 }
 
-function hasSleepingCondition(value: unknown): boolean {
+function hasSleepingStatus(value: unknown): boolean {
   for (const entry of parseJsonArray(value)) {
     if (entry && typeof entry === "object") {
       const type = (entry as Record<string, unknown>).type;

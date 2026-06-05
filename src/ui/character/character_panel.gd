@@ -103,16 +103,16 @@ func _render_attributes(snapshot: Dictionary) -> String:
 		_field_line("ui.character.field.temperature", "%.1f C" % float(snapshot.get("temperature", 0.0))),
 		_field_line("ui.character.field.ignition", _ignition_text(snapshot)),
 	]
-	var condition_ids: Array[String] = []
-	for condition_id in snapshot.get("conditionIds", []):
-		condition_ids.append(str(condition_id))
+	var status_ids: Array[String] = []
+	for status_id in snapshot.get("statusIds", []):
+		status_ids.append(str(status_id))
 	var group_ids: Array[String] = []
 	for group_id in snapshot.get("groupIds", []):
 		group_ids.append(str(group_id))
 	var state_lines := [
 		_field_line("ui.character.field.sleeping", _bool_text(bool(snapshot.get("sleeping", false)))),
 		_field_line("ui.character.field.burning", _bool_text(bool(snapshot.get("burning", false)))),
-		_field_line("ui.character.field.conditions", _list_text(_condition_texts(condition_ids), "ui.character.value.none")),
+		_field_line("ui.character.field.statuses", _list_text(_status_texts(status_ids), "ui.character.value.none")),
 		_field_line("ui.character.field.groups", _list_text(_group_texts(group_ids), "ui.character.value.none")),
 	]
 	var equipment: Dictionary = snapshot.get("equipment", {})
@@ -184,16 +184,16 @@ func _faction_text(faction_id: String) -> String:
 	return localized if localized != key else faction_id
 
 
-func _condition_texts(condition_ids: Array[String]) -> Array[String]:
+func _status_texts(status_ids: Array[String]) -> Array[String]:
 	var out: Array[String] = []
-	for condition_id in condition_ids:
-		var key := "ui.status.condition.%s" % condition_id
+	for status_id in status_ids:
+		var key := "ui.status.status.%s" % status_id
 		var localized := tr(key)
-		var label := localized if localized != key else condition_id
-		var effect_key := "ui.status.condition_effect.%s" % condition_id
+		var label := localized if localized != key else status_id
+		var effect_key := "ui.status.status_effect.%s" % status_id
 		var effect := tr(effect_key)
 		if effect != effect_key:
-			var format_key := "ui.status.condition_with_effect_format"
+			var format_key := "ui.status.status_with_effect_format"
 			var format := tr(format_key)
 			label = (format % [label, effect]) if format != format_key else "%s (%s)" % [label, effect]
 		out.append(label)

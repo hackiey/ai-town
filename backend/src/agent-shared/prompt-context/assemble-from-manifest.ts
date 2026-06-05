@@ -10,11 +10,8 @@ import {
   getItemDefsByIds,
   getLocationsByIds,
   getProficiencyForCharacter,
-  getShelfListingsByShelfIds,
   getShelvesByIds,
-  getShelvesByOwnerGroups,
   getWorkstationsByIds,
-  groupListingsByShelfId,
   type CharacterPresenceView,
   type CharacterStateView,
   type ContainerView,
@@ -22,7 +19,6 @@ import {
   type FarmView,
   type InventoryItemRow,
   type ItemDefView,
-  type ShelfListingView,
   type ShelfView,
   type WorkstationView,
 } from "../../services/world-state/index.js";
@@ -103,20 +99,10 @@ export function assembleAgentContextFromManifest(
   const workstationViews = getWorkstationsByIds(db, townId, workstationIds);
   const containerViews = getContainersByIds(db, townId, workstationIds);
 
-  // 货架本体走 shelves 表（TownWorld boot 时全量 UPSERT 镜像 ShelfNode），listings 单独 join。
-  // ownedShelves = "我管理的货架"（owner_group ∈ 我所在 groups；god 看全部）；空架也出现。
-  // nearbyShelves = perceived ids 对应的视图；同 shelfId 在两个列表里都出现的情况由各 caller 处理。
+  // 货架已统一为无锁容器：shelves 表是静态镜像（位置 + locationId），内容物 + 标价走
+  // item_instances(ownerKind='container')，由 getShelvesByIds 一并查出（view.contents）。
+  // 货架无 owner 概念——只有"附近感知到的"一份（perceived ids），不再有 ownedShelves。
   const nearbyShelfViews = getShelvesByIds(db, townId, shelfIds);
-  const ownedShelfViews = groupIds.includes(GOD_GROUP_ID)
-    ? getShelvesByIds(db, townId, shelfIds)  // god 视角：先并入 perceived；不去额外全量扫
-    : getShelvesByOwnerGroups(db, townId, groupIds);
-  // listings 一次查齐 (perceived ∪ owned)，避免两次 SELECT。
-  const allShelfIds = Array.from(new Set([
-    ...nearbyShelfViews.map((v) => v.shelfId),
-    ...ownedShelfViews.map((v) => v.shelfId),
-  ]));
-  const shelfListings = getShelfListingsByShelfIds(db, townId, allShelfIds);
-  const shelfListingsByShelf = groupListingsByShelfId(shelfListings);
 
   const inventoryRows = selfState ? getInventoryForCharacter(db, townId, characterId) : [];
 
@@ -132,17 +118,13 @@ export function assembleAgentContextFromManifest(
     return built.context;
   });
   const nearbyWorkstations = [...workstationCtxs, ...containerCtxs];
-  // nearbyShelves 走 perceived band；ownedShelves 共用同一份 band map ——
-  // 我管理的货架若正好被我感知到（站在店里），仍走 perceived 的 direct/near；否则 undefined（远）。
-  // buildShelfContexts 同时落 shelfItemIndex（货架 listings [N] → listingId 映射）。
+  // buildShelfContexts 同时落 shelfItemIndex（货架内容 [N] → slotIndex 映射，put_take take 反查）。
   const shelfItemIndex: Record<string, ItemIndexEntry[]> = {};
-  const nearbyShelvesBuilt = buildShelfContexts(nearbyShelfViews, shelfListingsByShelf, names, shelfBands);
-  const ownedShelvesBuilt = buildShelfContexts(ownedShelfViews, shelfListingsByShelf, names, shelfBands);
-  for (const built of [...nearbyShelvesBuilt, ...ownedShelvesBuilt]) {
+  const nearbyShelvesBuilt = buildShelfContexts(nearbyShelfViews, names, shelfBands);
+  for (const built of nearbyShelvesBuilt) {
     if (built.entries.length > 0) shelfItemIndex[built.context.id] = built.entries;
   }
   const nearbyShelves = nearbyShelvesBuilt.map((b) => b.context);
-  const ownedShelves = ownedShelvesBuilt.map((b) => b.context);
 
   // 地点名一律走 names.location（= 统一的 locationName：普通地点 / 组合工作台 "<def>@<group>"
   // / 工作台兜底全覆盖）。**不要**再按 isWorkstation 分流去调 names.workstation —— 组合 id
@@ -184,7 +166,6 @@ export function assembleAgentContextFromManifest(
     nearbyFarms,
     nearbyWorkstations,
     nearbyShelves,
-    ownedShelves,
     groups: groupIds,
     interactiveSites: buildInteractiveSites(nearbyFarms, nearbyWorkstations, nearbyShelves, names),
     inventory: inventoryRender.lines,
@@ -219,8 +200,8 @@ function characterAttributesFromState(state: CharacterStateView | undefined): st
     `${characterAttributeName("purse")}: ${(state.walletCenti / 100).toFixed(2)} 银`,
   ];
   if (state.burning) lines.push("burning");
-  if (state.activeConditions.length > 0) {
-    const tags = state.activeConditions
+  if (state.activeStatuses.length > 0) {
+    const tags = state.activeStatuses
       .map((c) => {
         if (typeof c === "string") return c;
         if (c && typeof c === "object") {
@@ -230,7 +211,7 @@ function characterAttributesFromState(state: CharacterStateView | undefined): st
         return "";
       })
       .filter(Boolean);
-    if (tags.length > 0) lines.push(`conditions: ${tags.join(", ")}`);
+    if (tags.length > 0) lines.push(`statuses: ${tags.join(", ")}`);
   }
   return lines;
 }
@@ -443,7 +424,8 @@ function workstationViewToContext(ws: WorkstationView, characterGroupIds: string
     workstationId: ws.workstationDefId,
     displayName: names.workstation(ws.workstationDefId),
     directlyInteractable: bands.get(ws.workstationNodeId) === "direct",
-    accessible: isOwnedSiteAccessibleToGroups(ws.ownerGroup, characterGroupIds),
+    // 工作台对所有人可用——group 不再闸门使用。owner_group 仅作招牌 flavor。
+    accessible: true,
     ownerGroup: ws.ownerGroup,
     interactionMode: ws.interactionMode,
     verbs: ws.verbs,
@@ -475,7 +457,8 @@ function containerViewToWorkstationContext(c: ContainerView, actorInventoryRows:
     workstationId: c.containerId,
     displayName: names.container(c.containerId),
     directlyInteractable: bands.get(c.containerId) === "direct",
-    accessible: isOwnedSiteAccessibleToGroups(c.ownerGroup, characterGroupIds),
+    // 容器对所有人可用——group 不再闸门。能否打开只看锁（locked/unlocked）。
+    accessible: true,
     ownerGroup: c.ownerGroup,
     interactionMode: "container",
     verbs: ["take", "put", "inspect"],
@@ -493,13 +476,12 @@ function containerViewToWorkstationContext(c: ContainerView, actorInventoryRows:
 // entries 是 listings 的 [N] → {itemDefId, listingId} 映射，update_shelf 的 update/remove 按 listingId 走。
 function buildShelfContexts(
   views: ShelfView[],
-  listingsByShelf: Map<string, ShelfListingView[]>,
   names: DisplayNameResolver,
   bands: Map<string, PerceptionBand>,
 ): Array<{ context: ShelfContext; entries: ItemIndexEntry[] }> {
   return views.map((view) => {
-    const list = listingsByShelf.get(view.shelfId) ?? [];
-    const entries: ItemIndexEntry[] = list.map((l) => ({ itemDefId: l.itemDefId, listingId: l.listingId }));
+    const rows = view.contents.filter((r) => r.itemDefId && r.stackCount > 0);
+    const entries: ItemIndexEntry[] = rows.map((r) => ({ itemDefId: r.itemDefId, slotIndex: r.slotIndex }));
     return {
       context: {
         id: view.shelfId,
@@ -508,25 +490,27 @@ function buildShelfContexts(
         directlyInteractable: bands.get(view.shelfId) === "direct",
         slotCount: view.slotCount,
         interactionRadiusMeters: view.interactionRadius,
-        listings: list.map((l, idx) => listingViewToContext(l, names, idx + 1)),
+        listings: rows.map((r, idx) => shelfRowToListingContext(r, names, idx + 1)),
       },
       entries,
     };
   });
 }
 
-function listingViewToContext(l: ShelfListingView, names: DisplayNameResolver, index: number): ShelfListingContext {
+function shelfRowToListingContext(r: InventoryItemRow, names: DisplayNameResolver, index: number): ShelfListingContext {
+  const priceCenti = r.listingPriceCenti ?? 0;
+  const priceSilver = priceCenti / 100;
   return {
     index,
-    listingId: l.listingId,
-    slotIndex: l.slotIndex,
-    itemId: l.itemDefId,
-    displayName: names.item(l.itemDefId),
-    quantity: l.quantity,
-    priceCenti: l.priceCenti,
-    priceSilver: l.priceSilver,
-    quality: l.quality,
-    freshnessTier: l.freshnessTier,
+    slotIndex: r.slotIndex,
+    itemId: r.itemDefId,
+    displayName: names.item(r.itemDefId),
+    quantity: r.stackCount,
+    priceCenti,
+    priceSilver,
+    priceText: priceCenti > 0 ? `${priceSilver.toFixed(2)} 银` : undefined,
+    quality: r.quality,
+    freshnessTier: r.freshness?.tier,
     descriptionParts: [],
   };
 }
@@ -573,7 +557,7 @@ function buildInteractiveSites(
     displayName: names.location(shelf.locationId ?? shelf.id) || `shelf_${index + 1}`,
     kind: "shelf",
     directlyInteractable: shelf.directlyInteractable ?? true,
-    availableActions: ["view_shelf", "buy_from_shelf"],
+    availableActions: ["view_container", "put_take"],
   }));
   return [...farmSites, ...workstationSites, ...shelfSites];
 }
@@ -586,7 +570,7 @@ function buildInteractiveSites(
 // 其他按 .workstations 反查到对应 axis slug。一个工作台可能落到多个 axis
 // （workbench 既能 woodwork 又能 assemble），全部列出来。找不到映射时给空数组。
 function availableActionsForWorkstation(workstationId: string, interactionMode?: string): string[] {
-  if (interactionMode === "container") return ["use_container"];
+  if (interactionMode === "container") return ["put_take", "view_container"];
   if (workstationId === "well") return ["draw_water"];
   const crafts: CraftSlug[] = [];
   for (const slug of listCraftSlugs()) {

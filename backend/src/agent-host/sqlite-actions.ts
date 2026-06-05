@@ -1,4 +1,4 @@
-import type { Redis } from "ioredis";
+import type { MessageBus } from "../plugins/message-bus.js";
 import { rowToActionLog, rowToWorldEvent } from "../db/records.js";
 import { toJsonColumn, type AppDb } from "../db/sqlite.js";
 import type { ActionLogRecord, WorldEventRecord } from "../godot-link/protocol.js";
@@ -21,11 +21,11 @@ import type {
 
 export function createSqliteAgentActionHost(
   db: AppDb,
-  redis: Redis,
+  bus: MessageBus,
   townId: string,
 ): AgentActionHost {
   return {
-    submit: (input: SubmitGameActionInput, options?: SubmitGameActionOptions) => submitAction(db, redis, {
+    submit: (input: SubmitGameActionInput, options?: SubmitGameActionOptions) => submitAction(db, bus, {
       townId,
       characterId: input.characterId,
       action: input.action,
@@ -47,9 +47,9 @@ export function createSqliteAgentActionHost(
     }, error),
     get: async (actionId: string) => findAction(db, townId, actionId),
     recentForCharacter: async (characterId: string, limit: number) => recentActionsForCharacter(db, townId, characterId, limit),
-    cancel: (action: ActionLogRecord, reason: string) => requestCancelAction(db, redis, action, reason),
-    waitForTerminal: (action: ActionLogRecord, options?: WaitForGameActionOptions) => waitForActionTerminalStatus(db, redis, action, options),
-    emitWorldEvent: (input: EmitWorldEventInput) => emitWorldEvent(db, redis, townId, input),
+    cancel: (action: ActionLogRecord, reason: string) => requestCancelAction(db, bus, action, reason),
+    waitForTerminal: (action: ActionLogRecord, options?: WaitForGameActionOptions) => waitForActionTerminalStatus(db, action, options),
+    emitWorldEvent: (input: EmitWorldEventInput) => emitWorldEvent(db, bus, townId, input),
   };
 }
 
@@ -111,7 +111,7 @@ export function recentActionsForCharacter(db: AppDb, townId: string, characterId
 
 async function emitWorldEvent(
   db: AppDb,
-  redis: Redis,
+  bus: MessageBus,
   townId: string,
   input: EmitWorldEventInput,
 ): Promise<WorldEventRecord> {
@@ -131,7 +131,7 @@ async function emitWorldEvent(
     now,
     toJsonColumn(input.gameTime),
   );
-  await publishWorldEventToBus(redis, townId, eventId);
+  publishWorldEventToBus(bus, townId, eventId);
   const row = db
     .prepare("SELECT * FROM world_events WHERE townId = ? AND id = ?")
     .get(townId, eventId) as Record<string, unknown> | undefined;

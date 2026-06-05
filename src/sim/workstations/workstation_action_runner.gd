@@ -38,10 +38,22 @@ static func _ws_display_name(workstation_id: String) -> String:
 
 var character
 var _active: Dictionary = {}
+var _town_world_cache = null
 
 
 func _init(owner) -> void:
 	character = owner
+
+
+# 工作台复合逻辑 id —— 与 TownWorld.workstation_logical_id / workstation_states seed 同源。
+# perception manifest、active work、busy 占用镜像统一走这里，绝不用 node.name：实例化工作台
+# 默认沿用场景根名（如 4 个 StoveWorkstationNode），跨铺子必重名，backend 按 id 反查会拿到错铺子。
+func _workstation_logical_id(ws_node: WorkstationNode) -> String:
+	if _town_world_cache == null or not is_instance_valid(_town_world_cache):
+		_town_world_cache = character.get_tree().get_first_node_in_group("town_world")
+	if _town_world_cache != null and _town_world_cache.has_method("workstation_logical_id"):
+		return str(_town_world_cache.call("workstation_logical_id", ws_node))
+	return String(ws_node.name)
 
 
 func nearby_snapshots(max_distance: float = WORKSTATION_INTERACT_DISTANCE) -> Array[Dictionary]:
@@ -50,6 +62,10 @@ func nearby_snapshots(max_distance: float = WORKSTATION_INTERACT_DISTANCE) -> Ar
 	var char_pos_dbg: Vector3 = character.global_position
 	for n in character.get_tree().get_nodes_in_group("workstations"):
 		if not n is WorkstationNode:
+			continue
+		# 货架（ShelfNode）虽是 WorkstationNode 子类，但单独走 perceivedShelves 上报（backend
+		# 渲染成带标价的货架）；这里排除，避免它又作为无 verb 的"工作台"混进来。
+		if n is ShelfNode:
 			continue
 		var ws_node := n as WorkstationNode
 		var anchor_pos: Vector3 = ws_node.get_approach_node().global_position
@@ -67,7 +83,7 @@ func nearby_snapshots(max_distance: float = WORKSTATION_INTERACT_DISTANCE) -> Ar
 			mode = ws_def.interaction_mode
 			slot_count = ws_def.slot_count
 		var snap := {
-			"id": String(ws_node.name),
+			"id": _workstation_logical_id(ws_node),
 			"workstationId": String(ws_node.workstation_id),
 			"displayName": String(ws_node.display_name),
 			"directlyInteractable": d_dbg <= WORKSTATION_INTERACT_DISTANCE,
@@ -82,6 +98,13 @@ func nearby_snapshots(max_distance: float = WORKSTATION_INTERACT_DISTANCE) -> Ar
 		# Container 型 workstation 额外暴露当前库存（让 LLM 知道里面有什么）。
 		if mode == "container" and ws_node is ContainerNode:
 			var cnode := ws_node as ContainerNode
+			# 容器的身份键回退到纯 effective_container_id（≠ workstation_logical_id 复合 id）。
+			# container_states 主键、Containers.system_deposit、铸币/挖矿自动入库、item ownerId
+			# 全用这个纯 id；backend assemble 拿 manifest id 去 join container_states，复合 id 会
+			# 落空 → 容器从 nearbyWorkstations 消失 → use_container "无法识别工作台"。复合 id 只是
+			# 真工作台为防 node.name 跨铺重名而设；容器本就有 def 级稳定 id，无需复合。
+			# 导航（move_to_location）另走 location_markers/locations.json 的复合 id，互不影响。
+			snap["id"] = cnode.effective_container_id()
 			var items := []
 			if Containers != null and snap["unlocked"]:
 				var inv: Dictionary = Containers.system_inventory_summary(cnode.effective_container_id())
@@ -160,7 +183,7 @@ func start_from_action(action_request: Dictionary) -> String:
 	_active = {
 		"action_id": str(action_request.get("id", "")),
 		"workstation_id": ws_def.id,
-		"workstation_node_id": String(ws_node.name),
+		"workstation_node_id": _workstation_logical_id(ws_node),
 		"workstation_node": ws_node,
 		"operator_id": operator_id,
 		"verb": verb,
@@ -314,7 +337,7 @@ func _start_direct_from_action(action_request: Dictionary, ws_def: Workstation, 
 		"action_id": str(action_request.get("id", "")),
 		"direct": true,
 		"workstation_id": ws_def.id,
-		"workstation_node_id": String(ws_node.name),
+		"workstation_node_id": _workstation_logical_id(ws_node),
 		"workstation_node": ws_node,
 		"operator_id": operator_id,
 		"verb": "direct",
@@ -928,7 +951,7 @@ func _find_workstation(workstation_id: String, max_distance: float = WORKSTATION
 			continue
 		var ws: WorkstationNode = n as WorkstationNode
 		var aliases: Array[String] = [
-			String(ws.name),
+			_workstation_logical_id(ws),
 			String(ws.workstation_id),
 			String(ws.display_name),
 		]
