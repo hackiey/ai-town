@@ -39,10 +39,14 @@ func emit_say(text: String, volume: String, target_character_id: String = "") ->
 			"is_sleeping": node.sleep_controller().is_sleeping() if node is Character else false,
 		})
 
+	# 醉酒说话：按说话者醉酒程度把话糊掉（蹦乱码）。糊后的文本既进气泡 RPC，也进
+	# world_event 上报 backend——所有人听到的都是这版含混话。生病不触发（只醉酒专属）。
+	var spoken := Impairment.garble_text(text, Impairment.drunk_level(_character))
+
 	var ctx := {
 		"speaker": _character,
 		"speaker_id": character_id,
-		"text": text,
+		"text": spoken,
 		"volume": volume,
 		"target_id": target_id,
 		"candidates": candidates,

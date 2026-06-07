@@ -22,7 +22,7 @@ const ACTION_SEMANTICS: Record<string, ActionSemantics> = {
   view_container: { lane: "read" },
   // put_take 是瞬时存取（body lane，但不耗时）；instant action 不需要 estimator。
   put_take: { lane: "body" },
-  // 10 个 craft action + draw_water 共享 body lane + estimator
+  // 10 个 craft action 共享 body lane + estimator
   // （都是工作台行为，target shape 一致）。见 game-tools/craft-registry.ts。
   ...Object.fromEntries(
     listCraftSlugs().map((slug) => [

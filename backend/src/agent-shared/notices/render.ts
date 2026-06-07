@@ -1,5 +1,5 @@
 // Action notice 渲染：把 ContinuedActionManager 投递出来的 ActionNotice 拼成 user message
-// 喂给 agent。其中 axis 工作台工具（mine / cook / smelt / ... / draw_water）走专门的
+// 喂给 agent。其中 axis 工作台工具（mine / cook / smelt / ...）走专门的
 // "工作台结果"模板（详细，含进度/产出/状态变化），plan_farm_work 复用 game-tools 自己的
 // 格式化器（保持和直接调用结果一致），其它 tool 走通用模板。
 //
@@ -61,7 +61,7 @@ function actionNoticeStatusText(status: string): string {
 }
 
 function renderContinuedActionRecord(record: ActionLogRecord, toolName: string): string {
-  if (isKnownCraft(toolName) || toolName === "draw_water") {
+  if (isKnownCraft(toolName)) {
     return renderWorkstationContextForAgent(buildAgentWorkstationContext({
       actionStatus: record.status,
       isError: record.status === "failed",

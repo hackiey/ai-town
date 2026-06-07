@@ -69,7 +69,7 @@ func _rebuild() -> void:
 		var alias := _world.location_alias(id)
 		var label := alias if not alias.is_empty() else id
 		var owner_group := _world.owner_group_for(id)
-		# 标记没权限的地点；点了仍然会发请求（server 端拒）方便 dev 验证。
+		# 标记带 owner_group 的地点；按钮仍会发请求，方便 dev 验证归属和导航。
 		if not owner_group.is_empty() and not player_groups.has(owner_group):
 			label = "[私] " + label
 		btn.text = label

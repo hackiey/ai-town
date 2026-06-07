@@ -112,22 +112,14 @@ func _on_proximity_changed(workstation: Node, entered: bool) -> void:
 	# 容器型 workstation 由 ContainerPanel 处理（独立 UI），ActionPanel 不接管。
 	if workstation != null and workstation.is_in_group("containers"):
 		return
+	# 仅维护 _active_workstation 供"走出范围自动关"；E 提示与路由统一交给 InteractionController。
 	if entered:
 		_active_workstation = workstation
-		_show_hint(workstation)
 	else:
 		if workstation == _active_workstation:
 			_active_workstation = null
-			_hint.visible = false
 		if workstation == _open_workstation and _root.visible:
 			close()
-
-
-func _show_hint(workstation: Node) -> void:
-	var prompt_text: String = workstation.get("prompt_text") if workstation.get("prompt_text") != null else tr("ui.action_panel.default.action")
-	var ws_name: String = workstation.get("display_name") if workstation.get("display_name") != null else tr("ui.action_panel.title")
-	_hint.text = tr("ui.action_panel.hint.press_e_format") % [prompt_text, ws_name]
-	_hint.visible = true
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -136,31 +128,14 @@ func _unhandled_input(event: InputEvent) -> void:
 	var key := event as InputEventKey
 	if not key.pressed or key.echo:
 		return
-	if key.physical_keycode == KEY_E and _active_workstation != null and not _root.visible:
-		_handle_e_press(_active_workstation)
-		get_viewport().set_input_as_handled()
-	elif key.physical_keycode == KEY_ESCAPE and _root.visible:
+	if key.physical_keycode == KEY_ESCAPE and _root.visible:
 		close()
 		get_viewport().set_input_as_handled()
 
 
-# 按 E：根据 workstation 的 interaction_mode 走 ActionPanel 或直接 RPC。
-func _handle_e_press(workstation: Node) -> void:
-	# Group 权限校验：本地用 player.groups（owner-private 同步过来的快照）。
-	# server 端在 RPC handler 还会再校验一遍（防 client 篡改 / 同步 lag）。
-	if _player != null and workstation.has_method("can_be_used_by") and not workstation.can_be_used_by(_player):
-		var ws_name := String(workstation.display_name) if workstation.get("display_name") != null else String(workstation.workstation_id)
-		EventBus.notification_posted.emit(tr("ui.action_panel.notification.no_permission_format") % [ws_name, String(workstation.owner_group)], "warn")
-		return
-	var ws_def: Workstation = Workstations.by_id(String(workstation.workstation_id))
-	var mode := "action_panel" if ws_def == null else String(ws_def.interaction_mode)
-	if mode == "direct":
-		if _player == null:
-			EventBus.notification_posted.emit(tr("ui.action_panel.notification.character_not_ready"), "warn")
-			return
-		_player.request_workstation_direct.rpc_id(1, String(workstation.workstation_id))
-		return
-	open(workstation)
+# E 路由统一由 InteractionController 处理（见 src/ui/hud/interaction_controller.gd）。
+func is_open() -> bool:
+	return _root.visible
 
 
 func open(workstation: Node) -> void:
@@ -170,7 +145,6 @@ func open(workstation: Node) -> void:
 	_populate_action_buttons(String(workstation.workstation_id))
 	_refresh_staged_view()
 	_root.visible = true
-	_hint.visible = false
 	# 持续 polling staged_items 变化（server 推回 → MultiplayerSynchronizer 改 _player.staged_items）
 	set_process(true)
 
@@ -183,8 +157,6 @@ func close() -> void:
 	_open_workstation = null
 	for s in _slots:
 		s.display_empty()
-	if _active_workstation != null:
-		_show_hint(_active_workstation)
 	set_process(_progress_box != null and _progress_box.visible)
 
 

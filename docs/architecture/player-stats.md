@@ -199,7 +199,7 @@ use_effects = [
 | buff | modifiers | 来源 |
 |---|---|---|
 | well_fed | stamina_regen ×1.5 | 大餐（stew, omelet）|
-| drunk | movement_speed ×0.7、attack_accuracy -20、social_npc +好感 | beer |
+| ~~drunk~~ | **已改为数值属性，不再是 buff** —— 见 [impairment-system.md](./impairment-system.md) | beer |
 | regen | hp +5 / 游戏分钟 | 治疗药水（魔法批）|
 | poisoned | hp -3 / 游戏分钟 | 毒刃、坏食物 |
 
@@ -234,7 +234,7 @@ use_effects = [
 - **buff 叠加规则**：multiple "well_fed" 同时获得是刷新时间还是叠加 modifier？默认刷新，可在 buff.tres 里 override？
 - **rest 减半的"野外"具体怎么判定**：靠地点 tag（"shelter"）？靠是否有 bedroll？暂留模糊，UI 实现时定。
 - **打扰睡眠**：NPC / 怪物来访时唤醒？
-- **疾病系统**：rest 持续低 / hunger 持续低 → 生病？后续 progression 设计
+- ~~**疾病系统**~~：**已落地** —— sickness 做成 0..100 数值属性（吃馊食 +35、草药茶 -40），与醉酒共用一套损伤层，见 [impairment-system.md](./impairment-system.md)。rest/hunger 持续低 → 生病的自动成因仍未做。
 - **强壮 / 虚弱永久状态**：长期养身体 vs 长期透支会不会改变 base 数值？YAGNI？
 - **NPC 是否走同一套**：NPC 也吃饭睡觉？schema 一样？需要在 two-track-agent-session.md / NPC 行为侧确认
 

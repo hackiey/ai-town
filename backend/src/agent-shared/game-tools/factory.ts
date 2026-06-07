@@ -11,7 +11,7 @@ import {
   createCookTool,
   createCreateItemTool,
   createDoNothingTool,
-  createDrawWaterTool,
+  createBrewTool,
   createDropItemTool,
   createMillGrainTool,
   createMineTool,
@@ -58,7 +58,7 @@ const AXIS_TOOL_FACTORIES: Record<CraftSlug, AxisToolFactory> = {
 // skillIdForCraft(craft) 这个 key（任意 value，含 0）= 已授予。
 // 真值来源：npcs.json 的 `proficiency` 字段 → boot 期 db.gd 写 npc_proficiency 表。
 //
-// 与"看得见但 access_denied"不同：access_denied 是工具在但被某次调用拒绝；
+// 与运行时拒绝不同：运行时拒绝是工具在但某次调用因距离/锁/占用等条件失败；
 // 这里是工具完全不暴露给 LLM —— edda_hale 不会想着去铸金币，省 token + 防误调。
 function isAxisAccessibleTo(
   craft: CraftSlug,
@@ -107,11 +107,11 @@ export function createSharedGameAgentTools(options: CreateGameAgentToolsOptions)
   // 通用交互工具（不归 craft，无 proficiency 门槛）：
   //   - put_take：货架/容器统一存取（存入+取出合一），全员可用
   //   - view_container：查看货架/容器内容（货架带标价），全员可用
-  //   - draw_water：井边直接使用型，无手艺
+  //   - brew：酿酒（装水酿酒桶+麦芽→发酵），无手艺门槛（品质由熟练度定）
   // 未来想加 proficiency gating 到 craft 工具时，**不要**误伤这些。
   tools.push(createPutTakeTool(options, characterId, options.currentContext, interrupts));
   tools.push(createViewContainerTool(options.currentContext));
-  tools.push(createDrawWaterTool(options, characterId, options.currentContext, interrupts));
+  tools.push(createBrewTool(options, characterId, options.currentContext, interrupts));
 
   // 通信 / 交易 / 休息 / 兜底
   tools.push(createOfferTool(options, characterId, options.currentContext, gameTime, interrupts));

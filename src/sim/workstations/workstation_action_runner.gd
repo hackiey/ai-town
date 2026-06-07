@@ -5,7 +5,7 @@ extends RefCounted
 #
 # 边界：
 # - Character 只负责暴露薄入口、生命周期 callback 和上下文 snapshot。
-# - 本类负责工作台发现、direct action（水井）、Agent inputs 解析、制作 duration、
+# - 本类负责工作台发现、Agent inputs 解析、制作 duration、
 #   dispatcher 调用、材料消耗、产物入包和 world_event summary。
 # - Player 的 ActionPanel staging 仍由 Player 管 UI/RPC，但 commit outcome 复用这里。
 
@@ -17,7 +17,6 @@ const MINING_TOOL_INPUT_NAME := "pick_head_on_shaft"
 # 工作台 craft event 名映射真值由 Crafts autoload 提供（读 data/skills/crafts.json）。
 # 见 src/autoload/crafts.gd 与 backend craft-registry.ts —— 三端同一份；不要在这里再起镜像。
 # 找不到时回退到工作台 id 作为事件类型 —— 触发后端 fallback renderer，让漏配立刻被看见。
-# draw_water 这种直接使用型工作台也走 Crafts.for_workstation_verb（well|direct → "draw_water"）。
 static func _craft_event_name(workstation_id: String, verb: String) -> String:
 	var slug: String = Crafts.for_workstation_verb(workstation_id, verb)
 	if not slug.is_empty():
@@ -78,7 +77,12 @@ func nearby_snapshots(max_distance: float = WORKSTATION_INTERACT_DISTANCE) -> Ar
 		var verbs: PackedStringArray = PackedStringArray()
 		var mode: String = "action_panel"
 		var slot_count: int = 5
-		if ws_def != null:
+		# 容器（仓库 / 水井 / 货架）身份由节点类型决定，不依赖 Workstation .tres def——
+		# 它们不是工作台，只是借用 WorkstationNode 的接近/锁基建。
+		if ws_node is ContainerNode:
+			mode = "container"
+			slot_count = (ws_node as ContainerNode).slot_count
+		elif ws_def != null:
 			verbs = ws_def.verbs.duplicate()
 			mode = ws_def.interaction_mode
 			slot_count = ws_def.slot_count
@@ -101,17 +105,17 @@ func nearby_snapshots(max_distance: float = WORKSTATION_INTERACT_DISTANCE) -> Ar
 			# 容器的身份键回退到纯 effective_container_id（≠ workstation_logical_id 复合 id）。
 			# container_states 主键、Containers.system_deposit、铸币/挖矿自动入库、item ownerId
 			# 全用这个纯 id；backend assemble 拿 manifest id 去 join container_states，复合 id 会
-			# 落空 → 容器从 nearbyWorkstations 消失 → use_container "无法识别工作台"。复合 id 只是
+			# 落空 → 容器从 nearby 列表消失 → put_take "无法识别容器"。复合 id 只是
 			# 真工作台为防 node.name 跨铺重名而设；容器本就有 def 级稳定 id，无需复合。
 			# 导航（move_to_location）另走 location_markers/locations.json 的复合 id，互不影响。
 			snap["id"] = cnode.effective_container_id()
-			var items := []
-			if Containers != null and snap["unlocked"]:
-				var inv: Dictionary = Containers.system_inventory_summary(cnode.effective_container_id())
-				for iid in inv.keys():
-					items.append({"item_id": String(iid), "quantity": int(inv[iid])})
-			snap["items"] = items
 			snap["containerId"] = cnode.effective_container_id()
+			if cnode.is_infinite_source():
+				# 无限液体源（水井）：报 content，不报 slot 列表。
+				snap["infiniteContent"] = cnode.infinite_content
+				snap["items"] = []
+			else:
+				snap["items"] = Containers.detailed_items_for(cnode) if (Containers != null and snap["unlocked"]) else []
 		out.append(snap)
 	return out
 
@@ -143,9 +147,6 @@ func start_from_action(action_request: Dictionary) -> String:
 	if ws_def == null:
 		return _fail_before_start(workstation_id, "", "", "unknown_workstation", "未登记的工作台：%s" % ws_name)
 
-	if ws_def.interaction_mode == "direct":
-		return _start_direct_from_action(action_request, ws_def, ws_node)
-
 	var verb: String = str(t.get("verb", "")).strip_edges()
 	if verb.is_empty() and ws_def.verbs.size() == 1:
 		verb = ws_def.verbs[0]
@@ -168,7 +169,7 @@ func start_from_action(action_request: Dictionary) -> String:
 	if not bool(collected.get("ok", false)):
 		return _fail_before_start(ws_def.id, verb, sub_option, "input_resolution_failed", str(collected.get("message", "无法解析工作台材料")))
 	var instances: Array = collected.get("instances", [])
-	var result: Dictionary = Crafting.resolve(verb, ws_def.id, sub_option, instances, character.get_proficiency_table())
+	var result: Dictionary = Crafting.resolve(verb, ws_def.id, sub_option, instances, character.get_proficiency_table(), Impairment.work_impair(character))
 	if str(result.get("outcome", "no_match")) == "no_match":
 		return _fail_before_start(ws_def.id, verb, sub_option, "no_matching_reaction", str(result.get("message", "无可用反应")))
 	var duration: float = float(result.get("duration_seconds", 0.0))
@@ -291,71 +292,6 @@ func _report_progress() -> void:
 	character.call("_on_backend_action_progress", summary)
 
 
-func try_direct(workstation_id: String) -> Dictionary:
-	match workstation_id:
-		"well":
-			return _try_well_draw()
-		_:
-			return {"ok": false, "message": "未知 direct workstation: %s" % _ws_display_name(workstation_id)}
-
-
-func can_direct(workstation_id: String) -> Dictionary:
-	match workstation_id:
-		"well":
-			return _check_well_draw()
-		_:
-			return {"ok": false, "message": "未知 direct workstation: %s" % _ws_display_name(workstation_id)}
-
-
-func _start_direct_from_action(action_request: Dictionary, ws_def: Workstation, ws_node: WorkstationNode) -> String:
-	if ws_def.id != "well":
-		var direct_result: Dictionary = try_direct(ws_def.id)
-		if not bool(direct_result.get("ok", false)):
-			return _fail_before_start(ws_def.id, "", "", "direct_failed", str(direct_result.get("message", "direct workstation failed")))
-		var direct_summary: Dictionary = {
-			"actionCompleted": true,
-			"ok": true,
-			"outcome": "success",
-			"workstation_id": ws_def.id,
-			"message": str(direct_result.get("message", "使用了 %s" % ws_def.display_name)),
-			"result": direct_result,
-		}
-		_send_world_event(direct_summary)
-		character._on_workstation_action_completed(direct_summary)
-		return ""
-
-	var can_start := can_direct(ws_def.id)
-	if not bool(can_start.get("ok", false)):
-		return _fail_before_start(ws_def.id, "", "", "direct_failed", str(can_start.get("message", "direct workstation failed")))
-	var label := "打水"
-	var cost: Dictionary = Wells.draw_cost()
-	var duration: float = float(cost.get("duration_seconds", 0.0))
-	var operator_id: String = character.backend_character_id()
-	if not ws_node.try_acquire(operator_id, "direct"):
-		return _fail_before_start(ws_def.id, "", "", "workstation_busy", "%s 正被人占用，稍等再来" % _ws_display_name(ws_def.id))
-	_active = {
-		"action_id": str(action_request.get("id", "")),
-		"direct": true,
-		"workstation_id": ws_def.id,
-		"workstation_node_id": _workstation_logical_id(ws_node),
-		"workstation_node": ws_node,
-		"operator_id": operator_id,
-		"verb": "direct",
-		"sub_option": "",
-		"input_names": [],
-		"duration": duration,
-		"deadline_game_seconds": GameClock.game_seconds + duration,
-		"started_at_game_seconds": GameClock.game_seconds,
-		"label": label,
-		"stamina_cost": float(cost.get("stamina_cost", 0.0)),
-	}
-	Db.update_character_activity(operator_id, "using_workstation", ws_def.id)
-	character.set("anim_state", "working")
-	character.show_action_label_rpc.rpc("%s…" % label)
-	_report_progress()
-	return ""
-
-
 func _is_mining_action(verb: String, workstation_id: String) -> bool:
 	return verb == "dig" and Mines.is_mine(workstation_id)
 
@@ -392,7 +328,7 @@ func _run_mining_attempt(attempt_game_seconds: float) -> bool:
 		return true
 	_active["stamina_spent"] = float(_active.get("stamina_spent", 0.0)) + float(spend.get("stamina_cost", 0.0))
 	_active["attempts"] = int(_active.get("attempts", 0)) + 1
-	if Mines.try_yield(ws_id):
+	if Mines.try_yield(ws_id, Impairment.work_impair(character)):
 		_active["successful_attempts"] = int(_active.get("successful_attempts", 0)) + 1
 		var result: Dictionary = _active.get("result", {})
 		_append_mining_diverted(_deposit_mining_outputs(result, attempt_game_seconds))
@@ -588,10 +524,6 @@ func _commit_active() -> void:
 	Db.clear_character_activity(character.backend_character_id())
 	character.hide_action_label_rpc.rpc()
 	character.set("anim_state", "idle")
-	if bool(active.get("direct", false)):
-		_commit_direct_active(active)
-		return
-
 	var result: Dictionary = active.get("result", {})
 
 	# 矿场反馈控制：dig 反应到此处时 dispatcher 已给 success（difficulty=0）。
@@ -603,7 +535,7 @@ func _commit_active() -> void:
 	var ws_id: String = str(active.get("workstation_id", ""))
 	var mining_diverted: Array = []
 	if verb == "dig" and Mines.is_mine(ws_id):
-		var lucky: bool = Mines.try_yield(ws_id)
+		var lucky: bool = Mines.try_yield(ws_id, Impairment.work_impair(character))
 		if not lucky:
 			var consumed_idx: Array = result.get("consumed_input_indices", [])
 			var returned_idx: Array = result.get("returned_input_indices", []).duplicate()
@@ -736,50 +668,6 @@ func _commit_active() -> void:
 	character._on_workstation_action_completed(summary)
 
 
-func _commit_direct_active(active: Dictionary) -> void:
-	var ws_id := str(active.get("workstation_id", ""))
-	var duration := float(active.get("duration", 0.0))
-	var elapsed := _active_elapsed_seconds(active)
-	var check := can_direct(ws_id)
-	if not bool(check.get("ok", false)):
-		var failed_summary := _direct_summary(active, false, str(check.get("message", "direct workstation failed")), {}, elapsed)
-		character.perception().send_manifest()
-		character._on_workstation_action_completed(failed_summary)
-		return
-	var stamina_spend := StaminaWallet.try_spend(character, float(active.get("stamina_cost", 0.0)), "well:%s" % ws_id)
-	if not bool(stamina_spend.get("ok", false)):
-		var stamina_summary := _direct_summary(active, false, str(stamina_spend.get("message", "体力不足")), stamina_spend, elapsed)
-		character.perception().send_manifest()
-		character._on_workstation_action_completed(stamina_summary)
-		return
-	var result := try_direct(ws_id)
-	var ok := bool(result.get("ok", false))
-	var summary := _direct_summary(active, ok, str(result.get("message", "使用了工作台")), result, elapsed)
-	summary["duration"] = duration
-	summary["stamina_cost"] = float(stamina_spend.get("stamina_cost", 0.0))
-	summary["stamina_before"] = float(stamina_spend.get("stamina_before", character.stamina))
-	summary["stamina_after"] = float(stamina_spend.get("stamina_after", character.stamina))
-	if ok:
-		_send_world_event(summary)
-	character.perception().send_manifest()
-	character._on_workstation_action_completed(summary)
-
-
-func _direct_summary(active: Dictionary, ok: bool, message: String, result: Dictionary, elapsed: float) -> Dictionary:
-	return {
-		"actionCompleted": ok,
-		"ok": ok,
-		"outcome": "success" if ok else "failed",
-		"workstation_id": str(active.get("workstation_id", "")),
-		"verb": str(active.get("verb", "direct")),
-		"sub_option": str(active.get("sub_option", "")),
-		"duration": float(active.get("duration", 0.0)),
-		"elapsed_game_seconds": elapsed,
-		"message": message,
-		"result": result,
-	}
-
-
 static func apply_outputs_to_character(owner, result: Dictionary, base_summary: Dictionary = {}) -> Dictionary:
 	var outcome: String = str(result.get("outcome", "failure"))
 	var outputs: Array[String] = []
@@ -859,86 +747,12 @@ static func craft_label(verb: String, workstation_id: String, sub_option: String
 	return "%s · %s (%s)" % [ws_name, verb_name, sub_option]
 
 
-func _check_well_draw() -> Dictionary:
-	var saw_container: bool = false
-	var saw_full: bool = false
-	var saw_other_liquid: bool = false
-	for i in character.inventory.size():
-		var slot: Dictionary = character.inventory[i]
-		var view: InventorySlotData = InventorySlotData.of(slot)
-		var tmpl: Item = view.template()
-		var has_liquid_tag: bool = view.has_tag("liquid_container") \
-			or (tmpl != null and "liquid_container" in tmpl.tags)
-		if not has_liquid_tag:
-			continue
-		var container: ContainerAspect = view.as_container()
-		if container == null or container.capacity() <= 0.0:
-			continue
-		saw_container = true
-		var capacity: float = container.capacity()
-		if not container.is_empty() and container.content_id() != "water":
-			saw_other_liquid = true
-			continue
-		if container.amount() >= capacity:
-			saw_full = true
-			continue
-		var added: float = capacity - container.amount()
-		return {
-			"ok": true,
-			"slot_index": i,
-			"display_name": view.display_name(),
-			"item": view.id(),
-			"content": "water",
-			"amount_added": added,
-			"amount": capacity,
-			"capacity": capacity,
-		}
-	if not saw_container:
-		return {"ok": false, "message": "没有可用的水桶"}
-	if saw_full and not saw_other_liquid:
-		return {"ok": false, "message": "水桶已经装满水了"}
-	if saw_other_liquid and not saw_full:
-		return {"ok": false, "message": "水桶里装着别的液体，先倒空"}
-	return {"ok": false, "message": "没有可用的水桶"}
-
-
-func _try_well_draw() -> Dictionary:
-	var check := _check_well_draw()
-	if not bool(check.get("ok", false)):
-		return check
-	var i := int(check.get("slot_index", -1))
-	if i < 0 or i >= character.inventory.size():
-		return {"ok": false, "message": "没有可用的水桶"}
-	var slot: Dictionary = character.inventory[i]
-	var view: InventorySlotData = InventorySlotData.of(slot)
-	var container: ContainerAspect = view.as_container()
-	if container == null:
-		return {"ok": false, "message": "没有可用的水桶"}
-	var capacity: float = container.capacity()
-	var fields := container.with_filled(capacity, "water")
-	slot["container_amount"] = fields["container_amount"]
-	slot["container_content"] = fields["container_content"]
-	character.inventory[i] = slot
-	character.inventory = character.inventory
-	character.inventory_ops().persist_slot(i)
-	return {
-		"ok": true,
-		"message": "打了水（%s +%d，%d/%d）" % [
-			view.display_name(), int(check.get("amount_added", 0.0)), int(capacity), int(capacity),
-		],
-		"item": view.id(),
-		"content": "water",
-		"amount_added": float(check.get("amount_added", 0.0)),
-		"amount": capacity,
-	}
-
-
 func _nearby_workstation_node(workstation_id: String, max_distance: float = WORKSTATION_INTERACT_DISTANCE) -> WorkstationNode:
 	return _find_workstation(workstation_id, max_distance).get("node", null)
 
 
 # 返回 {"node": WorkstationNode?, "reason": "" | "not_found" | "not_nearby" | "access_denied"}.
-# 区分三种失败：world 里没有这个 id / 有但距离过远 / 距离够近但 group 不允许。
+# 区分三种失败：world 里没有这个 id / 有但距离过远 / 距离够近但节点拒绝使用。
 func _find_workstation(workstation_id: String, max_distance: float = WORKSTATION_INTERACT_DISTANCE) -> Dictionary:
 	var requested: String = _normalize_input(workstation_id)
 	var max_sq: float = max_distance * max_distance

@@ -599,6 +599,31 @@ reactions = {
         stamina_cost = 6.0, duration_seconds = 600.0,
         failure_modes = {},
     },
+
+    -- ── 被动反应（trigger=passive，计时转化）────────────────────────
+    -- 由 PassiveSimulator 全局定时器推进（单一写者）；每条自带 tick_seconds。
+    -- strategy="ramp_transform"：开始即变身成 output，品质从 0 线性爬到 ceiling，
+    -- 到 hours 定格。on_tick(ctx={ceiling,start_hour,now_hour,hours}) → {quality,done}。
+    -- 晾晒：小麦放进 drying 容器自动开酿（auto_start），ceiling = 小麦品质。
+    dry_malt = {
+        trigger = "passive", strategy = "ramp_transform",
+        match = { vessel_tag = "drying", input = "wheat" },
+        auto_start = true,
+        output = "malt", yield = 1,
+        hours = 24.0, tick_seconds = 1800,
+        on_tick = function(ctx) return ramp_quality(ctx.ceiling, ctx.age, ctx.hours) end,
+    },
+    -- 发酵：装水的 brewing_vessel + 麦芽 → 啤酒，由 brew 动作起头（auto_start=false）。
+    -- ceiling = ferment_ceiling(熟练度, difficulty, 麦芽品质)。
+    ferment_beer = {
+        trigger = "passive", strategy = "ramp_transform",
+        match = { vessel_tag = "brewing_vessel", base_liquid = "water" },
+        auto_start = false,
+        ingredient = "malt", ingredient_per_liter = 1,
+        output = "beer", hours = 48.0, tick_seconds = 3600,
+        skill_id = "brewing", difficulty = 30,
+        on_tick = function(ctx) return ramp_quality(ctx.ceiling, ctx.age, ctx.hours) end,
+    },
 }
 
 -- 给每条 reaction 注入 reaction_id（i18n 用）
@@ -612,6 +637,7 @@ end
 local KNOWN_SKILLS = {
     milling=true, cooking=true, mining=true, salt_making=true,
     assembly=true, smithing=true, smelting=true, charcoal_making=true, woodworking=true,
+    brewing=true,
 }
 for id, r in pairs(reactions) do
     if r.trigger ~= "passive" then
@@ -1230,10 +1256,15 @@ function on_resolve(ctx)
     table.sort(sorted, function(a, b) return predicate_count(a) > predicate_count(b) end)
     local inputs = ctx.inputs
     local proficiency_table = ctx.proficiency or {}
+    -- 醉酒/生病：有效熟练度临时下调（同时拉高失败率、压低成品品质）。只在结算时算，
+    -- 不改存储熟练度。0 = 清醒健康。
+    local work_impair = ctx.work_impair or 0
     for _, r in ipairs(sorted) do
         local matches = match_inputs(r, inputs)
         if matches then
             local p = proficiency_table[r.skill_id] or 0
+            p = p - work_impair
+            if p < 0 then p = 0 end
             return execute(r, inputs, matches, p)
         end
     end
@@ -1246,4 +1277,148 @@ function on_resolve(ctx)
         no_match_reason = "inputs",
         reaction_id = "",
     }
+end
+
+-- ============================================================
+-- 被动反应（passive）：helper + query + tick 派发
+-- 被动转化定义全在本反应表，单一真值。GDScript 端：
+--   PassiveSimulator 调 passive_reactions()/run_tick()，brew_handlers 调
+--   find_ferment()/ferment_ceiling()，酿酒面板调 ferment_recipes()。
+-- ============================================================
+
+local function _clamp(v, lo, hi)
+    if v < lo then return lo end
+    if v > hi then return hi end
+    return v
+end
+
+-- 品质从 0 线性爬到 ceiling；累计 transform-hours(age) 到 hours → 定格 + done。
+-- 计时转化的共享 on_tick 实现（晾晒/发酵共用）。ctx.age 由 simulator 累计推进。
+function ramp_quality(ceiling, age, hours)
+    local frac = 1.0
+    if hours and hours > 0 then frac = age / hours end
+    frac = _clamp(frac, 0.0, 1.0)
+    local q = math.floor(ceiling * frac + 0.5)
+    return { quality = q, done = (frac >= 1.0) }
+end
+
+-- 发酵品质上限：麦芽品质是硬顶，熟练度相对难度决定逼近几成。
+-- eff = clamp(0.6 + (p-d)/100, 0, 1)；ceiling = round(clamp(mq*eff, 0, 100))。
+function ferment_ceiling(p, d, malt_quality)
+    p = p or 0
+    d = d or 0
+    local eff = _clamp(0.6 + (p - d) / 100.0, 0.0, 1.0)
+    return math.floor(_clamp((malt_quality or 0) * eff, 0.0, 100.0) + 0.5)
+end
+
+-- 全表被动条目（给 simulator 注册 tick 节奏 + 读 match/output/yield/hours…）。
+function passive_reactions()
+    local out = {}
+    for id, r in pairs(reactions) do
+        if r.trigger == "passive" then
+            local m = r.match or {}
+            table.insert(out, {
+                id = id,
+                strategy = r.strategy or "ramp_transform",
+                auto_start = r.auto_start == true,
+                tick_seconds = r.tick_seconds or 3600,
+                hours = r.hours or 0,
+                output = r.output or "",
+                yield = r.yield or 1,
+                ingredient = r.ingredient or "",
+                ingredient_per_liter = r.ingredient_per_liter or 1,
+                skill_id = r.skill_id or "",
+                difficulty = r.difficulty or 0,
+                vessel_tag = m.vessel_tag or "",
+                match_input = m.input or "",
+                match_base_liquid = m.base_liquid or "",
+            })
+        end
+    end
+    return out
+end
+
+local function _has_tag(vessel_tags, tag)
+    if tag == nil or tag == "" then return true end
+    if type(vessel_tags) ~= "table" then return false end
+    for _, t in ipairs(vessel_tags) do
+        if t == tag then return true end
+    end
+    return false
+end
+
+-- 晾晒 auto-start 用：这个 item 在这种容器里会不会晾。
+function find_dry(item_id, vessel_tags)
+    for id, r in pairs(reactions) do
+        if r.trigger == "passive" and r.strategy == "ramp_transform" and r.auto_start then
+            local m = r.match or {}
+            if m.input == item_id and _has_tag(vessel_tags, m.vessel_tag) then
+                r.reaction_id = id
+                return r
+            end
+        end
+    end
+    return nil
+end
+
+-- brew 起头用：选定原料 + 桶里是某基底液体 → 命中发酵配方。
+function find_ferment(base_liquid, ingredient, vessel_tags)
+    for id, r in pairs(reactions) do
+        if r.trigger == "passive" and r.ingredient ~= nil and r.ingredient ~= "" then
+            local m = r.match or {}
+            if m.base_liquid == base_liquid and r.ingredient == ingredient
+                and _has_tag(vessel_tags, m.vessel_tag) then
+                r.reaction_id = id
+                return r
+            end
+        end
+    end
+    return nil
+end
+
+-- 按 id 取一条被动配方的安全字段(不含 on_tick 函数,可 LuaConv)。brew 起头用。
+function passive_recipe(id)
+    local r = reactions[id]
+    if r == nil or r.trigger ~= "passive" then return nil end
+    local m = r.match or {}
+    return {
+        id = id,
+        output = r.output or "",
+        ingredient = r.ingredient or "",
+        ingredient_per_liter = r.ingredient_per_liter or 1,
+        hours = r.hours or 0,
+        skill_id = r.skill_id or "",
+        difficulty = r.difficulty or 0,
+        vessel_tag = m.vessel_tag or "",
+        base_liquid = m.base_liquid or "",
+    }
+end
+
+-- 酿酒面板用：这个桶（vessel_tags）+ 基底液体能酿的全部酒。
+function ferment_recipes(vessel_tags, base_liquid)
+    local out = {}
+    for id, r in pairs(reactions) do
+        if r.trigger == "passive" and r.ingredient ~= nil and r.ingredient ~= "" then
+            local m = r.match or {}
+            if m.base_liquid == base_liquid and _has_tag(vessel_tags, m.vessel_tag) then
+                table.insert(out, {
+                    id = id,
+                    output = r.output or "",
+                    ingredient = r.ingredient or "",
+                    ingredient_per_liter = r.ingredient_per_liter or 1,
+                })
+            end
+        end
+    end
+    return out
+end
+
+-- simulator 每 tick 调：派发到反应自己的 on_tick（自定义每 tick 逻辑）。
+-- ctx 由 GD 组好（ceiling/start_hour/now_hour/hours…）；返回 patch {quality, done}。
+function run_tick(reaction_id, ctx)
+    local r = reactions[reaction_id]
+    if r == nil or r.on_tick == nil then
+        return { quality = ctx.ceiling or 0, done = true }
+    end
+    return r.on_tick(ctx)
 end

@@ -17,16 +17,24 @@ extends WorkstationNode
 # 「玩家正在查看的那一页」（Player.view_slots，owner-private 同步，见 player.gd）。
 var contents: Array[Dictionary] = []
 
-# 被动转换 tag 集合。每个 tag 代表 Containers.tick_passive 一种被动机制：
-#   "drying"     → 槽内 item.dries_into 累计 drying_age_hours，到阈值 swap（drying.lua）
-#   （未来加 "fermenting" / "smoking" 等就在这里追加）
-# 普通容器留空 = 不触发任何被动机制（背包水果不会"自动变种子"）。
-# 见 data/mechanics/drying.lua。
+# 被动反应的 vessel 能力 tag 集合。匹配反应表里 match.vessel_tag（data/mechanics/crafting.lua）：
+#   "drying" → 槽内匹配的物品(如 wheat)被 PassiveSimulator 自动晾成 malt（auto_start）。
+#   （未来加 "smoking" 等就在这里追加；发酵的 brewing_vessel 在物品自身 tag 上，不在这里）
+# 普通容器留空 = 不提供任何被动能力（背包水果不会"自动变"）。
 @export var passive_tags: PackedStringArray = PackedStringArray()
+
+# 无限液体源（水井）。非空 = 这个容器是某液体的取之不尽来源（take 不减量、不需要 slot 存储）。
+# put_take 从这种容器取液体走 LiquidOps.fill_from_source。
+@export var infinite_content: String = ""
+@export var infinite_quality: int = 100
 
 
 func has_passive_tag(tag: String) -> bool:
 	return passive_tags.has(tag)
+
+
+func is_infinite_source() -> bool:
+	return not infinite_content.strip_edges().is_empty()
 
 # === 兼容旧字段 ===
 # 老 .tscn 实例可能仍设这些字段；setter 把值同步到基类对应字段，让后续代码统一读基类即可。

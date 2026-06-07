@@ -15,5 +15,6 @@ tint = Color(0.80, 0.55, 0.15, 1)
 base_effects = {
 "hunger": 5,
 "stamina": 10,
-"rest": 8
+"rest": 8,
+"drunk": 6
 }

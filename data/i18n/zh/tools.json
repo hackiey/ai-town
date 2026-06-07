@@ -8,7 +8,7 @@
       "do_nothing_reason_description": "本轮不执行任何行动的简短理由，建议不超过 80 字。",
       "agent_tool_reason_format": "agent 工具：{reason}",
       "runtime_pending_note": "runtime 正在执行，等待 completed/failed 回执。",
-      "item_ref_index": "对应清单中物品行首方括号里的 [N] 序号（1 起算）。每个清单（# 背包 / # 装备 / # 附近物品）各自独立从 1 编号，按清单类型选对应序号。同名物品（如不同品质的面包）会分多行显示，必须同时提供 name 与 index 才能定位到具体那份堆叠。"
+      "item_ref_index": "对应清单中物品行首方括号里的 [N] 序号。整个 user prompt 里所有清单（背包 / 装备 / 附近物品 / 容器内容 / 货架）统一连续编号，从 1 顺序往后、全场不重号——直接照抄目标那一行的 [N] 即可，不要按清单各自重新数。同名物品（如不同品质的面包）会分多行显示，必须同时提供 name 与 index 才能定位到具体那份堆叠。"
     },
     "move_to_location": {
       "param": {
@@ -134,20 +134,10 @@
       "result_note": "result 含产出盐和熟练度变化。"
     },
     "put_take": {
-      "label": "存取（货架/容器）",
-      "description": "在货架或容器里一次性存入(put)和/或取出(take)物品。container 指定目标（必须在附近）。put：把背包里的物品放进去，item 指向背包 [N]；货架上的 put 可带 price_silver 给该物品标价（仅展示）。take：把里面的物品拿出来，item 指向该货架/容器内列表 [N]（可先 view_container 看一眼）。\n买东西时，付钱优先用 offer 直接付给店主——这样钱有明确归属、最稳妥。只有当店主不在场、实在找不到人付钱时，才退而求其次：用 put_take 把对应的银币(silver_coin) 放进货架、同时 take 走想要的货；但留在货架上的钱可能被别人顺走，不保险。\n货架人人可存取；上锁的容器需要背包里有对应钥匙。",
-      "param": {
-        "container": "目标货架或容器；必须使用 user prompt 中 # 当前附近 列出的货架 / 容器型工作台（如面包店货架、金库）。角色不在附近时调用会失败。",
-        "put": "要存入的物品列表（从背包取）。每项 {item, quantity, price_silver?}。",
-        "take": "要取出的物品列表（从货架/容器取）。每项 {item, quantity}。",
-        "put_item": "要存入的物品；item 指向背包 [N]。",
-        "take_item": "要取出的物品；item 指向该货架/容器内列表 [N]。",
-        "put_quantity": "存入数量。",
-        "take_quantity": "取出数量。",
-        "price_silver": "可选，仅货架有效：给这件商品标价（银，支持小数，如 0.5）。仅作展示参考，不强制扣钱。"
-      },
-      "reason_format": "在 {label} 存取物品",
-      "error_empty": "至少要指定一项 put 或 take。"
+      "label": "存取（货架/容器/水井）",
+      "description": "在任意两个容器之间搬东西。transfers 是一串搬运，每条 {kind, amount, from, to}：kind=item 搬离散物品（amount=个数）；kind=liquid 倒液体（amount=升，混合时品质按量加权平均）。from / to 是 endpoint——container 填 # 当前附近 列出的容器名（仓库 / 货架 / 酿酒桶 / 水井），省略 container = 你自己的背包；item 填 {name, index} 指向该 endpoint 里要搬的那件（离散物，或木桶 / 杯这类容器物）。倒水：from.container 填水井（无限水源，from 不用填 item）、to 指你背包里的木桶。存货架时可在该条加 price_silver 标价（仅展示，不自动收钱）。\n买东西时，付钱优先用 offer 直接付给店主——钱有明确归属、最稳妥。只有店主不在场、实在找不到人付钱时，才退而用 put_take 把银币(silver_coin) 放进货架、同时 take 走想要的货；但留在货架上的钱可能被别人顺走，不保险。\n货架人人可存取；上锁的容器需要背包里有对应钥匙。",
+      "reason_format": "搬运物品",
+      "error_empty": "至少要指定一条 transfers。"
     },
     "view_container": {
       "label": "查看（货架/容器）",
@@ -157,15 +147,6 @@
       },
       "result_header": "{label} 里：",
       "result_empty": "（空的）"
-    },
-    "draw_water": {
-      "label": "打水",
-      "description": "需要在水井附近。把背包里的木桶装满水（默认 100 单位）。into 指定要装水的木桶。",
-      "param": {
-        "into": "要装水的容器（{name, index}）—— 必须是背包里的 liquid_container（如 wood_bucket）。"
-      },
-      "reason_default_format": "在水井把 {item} 装满水",
-      "result_note": "result 含装入的水量；木桶已经满时不再装。"
     },
     "say_to": {
       "param": {
@@ -220,7 +201,7 @@
       "param": {
         "character": "接收方角色名。必须是 # 附近角色 中 3 米内的人；不在场或在远处需先 move_to_location 走近。",
         "offer": "你拿出来的物品 [{item, count}, ...]，每项 item 走 # 背包 {name, index} 索引（name 用列表里看到的中文名），count 是数量。钱包里的银币直接列在 # 背包 顶部，照普通物品引用即可。count 对银币支持小数 0.01（0.75 = 0.75 银）；想付金币按 1 金=10 银 自己换算，例如付 1 金 = count: 10。\n你也可以把自家货架上挂着的货直接拿出来 offer（不必先收回背包）：只要你本人站在自家货架 3 米内，写上货名即可（背包里没有这件时，index 填 # 我的货架 里看到的该货序号），成交时会直接从货架 listing 上扣减。",
-        "request": "你想换回的物品 [{item, count}, ...]，对方背包对你不可见所以 item 只填 name（中文或英文 slug 均可）。**留空数组 [] 就是单向赠送**——对方即时收到，不需要回应；非空就是议价交易，对方会用 respond(kind:\"trade\") 接受或拒绝。成交时对方先从自己背包履约；只要对方（货架主）本人站在自家货架 3 米内（你不必也在场），那货架上的同名上架货物也算对方可履约的库存——想买货架上挂的货，先 view_shelf 看货，再把它列进 request 即可。"
+        "request": "你想换回的物品 [{item, count}, ...]，对方背包对你不可见所以 item 只填 name（中文或英文 slug 均可）。**留空数组 [] 就是单向赠送**——对方即时收到，不需要回应；非空就是议价交易，对方会用 respond(kind:\"trade\") 接受或拒绝。成交时对方先从自己背包履约；只要对方（货架主）本人站在自家货架 3 米内（你不必也在场），那货架上的同名上架货物也算对方可履约的库存——想买货架上挂的货，先 view_container 看货，再把它列进 request 即可。"
       },
       "label": "递交 / 交换",
       "description": "把背包里的物品递给附近 3 米内的另一角色。两种用法靠 request 字段区分：\n1. 单向赠送 / 协作分发（同事递工具、做饭分餐、给乞丐银币、领薪、补谢礼）：request:[]。对方立即收到，不需要回应；你也不会被阻塞，立即拿到 transferred 结果。\n2. 交易 / 议价 / 换物：request:[...] 非空。会阻塞直到对方 respond(kind:\"trade\", ...) 接受或拒绝。同一时刻你对同一对象只能挂一笔。\n想把东西扔在脚下而不是递给具体角色，用 drop_item。",

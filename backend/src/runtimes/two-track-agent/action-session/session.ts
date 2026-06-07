@@ -602,10 +602,10 @@ export class ActionTrackSession {
     // 断开 pi-agent-core 续航的 abort 不在这里发——放到 turn_end（整条 assistant message 的所有 tool 都跑完之后），
     // 否则同一条 message 内 LLM emit 多个 tool 时，第二个 tool 会被前一个 tool 的 microtask abort 误伤
     // （pi-agent-core sequential 循环在 tool 之间不查 signal，第二个 tool 已进 waitForTerminal 才看到 abort）。
-    // 10 个 axis tool + draw_water 共享 workstation 结果模板
+    // 10 个 axis tool 共享 workstation 结果模板
     // （toolResultDetails / target shape 完全一致，渲染逻辑无差别）。
     const toolName = context.toolCall.name;
-    const isWorkstationTool = toolName === "draw_water" || isKnownCraft(toolName);
+    const isWorkstationTool = isKnownCraft(toolName);
     const overrideText = isWorkstationTool
       ? renderUseWorkstationToolResultPrompt(context)
       : undefined;

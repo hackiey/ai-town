@@ -59,6 +59,12 @@ var hp: float
 var stamina: float
 var hunger: float
 var rest: float
+# 损伤层（impairment）：drunk 醉酒 / sickness 生病，都是 0..MAX_IMPAIRMENT 的累计数值。
+# 0 = 完全清醒/健康。喝酒加 drunk、吃馊食物加 sickness、吃药减 sickness。
+# 衰减 + 对动作的影响规则见 data/mechanics/physiology.lua 与 src/sim/characters/impairment.gd。
+const MAX_IMPAIRMENT := 100.0
+var drunk: float = 0.0
+var sickness: float = 0.0
 # 钱包。silver_coin / gold_coin 不再以 inventory item 形式存在，统一走 wallet 余额。
 # 单位是 centi（1 silver = 100 centi），int 避免浮点误差。显示层除 100 即 silver。
 # 拾取物理 silver_coin/gold_coin → 自动入账（见 character_inventory.gd）。
@@ -326,6 +332,9 @@ func apply_ten_minute_tick(total_minute: int) -> void:
 		"max_hunger": max_hunger,
 		"rest": rest,
 		"max_rest": max_rest,
+		"drunk": drunk,
+		"sickness": sickness,
+		"max_impairment": MAX_IMPAIRMENT,
 		"is_sleeping": sleep_controller().is_sleeping(),
 		"has_hungry": has_status("hungry"),
 	})

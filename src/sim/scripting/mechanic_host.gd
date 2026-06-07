@@ -46,7 +46,12 @@ func query(mechanic_name: String, fn_name: String, args: Array = []) -> Variant:
 	var fn = state.globals[fn_name]
 	if fn == null:
 		return null
-	return fn.invokev(args)
+	# 复杂参数(Array/Dictionary)必须先转成 lua table 才能传进去——invokev 不会自动转。
+	# 同 call_hook 的 _gd_to_lua 语义；primitive 原样通过。让 query 也能传 ctx/列表参数。
+	var lua_args: Array = []
+	for a in args:
+		lua_args.append(LuaConv.to_lua(state, a))
+	return fn.invokev(lua_args)
 
 
 # 启动期一次性导出 reaction 元数据。每个 active reaction 一行：

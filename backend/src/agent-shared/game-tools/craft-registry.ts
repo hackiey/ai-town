@@ -60,7 +60,7 @@ function load(): void {
     const workstations = Array.from(new Set(rec.operations.map((op) => op.workstation)));
     const verbs = Array.from(new Set(rec.operations.map((op) => op.verb)));
     built[slug] = {
-      // skillId 可以为空字符串：表示该 craft 没有熟练度概念（draw_water 这种直接使用型）。
+      // skillId 可以为空字符串：表示该 craft 没有熟练度概念。
       // listProficiencyCrafts 会过滤掉这种，filter 不会按 proficiency 误伤它们。
       skillId: rec.skillId ?? "",
       operations: rec.operations,
@@ -82,14 +82,14 @@ function load(): void {
 // 调用方该 narrow 时用 isKnownCraft 守护。
 export type CraftSlug = string;
 
-// 所有登记的 craft（含无 proficiency 的直接使用型如 draw_water）。
+// 所有登记的 craft（含无 proficiency 的直接使用型）。
 export function listCraftSlugs(): readonly string[] {
   load();
   return _slugs;
 }
 
 // 只列有 skillId 的 craft —— LLM 工具按 proficiency 过滤时只看这一档。
-// draw_water 这种 skillId="" 的不在此列，由各 factory 自己 always-expose。
+// skillId="" 的直接使用型不在此列，由各 factory 自己 always-expose。
 export function listProficiencyCrafts(): readonly string[] {
   load();
   return _proficiencySlugs;

@@ -37,6 +37,14 @@
         "sleeping": "恢复精力",
         "burning": "持续受伤",
         "dead": "无法行动"
+      },
+      "impairment": {
+        "tipsy": "微醺",
+        "drunk": "醉酒",
+        "drunk_wasted": "烂醉",
+        "sick_mild": "轻症",
+        "sick_moderate": "中症",
+        "sick_severe": "重症"
       }
     },
     "npc_hover": {
@@ -212,6 +220,25 @@
         "plan_uproot": "→ 铲除"
       }
     },
+    "water_draw": {
+      "title_format": "%s · 取水",
+      "row_format": "%s（%d/%d 升）",
+      "draw_button": "取水",
+      "empty": "背包里没有可装水的容器",
+      "close": "关闭"
+    },
+    "liquid_pour": {
+      "title_format": "从「%s」倒出%s",
+      "pour_button": "倒入",
+      "empty": "背包里没有可接收的容器"
+    },
+    "brewing": {
+      "title_format": "「%s」酿酒（%d 升水）",
+      "row_format": "需 %d %s（有 %d）",
+      "brew_button": "酿造",
+      "empty": "这个桶酿不了酒",
+      "close": "关闭"
+    },
     "action_panel": {
       "title": "工作站",
       "default": {
@@ -283,6 +310,14 @@
       "label_default": "储物箱",
       "label_storage": "容器内容",
       "label_backpack": "背包",
+      "menu": {
+        "take_one": "取出 1 个",
+        "take_all": "取出整堆",
+        "put_one": "存入 1 个",
+        "put_all": "存入整堆",
+        "pour": "倒出液体…",
+        "brew": "酿酒…"
+      },
       "msg_no_access": "「%s」不归你管，无权打开",
       "msg_no_key": "「%s」需要钥匙「%s」才能打开",
       "msg_too_far": "离「%s」太远，先走过去再操作",

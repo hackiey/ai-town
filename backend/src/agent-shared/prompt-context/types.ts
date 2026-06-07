@@ -87,7 +87,7 @@ export type WorkstationContext = {
   workstationId: string;
   displayName?: string;
   directlyInteractable?: boolean;
-  // false = 看得见但没使用权限（owner_group 不匹配）；undefined 兼容旧数据视作 true。
+  // 当前工作台/容器组装时固定为 true；保留字段兼容通用 site 渲染管线。
   accessible?: boolean;
   // 归属 group id（如 "blacksmith_shop"）；用于在 LLM-facing 描述里渲染招牌后缀
   // "（巴克利铁匠铺）"。空/undefined = 公用。
@@ -146,10 +146,10 @@ export type InteractiveSiteContext = {
   displayName: string;
   kind: "farm" | "workstation" | "shelf";
   directlyInteractable: boolean;
-  // false = 看得见但没权限（owner_group 不匹配）；undefined / true = 有权限。
+  // false = 看得见但没权限（目前主要用于农田 owner_group）；undefined / true = 有权限。
   accessible?: boolean;
   // 归属 group id；non-empty 时渲染层会在 displayName 后追加招牌（如 "（巴克利铁匠铺）"），
-  // 让"看得见但不归你用"成为世界叙述的一部分，不再需要 [无权限] 标签。
+  // 表达地点/工作台归属，不作为工作台硬使用门槛。
   ownerGroup?: string;
   availableActions: string[];
   summary?: string;
@@ -176,6 +176,13 @@ export type ItemIndexEntry = {
   itemDefId: string;
   slotIndex?: number;
   listingId?: string;
+  // 统一扁平编号（从 1 顺序往后，全场唯一）。assemble 后一遍 post-pass 写入；
+  // resolver 按 globalIndex 反查；scope/containerId 让 put_take 知道这件东西在哪。
+  globalIndex?: number;
+  scope?: "backpack" | "equipment" | "nearby" | "container" | "shelf";
+  containerId?: string;
+  // 地面物品实例 id（ownerKind='world' 的 item_instances.id）。让 put_take 能寻址地上的桶。
+  groundItemId?: string;
   // 液体容器装的内容 id（如 wood_bucket 里的 "water"）。resolver 在 name mismatch 时
   // 用这个兜底——LLM 写 {name:"水", index:<木桶>} 可以解析成 {id:"water", slotIndex:桶}，
   // 由 Godot 端做最终校验（桶里真有水、量够等）。空 / undefined = 不是液体容器或桶里空着。
@@ -191,6 +198,8 @@ export type AgentItemIndexMaps = {
   nearby: ItemIndexEntry[];
   containers: Record<string, ItemIndexEntry[]>;
   shelves: Record<string, ItemIndexEntry[]>;
+  // 全部条目按显示顺序拼成的扁平表（globalIndex = 下标+1）。resolver 走这个做统一编号。
+  flat: ItemIndexEntry[];
 };
 
 // 单条熟练度：(skillId, value 0-100)。assembler 已按 value DESC 排好序，renderer 直接用。
@@ -206,6 +215,11 @@ export type AgentCurrentContext = {
   visibleLocations: VisibleLocationContext[];
   availableActions: string[];
   characterAttributes: string[];
+  // 自身醉酒程度（0..100），仅用于听者侧乱码强度（曲线，非阈值）。
+  selfDrunk: number;
+  // 自身醉酒档位 key（Godot 算好）：""/tipsy/drunk/wasted。烂醉(wasted)时连别人说的话都听不清。
+  // 听者侧乱码用它做门槛，不在 backend 复制 60 这个阈值。
+  selfDrunkTier: string;
   proficiency: ProficiencyEntry[];
   // 该角色所属 group id 列表（来自 manifest.characterGroupIds / SQLite character_groups）。
   // 用于按 group 做工具门控，例如 update_shelf 只给"管理着货架的 group"成员。

@@ -60,7 +60,7 @@ var prompt_text: String:
 @export var owner_group: String = ""
 
 # 锁。空=未上锁；非空=角色背包需有该 item id 才能 use。
-# 与 owner_group 正交：group 控可见/可寻路，lock 控使用。
+# 与 owner_group 正交：owner_group 只做归属/招牌，lock 控硬使用门槛。
 # 没人能开（仅 system_* 接口能写）= 用一个没人会获得的钥匙 id（如 "__none__"）。
 @export var lock_item_id: String = ""
 
@@ -162,8 +162,8 @@ func _on_body_entered(body: Node) -> void:
 	if not _is_local_player(body):
 		return
 	_local_active = true
-	if _label != null:
-		_label.visible = true
+	# Prompt 标签的显隐由 InteractionController 按"鼠标悬停"统一驱动（见 interaction_controller.gd）；
+	# 这里只负责 proximity 广播（面板走出范围自动关靠它）。
 	EventBus.workstation_proximity_changed.emit(self, true)
 
 
@@ -171,8 +171,6 @@ func _on_body_exited(body: Node) -> void:
 	if not _is_local_player(body):
 		return
 	_local_active = false
-	if _label != null:
-		_label.visible = false
 	EventBus.workstation_proximity_changed.emit(self, false)
 
 
@@ -207,7 +205,7 @@ func is_locked() -> bool:
 
 
 # 钥匙维度：无锁 → true；上锁但持钥匙 → true；其他 false。
-# 不查 group 权限，调用方自己决定要不要叠 can_be_used_by。
+# 不查 owner_group；工作台归属不作为硬使用门槛。
 func is_unlocked_by(character: Node) -> bool:
 	if not is_locked():
 		return true
@@ -216,7 +214,7 @@ func is_unlocked_by(character: Node) -> bool:
 	return character.inventory_ops().count_item(lock_item_id.strip_edges()) > 0
 
 
-# 综合：group 通过且锁通过。actor 实际能否操作此节点用这个。
+# 综合节点可用性与锁；actor 实际能否操作此节点用这个。
 func can_actually_use(character: Node) -> bool:
 	return can_be_used_by(character) and is_unlocked_by(character)
 

@@ -15,6 +15,8 @@ const PUT_PER_CLICK := 1
 const PAGE_SIZE := ROWS_CONTAINER * COLS   # 每页槽数 = 24
 
 var _player: Node = null
+var _pour_panel: Node = null  # LiquidPourPanel; 右键"倒出液体"时打开
+var _brew_panel: Node = null  # BrewPanel; 右键"酿酒…"时打开
 var _active_container: Node = null  # ContainerNode 进入 proximity 时记录
 var _open_container: Node = null
 var _container_slots: Array = []
@@ -71,6 +73,14 @@ func set_player(player: Node) -> void:
 		_refresh()
 
 
+func set_pour_panel(panel: Node) -> void:
+	_pour_panel = panel
+
+
+func set_brew_panel(panel: Node) -> void:
+	_brew_panel = panel
+
+
 func _on_proximity_changed(workstation: Node, entered: bool) -> void:
 	if not _is_container(workstation):
 		return
@@ -123,6 +133,7 @@ func _on_prev_page() -> void:
 	if _page <= 0:
 		return
 	_page -= 1
+	_build_container_slots()
 	_request_view()
 
 
@@ -131,6 +142,7 @@ func _on_next_page() -> void:
 	if _page >= count - 1:
 		return
 	_page += 1
+	_build_container_slots()
 	_request_view()
 
 
@@ -140,17 +152,14 @@ func _unhandled_input(event: InputEvent) -> void:
 	var key := event as InputEventKey
 	if not key.pressed or key.echo:
 		return
-	if key.physical_keycode == KEY_E and _active_container != null and not _root.visible:
-		# Group + lock 校验，避免无权限玩家硬开
-		if _player != null and not _active_container.can_actually_use(_player):
-			EventBus.notification_posted.emit(tr("ui.container.msg_no_access") % String(_active_container.display_name), "warn")
-			get_viewport().set_input_as_handled()
-			return
-		open(_active_container)
-		get_viewport().set_input_as_handled()
-	elif key.physical_keycode == KEY_ESCAPE and _root.visible:
+	# E 路由统一由 InteractionController 处理；这里只管 ESC 关闭。
+	if key.physical_keycode == KEY_ESCAPE and _root.visible:
 		close()
 		get_viewport().set_input_as_handled()
+
+
+func is_open() -> bool:
+	return _root.visible
 
 
 func _process(_delta: float) -> void:
@@ -170,14 +179,27 @@ func _build_container_slots() -> void:
 	for c in _container_grid.get_children():
 		c.queue_free()
 	_container_slots.clear()
-	var capacity := COLS * ROWS_CONTAINER
-	for i in capacity:
+	# 只建本页实际有的格子数（按容器 slot_count），不再固定 24 格——3 格的酒桶就显示 3 格。
+	var total := _container_total_slots()
+	var on_page := clampi(total - _page * PAGE_SIZE, 0, PAGE_SIZE)
+	for i in on_page:
 		var slot := InventorySlot.new()
 		_container_grid.add_child(slot)
-		# 右键 use → 取一份；drop → 取一整堆。重用 InventorySlot menu 信号语义。
-		slot.use_requested.connect(_on_container_take_one.bind(i))
-		slot.drop_requested.connect(_on_container_take_all.bind(i))
+		# 右键菜单：取出 1 / 取出整堆。信号自带 slot_index（=网格位），不要再 .bind() 否则多传一参报错。
+		slot.set_menu_labels(tr("ui.container.menu.take_one"), tr("ui.container.menu.take_all"))
+		slot.show_pour = true   # 装着液体的容器物会多出"倒出液体…"
+		slot.show_brew = true   # 装水的酿酒桶会多出"酿酒…"
+		slot.use_requested.connect(_on_container_take_one)
+		slot.drop_requested.connect(_on_container_take_all)
+		slot.pour_requested.connect(_on_container_pour)
+		slot.brew_requested.connect(_on_container_brew)
 		_container_slots.append(slot)
+
+
+func _container_total_slots() -> int:
+	if _open_container != null and _open_container.get("slot_count") != null:
+		return int(_open_container.slot_count)
+	return COLS * ROWS_CONTAINER
 
 
 func _build_player_slots() -> void:
@@ -188,8 +210,14 @@ func _build_player_slots() -> void:
 	for i in inv.size():
 		var slot := InventorySlot.new()
 		_player_grid.add_child(slot)
-		slot.use_requested.connect(_on_player_put_one.bind(i))
-		slot.drop_requested.connect(_on_player_put_all.bind(i))
+		# 右键菜单：存入 1 / 存入整堆。信号自带 slot_index，不要 .bind()。
+		slot.set_menu_labels(tr("ui.container.menu.put_one"), tr("ui.container.menu.put_all"))
+		slot.show_pour = true
+		slot.show_brew = true
+		slot.use_requested.connect(_on_player_put_one)
+		slot.drop_requested.connect(_on_player_put_all)
+		slot.pour_requested.connect(_on_player_pour)
+		slot.brew_requested.connect(_on_player_brew)
 		_player_slots.append(slot)
 
 
@@ -281,6 +309,72 @@ func _request_put(player_slot_index: int, qty: int) -> void:
 	if not _player.has_method("request_container_put"):
 		return
 	_player.request_container_put.rpc_id(1, _container_id(), player_slot_index, qty)
+
+
+# ── 倒液体：右键容器物→"倒出液体…" 打开 LiquidPourPanel（源=该容器物，目标=背包液体容器）──
+func _on_container_pour(grid_i: int) -> void:
+	var slots: Array = _view_slots_for_open_container()
+	if grid_i < 0 or grid_i >= slots.size():
+		return
+	_open_pour_from(_container_id(), _page * PAGE_SIZE + grid_i, slots[grid_i])
+
+
+func _on_player_pour(slot_index: int) -> void:
+	if _player == null:
+		return
+	var inv: Array = _player.inventory
+	if slot_index < 0 or slot_index >= inv.size():
+		return
+	_open_pour_from("", slot_index, inv[slot_index])
+
+
+func _open_pour_from(cid: String, slot_index: int, data: Dictionary) -> void:
+	if _pour_panel == null:
+		return
+	var view := InventorySlotData.of(data)
+	var cont := view.as_container()
+	if cont == null or cont.is_empty():
+		return
+	_pour_panel.open({
+		"container_id": cid,
+		"slot_index": slot_index,
+		"content": cont.content_id(),
+		"quality": int(cont.quality()),
+		"amount": cont.amount(),
+		"label": view.display_name(),
+	})
+
+
+# ── 酿酒：右键装水的酿酒桶→"酿酒…" 打开 BrewPanel（桶=源，列出可酿的酒）──
+func _on_container_brew(grid_i: int) -> void:
+	var slots: Array = _view_slots_for_open_container()
+	if grid_i < 0 or grid_i >= slots.size():
+		return
+	_open_brew_from(_container_id(), _page * PAGE_SIZE + grid_i, slots[grid_i])
+
+
+func _on_player_brew(slot_index: int) -> void:
+	if _player == null:
+		return
+	var inv: Array = _player.inventory
+	if slot_index < 0 or slot_index >= inv.size():
+		return
+	_open_brew_from("", slot_index, inv[slot_index])
+
+
+func _open_brew_from(cid: String, slot_index: int, data: Dictionary) -> void:
+	if _brew_panel == null:
+		return
+	var view := InventorySlotData.of(data)
+	var cont := view.as_container()
+	if cont == null or cont.is_empty():
+		return
+	_brew_panel.open({
+		"container_id": cid,
+		"slot_index": slot_index,
+		"liters": cont.amount(),
+		"label": view.display_name(),
+	})
 
 
 func _is_container(workstation: Node) -> bool:

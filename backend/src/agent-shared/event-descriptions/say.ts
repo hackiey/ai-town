@@ -11,13 +11,34 @@ import { characterDisplayName, localizeText } from "../name-resolver/index.js";
 import { renderActorLabel } from "./shared/actor-label.js";
 import { composeEventLine } from "./shared/compose.js";
 
+// 听者烂醉（drunkTier === "wasted"）时连别人的话都听不清——逐字符糊成符号。听自己说的话不糊。
+// 门槛走 Godot 算好的档位 key，不在这里复制阈值数（见 docs/architecture/impairment-system.md §2）。
+// 乱码强度 viewerDrunk/120 是听者侧独有曲线（Godot 无对应），保留为本地常量。符号池与 GDScript 一致。
+const GARBLE_POOL = "%^$#@&*";
+
+function garbleHeard(text: string, viewerDrunk: number, viewerDrunkTier: string): string {
+  if (viewerDrunkTier !== "wasted" || !text) return text;
+  const p = Math.min(0.9, viewerDrunk / 120);
+  let out = "";
+  for (const ch of text) {
+    if (ch === " " || ch === "\n" || ch === "\t") out += ch;
+    else if (Math.random() < p) out += GARBLE_POOL[Math.floor(Math.random() * GARBLE_POOL.length)];
+    else out += ch;
+  }
+  return out;
+}
+
 export function renderSayToEventLine(
   event: WorldEventRecord,
   viewerId: string,
   locale: Locale,
+  viewerDrunk: number = 0,
+  viewerDrunkTier: string = "",
 ): string {
   const data = (event.data ?? {}) as Partial<SayToEventData>;
-  const spoken = event.spokenText ? localizeText(event.spokenText) : "";
+  let spoken = event.spokenText ? localizeText(event.spokenText) : "";
+  // 听自己说的不糊；听别人说的，烂醉时糊。
+  if (event.actorId !== viewerId) spoken = garbleHeard(spoken, viewerDrunk, viewerDrunkTier);
   const actorLabel = renderActorLabel(event.actorId, viewerId, locale);
   const volumeLabel = data.volume ?? t("prompt.context.speak.volume_unknown", locale);
 

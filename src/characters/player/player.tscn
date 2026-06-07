@@ -117,6 +117,12 @@ properties/26/replication_mode = 2
 properties/27/path = NodePath(".:view_slots")
 properties/27/spawn = false
 properties/27/replication_mode = 2
+properties/28/path = NodePath(".:drunk")
+properties/28/spawn = false
+properties/28/replication_mode = 2
+properties/29/path = NodePath(".:sickness")
+properties/29/spawn = false
+properties/29/replication_mode = 2
 
 [node name="Player" type="CharacterBody3D"]
 collision_layer = 2

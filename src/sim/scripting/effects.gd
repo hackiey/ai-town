@@ -77,6 +77,30 @@ static func apply(effect: Dictionary) -> Dictionary:
 				"ok": true,
 				"summary": "%s.hp %+.0f → %.0f" % [target.name, target.hp - before, target.hp],
 			}
+		"modify_drunk":
+			var target := effect.get("target") as Character
+			var amount := float(effect.get("amount", 0.0))
+			if target == null:
+				return { "ok": false, "error": "modify_drunk: target is null" }
+			var before := target.drunk
+			target.drunk = clampf(target.drunk + amount, 0.0, Character.MAX_IMPAIRMENT)
+			target.state_io().persist()
+			return {
+				"ok": true,
+				"summary": "%s.drunk %+.1f → %.1f" % [target.name, target.drunk - before, target.drunk],
+			}
+		"modify_sickness":
+			var target := effect.get("target") as Character
+			var amount := float(effect.get("amount", 0.0))
+			if target == null:
+				return { "ok": false, "error": "modify_sickness: target is null" }
+			var before := target.sickness
+			target.sickness = clampf(target.sickness + amount, 0.0, Character.MAX_IMPAIRMENT)
+			target.state_io().persist()
+			return {
+				"ok": true,
+				"summary": "%s.sickness %+.1f → %.1f" % [target.name, target.sickness - before, target.sickness],
+			}
 		"remove_status":
 			return _apply_remove_status(effect)
 		"set_alive":

@@ -109,12 +109,12 @@ export function renderAgentEventsContext(context: GameAgentContext): string {
       startHours: formatHours(recentHours),
       endHours: formatHours(context.relevantEventWindowHours),
     }),
-    renderEventTimeline(historicalEvents, context.characterId, locale, context.selfActionResults),
+    renderEventTimeline(historicalEvents, context.characterId, locale, context.selfActionResults, context.current.selfDrunk, context.current.selfDrunkTier),
   );
   appendSection(
     sections,
     t("prompt.context.label.recent_events_format", locale, { hours: formatHours(recentHours) }),
-    renderEventTimeline(recentEvents, context.characterId, locale, context.selfActionResults),
+    renderEventTimeline(recentEvents, context.characterId, locale, context.selfActionResults, context.current.selfDrunk, context.current.selfDrunkTier),
   );
   return sections.join("\n\n");
 }
@@ -233,6 +233,8 @@ function renderEventTimeline(
   viewerId: string,
   locale: Locale,
   selfActionResults: ActionLogRecord[] = [],
+  viewerDrunk: number = 0,
+  viewerDrunkTier: string = "",
 ): string {
   if (events.length === 0) {
     return t("prompt.context.distance_band_none", locale);
@@ -252,7 +254,7 @@ function renderEventTimeline(
     const date = gameTime ? formatGameDate(gameTime) : t("prompt.context.time.game_time_unknown", locale);
     const time = gameTime ? `${gameTime.hour}:${pad2(gameTime.minute)}` : t("prompt.context.time.unknown", locale);
     const lines = grouped.get(date) ?? [];
-    lines.push(`${time} ${renderEventLine(event, viewerId, locale)}`);
+    lines.push(`${time} ${renderEventLine(event, viewerId, locale, viewerDrunk, viewerDrunkTier)}`);
     for (const sub of matcher.effectSubLinesFor(event)) {
       lines.push(`  → ${sub}`);
     }

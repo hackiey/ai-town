@@ -7,6 +7,7 @@ import type { CharacterPresenceView, CharacterStateView } from "./types.js";
 const SELECT_CHARACTER_STATE = `
   SELECT characterId, currentLocationId, posX, posY, posZ, animState,
          hp, maxHp, stamina, maxStamina, hunger, maxHunger, rest, maxRest,
+         drunk, sickness, drunkTier, sicknessTier,
          sleepNeededHours, temperature, burning, alive,
          equippedRightHand, equippedLeftHand, equippedBody, equippedHead,
          activeStatuses, silverCentiBalance
@@ -53,6 +54,11 @@ function rowToCharacterStateView(r: Record<string, unknown>): CharacterStateView
     maxHunger: numberOr(r.maxHunger, 100),
     rest: numberOr(r.rest, 100),
     maxRest: numberOr(r.maxRest, 100),
+    drunk: numberOr(r.drunk, 0),
+    sickness: numberOr(r.sickness, 0),
+    // 档位 key 由 Godot 算好持久化（""/tipsy/drunk/wasted、""/mild/moderate/severe）；backend 不重判阈值。
+    drunkTier: typeof r.drunkTier === "string" ? r.drunkTier : "",
+    sicknessTier: typeof r.sicknessTier === "string" ? r.sicknessTier : "",
     sleepNeededHours: numberOr(r.sleepNeededHours, 0),
     temperature: numberOr(r.temperature, 36.5),
     burning: Number(r.burning ?? 0) !== 0,

@@ -27,7 +27,7 @@ extends RefCounted
 # 薄壳里前置识别，调 `start_external(action_id, completion)` 把 runner 状态置上，再自己
 # enqueue 农事；queue drain 时 `_on_farm_queue_completed` 反过来调 `finish(...)`。
 #
-# 工作台 craft actions —— 10 个 production skill craft + draw_water 全部路由到同一个
+# 工作台 craft actions —— production skill craft 全部路由到同一个
 # character.workstation_actions().start_from_action()。target shape 由 backend WorkstationActionTarget 统一填好。
 
 var character: Character
@@ -344,6 +344,7 @@ func _is_instant_action(action: String) -> bool:
 		"respond",
 		"create_item",
 		"put_take_container",
+		"brew",
 		"write",
 		"read",
 	]
@@ -391,6 +392,8 @@ func _complete_instant_action(action_request: Dictionary) -> void:
 			structured = character.trade_runner().run_respond(action_request)
 		"put_take_container":
 			structured = ContainerHandlers.run_put_take(character, action_request)
+		"brew":
+			structured = BrewHandlers.run_brew(character, action_request)
 		"write":
 			structured = LedgerHandlers.run_write(character, action_request)
 		"read":

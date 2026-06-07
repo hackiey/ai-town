@@ -8,7 +8,7 @@ import type { InventoryItemRow, ItemInstanceAspects } from "./types.js";
 const SELECT_BY_OWNER = `
   SELECT slotIndex, itemDefId, stackCount, quality,
          shapeType, tags, materials, physicsProps,
-         containerAmount, containerContent,
+         containerAmount, containerContent, transformAge, fermentCeiling,
          freshnessTier, freshnessAgeHours,
          durability,
          baseEffects, displayedEffects,
@@ -58,6 +58,8 @@ export function rowToAspects(r: Record<string, unknown>): ItemInstanceAspects {
       content: r.containerContent == null || r.containerContent === ""
         ? null
         : String(r.containerContent),
+      fermenting: r.transformAge != null && r.fermentCeiling != null,
+      ceiling: r.fermentCeiling == null ? undefined : Number(r.fermentCeiling),
     };
   }
   if (r.freshnessTier != null) {

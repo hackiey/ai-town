@@ -48,6 +48,9 @@ static func empty() -> Dictionary:
 		"physics_props": null,
 		"container_amount": null,
 		"container_content": null,
+		"transform_age": null,
+		"transform_settle_hour": null,
+		"ferment_ceiling": null,
 		"freshness_tier": null,
 		"freshness_age_hours": null,
 		"durability": null,
@@ -121,6 +124,9 @@ static func normalize(slot: Dictionary) -> Dictionary:
 	slot["physics_props"] = _coerce_dict_or_null(slot.get("physics_props", null))
 	slot["container_amount"] = _coerce_float_or_null(slot.get("container_amount", null))
 	slot["container_content"] = _coerce_string_or_null(slot.get("container_content", null))
+	slot["transform_age"] = _coerce_float_or_null(slot.get("transform_age", null))
+	slot["transform_settle_hour"] = _coerce_float_or_null(slot.get("transform_settle_hour", null))
+	slot["ferment_ceiling"] = _coerce_int_or_null(slot.get("ferment_ceiling", null))
 	slot["freshness_tier"] = _coerce_int_or_null(slot.get("freshness_tier", null))
 	slot["freshness_age_hours"] = _coerce_float_or_null(slot.get("freshness_age_hours", null))
 	slot["durability"] = _coerce_int_or_null(slot.get("durability", null))
@@ -212,6 +218,16 @@ func container_amount() -> Variant:
 func container_content() -> Variant:
 	return slot.get("container_content", null)
 
+# 被动转换状态（drying / fermenting）。null = 未在转换。
+func transform_age() -> Variant:
+	return slot.get("transform_age", null)
+
+func transform_settle_hour() -> Variant:
+	return slot.get("transform_settle_hour", null)
+
+func ferment_ceiling() -> Variant:
+	return slot.get("ferment_ceiling", null)
+
 func freshness_tier() -> int:
 	var v: Variant = slot.get("freshness_tier", null)
 	return 5 if v == null else int(v)
@@ -302,6 +318,11 @@ func equals_stackable_with(other: InventorySlotData) -> bool:
 		return false
 	if container_content() != other.container_content():
 		return false
+	# 转换中的物（晾晒/发酵）各自计时，不同进度不合并（避免年龄被目标槽吞掉）。
+	if transform_age() != other.transform_age():
+		return false
+	if ferment_ceiling() != other.ferment_ceiling():
+		return false
 	if durability() != other.durability():
 		return false
 	var ta := tags()
@@ -335,6 +356,8 @@ func to_backend_dict() -> Dictionary:
 		"physicsProps": _nullable_dict_dup(slot.get("physics_props", null)),
 		"containerAmount": container_amount(),
 		"containerContent": container_content(),
+		"transformAge": slot.get("transform_age", null),
+		"fermentCeiling": slot.get("ferment_ceiling", null),
 		"freshnessTier": slot.get("freshness_tier", null),
 		"freshnessAgeHours": slot.get("freshness_age_hours", null),
 		"durability": durability(),

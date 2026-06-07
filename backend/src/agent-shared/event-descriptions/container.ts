@@ -7,10 +7,14 @@ import { localizeStringValue } from "../name-resolver/index.js";
 import { isSelfActor, renderActorLabel } from "./shared/actor-label.js";
 import { composeEventLine } from "./shared/compose.js";
 
-function formatMoves(moves: Array<{ itemId: string; quantity: number }> | undefined): string {
+function formatMoves(moves: Array<{ itemId?: string; content?: string; amount?: number }> | undefined): string {
   if (!moves || moves.length === 0) return "";
   return moves
-    .map((m) => `${localizeStringValue(m.itemId) ?? m.itemId} x${m.quantity}`)
+    .map((m) => {
+      const id = m.itemId ?? m.content ?? "";
+      const name = localizeStringValue(id) ?? id;
+      return m.amount != null ? `${name} x${m.amount}` : name;
+    })
     .join("、");
 }
 
@@ -20,26 +24,11 @@ export function renderContainerPutTakeEventLine(
   locale: Locale,
 ): string {
   const data = (event.data ?? {}) as Partial<ContainerPutTakeEventData>;
-  const container = data.containerId ? (localizeStringValue(data.containerId) ?? data.containerId) : "";
-  const putText = formatMoves(data.puts);
-  const takeText = formatMoves(data.takes);
+  const moves = formatMoves(data.moves);
   const self = isSelfActor(event.actorId, viewerId);
   const actor = renderActorLabel(event.actorId, viewerId, locale);
-  const parts: string[] = [];
-  if (putText) {
-    parts.push(self
-      ? t("prompt.context.event.container_put_take.put_self", locale, { container, items: putText })
-      : t("prompt.context.event.container_put_take.put_other", locale, { actor, container, items: putText }));
-  }
-  if (takeText) {
-    parts.push(self
-      ? t("prompt.context.event.container_put_take.take_self", locale, { container, items: takeText })
-      : t("prompt.context.event.container_put_take.take_other", locale, { actor, container, items: takeText }));
-  }
-  const main = parts.length > 0
-    ? parts.join("；")
-    : (self
-        ? t("prompt.context.event.container_put_take.noop_self", locale, { container })
-        : t("prompt.context.event.container_put_take.noop_other", locale, { actor, container }));
+  const main = moves
+    ? (self ? `你搬运了 ${moves}` : `${actor} 搬运了 ${moves}`)
+    : (self ? "你摆弄了一下容器" : `${actor} 摆弄了一下容器`);
   return composeEventLine(event, viewerId, locale, main);
 }

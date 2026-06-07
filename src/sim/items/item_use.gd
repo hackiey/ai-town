@@ -4,6 +4,10 @@ extends RefCounted
 # Shared item-use rules. Player UI can run these with a duration/progress bar;
 # backend actions can execute the same script path without duplicating validation.
 
+# 吃腐烂/馊掉的食物会生病：固定追加这么多 sickness（与新鲜度乘子无关）。
+const ROTTEN_SICKNESS := 35.0
+
+
 static func resolve(view: InventorySlotData, food_only: bool = false) -> Dictionary:
 	if view.is_empty():
 		return {"ok": false, "message": "物品槽位为空"}
@@ -13,15 +17,14 @@ static func resolve(view: InventorySlotData, food_only: bool = false) -> Diction
 	if food_only and item.kind != "food":
 		return {"ok": false, "message": "/eat %s 不是食物（kind=%s）" % [view.id(), item.kind]}
 	var perishable := view.as_perishable()
-	if perishable != null and perishable.is_rotten():
-		var rotten_message := "%s 已经腐烂，不能使用"
-		if item.kind == "food":
-			rotten_message = "%s 已经腐烂，吃了会生病"
-		return {"ok": false, "message": rotten_message % item.display_name}
-	# "可使用"判定：有 base_effects（无论 slot 上还是 template 上）即可。lua source
-	# 可选（特殊条件物品才写 compute_effects）。
+	var spoiled := view.has_tag("spoiled") or (perishable != null and perishable.is_rotten())
+	# 腐烂的可入口物（食物/饮料/腐食残渣）允许硬着头皮吃下去——但会生病（execute 里加 sickness）。
+	# 其它东西腐了仍不可用。
+	if perishable != null and perishable.is_rotten() and not (item.kind in ["food", "drink", "trash"]):
+		return {"ok": false, "message": "%s 已经腐烂，不能使用" % item.display_name}
+	# "可使用"判定：有 base_effects 即可；腐烂可入口物即使没有效果数据也可吃（吃了会生病）。
 	var effects_preview := ItemEffects.compute_displayed(view)
-	if effects_preview.is_empty():
+	if effects_preview.is_empty() and not spoiled:
 		if item.kind == "food":
 			return {"ok": false, "message": "/eat %s 没有效果数据（base_effects 空）" % view.id()}
 		return {"ok": false, "message": "%s 无法直接使用" % item.display_name}
@@ -56,6 +59,11 @@ static func execute(character: Character, view: InventorySlotData, resolved: Dic
 	# 然后通过 ItemEffects.apply_to_caster 走统一 Effects.apply 路径。
 	# lua 不再直接 affect.X side-effect；见 memory feedback_effects_lua_returns_dict。
 	var effects := ItemEffects.compute_displayed(view)
+	# 吃腐烂/馊食 → 生病：追加固定 sickness（tag spoiled 如 rotten_food，或 perishable 已腐的食物）。
+	var perish := view.as_perishable()
+	if view.has_tag("spoiled") or (perish != null and perish.is_rotten()):
+		effects = effects.duplicate()
+		effects["sickness"] = float(effects.get("sickness", 0.0)) + ROTTEN_SICKNESS
 	if effects.is_empty():
 		return {"ok": true, "effects": [], "applied": {}}
 	var summaries := ItemEffects.apply_to_caster(character, effects)

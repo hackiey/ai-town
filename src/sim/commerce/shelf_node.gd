@@ -10,7 +10,7 @@ extends ContainerNode
 # 迁移期：shelf_id / shelf_name / location_id 是兼容旧 .tscn 字段的 setter shim，
 # 自动同步到基类的 workstation_id / container_name。
 
-const _DEFAULT_DISPLAY_NAME := "货架"
+const _SHELF_DISPLAY_NAME := "货架"
 
 @export var shelf_id: String = "":
 	set(value):
@@ -54,7 +54,7 @@ func effective_display_name() -> String:
 	var localized := tr(key)
 	if localized != key:
 		return localized
-	return _DEFAULT_DISPLAY_NAME
+	return _SHELF_DISPLAY_NAME
 
 
 func matches_shelf_id(value: String) -> bool:

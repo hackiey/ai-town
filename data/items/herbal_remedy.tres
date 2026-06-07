@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="Item" format=3 uid="uid://clx8xs08xp4sm"]
+
+[ext_resource type="Script" uid="uid://dqr5snte2lo05" path="res://src/sim/items/item.gd" id="1_item"]
+
+[resource]
+script = ExtResource("1_item")
+id = "herbal_remedy"
+kind = "drink"
+use_duration_seconds = 30.0
+shape_type = "tankard"
+materials = {
+"body": "herbal_remedy"
+}
+tags = PackedStringArray("drink", "medicine", "liquid")
+tint = Color(0.35, 0.55, 0.30, 1)
+base_effects = {
+"sickness": -40,
+"stamina": 4
+}

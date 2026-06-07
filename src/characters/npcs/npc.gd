@@ -43,6 +43,9 @@ var _state: String = "falling"   # falling | idle | walking
 var _settle_timer: float = 0.0
 var _step_assist_cooldown: float = 0.0
 var _step_lift_remaining: float = 0.0   # 还要往上抬多少米
+# 醉酒走路踉跄：每 ~0.5s 掷一次，命中则原地停顿 ~0.6s（drunk 专属，生病不触发）。
+var _drunk_stumble_timer: float = 0.0
+var _drunk_stumble_check: float = 0.0
 const STEP_LIFT_DURATION := 0.12        # 抬起总时长（秒）
 # 标记当前 backend command 是 plan_farm_work（用 farm queue 实现）。Queue drain 时
 # 调用 _on_farm_queue_completed → 这里识别后把 summary 作为 result 回传给 backend ack。
@@ -384,6 +387,8 @@ func _physics_process(delta: float) -> void:
 				velocity.x = dir_xz.x * speed
 				velocity.z = dir_xz.y * speed   # Vector2.y → world Z
 				rotation.y = lerp_angle(rotation.y, atan2(dir_xz.x, dir_xz.y), rotation_speed * delta)
+	if _state == "walking":
+		_apply_drunk_stumble(delta)
 	var pre_pos := global_position
 	var intent_xz := Vector2(velocity.x, velocity.z)
 	move_and_slide()
@@ -406,6 +411,28 @@ func _physics_process(delta: float) -> void:
 	# → apply → 下一项。queue drain 时调 _on_farm_queue_completed，回传 summary 给 backend。
 	farm_actions().tick(delta)
 	head_status().sync_to_clients()
+
+
+# 醉酒走路踉跄：醉了的 NPC 在 move_to 途中会莫名其妙停一下。仅 drunk 触发（生病不会）。
+# 命中后把水平速度清零 ~0.6s，制造"踉跄/扶墙"的停顿；不改变路径，停完继续走。
+func _apply_drunk_stumble(delta: float) -> void:
+	var drunk := Impairment.drunk_level(self)
+	if drunk < Impairment.DRUNK_TIPSY:
+		_drunk_stumble_timer = 0.0
+		_drunk_stumble_check = 0.0
+		return
+	if _drunk_stumble_timer > 0.0:
+		_drunk_stumble_timer -= delta
+		velocity.x = 0.0
+		velocity.z = 0.0
+		return
+	_drunk_stumble_check += delta
+	if _drunk_stumble_check >= 0.5:
+		_drunk_stumble_check = 0.0
+		if randf() < clampf(drunk / 200.0, 0.0, 0.9):
+			_drunk_stumble_timer = 0.6
+			velocity.x = 0.0
+			velocity.z = 0.0
 
 
 func _enter_idle() -> void:

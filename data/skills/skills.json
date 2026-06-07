@@ -37,6 +37,9 @@
     },
     "woodworking": {
       "books": []
+    },
+    "brewing": {
+      "books": []
     }
   }
 }

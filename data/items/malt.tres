@@ -12,6 +12,3 @@ materials = {
 }
 tags = PackedStringArray("grain", "intermediate")
 tint = Color(0.72, 0.52, 0.24, 1)
-ferments_into = "beer_fermenting"
-fermenting_hours = 1.0
-fermenting_yield_qty = 1

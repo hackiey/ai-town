@@ -243,11 +243,38 @@ function createPutTakeEntrySchema(kind: "put" | "take") {
 // put_take：一次调用同时存入(put)+取出(take)。货架与容器统一（货架=无锁容器，多个标价）。
 // put / take 各自可为空（甚至空数组都行），但**不能同时为空**——这条由 createPutTakeTool 运行时
 // 校验报 error_empty，不在 schema 层用 minItems（否则空数组会被误判成"少于 1 项"）。
+// 容器 endpoint：container=附近容器名（仓库/水井/货架），省略=你的背包；
+// item=该 endpoint 里具体的容器物（木桶/杯/酿酒桶）或要搬的离散物（{name,index}）。
+function createTransferEndpointSchema() {
+  return Type.Object({
+    container: Type.Optional(Type.String({ description: "附近容器名（仓库/水井/货架等）。省略=你自己的背包。" })),
+    item: Type.Optional(Type.Object({
+      name: Type.String({ minLength: 1, description: "容器物/离散物的名字" }),
+      index: Type.Integer({ minimum: 1, description: "同名多件时的序号（从 1 起）" }),
+    })),
+  });
+}
+
+// put_take：一串搬运。kind=item 搬离散物（from.item=要搬的物，amount=个数）；
+// kind=liquid 倒液体（from/to 各指一个液体容器，amount=升，品质按量加权平均）。
+// 液体源可为水井（from.container=水井，无 item）。
 export function createPutTakeSchema() {
   return Type.Object({
-    container: Type.String({ minLength: 1, description: td("put_take.param.container") }),
-    put: Type.Optional(Type.Array(createPutTakeEntrySchema("put"), { maxItems: 16, description: td("put_take.param.put") })),
-    take: Type.Optional(Type.Array(createPutTakeEntrySchema("take"), { maxItems: 16, description: td("put_take.param.take") })),
+    transfers: Type.Array(Type.Object({
+      kind: StringEnum(["item", "liquid"], { description: "item=搬离散物品；liquid=倒液体（按升）" }),
+      amount: Type.Number({ minimum: 0.01, description: "数量：item 按个数，liquid 按升" }),
+      from: createTransferEndpointSchema(),
+      to: createTransferEndpointSchema(),
+      price_silver: Type.Optional(Type.Number({ minimum: 0, multipleOf: 0.01, description: "存货架时的标价（仅展示）" })),
+    }), { minItems: 1, maxItems: 16, description: "搬运列表" }),
+    reason: Type.Optional(Type.String({ description: toolReasonDescription() })),
+  });
+}
+
+// brew：装水的酿酒桶 + 背包麦芽 → 发酵中的酒。barrel = 酿酒桶所在 endpoint。
+export function createBrewSchema() {
+  return Type.Object({
+    barrel: createTransferEndpointSchema(),
     reason: Type.Optional(Type.String({ description: toolReasonDescription() })),
   });
 }
@@ -258,15 +285,6 @@ export function createViewContainerSchema() {
   });
 }
 
-export function createDrawWaterSchema() {
-  return Type.Object({
-    into: createItemRefSchema("draw_water.param.into"),
-    reason: Type.Optional(Type.String({ description: toolReasonDescription() })),
-  });
-}
-
-// 容器三件套（deposit/withdraw/inspect）的 schema 在 createUseContainerSchema 里——按 verb 路由。
-// 三个 wire action 仍独立（deposit_to_container / withdraw_from_container / inspect_container）。
 
 function createUpdateMemorySchema() {
   return Type.Object({
@@ -372,14 +390,20 @@ export type CookParams = { verb: string; inputs: ItemRefParam[]; reason?: string
 export type MillGrainParams = { inputs: ItemRefParam[]; reason?: string };
 export type BoilSaltParams = { inputs: ItemRefParam[]; reason?: string };
 export type PutTakeEntryParam = { item: ItemRefParam; quantity: number; price_silver?: number };
+export type TransferEndpointParam = { container?: string; item?: { name: string; index: number } };
+export type TransferParam = {
+  kind: "item" | "liquid";
+  amount: number;
+  from: TransferEndpointParam;
+  to: TransferEndpointParam;
+  price_silver?: number;
+};
 export type PutTakeParams = {
-  container: string;
-  put?: PutTakeEntryParam[];
-  take?: PutTakeEntryParam[];
+  transfers: TransferParam[];
   reason?: string;
 };
+export type BrewParams = { barrel: TransferEndpointParam; reason?: string };
 export type ViewContainerParams = { container: string };
-export type DrawWaterParams = { into: ItemRefParam; reason?: string };
 // 每个 axis Params 在 tool factory 里被 normalize 成 WorkstationActionTarget 形态发给 Godot。
 export type AxisToolParams =
   | MineParams | WoodworkParams | BurnCharcoalParams | SmeltParams | SmithParams

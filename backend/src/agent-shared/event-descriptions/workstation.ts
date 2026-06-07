@@ -1,4 +1,4 @@
-// Workstation event renderer (共享给 10 个 axis event + draw_water)。
+// Workstation event renderer (共享给 10 个 axis event)。
 // Data shape: WorkstationEventData (workstationId, verb, outcome, outputs,
 // leftoverOutputs, failModeName, proficiency*)。Godot 端按 (workstation, verb)
 // 把事件名映射成 axis slug 发回（见 src/sim/workstations/workstation_action_runner.gd

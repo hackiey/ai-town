@@ -8,7 +8,6 @@
 [node name="FermentingBarrelNode" unique_id=537311950 instance=ExtResource("1_base")]
 script = ExtResource("2_container")
 slot_count = 3
-passive_tags = PackedStringArray("fermenting")
 container_id = ""
 key_item_id = ""
 container_name = ""

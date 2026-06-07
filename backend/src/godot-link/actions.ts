@@ -21,7 +21,7 @@ export const ACTION_NAMES = [
   "use_item",
   // 工作台 axis actions —— 见 backend/src/agent-shared/game-tools/craft-registry.ts。
   // 每个 axis 一个 wire action，共享 WorkstationActionTarget shape；Godot 端走同一个
-  // start_workstation_action() 派发。draw_water（well 直接使用型）也走同一路径。
+  // start_workstation_action() 派发。
   "mine",
   "woodwork",
   "burn_charcoal",
@@ -31,13 +31,13 @@ export const ACTION_NAMES = [
   "cook",
   "mill_grain",
   "boil_salt",
-  "draw_water",
   "plant_seed",
   "water_crop",
   "harvest_crop",
   "remove_pest",
   "plan_farm_work",
   "put_take_container",
+  "brew",
   "write",
   "read",
 ] as const;
@@ -108,7 +108,7 @@ export type RespondTarget = {
   response: "accept" | "reject";
 };
 
-// 所有 axis action（mine / woodwork / smelt / smith / assemble / cook / ...）+ draw_water
+// 所有 axis action（mine / woodwork / smelt / smith / assemble / cook / ...）
 // 共享同一 target shape。TS 工厂根据 craft-registry 的  填好 workstationId/verb/subOption，
 // Godot 端 start_workstation_action 不区分 axis（action 名只用于事件路由 + 文案识别）。
 export type WorkstationActionTarget = {
@@ -136,21 +136,33 @@ export type PlanFarmWorkTarget = {
   ops: PlanFarmWorkOp[];
 };
 
-// put_take_container：货架/容器统一存取，一次调用同时存入(put)+取出(take)，批量。
-// put 项 actorSlotIndex = 背包 slotIndex；priceCenti 仅货架（标价，仅展示）。
-// take 项 containerSlotIndex = 容器/货架内 item_instances.slotIndex。没传时 Godot 按 itemId 自选。
-export type PutTakeEntry = {
-  itemId: string;
-  quantity: number;
-  actorSlotIndex?: number;
-  containerSlotIndex?: number;
+// put_take_container：统一搬运。一串 transfers，每条把东西从一个容器搬到另一个。
+// 容器 endpoint：背包 / 附近容器 node（仓库·水井）/ 地面物品 / 它们里的容器 item。
+// 液体按升加权混合品质；离散按个数（背包侧货币走钱包）。Godot ContainerHandlers 执行。
+export type ContainerEndpoint = {
+  where: "backpack" | "node" | "ground" | "well";
+  containerId?: string;   // where=node/well
+  slotIndex?: number;     // where=backpack（液体容器 item 槽）/ node（容器内某 item 槽）
+  groundItemId?: string;  // where=ground
+  isShelf?: boolean;      // node 是货架（put 离散物时可带 priceCenti）
   priceCenti?: number;
 };
 
+export type TransferWire = {
+  kind: "item" | "liquid";
+  amount: number;
+  itemId?: string;        // kind=item：搬哪种离散物
+  from: ContainerEndpoint;
+  to: ContainerEndpoint;
+};
+
 export type PutTakeContainerTarget = {
-  containerId: string;
-  put: PutTakeEntry[];
-  take: PutTakeEntry[];
+  transfers: TransferWire[];
+};
+
+// brew：装水的酿酒桶 + 背包麦芽 → 发酵中的酒。barrel = 酿酒桶所在 endpoint。
+export type BrewTarget = {
+  barrel: ContainerEndpoint;
 };
 
 // write/read: 通用可书写/可阅读物品机制。write 消耗或转化一个可书写道具（比如纸）
@@ -195,13 +207,13 @@ export type ActionTargetByName = {
   cook: WorkstationActionTarget;
   mill_grain: WorkstationActionTarget;
   boil_salt: WorkstationActionTarget;
-  draw_water: WorkstationActionTarget;
   plant_seed: FarmingSubActionTargetUnused;
   water_crop: FarmingSubActionTargetUnused;
   harvest_crop: FarmingSubActionTargetUnused;
   remove_pest: FarmingSubActionTargetUnused;
   plan_farm_work: PlanFarmWorkTarget;
   put_take_container: PutTakeContainerTarget;
+  brew: BrewTarget;
   write: WriteTarget;
   read: ReadTarget;
 };
@@ -264,13 +276,13 @@ export type ActionResultByName = {
   cook: Record<string, unknown>;
   mill_grain: Record<string, unknown>;
   boil_salt: Record<string, unknown>;
-  draw_water: Record<string, unknown>;
   plant_seed: Record<string, unknown>;
   water_crop: Record<string, unknown>;
   harvest_crop: Record<string, unknown>;
   remove_pest: Record<string, unknown>;
   plan_farm_work: PlanFarmWorkResult;
-  put_take_container: { containerId?: string; put?: Array<{ itemId: string; quantity: number }>; taken?: Array<{ itemId: string; quantity: number }> };
+  put_take_container: { moves?: Array<{ kind?: string; itemId?: string; content?: string; amount?: number }> };
+  brew: { liters?: number; ceiling?: number };
   write: { itemName?: string; title?: string };
   read: { title?: string; content?: string };
 };

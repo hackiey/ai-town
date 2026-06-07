@@ -62,12 +62,6 @@
       "operations": [
         {"workstation": "saltworks_pan", "verb": "boil"}
       ]
-    },
-    "draw_water": {
-      "skillId": "",
-      "operations": [
-        {"workstation": "well", "verb": "direct"}
-      ]
     }
   }
 }

@@ -1275,39 +1275,6 @@ func _stage_pour_from_container(inv_slot: int) -> void:
 	Db.save_inventory_slot(backend_character_id(), inv_slot, inventory[inv_slot])
 
 
-# 直接交互模式 workstation 入口：路由到具体 ws 处理。
-@rpc("any_peer", "call_remote", "reliable")
-func request_workstation_direct(workstation_id: String) -> void:
-	if not RunMode.is_runtime():
-		return
-	if _reject_if_not_owner("request_workstation_direct"):
-		return
-	if not _active_craft.is_empty():
-		_fail_owner("正在制作中，请等当前完成")
-		return
-	if not _active_use_item.is_empty():
-		_fail_owner("正在使用物品，请等当前完成")
-		return
-	if workstation_actions().is_active():
-		_fail_owner("正在工作中，请等当前完成")
-		return
-	match workstation_id:
-		"well":
-			var action_request := {
-				"id": "player_direct_%d" % Time.get_ticks_msec(),
-				"action": "draw_water",
-				"target": {"workstationId": "well"},
-			}
-			var err := workstation_actions().start_from_action(action_request)
-			if not err.is_empty():
-				_fail_owner(err)
-				return
-			if workstation_actions().is_active():
-				_emit_player_action_started_owner("打水", float(Wells.draw_cost().get("duration_seconds", 0.0)))
-		_:
-			push_warning("[player] 未知 direct workstation: %s" % workstation_id)
-
-
 @rpc("any_peer", "call_remote", "reliable")
 func request_unstage_from_workstation(staged_idx: int, qty: int = 1) -> void:
 	if not RunMode.is_runtime():
@@ -1405,6 +1372,101 @@ func request_container_put(container_id: String, player_slot_index: int, qty: in
 		inventory_ops().receive_stacks(leftover)
 		if int(place.get("placed_qty", 0)) <= 0:
 			_fail_owner(str(place.get("message", "容器装不下")))
+
+
+# 玩家专用打水：从无限液体源（水井）把 amount 升灌进背包里指定的液体容器。
+# 不复用 NPC 的 put_take 工具——玩家走独立 RPC + WaterDrawPanel。核心仍是 LiquidOps，
+# 与 NPC 同一原语保证水量/品质一致（服务端权威，见 [[feedback_godot_is_authority]]）。
+@rpc("any_peer", "call_remote", "reliable")
+func request_draw_water(container_id: String, backpack_slot_index: int, amount: float) -> void:
+	if not RunMode.is_runtime():
+		return
+	if _reject_if_not_owner("request_draw_water"):
+		return
+	if amount <= 0.0:
+		return
+	var node := Containers.find_container_node(container_id)
+	if node == null:
+		_fail_owner("找不到水源")
+		return
+	if not _container_access_ok(node):
+		return
+	if not node.is_infinite_source() or String(node.infinite_content) != "water":
+		_fail_owner("这里打不到水")
+		return
+	if backpack_slot_index < 0 or backpack_slot_index >= inventory.size():
+		return
+	var slot: Dictionary = inventory[backpack_slot_index]
+	var result := LiquidOps.fill_from_source(slot, String(node.infinite_content), float(node.infinite_quality), amount)
+	if not bool(result.get("ok", false)):
+		_fail_owner(str(result.get("message", "装不进去")))
+		return
+	inventory[backpack_slot_index] = slot
+	inventory = inventory
+	inventory_ops().persist_slot(backpack_slot_index)
+	var moved := float(result.get("moved", 0.0))
+	emit_world_event("container_put_take", {
+		"actorId": backend_character_id(),
+		"affectedCharacterIds": perception().voice_affected_character_ids("far"),
+		"moves": [{"kind": "liquid", "content": "water", "amount": moved}],
+	})
+
+
+# 玩家专用倒液体：把一个液体容器的内容倒进另一个。container_id="" 表示背包槽，否则附近容器节点槽。
+# 复用 NPC 同一套 endpoint 解析 + LiquidOps.transfer_between_slots（服务端权威、距离/锁 server 裁）。
+@rpc("any_peer", "call_remote", "reliable")
+func request_pour_liquid(from_container_id: String, from_slot: int, to_container_id: String, to_slot: int, amount: float) -> void:
+	if not RunMode.is_runtime():
+		return
+	if _reject_if_not_owner("request_pour_liquid"):
+		return
+	if amount <= 0.0:
+		return
+	var from_res := ContainerHandlers._resolve_liquid_endpoint(self, _pour_endpoint(from_container_id, from_slot))
+	if not bool(from_res.get("ok", false)):
+		_fail_owner(str(from_res.get("message", "源容器无效")))
+		return
+	var to_res := ContainerHandlers._resolve_liquid_endpoint(self, _pour_endpoint(to_container_id, to_slot))
+	if not bool(to_res.get("ok", false)):
+		_fail_owner(str(to_res.get("message", "目标容器无效")))
+		return
+	var result := LiquidOps.transfer_between_slots(from_res["slot"], to_res["slot"], amount)
+	if not bool(result.get("ok", false)):
+		_fail_owner(str(result.get("message", "倒不动")))
+		return
+	(from_res["commit"] as Callable).call()
+	(to_res["commit"] as Callable).call()
+	var moved := float(result.get("moved", 0.0))
+	var content := str((to_res["slot"] as Dictionary).get("container_content", ""))
+	emit_world_event("container_put_take", {
+		"actorId": backend_character_id(),
+		"affectedCharacterIds": perception().voice_affected_character_ids("far"),
+		"moves": [{"kind": "liquid", "content": content, "amount": moved}],
+	})
+
+
+func _pour_endpoint(container_id: String, slot_index: int) -> Dictionary:
+	if container_id.strip_edges().is_empty():
+		return {"where": "backpack", "slotIndex": slot_index}
+	return {"where": "node", "containerId": container_id, "slotIndex": slot_index}
+
+
+# 玩家专用酿酒：给一个装水的酿酒桶 + 背包原料起头发酵。复用 NPC 同一 BrewHandlers.run_brew
+# （服务端权威：配方读反应表、扣原料、定上限、写发酵态；之后 PassiveSimulator 推进品质）。
+# container_id="" 表示背包槽，否则附近容器节点槽（酒桶仓库）。recipe_id = 反应表里的发酵反应 id。
+@rpc("any_peer", "call_remote", "reliable")
+func request_brew(container_id: String, slot_index: int, recipe_id: String) -> void:
+	if not RunMode.is_runtime():
+		return
+	if _reject_if_not_owner("request_brew"):
+		return
+	var target := {
+		"barrel": _pour_endpoint(container_id, slot_index),
+		"recipe": recipe_id,
+	}
+	var res := BrewHandlers.run_brew(self, target)
+	if not bool(res.get("ok", false)):
+		_fail_owner(str(res.get("message", "酿不了")))
 
 
 # ─ 容器/货架分页查看 ──────────────────────────────────────────────────────

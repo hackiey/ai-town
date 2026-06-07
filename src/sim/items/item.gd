@@ -81,19 +81,6 @@ var display_name: String:
 # .from_template 把 tmpl.base_effects 复制到 instance.base_effects。
 @export var base_effects: Dictionary = {}
 
-# === 被动晾干（drying rack 用）===
-# 非空 + drying_hours > 0 → 在 passive_tags 含 "drying" 的容器槽里累计 drying_age_hours，
-# 达到 drying_hours 时 swap 成 dries_into 模板（quantity = 原 quantity * drying_yield_qty）。
-# 走 data/mechanics/drying.lua + Containers.tick_drying（每 game-hour 一次）。
-# 仅适用于晾架等"自然加工"场景；放在 NPC 背包不触发。
-@export var dries_into: String = ""
-@export var drying_hours: float = 0.0
-@export var drying_yield_qty: int = 1
-
-# === 被动发酵（酒桶用）===
-# 与 drying 完全平行：非空 + fermenting_hours > 0 → 在 passive_tags 含 "fermenting" 的容器
-# 槽里累计 fermenting_age_hours，达到 fermenting_hours 时 swap 成 ferments_into 模板。
-# 走 data/mechanics/fermenting.lua + Containers.tick_fermenting（每 game-hour 一次）。
-@export var ferments_into: String = ""
-@export var fermenting_hours: float = 0.0
-@export var fermenting_yield_qty: int = 1
+# 被动转化（晾晒 wheat→malt、发酵 water→beer 等）不写在 item 模板上——定义全在反应表
+# data/mechanics/crafting.lua（trigger=passive），由 PassiveSimulator 全局定时器推进。
+# 加新被动转化只改反应表，不动这里。

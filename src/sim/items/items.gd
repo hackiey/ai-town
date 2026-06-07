@@ -50,6 +50,7 @@ const _ALL := {
 	"cooked_meat":    preload("res://data/items/cooked_meat.tres"),
 	"omelet":         preload("res://data/items/omelet.tres"),
 	"berry_jam":      preload("res://data/items/berry_jam.tres"),
+	"herbal_remedy":  preload("res://data/items/herbal_remedy.tres"),
 	# 层 C 腌制（盐反应输出）— 比对应 cooked 版 buff 略高 + shelf_life ×3-5
 	"cured_meat":     preload("res://data/items/cured_meat.tres"),
 	"cured_omelet":   preload("res://data/items/cured_omelet.tres"),
@@ -58,6 +59,11 @@ const _ALL := {
 	"rotten_food":    preload("res://data/items/rotten_food.tres"),
 	# 层 D 容器（kind=container, stackable=false）
 	"wood_bucket":    preload("res://data/items/wood_bucket.tres"),
+	"brewing_barrel": preload("res://data/items/brewing_barrel.tres"),
+	"cup":            preload("res://data/items/cup.tres"),
+	# 酿造链：小麦 → 麦芽（晾晒）→ 麦芽酒（发酵）
+	"malt":           preload("res://data/items/malt.tres"),
+	"beer":           preload("res://data/items/beer.tres"),
 	# 农事消耗品
 	"wood_ash":       preload("res://data/items/wood_ash.tres"),
 	# 货币系统：贵金属矿石 + 铸币（1 金币 = 10 银币；金矿石 1:1 铸金币，银矿石 1:5 铸银币）

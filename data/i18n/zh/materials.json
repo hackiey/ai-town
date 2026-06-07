@@ -51,6 +51,9 @@
     "beer": {
       "name": "麦芽酒"
     },
+    "herbal_remedy": {
+      "name": "草药茶"
+    },
     "hemp": {
       "name": "麻"
     },

@@ -15,7 +15,7 @@ const SELECT_ALL = `
   WHERE townId = ?
 `;
 
-// 按 id 列表批量取。Manifest 已经做过 group / 可见性过滤，所以这里不再筛 ownerGroup。
+// 按 id 列表批量取。Manifest 已确定可见 id；ownerGroup 只作为归属元数据返回。
 export function getLocationsByIds(db: AppDb, townId: string, locationIds: string[]): LocationMarkerView[] {
   if (locationIds.length === 0) return [];
   const placeholders = locationIds.map(() => "?").join(",");

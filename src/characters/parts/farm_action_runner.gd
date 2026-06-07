@@ -78,6 +78,10 @@ func try_plant_seed_at(slot: FarmSlot, item_id: String, slot_index: int = -1) ->
 	var stamina_spend := _spend_for("plant")
 	if not bool(stamina_spend.get("ok", false)):
 		return stamina_spend
+	# 醉酒/生病：手抖种砸了——种子照样废掉（不返还），不长作物。
+	if randf() < Impairment.fail_chance(Impairment.work_impair(character)):
+		character.inventory_ops().consume_one(item_id)
+		return _annotate({"ok": false, "code": "plant_fumbled", "message": "一个趔趄，种子撒了一地，全废了"}, stamina_spend)
 	var crop := Crop.spawn(spawner, item.crop_variety_id, slot.global_position)
 	if crop == null:
 		return {"ok": false, "message": "作物对应的 variety 不存在"}
@@ -120,12 +124,17 @@ func try_water_farm_at(farm: FarmGroup) -> Dictionary:
 	var draw := character.inventory_ops().consume_water_amount(FarmGroup.WATERING_WATER_COST)
 	if not bool(draw.get("ok", false)):
 		return {"ok": false, "message": str(draw.get("message", "没水可浇"))}
-	var r := farm.water(FarmGroup.WATERING_MOISTURE_DELTA)
+	# 醉酒/生病：水照样从桶里全扣，但大半洒在地上——入土湿度按 water_mult 打折。
+	var impair := Impairment.work_impair(character)
+	var moisture_delta := FarmGroup.WATERING_MOISTURE_DELTA * Impairment.water_mult(impair)
+	var r := farm.water(moisture_delta)
 	var before_pct := int(round(float(r.get("before", farm.moisture)) * 100.0))
 	var after_pct := int(round(float(r.get("after", farm.moisture)) * 100.0))
 	var occupied := int(r.get("occupied_crops", 0))
 	var too_wet := int(r.get("too_wet_crops", 0))
 	var msg := "给整片农田浇了水（水分 %d%%→%d%%" % [before_pct, after_pct]
+	if impair >= Impairment.DRUNK_TIPSY:
+		msg += "，手一抖洒了大半"
 	if occupied > 0:
 		msg += "，影响 %d 株" % occupied
 	else:
@@ -153,6 +162,9 @@ func try_remove_pest_at(slot: FarmSlot) -> Dictionary:
 		return stamina_spend
 	if not character.inventory_ops().consume_one("wood_ash"):
 		return {"ok": false, "message": "扣除草木灰失败"}
+	# 醉酒/生病：撒歪了——草木灰照样废掉（不返还），虫没除掉。
+	if randf() < Impairment.fail_chance(Impairment.work_impair(character)):
+		return _annotate({"ok": false, "code": "pest_fumbled", "message": "草木灰撒得到处都是，虫没除掉（%s）" % crop.variety.display_name}, stamina_spend)
 	crop.remove_pest()
 	return _annotate({"ok": true, "message": "撒了草木灰除虫（%s）" % crop.variety.display_name}, stamina_spend)
 
@@ -292,6 +304,9 @@ func try_remove_pest_facing() -> Dictionary:
 		return stamina_spend
 	if not character.inventory_ops().consume_one("wood_ash"):
 		return {"ok": false, "message": "扣除草木灰失败"}
+	# 醉酒/生病：撒歪了——草木灰照样废掉（不返还），虫没除掉。
+	if randf() < Impairment.fail_chance(Impairment.work_impair(character)):
+		return _annotate({"ok": false, "code": "pest_fumbled", "message": "草木灰撒得到处都是，虫没除掉（%s）" % crop.variety.display_name}, stamina_spend)
 	crop.remove_pest()
 	return _annotate({"ok": true, "message": "撒了草木灰除虫（%s）" % crop.variety.display_name}, stamina_spend)
 

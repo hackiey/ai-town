@@ -1,4 +1,19 @@
 {
+  "fermenting_barrel": {
+    "starting_inventory": [
+      {
+        "item_id": "brewing_barrel",
+        "quantity": 1,
+        "container_amount": 100,
+        "container_content": "beer",
+        "quality": 70
+      },
+      {
+        "item_id": "brewing_barrel",
+        "quantity": 2
+      }
+    ]
+  },
   "bakery_bread_shelf": {
     "starting_inventory": [
       {

@@ -35,6 +35,7 @@ Agent 系统、脚本层、实体模型的活文档。当前在迭代，**未完
 15. [backend-agent-host.md](./backend-agent-host.md) — Backend 作为 agent host 的内部架构：godot-link / agent-host / runtimes 三层、AgentRuntime 接口、per-NPC runtime 路由
 16. [lua-mechanic-migration-plan.md](./lua-mechanic-migration-plan.md) — 把游戏机制全部迁到 `data/mechanics/*.lua` 的实施计划：已 landed Step 0–3.5，余下 physiology / perishable / mining / backend verbs / durative action
 17. [combat-system.md](./combat-system.md) — 哈利波特式魔杖咒语对战：时间分层（frame/tick/LLM）、Spell+Wand schema、Lua 契约、行为树 NPC AI、LLM 战斗边界、P0→P4 实施路径
+18. [impairment-system.md](./impairment-system.md) — 醉酒 / 生病 损伤层：drunk + sickness 两个 0..100 属性，干活惩罚取 max 在执行时临时算（不污染熟练度），醉酒专属双向说话乱码 + 走路踉跄，逐动作影响清单 + 调参索引
 
 ## 状态总表
 
@@ -55,6 +56,7 @@ Agent 系统、脚本层、实体模型的活文档。当前在迭代，**未完
 | Godot↔agent protocol | [godot-agent-protocol.md](./godot-agent-protocol.md) | partial | envelope version、typed TS action / perception-manifest / event、Godot agent-host WS、action lifecycle；Godot 侧仍是 Dictionary 校验 |
 | Backend agent host | [backend-agent-host.md](./backend-agent-host.md) | partial | godot-link / agent-host / runtimes / services-world-state 分层、AgentRuntime 抽象、two-track-agent runtime、action_log/action bus、perception-manifest cache |
 | Combat system | [combat-system.md](./combat-system.md) | drafting | 仅设计稿；三层时间线（frame/fast-tick/LLM）+ **三层职责（Spell 投递 / Reaction 物理 / Wand 装备）**：effect/难度/学派复用 reaction-schema，威力四因子，角色无 mana 耗魔杖储能，react.apply 桥 + channel 三段契约 + 投递层物理 API + 行为树 + LLM 战斗边界 + P0→P4 |
+| Impairment system | [impairment-system.md](./impairment-system.md) | landed | drunk + sickness 两个 character_states 数值列；干活惩罚 `max(drunk,sickness)` 执行时临时算不持久化；曲线单一口径 `impairment.gd`；醉酒专属双向说话乱码（speaker Godot + listener backend）+ 走路踉跄；衰减走 physiology.lua；生病=吃馊食、解药=草药茶（来源暂不做）|
 
 ## 跨域待决问题（高优先级）
 

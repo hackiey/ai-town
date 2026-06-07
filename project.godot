@@ -34,6 +34,7 @@ Workstations="*res://src/autoload/workstations.gd"
 Containers="*res://src/autoload/containers.gd"
 Mines="*res://src/autoload/mines.gd"
 Mints="*res://src/autoload/mints.gd"
+PassiveSimulator="*res://src/autoload/passive_simulator.gd"
 
 [display]
 

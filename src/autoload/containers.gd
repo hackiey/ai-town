@@ -17,103 +17,11 @@ func _ready() -> void:
 	if not RunMode.is_runtime():
 		set_process(false)
 		return
-	GameClock.slow_tick.connect(_on_slow_tick)
 	call_deferred("_prune_orphan_storage")
 
 
-# 每 game-hour 推进一次容器内的被动转换。
-# 按 passive_tags 分发：tag → 调对应的 tick_<tag>。未来加 "fermenting" / "smoking" 等
-# 在这里追加 dispatch 即可，不改 ContainerNode schema。
-func _on_slow_tick(_total_game_hour: int) -> void:
-	tick_drying()
-	tick_fermenting()
-
-
-# 扫所有 passive_tags 含 "drying" 的容器，给含 item.dries_into 的槽位推进 drying_age_hours，
-# 到 item.drying_hours 阈值后由 lua swap 成 dries_into 模板（quantity * drying_yield_qty）。
-# GDScript 端只做"找槽 + 预查 swap 模板 + 调 lua"，转换规则全在 data/mechanics/drying.lua。
-# Item 模板缺失 / dries_into 不存在 → 跳过该槽，不报错（设计意图：允许 fruit 暂不可晾干）。
-func tick_drying() -> void:
-	for cid_v in _containers_by_id.keys():
-		var node: ContainerNode = _containers_by_id[cid_v] as ContainerNode
-		if node == null or not is_instance_valid(node):
-			continue
-		if not node.has_passive_tag("drying"):
-			continue
-		var slots: Array[Dictionary] = node.contents
-		for i in slots.size():
-			var slot: Dictionary = slots[i]
-			if int(slot.get("quantity", 0)) <= 0:
-				continue
-			var iid := str(slot.get("item_id", ""))
-			if iid.is_empty():
-				continue
-			var tmpl: Item = Items.by_id(iid)
-			if tmpl == null:
-				continue
-			var dries_into := tmpl.dries_into.strip_edges()
-			if dries_into.is_empty() or tmpl.drying_hours <= 0.0:
-				continue
-			var target: Item = Items.by_id(dries_into)
-			if target == null:
-				continue
-			MechanicHost.invoke("drying", "on_dry", {
-				"holder": node,
-				"slot_index": i,
-				"slot": slot,
-				"hours": 1.0,
-				"drying_hours": tmpl.drying_hours,
-				"swap_to": {
-					"item_id": dries_into,
-					"materials": target.materials.duplicate(true),
-					"shape_type": target.shape_type,
-					"tags": Array(target.tags),
-				},
-				"yield_qty": max(1, tmpl.drying_yield_qty),
-			})
-
-
-# 扫所有 passive_tags 含 "fermenting" 的容器（酒桶等），给含 item.ferments_into 的槽位推进
-# fermenting_age_hours，到 item.fermenting_hours 阈值后由 lua swap 成 ferments_into 模板。
-# 结构与 tick_drying 完全平行；转换规则在 data/mechanics/fermenting.lua。
-func tick_fermenting() -> void:
-	for cid_v in _containers_by_id.keys():
-		var node: ContainerNode = _containers_by_id[cid_v] as ContainerNode
-		if node == null or not is_instance_valid(node):
-			continue
-		if not node.has_passive_tag("fermenting"):
-			continue
-		var slots: Array[Dictionary] = node.contents
-		for i in slots.size():
-			var slot: Dictionary = slots[i]
-			if int(slot.get("quantity", 0)) <= 0:
-				continue
-			var iid := str(slot.get("item_id", ""))
-			if iid.is_empty():
-				continue
-			var tmpl: Item = Items.by_id(iid)
-			if tmpl == null:
-				continue
-			var ferments_into := tmpl.ferments_into.strip_edges()
-			if ferments_into.is_empty() or tmpl.fermenting_hours <= 0.0:
-				continue
-			var target: Item = Items.by_id(ferments_into)
-			if target == null:
-				continue
-			MechanicHost.invoke("fermenting", "on_ferment", {
-				"holder": node,
-				"slot_index": i,
-				"slot": slot,
-				"hours": 1.0,
-				"fermenting_hours": tmpl.fermenting_hours,
-				"swap_to": {
-					"item_id": ferments_into,
-					"materials": target.materials.duplicate(true),
-					"shape_type": target.shape_type,
-					"tags": Array(target.tags),
-				},
-				"yield_qty": max(1, tmpl.fermenting_yield_qty),
-			})
+# 被动转换（晾晒/发酵的品质爬升与定格）不在这里——由 PassiveSimulator 全局定时器单一
+# 写者推进（见 src/autoload/passive_simulator.gd）。容器读路径直接读 slot 当前值。
 
 
 # ─── Registration ────────────────────────────────────────────────────
@@ -462,6 +370,28 @@ func _snapshot_for(node: ContainerNode, viewer: Character) -> Dictionary:
 	return snap
 
 
+# 富槽位列表（含 slot_index + 液体/发酵字段），给 backend 寻址容器内的 item 与液体。
+func detailed_items_for(node: ContainerNode) -> Array:
+	var out: Array = []
+	var slots: Array[Dictionary] = node.contents
+	for i in slots.size():
+		var slot: Dictionary = slots[i]
+		if InventorySlotData.of(slot).is_empty():
+			continue
+		out.append({
+			"slot_index": i,
+			"item_id": str(slot.get("item_id", "")),
+			"quantity": int(slot.get("quantity", 0)),
+			"quality": int(slot.get("quality", 100)),
+			"container_amount": slot.get("container_amount", null),
+			"container_content": slot.get("container_content", null),
+			"transform_age": slot.get("transform_age", null),
+			"ferment_ceiling": slot.get("ferment_ceiling", null),
+			"listing_price_centi": slot.get("listing_price_centi", null),
+		})
+	return out
+
+
 func _list_items(node: ContainerNode) -> Array:
 	var out: Array = []
 	for slot_v in node.contents:
@@ -472,6 +402,10 @@ func _list_items(node: ContainerNode) -> Array:
 			"item_id": str(slot.get("item_id", "")),
 			"quantity": int(slot.get("quantity", 0)),
 			"quality": int(slot.get("quality", 100)),
+			"container_amount": slot.get("container_amount", null),
+			"container_content": slot.get("container_content", null),
+			"transform_age": slot.get("transform_age", null),
+			"ferment_ceiling": slot.get("ferment_ceiling", null),
 			"listing_price_centi": slot.get("listing_price_centi", null),
 		})
 	return out
@@ -514,7 +448,7 @@ func _extract_from_container(node: ContainerNode, item_name: String, quantity: i
 			var iid := str(stack.get("item_id", ""))
 			var qty := int(stack.get("quantity", 0))
 			# 找原槽塞回
-			var put_idx := _find_stackable_slot(slots, stack)
+			var put_idx := _find_stackable_slot(slots, stack, _stack_max_for(stack))
 			if put_idx < 0:
 				put_idx = _find_empty_slot(slots)
 			if put_idx >= 0:
@@ -545,10 +479,11 @@ func _place_stacks_into_container(node: ContainerNode, stacks: Array) -> Diction
 			if tmpl != null and not tmpl.base_effects.is_empty():
 				stack["base_effects"] = tmpl.base_effects.duplicate()
 		ItemEffects.recompute_slot(stack)
+		var stack_max := _stack_max_for(stack)
 		var remaining := int(stack.get("quantity", 0))
 		if remaining <= 0:
 			continue
-		# 1) 先填可堆叠的现有槽
+		# 1) 先填可堆叠的现有槽（不可堆叠物 stack_max=1，永不并槽）
 		for i in slots.size():
 			if remaining <= 0:
 				break
@@ -557,7 +492,7 @@ func _place_stacks_into_container(node: ContainerNode, stacks: Array) -> Diction
 				continue
 			if not InventorySlotData.of(slot).equals_stackable_with(InventorySlotData.of(stack)):
 				continue
-			var room := Character.INVENTORY_STACK_MAX - int(slot.get("quantity", 0))
+			var room := stack_max - int(slot.get("quantity", 0))
 			if room <= 0:
 				continue
 			var put := mini(room, remaining)
@@ -572,7 +507,7 @@ func _place_stacks_into_container(node: ContainerNode, stacks: Array) -> Diction
 				stack["quantity"] = remaining
 				_set_contents(node, slots)
 				return {"ok": false, "message": "「%s」装不下了" % node.effective_display_name()}
-			var chunk := mini(remaining, Character.INVENTORY_STACK_MAX)
+			var chunk := mini(remaining, stack_max)
 			var placed := stack.duplicate(true)
 			placed["quantity"] = chunk
 			slots[idx] = placed
@@ -609,13 +544,25 @@ func _find_empty_slot(slots: Array[Dictionary]) -> int:
 	return -1
 
 
-func _find_stackable_slot(slots: Array[Dictionary], stack: Dictionary) -> int:
+# 物品的单槽堆叠上限：不可堆叠=1；否则 template.max_stack（兜底全局常量）。
+func _stack_max_for(stack: Dictionary) -> int:
+	var tmpl: Item = Items.by_id(String(stack.get("item_id", "")))
+	if tmpl == null:
+		return Character.INVENTORY_STACK_MAX
+	if not tmpl.stackable:
+		return 1
+	if tmpl.max_stack > 0:
+		return tmpl.max_stack
+	return Character.INVENTORY_STACK_MAX
+
+
+func _find_stackable_slot(slots: Array[Dictionary], stack: Dictionary, stack_max: int) -> int:
 	for i in slots.size():
 		var slot := slots[i]
 		if InventorySlotData.of(slot).is_empty():
 			continue
 		if InventorySlotData.of(slot).equals_stackable_with(InventorySlotData.of(stack)):
-			if int(slot.get("quantity", 0)) < Character.INVENTORY_STACK_MAX:
+			if int(slot.get("quantity", 0)) < stack_max:
 				return i
 	return -1
 
@@ -656,6 +603,12 @@ func _apply_starting_inventory_if_first_boot(node: ContainerNode) -> void:
 		# 货架陈列标价（仅展示）。containers.json 的 starting_inventory entry 可带 price_silver。
 		if entry.has("price_silver"):
 			stack["listing_price_centi"] = Money.silver_to_centi(float(entry.get("price_silver", 0.0)))
+		# 液体容器物（木桶/酿酒桶）可预灌内容：container_amount(升) + container_content(液体 id)。
+		# quality 复用上面的 quality 当液体品质（见液体模型）。
+		if entry.has("container_amount"):
+			stack["container_amount"] = float(entry.get("container_amount", 0.0))
+		if entry.has("container_content"):
+			stack["container_content"] = str(entry.get("container_content", ""))
 		seed_stacks.append(stack)
 	if seed_stacks.is_empty():
 		Db.mark_container_seeded(cid)

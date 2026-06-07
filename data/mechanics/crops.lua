@@ -131,6 +131,12 @@ end
 local function grant_harvest_item(ctx, item_id, base_qty, v)
     if not item_id or item_id == "" or not base_qty or base_qty <= 0 then return end
     local qty = harvest_quantity(base_qty, ctx.harvests_done, v.yield_decay_per_harvest, ctx.maturity_int)
+    -- 醉酒/生病：收获量按 GDScript 算好的乘子缩水（清醒时为 1.0）。至少保 1。
+    local mult = ctx.harvest_yield_mult or 1.0
+    if mult < 1.0 then
+        qty = math.floor(qty * mult + 0.5)
+        if qty < 1 then qty = 1 end
+    end
     affect.give_item(ctx.harvester, item_id, qty, ctx.maturity_int)
 end
 

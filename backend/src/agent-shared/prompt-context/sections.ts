@@ -166,12 +166,12 @@ function renderInteractiveSiteLines(
 // 那是旧 use_workstation 时代的措辞，现在每个 craft 自带一个工具名。
 //
 // 格式：`{displayName}{ownerSuffix}：可使用：{tools}{slot}{lock/items}{inUse}`
-//   - tools = workstation verbs 反查 craft 工具名（mine / smith / use_container / draw_water），
+//   - tools = workstation verbs 反查 craft 工具名（mine / smith 等），
 //     不会的 craft 末尾挂"（你不会）"；NPC 看到 anvil 就知道它能用来 smith，但自己不会做
-//   - 容器型（含晾架）一律 use_container
+//   - 容器型（含晾架 / 水井）走 put_take / view_container
 //   - 货架 / 田走 availableActions 直接当工具名
-//   - noAccess（owner_group 不匹配）：隐去 tools 行，仅显示招牌后缀 —— 让 LLM 知道"看得见
-//     但不归你管"，调用任何 tool 都会被 Godot 拒
+//   - noAccess：隐去 tools 行，仅显示招牌后缀；目前主要用于农田权限，工作台 owner_group
+//     只作为归属/招牌信息，不作为硬使用门槛
 function renderInteractiveSiteLine(
   site: InteractiveSiteContext,
   knownSkillIds: Set<string>,
@@ -185,7 +185,7 @@ function renderInteractiveSiteLine(
 }
 
 // 按 site 类型拼出 "可使用：xxx" / 锁 / 内容 / 占用 / summary 等子句，已剔除空串。
-// noAccess 时不返回 tools 子句（招牌已说明"不归你管"），但容器仍保留 lock+items（属于内容感知）。
+// noAccess 时不返回 tools 子句；容器仍保留 lock+items（属于内容感知）。
 function collectSiteClauses(
   site: InteractiveSiteContext,
   knownSkillIds: Set<string>,

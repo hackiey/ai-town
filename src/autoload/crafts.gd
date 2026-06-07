@@ -10,9 +10,7 @@ extends Node
 #
 # 用法：
 #   Crafts.is_action("mine")                       → true（mine 是 craft 之一）
-#   Crafts.is_action("draw_water")                 → true（直接使用型工作台也算）
 #   Crafts.for_workstation_verb("anvil", "shape")  → "smith"
-#   Crafts.for_workstation_verb("well", "direct")  → ""（不属于 craft）
 
 const CRAFTS_JSON_PATH := "res://data/skills/crafts.json"
 
@@ -58,7 +56,7 @@ func _load() -> void:
 			_by_ws_verb[key] = slug
 
 
-# 任何登记过的 craft slug（含 draw_water 这种无 skill 的直接使用型）→ true。
+# 任何登记过的 craft slug → true。
 func is_action(name: String) -> bool:
 	return _action_set.get(name, false)
 

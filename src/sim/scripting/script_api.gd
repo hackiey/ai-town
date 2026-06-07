@@ -37,6 +37,21 @@ static func inject(lua: LuaState, _ctx: Dictionary, collected: Array) -> void:
 			"amount": float(amount),
 		})
 
+	# 醉酒 / 生病累计值。正 = 更醉/更病，负 = 醒酒/痊愈。clamp 在 Effects 里做。
+	affect_tbl["drunk"] = func(target, amount):
+		collected.append({
+			"type": "modify_drunk",
+			"target": target,
+			"amount": float(amount),
+		})
+
+	affect_tbl["sickness"] = func(target, amount):
+		collected.append({
+			"type": "modify_sickness",
+			"target": target,
+			"amount": float(amount),
+		})
+
 	# 解除某个 status（按 type 移除所有匹配条目）。
 	affect_tbl["remove_status"] = func(target, status_id):
 		collected.append({

@@ -499,12 +499,13 @@ const ECONOMY = {
     berry_jam: 1.25,      // 15 hunger
     tomato_fruit: 0.5,    // 10 hunger
     beer: 2.5,            // 麦芽发酵奢侈饮品，5 hunger + 12 stamina
+    herbal_remedy: 3.0,   // 草药茶，治病（sickness -40）；来源/制作链待定
   } as Dict<number>,
   // 所有锚都 fixed，recipe 推导不覆盖。
   fixedPriceItems: [
     "silver_coin", "gold_coin", "silver_ore", "gold_ore",
     "wheat", "flour", "bread", "wood", "charcoal", "iron_ore", "salt", "flax_bundle",
-    "raw_meat", "egg", "berry", "tomato_fruit", "malt", "beer",
+    "raw_meat", "egg", "berry", "tomato_fruit", "malt", "beer", "herbal_remedy",
     "cooked_meat", "cured_meat", "omelet", "cured_omelet", "veg_stew", "cured_stew", "berry_jam",
   ],
   defaultMargin: 0.18,

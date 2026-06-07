@@ -20,6 +20,15 @@ export type PerceivedRef = {
   band: PerceptionBand;
 };
 
+// 附近地面上的液体容器（掉落的桶）——活容器，带实例 id 供 put_take 寻址。
+export type GroundContainerRef = {
+  instanceId: string;
+  itemId: string;
+  content: string;
+  amount: number;
+  band: PerceptionBand;
+};
+
 export type PerceptionManifestPayload = {
   characterId: string;
   selfLocationId: string;
@@ -37,6 +46,7 @@ export type PerceptionManifestPayload = {
   // 容器是 WorkstationNode 子类，统一走本字段；不再单独 perceivedContainerIds。
   perceivedWorkstations: PerceivedRef[];
   perceivedShelves: PerceivedRef[];
+  perceivedGroundContainers: GroundContainerRef[];
   occurredAt?: string;
 };
 
@@ -66,6 +76,7 @@ export function normalizeManifestPayload(payload: Record<string, unknown>, now =
     perceivedFarms: perceivedRefArray(payload.perceivedFarms),
     perceivedWorkstations: perceivedRefArray(payload.perceivedWorkstations),
     perceivedShelves: perceivedRefArray(payload.perceivedShelves),
+    perceivedGroundContainers: groundContainerRefArray(payload.perceivedGroundContainers),
     occurredAt: stringValue(payload.occurredAt) ?? now,
   };
   return { ok: true, manifest, occurredAt: manifest.occurredAt! };
@@ -84,6 +95,26 @@ function objectValue(value: unknown): Record<string, unknown> | undefined {
   return value !== null && typeof value === "object" && !Array.isArray(value)
     ? value as Record<string, unknown>
     : undefined;
+}
+
+function groundContainerRefArray(value: unknown): GroundContainerRef[] {
+  if (!Array.isArray(value)) return [];
+  const out: GroundContainerRef[] = [];
+  for (const entry of value) {
+    const record = objectValue(entry);
+    if (!record) continue;
+    const instanceId = stringValue(record.instanceId);
+    const itemId = stringValue(record.itemId);
+    if (!instanceId || !itemId) continue;
+    out.push({
+      instanceId,
+      itemId,
+      content: stringValue(record.content) ?? "",
+      amount: typeof record.amount === "number" ? record.amount : 0,
+      band: normalizeBand(record.band),
+    });
+  }
+  return out;
 }
 
 function perceivedRefArray(value: unknown): PerceivedRef[] {

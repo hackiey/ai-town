@@ -110,6 +110,10 @@ const _GAME_WORLD_SCHEMA: Array[String] = [
 		maxHunger REAL NOT NULL DEFAULT 100.0,
 		rest REAL NOT NULL DEFAULT 100.0,
 		maxRest REAL NOT NULL DEFAULT 100.0,
+		drunk REAL NOT NULL DEFAULT 0.0,
+		sickness REAL NOT NULL DEFAULT 0.0,
+		drunkTier TEXT NOT NULL DEFAULT '',
+		sicknessTier TEXT NOT NULL DEFAULT '',
 		sleepNeededHours REAL NOT NULL DEFAULT 0.0,
 		temperature REAL NOT NULL,
 		burning INTEGER NOT NULL DEFAULT 0,
@@ -164,6 +168,9 @@ const _GAME_WORLD_SCHEMA: Array[String] = [
 
 		containerAmount REAL,
 		containerContent TEXT,
+		transformAge REAL,
+		transformSettleHour REAL,
+		fermentCeiling INTEGER,
 		freshnessTier INTEGER,
 		freshnessAgeHours REAL,
 		durability INTEGER,
@@ -379,7 +386,7 @@ const _GAME_WORLD_SCHEMA: Array[String] = [
 	)""",
 
 	# location_markers: TownWorld 从 Positions 下 Marker3D 树和 WorkstationNode anchor 合算出来的
-	# 逻辑地点。Backend 用作 perception 中"附近的地点"和 group 可见性过滤的来源。
+	# 逻辑地点。Backend 用作 perception 中"附近的地点"来源；ownerGroup 只作为归属元数据返回。
 	# posX/Y/Z 用首个 anchor 的世界坐标；isWorkstation=1 时表示该地点由 WorkstationNode 锚定（well 等）。
 	# displayName 不存这里——参见 workstation_states 注释，地点同理走 i18n locations.json。
 	"""CREATE TABLE IF NOT EXISTS location_markers (
@@ -488,6 +495,12 @@ func _open() -> void:
 
 func _apply_schema_migrations() -> void:
 	_ensure_column("character_states", "rest", "REAL NOT NULL DEFAULT 100.0")
+	# 损伤层：drunk 醉酒 / sickness 生病累计值（0..100）。老行加列后默认 0 = 清醒健康。
+	_ensure_column("character_states", "drunk", "REAL NOT NULL DEFAULT 0.0")
+	_ensure_column("character_states", "sickness", "REAL NOT NULL DEFAULT 0.0")
+	# 派生档位 key（Godot 单一写者，随 raw 一起持久化；backend SELECT-only 渲染）。
+	_ensure_column("character_states", "drunkTier", "TEXT NOT NULL DEFAULT ''")
+	_ensure_column("character_states", "sicknessTier", "TEXT NOT NULL DEFAULT ''")
 	_ensure_column("character_states", "sleepNeededHours", "REAL NOT NULL DEFAULT 0.0")
 	# 属性上限：Character 节点 export 的 max_* 值随 buff/装备/等级可能动态变。
 	# 默认 100 与 Character 基类的默认 export 对齐；新角色 save 前老行会用 default。
@@ -528,6 +541,9 @@ func _apply_schema_migrations() -> void:
 	_ensure_column("item_instances", "physicsProps", "TEXT")
 	_ensure_column("item_instances", "containerAmount", "REAL")
 	_ensure_column("item_instances", "containerContent", "TEXT")
+	_ensure_column("item_instances", "transformAge", "REAL")
+	_ensure_column("item_instances", "transformSettleHour", "REAL")
+	_ensure_column("item_instances", "fermentCeiling", "INTEGER")
 	_ensure_column("item_instances", "freshnessTier", "INTEGER")
 	_ensure_column("item_instances", "freshnessAgeHours", "REAL")
 	_ensure_column("item_instances", "baseEffects", "TEXT")
@@ -953,7 +969,7 @@ func is_member_of(character_id: String, group_id: String) -> bool:
 	return groups.has(group_id)
 
 
-# 给定某地点 / 工作台的 owner_group，判断该角色能否访问。
+# 给定 owner_group，判断该角色能否访问仍采用硬权限的资源。
 # owner_group 为空 = public，所有人通过。
 func can_access(character_id: String, owner_group: String) -> bool:
 	if owner_group.is_empty():
@@ -1084,7 +1100,7 @@ func save_character_state(character_id: String, fields: Dictionary) -> void:
 		return
 	var now := Time.get_datetime_string_from_system(true)
 	var statuses_json := JSON.stringify(fields.get("activeStatuses", []))
-	var sql := "INSERT INTO character_states (townId, characterId, currentLocationId, posX, posY, posZ, rotY, animState, hp, maxHp, stamina, maxStamina, hunger, maxHunger, rest, maxRest, sleepNeededHours, temperature, burning, alive, equippedRightHand, equippedLeftHand, equippedBody, equippedHead, activeStatuses, silverCentiBalance, updatedAt) VALUES ('%s', '%s', %s, %f, %f, %f, %f, %s, %f, %f, %f, %f, %f, %f, %f, %f, %f, %f, %d, %d, %s, %s, %s, %s, %s, %d, '%s') ON CONFLICT(townId, characterId) DO UPDATE SET currentLocationId = excluded.currentLocationId, posX = excluded.posX, posY = excluded.posY, posZ = excluded.posZ, rotY = excluded.rotY, animState = excluded.animState, hp = excluded.hp, maxHp = excluded.maxHp, stamina = excluded.stamina, maxStamina = excluded.maxStamina, hunger = excluded.hunger, maxHunger = excluded.maxHunger, rest = excluded.rest, maxRest = excluded.maxRest, sleepNeededHours = excluded.sleepNeededHours, temperature = excluded.temperature, burning = excluded.burning, alive = excluded.alive, equippedRightHand = excluded.equippedRightHand, equippedLeftHand = excluded.equippedLeftHand, equippedBody = excluded.equippedBody, equippedHead = excluded.equippedHead, activeStatuses = excluded.activeStatuses, silverCentiBalance = excluded.silverCentiBalance, updatedAt = excluded.updatedAt" % [
+	var sql := "INSERT INTO character_states (townId, characterId, currentLocationId, posX, posY, posZ, rotY, animState, hp, maxHp, stamina, maxStamina, hunger, maxHunger, rest, maxRest, drunk, sickness, drunkTier, sicknessTier, sleepNeededHours, temperature, burning, alive, equippedRightHand, equippedLeftHand, equippedBody, equippedHead, activeStatuses, silverCentiBalance, updatedAt) VALUES ('%s', '%s', %s, %f, %f, %f, %f, %s, %f, %f, %f, %f, %f, %f, %f, %f, %f, %f, '%s', '%s', %f, %f, %d, %d, %s, %s, %s, %s, %s, %d, '%s') ON CONFLICT(townId, characterId) DO UPDATE SET currentLocationId = excluded.currentLocationId, posX = excluded.posX, posY = excluded.posY, posZ = excluded.posZ, rotY = excluded.rotY, animState = excluded.animState, hp = excluded.hp, maxHp = excluded.maxHp, stamina = excluded.stamina, maxStamina = excluded.maxStamina, hunger = excluded.hunger, maxHunger = excluded.maxHunger, rest = excluded.rest, maxRest = excluded.maxRest, drunk = excluded.drunk, sickness = excluded.sickness, drunkTier = excluded.drunkTier, sicknessTier = excluded.sicknessTier, sleepNeededHours = excluded.sleepNeededHours, temperature = excluded.temperature, burning = excluded.burning, alive = excluded.alive, equippedRightHand = excluded.equippedRightHand, equippedLeftHand = excluded.equippedLeftHand, equippedBody = excluded.equippedBody, equippedHead = excluded.equippedHead, activeStatuses = excluded.activeStatuses, silverCentiBalance = excluded.silverCentiBalance, updatedAt = excluded.updatedAt" % [
 		_esc(RunMode.town_id), _esc(character_id),
 		_sql_str_or_null(fields.get("currentLocationId", "")),
 		float(fields.get("posX", 0.0)), float(fields.get("posY", 0.0)), float(fields.get("posZ", 0.0)),
@@ -1094,6 +1110,8 @@ func save_character_state(character_id: String, fields: Dictionary) -> void:
 		float(fields.get("stamina", 0.0)), float(fields.get("maxStamina", 100.0)),
 		float(fields.get("hunger", 0.0)), float(fields.get("maxHunger", 100.0)),
 		float(fields.get("rest", 0.0)), float(fields.get("maxRest", 100.0)),
+		float(fields.get("drunk", 0.0)), float(fields.get("sickness", 0.0)),
+		_esc(str(fields.get("drunkTier", ""))), _esc(str(fields.get("sicknessTier", ""))),
 		float(fields.get("sleepNeededHours", 0.0)),
 		float(fields.get("temperature", 0.0)),
 		1 if bool(fields.get("burning", false)) else 0,
@@ -1274,7 +1292,7 @@ func delete_ground_item(id: String) -> void:
 func all_ground_items() -> Array:
 	if _db == null:
 		return []
-	var sql := "SELECT id, itemDefId, posX, posY, posZ, slotIndex, stackCount, quality, shapeType, tags, materials, physicsProps, containerAmount, containerContent, freshnessTier, freshnessAgeHours, durability, baseEffects, displayedEffects FROM item_instances WHERE townId = '%s' AND ownerKind = 'world'" % _esc(RunMode.town_id)
+	var sql := "SELECT id, itemDefId, posX, posY, posZ, slotIndex, stackCount, quality, shapeType, tags, materials, physicsProps, containerAmount, containerContent, transformAge, transformSettleHour, fermentCeiling, freshnessTier, freshnessAgeHours, durability, baseEffects, displayedEffects FROM item_instances WHERE townId = '%s' AND ownerKind = 'world'" % _esc(RunMode.town_id)
 	if not _db.query(sql):
 		push_warning("[Db] all_ground_items failed: %s" % _db.error_message)
 		return []
@@ -1869,7 +1887,7 @@ func _hydrate_character_states(town_id: String) -> void:
 	var rows: Array = _db.select_rows("character_states", "townId = '%s'" % _esc(town_id), [
 		"characterId", "currentLocationId", "posX", "posY", "posZ", "rotY", "animState",
 		"hp", "maxHp", "stamina", "maxStamina", "hunger", "maxHunger", "rest", "maxRest",
-		"sleepNeededHours", "temperature", "burning", "alive",
+		"drunk", "sickness", "sleepNeededHours", "temperature", "burning", "alive",
 		"equippedRightHand", "equippedLeftHand", "equippedBody", "equippedHead",
 		"activeStatuses", "silverCentiBalance",
 	])
@@ -1887,7 +1905,7 @@ func _select_character_state(character_id: String) -> Dictionary:
 	var rows: Array = _db.select_rows("character_states", "townId = '%s' AND characterId = '%s'" % [_esc(RunMode.town_id), _esc(character_id)], [
 		"characterId", "currentLocationId", "posX", "posY", "posZ", "rotY", "animState",
 		"hp", "maxHp", "stamina", "maxStamina", "hunger", "maxHunger", "rest", "maxRest",
-		"sleepNeededHours", "temperature", "burning", "alive",
+		"drunk", "sickness", "sleepNeededHours", "temperature", "burning", "alive",
 		"equippedRightHand", "equippedLeftHand", "equippedBody", "equippedHead",
 		"activeStatuses", "silverCentiBalance",
 	])
@@ -1918,6 +1936,8 @@ func _character_state_row_to_cache(r: Dictionary) -> Dictionary:
 		"maxHunger": float(r.get("maxHunger", 100.0)),
 		"rest": float(r.get("rest", 100.0)),
 		"maxRest": float(r.get("maxRest", 100.0)),
+		"drunk": float(r.get("drunk", 0.0)),
+		"sickness": float(r.get("sickness", 0.0)),
 		"sleepNeededHours": float(r.get("sleepNeededHours", 0.0)),
 		"temperature": float(r.get("temperature", 36.5)),
 		"burning": int(r.get("burning", 0)) != 0,
@@ -2038,6 +2058,7 @@ func _item_instance_column_list(first: String, second: String) -> Array:
 		"itemDefId", "stackCount", "quality",
 		"shapeType", "tags", "materials", "physicsProps",
 		"containerAmount", "containerContent",
+		"transformAge", "transformSettleHour", "fermentCeiling",
 		"freshnessTier", "freshnessAgeHours",
 		"durability",
 		"baseEffects", "displayedEffects",
@@ -2052,6 +2073,7 @@ func _item_instance_select_columns(alias: String) -> String:
 		"itemDefId", "stackCount", "quality",
 		"shapeType", "tags", "materials", "physicsProps",
 		"containerAmount", "containerContent",
+		"transformAge", "transformSettleHour", "fermentCeiling",
 		"freshnessTier", "freshnessAgeHours",
 		"durability",
 		"baseEffects", "displayedEffects",
@@ -2084,7 +2106,7 @@ func _build_item_instance_upsert(row_id: String, item_id: String, owner_kind: St
 		pos_x_sql = "%f" % pv.x
 		pos_y_sql = "%f" % pv.y
 		pos_z_sql = "%f" % pv.z
-	return "INSERT INTO item_instances (id, townId, itemDefId, ownerKind, ownerId, locationId, posX, posY, posZ, slotIndex, stackCount, quality, shapeType, tags, materials, physicsProps, containerAmount, containerContent, freshnessTier, freshnessAgeHours, durability, baseEffects, displayedEffects, listingPriceCenti, createdAt, updatedAt) VALUES ('%s', '%s', '%s', '%s', '%s', %s, %s, %s, %s, %d, %d, %d, '%s', '%s', '%s', %s, %s, %s, %s, %s, %s, %s, %s, %s, '%s', '%s') ON CONFLICT(id) DO UPDATE SET itemDefId = excluded.itemDefId, ownerId = excluded.ownerId, locationId = excluded.locationId, posX = excluded.posX, posY = excluded.posY, posZ = excluded.posZ, slotIndex = excluded.slotIndex, stackCount = excluded.stackCount, quality = excluded.quality, shapeType = excluded.shapeType, tags = excluded.tags, materials = excluded.materials, physicsProps = excluded.physicsProps, containerAmount = excluded.containerAmount, containerContent = excluded.containerContent, freshnessTier = excluded.freshnessTier, freshnessAgeHours = excluded.freshnessAgeHours, durability = excluded.durability, baseEffects = excluded.baseEffects, displayedEffects = excluded.displayedEffects, listingPriceCenti = excluded.listingPriceCenti, updatedAt = excluded.updatedAt" % [
+	return "INSERT INTO item_instances (id, townId, itemDefId, ownerKind, ownerId, locationId, posX, posY, posZ, slotIndex, stackCount, quality, shapeType, tags, materials, physicsProps, containerAmount, containerContent, transformAge, transformSettleHour, fermentCeiling, freshnessTier, freshnessAgeHours, durability, baseEffects, displayedEffects, listingPriceCenti, createdAt, updatedAt) VALUES ('%s', '%s', '%s', '%s', '%s', %s, %s, %s, %s, %d, %d, %d, '%s', '%s', '%s', %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, '%s', '%s') ON CONFLICT(id) DO UPDATE SET itemDefId = excluded.itemDefId, ownerId = excluded.ownerId, locationId = excluded.locationId, posX = excluded.posX, posY = excluded.posY, posZ = excluded.posZ, slotIndex = excluded.slotIndex, stackCount = excluded.stackCount, quality = excluded.quality, shapeType = excluded.shapeType, tags = excluded.tags, materials = excluded.materials, physicsProps = excluded.physicsProps, containerAmount = excluded.containerAmount, containerContent = excluded.containerContent, transformAge = excluded.transformAge, transformSettleHour = excluded.transformSettleHour, fermentCeiling = excluded.fermentCeiling, freshnessTier = excluded.freshnessTier, freshnessAgeHours = excluded.freshnessAgeHours, durability = excluded.durability, baseEffects = excluded.baseEffects, displayedEffects = excluded.displayedEffects, listingPriceCenti = excluded.listingPriceCenti, updatedAt = excluded.updatedAt" % [
 		_esc(row_id), _esc(RunMode.town_id), _esc(item_id), _esc(owner_kind), _esc(owner_id),
 		_sql_str_or_null(location_id),
 		pos_x_sql, pos_y_sql, pos_z_sql,
@@ -2093,6 +2115,9 @@ func _build_item_instance_upsert(row_id: String, item_id: String, owner_kind: St
 		_sql_str_or_null(physics_json),
 		_nullable_real(slot.get("container_amount", null)),
 		_sql_str_or_null(_nullable_string(slot.get("container_content", null))),
+		_nullable_real(slot.get("transform_age", null)),
+		_nullable_real(slot.get("transform_settle_hour", null)),
+		_nullable_int(slot.get("ferment_ceiling", null)),
 		_nullable_int(slot.get("freshness_tier", null)),
 		_nullable_real(slot.get("freshness_age_hours", null)),
 		_nullable_int(slot.get("durability", null)),
@@ -2146,6 +2171,9 @@ func _item_row_to_slot(row: Dictionary) -> Dictionary:
 	slot["physics_props"] = _parse_json_dict_or_null(row.get("physicsProps", null))
 	slot["container_amount"] = _row_value_or_null(row, "containerAmount")
 	slot["container_content"] = _row_value_or_null(row, "containerContent")
+	slot["transform_age"] = _row_value_or_null(row, "transformAge")
+	slot["transform_settle_hour"] = _row_value_or_null(row, "transformSettleHour")
+	slot["ferment_ceiling"] = _row_value_or_null(row, "fermentCeiling")
 	slot["freshness_tier"] = _row_value_or_null(row, "freshnessTier")
 	slot["freshness_age_hours"] = _row_value_or_null(row, "freshnessAgeHours")
 	slot["durability"] = _row_value_or_null(row, "durability")

@@ -15,8 +15,8 @@
     "beer": {
       "name": "麦芽酒"
     },
-    "beer_fermenting": {
-      "name": "麦芽酒（酿造中）"
+    "herbal_remedy": {
+      "name": "草药茶"
     },
     "charcoal": {
       "name": "木炭"
@@ -131,6 +131,12 @@
     },
     "wood_bucket": {
       "name": "木桶"
+    },
+    "brewing_barrel": {
+      "name": "酿酒桶"
+    },
+    "cup": {
+      "name": "杯子"
     },
     "wood_plank": {
       "name": "木板"

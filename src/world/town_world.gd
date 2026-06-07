@@ -525,7 +525,7 @@ func _rebuild_anchor_index() -> void:
 	_register_farms()
 
 
-# 所有 WorkstationNode 都注册为顶层 location（owner_group 走可见性过滤，不在注册时筛）：
+# 所有 WorkstationNode 都注册为顶层 location（owner_group 仅作归属/招牌元数据）：
 # - workstation_id 已有同名地点时，把工作站追加为该地点 anchor（如 well）
 # - 否则 location id 用节点名（设计师在 town.tscn 里给的名字，跨实例唯一）
 # - alias 用 display_name（中文标签）
@@ -857,7 +857,7 @@ func location_root_id(location_id: String) -> String:
 
 
 # 给定 location_id 返回它继承解析后的 owner_group（"" = public）。
-# Access.can_use 和可见性过滤共用这份数据，避免在 FarmGroup / WorkstationNode 上重复维护。
+# 农田权限、地点归属展示和工作台招牌共用这份数据，避免重复维护。
 func owner_group_for(location_id: String) -> String:
 	return str(_owner_group_by_id.get(location_id, ""))
 

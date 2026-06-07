@@ -22,6 +22,13 @@ export type CharacterStateView = {
   maxHunger: number;
   rest: number;
   maxRest: number;
+  // 损伤层：drunk 醉酒 / sickness 生病累计值（0..100）。0 = 清醒健康。
+  drunk: number;
+  sickness: number;
+  // 档位 key（Godot 单一写者算好持久化）：drunk ""/tipsy/drunk/wasted；sickness ""/mild/moderate/severe。
+  // backend 只读这个 key 渲染，不在 TS 里复制阈值。见 docs/architecture/impairment-system.md §2。
+  drunkTier: string;
+  sicknessTier: string;
   sleepNeededHours: number;
   temperature: number;
   burning: boolean;
@@ -65,7 +72,7 @@ export type ItemInstanceAspects = {
   tags: string[];
   materials: Record<string, string>;
   physicsProps?: Record<string, unknown>;
-  container?: { amount: number; content: string | null };
+  container?: { amount: number; content: string | null; fermenting?: boolean; ceiling?: number };
   freshness?: { tier: number; ageHours: number | null };
   durability?: number;
   baseEffects?: Record<string, number>;

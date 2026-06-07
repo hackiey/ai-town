@@ -9,13 +9,15 @@ class_name Crafting
 #
 # 调用方：workstation_action_runner.gd / player.gd
 
-static func resolve(verb: String, workstation_id: String, sub_option: String, inputs: Array, proficiency: Dictionary = {}) -> Dictionary:
+static func resolve(verb: String, workstation_id: String, sub_option: String, inputs: Array, proficiency: Dictionary = {}, work_impair: float = 0.0) -> Dictionary:
 	var inv := MechanicHost.invoke("crafting", "on_resolve", {
 		"verb": verb,
 		"workstation_id": workstation_id,
 		"sub_option": sub_option,
 		"inputs": inputs,
 		"proficiency": proficiency,
+		# 醉酒/生病：执行时临时压低有效熟练度（不写回存储值）。lua on_resolve 在取到 p 后减。
+		"work_impair": work_impair,
 	})
 	if not bool(inv.get("ok", false)):
 		return _no_match("crafting on_resolve failed: %s" % str(inv.get("error", "")))

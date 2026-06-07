@@ -23,7 +23,7 @@ import {
   type WorkstationView,
 } from "../../services/world-state/index.js";
 import { cropStageDisplayName, getVariety, isRipeStage } from "../../services/world-state/crops-catalog.js";
-import { getActiveLocale, t } from "../../i18n/index.js";
+import { getActiveLocale, t, type Locale } from "../../i18n/index.js";
 import { syncRuntimeRegistryFromDb } from "../../services/runtime-character-registry.js";
 import { characterAttributeName } from "../name-resolver/index.js";
 import { getCraftSpec, listCraftSlugs, type CraftSlug } from "../game-tools/craft-registry.js";
@@ -149,6 +149,73 @@ export function assembleAgentContextFromManifest(
   // 返回 {id: water, slotIndex: 木桶的 slotIndex}，Godot 端验证后从该桶倒水。
   const backpackRender = prependWalletEntriesToBackpack(rawBackpackRender, selfState?.walletCenti ?? 0, names);
   const nearbyItemsRender = renderPerceivedItems(manifest.perceivedItems, names);
+  // 附近地面液体容器（掉落的桶）拼进 nearby 段：带 groundItemId，put_take 可取/存液体。
+  for (const gc of manifest.perceivedGroundContainers ?? []) {
+    if (gc.band !== "near") continue;
+    const name = names.item(gc.itemId);
+    const contentStr = gc.amount > 0 && gc.content
+      ? `（${names.item(gc.content)} ${formatAmount(gc.amount)}）`
+      : "（空）";
+    nearbyItemsRender.context.near.push(`[0] ${name}${contentStr}`);
+    const e: ItemIndexEntry = { itemDefId: gc.itemId, groundItemId: gc.instanceId };
+    if (gc.amount > 0 && gc.content) e.containerContent = gc.content;
+    nearbyItemsRender.entries.push(e);
+  }
+
+  // ── 统一扁平编号（从 1 顺序往后，全场唯一）──────────────────────────
+  // 一遍 post-pass：按显示顺序给每个条目编 globalIndex，并把行内 [N] / 结构化 .index
+  // 改成全局号；同时 flat[] 收集全部条目。resolver 按 globalIndex 反查（见 targets.ts）。
+  const flat: ItemIndexEntry[] = [];
+  let g = 1;
+  const renumberLines = (render: { lines: string[]; entries: ItemIndexEntry[] }, scope: ItemIndexEntry["scope"]) => {
+    render.entries.forEach((e, i) => {
+      e.globalIndex = g;
+      e.scope = scope;
+      render.lines[i] = render.lines[i].replace(/^\[\d+\]/, `[${g}]`);
+      flat.push(e);
+      g++;
+    });
+  };
+  renumberLines(backpackRender, "backpack");
+  renumberLines(inventoryRender, "equipment");
+  // nearby：near 行与 entries 一一对应（far 行无 entries/编号）。
+  nearbyItemsRender.entries.forEach((e, i) => {
+    e.globalIndex = g;
+    e.scope = "nearby";
+    nearbyItemsRender.context.near[i] = nearbyItemsRender.context.near[i].replace(/^\[\d+\]/, `[${g}]`);
+    flat.push(e);
+    g++;
+  });
+  // 容器内容：WorkstationContext.items[].index 与 containerItemIndex[id] 一一对应。
+  for (const ctx of containerCtxs) {
+    const entries = containerItemIndex[ctx.id];
+    if (!entries || !ctx.items) continue;
+    ctx.items.forEach((it, i) => {
+      const e = entries[i];
+      if (!e) return;
+      e.globalIndex = g;
+      e.scope = "container";
+      e.containerId = ctx.id;
+      it.index = g;
+      flat.push(e);
+      g++;
+    });
+  }
+  // 货架 listings：ShelfContext.listings[].index 与 shelfItemIndex[id] 一一对应。
+  for (const built of nearbyShelvesBuilt) {
+    const entries = shelfItemIndex[built.context.id];
+    if (!entries) continue;
+    built.context.listings.forEach((l, i) => {
+      const e = entries[i];
+      if (!e) return;
+      e.globalIndex = g;
+      e.scope = "shelf";
+      e.containerId = built.context.id;
+      l.index = g;
+      flat.push(e);
+      g++;
+    });
+  }
 
   return {
     currentLocation: manifest.selfLocationId || "unknown",
@@ -156,6 +223,8 @@ export function assembleAgentContextFromManifest(
     visibleLocations,
     availableActions: [],
     characterAttributes: characterAttributesFromState(selfState),
+    selfDrunk: selfState?.drunk ?? 0,
+    selfDrunkTier: selfState?.drunkTier ?? "",
     proficiency: getProficiencyForCharacter(db, townId, characterId).map<ProficiencyEntry>((row) => ({
       skillId: row.skillId,
       value: row.value,
@@ -176,6 +245,7 @@ export function assembleAgentContextFromManifest(
       nearby: nearbyItemsRender.entries,
       containers: containerItemIndex,
       shelves: shelfItemIndex,
+      flat,
     },
     walletCenti: selfState?.walletCenti ?? 0,
     lastUpdatedAt: manifest.occurredAt,
@@ -213,7 +283,29 @@ function characterAttributesFromState(state: CharacterStateView | undefined): st
       .filter(Boolean);
     if (tags.length > 0) lines.push(`statuses: ${tags.join(", ")}`);
   }
+  const locale = getActiveLocale();
+  // 档位 key 由 Godot 算好持久化（state.drunkTier/sicknessTier）；这里只渲染，不复制阈值。
+  pushImpairmentLines(lines, "drunk", state.drunkTier, state.drunk, locale);
+  pushImpairmentLines(lines, "sick", state.sicknessTier, state.sickness, locale);
   return lines;
+}
+
+// 醉酒 / 生病：超阈值才向自我感知里塞三行——状态档位、可能后果、roleplay 指令。
+// 档位判定（阈值）只在 Godot src/sim/characters/impairment.gd 发生；backend 收到的 tierKey
+// 是 ""（清醒/健康，不渲染）或 tipsy/drunk/wasted（drunk）、mild/moderate/severe（sick）。
+// raw value 仍传进来只为了显示 "65/100" 的数字，不参与档位判定。
+function pushImpairmentLines(
+  lines: string[],
+  kind: "drunk" | "sick",
+  tierKey: string,
+  value: number,
+  locale: Locale,
+): void {
+  if (!tierKey) return;
+  const level = t(`prompt.context.impairment.${kind}.label.${tierKey}`, locale);
+  lines.push(t(`prompt.context.impairment.${kind}.line`, locale, { level, value: Math.round(value) }));
+  lines.push(t(`prompt.context.impairment.${kind}.consequence`, locale));
+  lines.push(t(`prompt.context.impairment.${kind}.roleplay`, locale, { level }));
 }
 
 // "100/100" 格式；max 缺失（manifest 没带或未连上）退回单值显示，不至于让 LLM 看到孤零零的 "/?"。
@@ -436,7 +528,7 @@ function workstationViewToContext(ws: WorkstationView, characterGroupIds: string
 
 // ContainerView → WorkstationContext。容器是 WorkstationNode 子类，对 LLM 统一暴露成"工作台"。
 // items 仅在 actor 持锁（或无锁）时填充；否则空数组表达"看得到容器但不知道里面"。
-// 输出 entries（容器内容的 [N] → {itemDefId, slotIndex} 映射）供 use_container take 反查；
+// 输出 entries（容器内容的 [N] → {itemDefId, slotIndex} 映射）供 put_take 反查；
 // 容器锁住时 entries 也为空。
 function containerViewToWorkstationContext(c: ContainerView, actorInventoryRows: InventoryItemRow[], characterGroupIds: string[], names: DisplayNameResolver, bands: Map<string, PerceptionBand>): { context: WorkstationContext; entries: ItemIndexEntry[] } {
   const locked = !!c.lockItemId;
@@ -566,12 +658,11 @@ function buildInteractiveSites(
 // 写进 SQLite *.ownerGroup。空字符串/undefined = 公用。仅用于给 snapshot 标 `accessible`
 // 字段（"能不能用"），不参与可见性 —— 可见性由 perception manifest 决定。
 // 工作台 → 该工作台对应的 axis tool 名（用于 InteractiveSiteContext.availableActions
-// 给 LLM 当"这里能用什么工具"的提示）。容器型走 use_container；well 走 draw_water；
+// 给 LLM 当"这里能用什么工具"的提示）。容器型（含水井）走 put_take / view_container；
 // 其他按 .workstations 反查到对应 axis slug。一个工作台可能落到多个 axis
 // （workbench 既能 woodwork 又能 assemble），全部列出来。找不到映射时给空数组。
 function availableActionsForWorkstation(workstationId: string, interactionMode?: string): string[] {
   if (interactionMode === "container") return ["put_take", "view_container"];
-  if (workstationId === "well") return ["draw_water"];
   const crafts: CraftSlug[] = [];
   for (const slug of listCraftSlugs()) {
     if (getCraftSpec(slug).workstations.includes(workstationId)) crafts.push(slug);
@@ -640,7 +731,8 @@ function renderInventoryEntries(
       const content = r.container?.content;
       const capText = formatAmount(capacity);
       if (amountNum > 0 && typeof content === "string" && content.length > 0) {
-        parts.push(`容量：${names.item(content)} ${formatAmount(amountNum)}/${capText}`);
+        const fermNote = r.container?.fermenting ? `，酿造中（品质上限${r.container.ceiling ?? "?"}）` : "";
+        parts.push(`容量：${names.item(content)} ${formatAmount(amountNum)}/${capText}${fermNote}`);
       } else {
         parts.push(`容量：空 0/${capText}`);
       }

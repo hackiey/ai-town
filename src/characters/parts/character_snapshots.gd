@@ -25,6 +25,8 @@ func attributes() -> Dictionary:
 		"stamina": { "current": roundf(_character.stamina), "max": roundf(effective_stamina_max()) },
 		"hunger": { "current": roundf(_character.hunger), "max": roundf(_character.max_hunger) },
 		"rest": { "current": roundf(_character.rest), "max": roundf(_character.max_rest) },
+		"drunk": { "current": roundf(_character.drunk), "max": roundf(Character.MAX_IMPAIRMENT) },
+		"sickness": { "current": roundf(_character.sickness), "max": roundf(Character.MAX_IMPAIRMENT) },
 	}
 
 
@@ -85,6 +87,8 @@ func ui_profile() -> Dictionary:
 			"stamina": { "current": roundf(_character.stamina), "max": roundf(effective_stamina_max()) },
 			"hunger": { "current": roundf(_character.hunger), "max": roundf(_character.max_hunger) },
 			"rest": { "current": roundf(_character.rest), "max": roundf(_character.max_rest) },
+			"drunk": { "current": roundf(_character.drunk), "max": roundf(Character.MAX_IMPAIRMENT) },
+			"sickness": { "current": roundf(_character.sickness), "max": roundf(Character.MAX_IMPAIRMENT) },
 		},
 		"proficiency": _proficiency_entries(),
 	}

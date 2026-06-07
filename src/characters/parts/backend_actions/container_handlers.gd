@@ -1,131 +1,162 @@
 class_name ContainerHandlers
 extends RefCounted
 
-# 容器/货架统一存取（put_take）：一次调用同时存入(put)和取出(take)。
-# 货架 = 无锁容器。买卖走这里——投币换货：put 银币 + take 面包 = 一次成交，钱直接以
-# 物品形式留在货架上（货架主之后自己 take 收钱）。
+# 统一存取（put_take）：一串 transfers，每条把东西从一个容器搬到另一个容器。
+# 容器 = 背包 / 附近容器 node（仓库·水井） / 地面物品 / 它们里的容器 item（桶·杯·酿酒桶）。
 #
-# 货币（silver_coin/gold_coin）特殊：角色身上存在钱包(centi)，不是背包物品；容器/货架里存为
-# item 实体（金库就是这么存的）。所以在「角色 ↔ 容器」边界做转换：
-#   put 货币 → 从钱包扣 centi，往容器塞等额 coin 物品
-#   take 货币 → 从容器取 coin 物品，按等额加进钱包
-# 非货币物品走背包 ↔ 容器槽位的常规搬运（保留 quality/aspect）。
+# transfer wire 形状（backend 已把扁平 index 解析成具体 endpoint）：
+#   { kind: "item"|"liquid", amount: number,
+#     itemId?: string,                       # item kind：搬哪种离散物
+#     from: Endpoint, to: Endpoint }
+#   Endpoint = { where: "backpack"|"node"|"ground"|"well",
+#                containerId?, slotIndex?, groundItemId? }
 #
-# 标价（仅货架，price_silver）仍由 put 项携带：put 成功后给该物品所有槽位盖 listing_price_centi。
-# 标价只是展示参考，不强制扣钱——付不付钱由买家用 put 银币体现。
+# 液体：amount=升，按量加权平均品质（LiquidOps）。well = 无限源。
+# 离散：amount=个数；货币(silver/gold coin) 在背包侧走钱包 centi。
+# 一切 Character 级；玩家与 NPC 同一路径。
+
+const _NEAR_RADIUS := 3.0
+const _NEAR_SQ := _NEAR_RADIUS * _NEAR_RADIUS
 
 
-# target: { containerId, put:[{itemId, quantity, actorSlotIndex?, priceCenti?}], take:[{itemId, quantity, containerSlotIndex?}] }
 static func run_put_take(character: Character, action_request: Dictionary) -> Dictionary:
 	var target: Variant = action_request.get("target", {})
 	if typeof(target) != TYPE_DICTIONARY:
 		return {"ok": false, "message": "put_take target must be object"}
-	var t: Dictionary = target as Dictionary
-	var container_input := str(t.get("containerId", "")).strip_edges()
-	if container_input.is_empty():
-		return {"ok": false, "message": "put_take 缺少 containerId"}
+	var transfers_v: Variant = (target as Dictionary).get("transfers", [])
+	if typeof(transfers_v) != TYPE_ARRAY or (transfers_v as Array).is_empty():
+		return {"ok": false, "message": "put_take 没有指定 transfers"}
 	if Containers == null:
 		return {"ok": false, "message": "Containers autoload is unavailable"}
-	var resolution := Containers.resolve_for_actor(character, container_input)
-	var node: ContainerNode = resolution.get("node") as ContainerNode
-	if node == null:
-		return {"ok": false, "message": str(resolution.get("message", "找不到容器"))}
-	if not bool(resolution.get("ok", false)):
-		# 距离 / 钥匙不过（group 已不再闸门）。
-		return {"ok": false, "message": str(resolution.get("message", "无法操作该容器"))}
 
-	var cid := str(resolution.get("container_id", ""))
-	var cname := str(resolution.get("container_name", container_input))
-	var is_shelf := node is ShelfNode
-	var raw_put: Array = t.get("put", []) if typeof(t.get("put", [])) == TYPE_ARRAY else []
-	var raw_take: Array = t.get("take", []) if typeof(t.get("take", [])) == TYPE_ARRAY else []
-	if raw_put.is_empty() and raw_take.is_empty():
-		return {"ok": false, "message": "没有指定要存入或取出的物品"}
-
-	var put_moves: Array = []
-	var take_moves: Array = []
 	var lines: Array = []
-
-	# 先取后存：腾出空间再放。
-	for entry_v in raw_take:
-		if typeof(entry_v) != TYPE_DICTIONARY:
+	var moves: Array = []
+	for tr_v in (transfers_v as Array):
+		if typeof(tr_v) != TYPE_DICTIONARY:
 			continue
-		var moved := _do_take(character, node, cid, cname, entry_v as Dictionary, lines)
-		if moved.get("itemId", "") != "" and int(moved.get("quantity", 0)) > 0:
-			take_moves.append(moved)
+		var tr := tr_v as Dictionary
+		var kind := str(tr.get("kind", "item"))
+		var res: Dictionary
+		if kind == "liquid":
+			res = _do_liquid(character, tr, lines)
+		else:
+			res = _do_item(character, tr, lines)
+		if bool(res.get("ok", false)):
+			moves.append(res)
 
-	for entry_v in raw_put:
-		if typeof(entry_v) != TYPE_DICTIONARY:
-			continue
-		var moved := _do_put(character, node, cid, cname, is_shelf, entry_v as Dictionary, lines)
-		if moved.get("itemId", "") != "" and int(moved.get("quantity", 0)) > 0:
-			put_moves.append(moved)
+	if moves.is_empty():
+		return {"ok": false, "message": "；".join(lines) if not lines.is_empty() else "没有可搬运的内容"}
 
-	if put_moves.is_empty() and take_moves.is_empty():
-		return {"ok": false, "message": "；".join(lines) if not lines.is_empty() else "没有可存取的内容"}
-
-	# 单条 world_event：附近的人感知"谁往这个货架/容器存取了什么"。
 	character.emit_world_event("container_put_take", {
 		"actorId": character.backend_character_id(),
 		"affectedCharacterIds": character.perception().voice_affected_character_ids("far"),
-		"containerId": cid,
-		"puts": put_moves,
-		"takes": take_moves,
+		"moves": moves,
 	})
 
-	var msg_lines: Array = ["在「%s」：" % cname]
+	var msg_lines: Array = []
 	for l in lines:
-		msg_lines.append("  " + str(l))
-	return {
-		"ok": true,
-		"message": "\n".join(msg_lines),
-		"result": {"containerId": cid, "put": put_moves, "taken": take_moves},
-	}
+		msg_lines.append(str(l))
+	return {"ok": true, "message": "\n".join(msg_lines), "result": {"moves": moves}}
 
 
-# 从容器/货架取出一项 → 加进角色（货币入钱包，其他入背包）。返回 {itemId, quantity} 实际取出量。
-static func _do_take(character: Character, node: ContainerNode, cid: String, cname: String, entry: Dictionary, lines: Array) -> Dictionary:
-	var item_id := str(entry.get("itemId", "")).strip_edges()
-	var qty := int(entry.get("quantity", 0))
+# ─── 液体 transfer ────────────────────────────────────────────────────
+
+static func _do_liquid(character: Character, tr: Dictionary, lines: Array) -> Dictionary:
+	var amount := float(tr.get("amount", 0.0))
+	if amount <= 0.0:
+		amount = 1.0
+	var to_ep := _resolve_liquid_endpoint(character, tr.get("to", {}))
+	if not bool(to_ep.get("ok", false)):
+		lines.append(str(to_ep.get("message", "目标容器无效")))
+		return {}
+	var from_raw: Dictionary = tr.get("from", {}) if typeof(tr.get("from", {})) == TYPE_DICTIONARY else {}
+	var dst_slot: Dictionary = to_ep["slot"]
+
+	var result: Dictionary
+	if str(from_raw.get("where", "")) == "well":
+		var well := _resolve_well(character, from_raw)
+		if not bool(well.get("ok", false)):
+			lines.append(str(well.get("message", "水井无效")))
+			return {}
+		result = LiquidOps.fill_from_source(dst_slot, str(well["content"]), float(well["quality"]), amount)
+		if bool(result.get("ok", false)):
+			(to_ep["commit"] as Callable).call()
+	else:
+		var from_ep := _resolve_liquid_endpoint(character, from_raw)
+		if not bool(from_ep.get("ok", false)):
+			lines.append(str(from_ep.get("message", "源容器无效")))
+			return {}
+		var src_slot: Dictionary = from_ep["slot"]
+		result = LiquidOps.transfer_between_slots(src_slot, dst_slot, amount)
+		if bool(result.get("ok", false)):
+			(from_ep["commit"] as Callable).call()
+			(to_ep["commit"] as Callable).call()
+
+	if not bool(result.get("ok", false)):
+		lines.append(str(result.get("message", "倒不动")))
+		return {}
+	var moved := float(result.get("moved", 0.0))
+	var content := str(dst_slot.get("container_content", ""))
+	var content_name := character.localize_item_name(content) if content != "" else "液体"
+	lines.append("倒了 %.0f 升「%s」进「%s」" % [moved, content_name, str(to_ep.get("label", "容器"))])
+	return {"ok": true, "kind": "liquid", "content": content, "amount": moved}
+
+
+# ─── 离散 item transfer ───────────────────────────────────────────────
+# 支持 背包↔node。ground 离散走 pick_up/drop 工具，这里不重复。
+
+static func _do_item(character: Character, tr: Dictionary, lines: Array) -> Dictionary:
+	var item_id := str(tr.get("itemId", "")).strip_edges()
+	var qty := int(tr.get("amount", 0))
 	if item_id.is_empty() or qty <= 0:
 		return {}
+	var from_where := str((tr.get("from", {}) as Dictionary).get("where", ""))
+	var to_where := str((tr.get("to", {}) as Dictionary).get("where", ""))
 	var item_name := character.localize_item_name(item_id)
+	if from_where == "node" and to_where == "backpack":
+		return _take_from_node(character, str((tr["from"] as Dictionary).get("containerId", "")), item_id, qty, item_name, lines)
+	if from_where == "backpack" and to_where == "node":
+		var to_d := tr["to"] as Dictionary
+		return _put_to_node(character, str(to_d.get("containerId", "")), item_id, qty, item_name, bool(to_d.get("isShelf", false)), int(to_d.get("priceCenti", -1)), lines)
+	lines.append("不支持的搬运：%s→%s" % [from_where, to_where])
+	return {}
+
+
+static func _take_from_node(character: Character, cid: String, item_id: String, qty: int, item_name: String, lines: Array) -> Dictionary:
+	var node := _near_node(character, cid)
+	if node == null:
+		lines.append("「%s」不在手边" % cid)
+		return {}
 	var unit_centi := CharacterInventory.currency_item_centi(item_id)
 	var res := Containers.system_withdraw(cid, item_id, qty)
 	if not bool(res.get("ok", false)):
-		lines.append("「%s」里没有「%s」" % [cname, item_name])
+		lines.append("「%s」里没有「%s」" % [node.effective_display_name(), item_name])
 		return {}
 	var stacks := _as_dict_array(res.get("stacks", []))
 	var moved := _sum_qty(stacks)
 	if moved <= 0:
-		lines.append("「%s」里没有「%s」" % [cname, item_name])
+		lines.append("「%s」里没有「%s」" % [node.effective_display_name(), item_name])
 		return {}
 	if unit_centi > 0:
-		# 货币：取出的 coin 物品折算进钱包，不进背包。
 		character.wallet_add(moved * unit_centi)
 	else:
 		var recv := character.inventory_ops().receive_stacks(stacks)
 		if not bool(recv.get("ok", false)):
-			# 背包装不下 → 原样放回容器。
 			Containers.adapter_place(node, stacks)
 			lines.append("背包装不下「%s」" % item_name)
 			return {}
-	var tail := "（只剩这些）" if moved < qty else ""
-	lines.append("取出 %d 份「%s」%s" % [moved, item_name, tail])
-	return {"itemId": item_id, "quantity": moved}
+	lines.append("取出 %d 份「%s」" % [moved, item_name])
+	return {"ok": true, "kind": "item", "itemId": item_id, "amount": moved}
 
 
-# 把角色的物品存进容器/货架（货币从钱包出 → 容器塞 coin 物品；其他从背包出）。返回 {itemId, quantity}。
-static func _do_put(character: Character, node: ContainerNode, cid: String, cname: String, is_shelf: bool, entry: Dictionary, lines: Array) -> Dictionary:
-	var item_id := str(entry.get("itemId", "")).strip_edges()
-	var qty := int(entry.get("quantity", 0))
-	if item_id.is_empty() or qty <= 0:
+static func _put_to_node(character: Character, cid: String, item_id: String, qty: int, item_name: String, is_shelf: bool, price_centi: int, lines: Array) -> Dictionary:
+	var node := _near_node(character, cid)
+	if node == null:
+		lines.append("「%s」不在手边" % cid)
 		return {}
-	var item_name := character.localize_item_name(item_id)
 	var unit_centi := CharacterInventory.currency_item_centi(item_id)
 	var moved := 0
 	if unit_centi > 0:
-		# 货币：从钱包扣等额 centi，往容器塞 coin 物品（全有或全无）。
 		var centi := qty * unit_centi
 		var pay := character.inventory_ops().pay_centi(centi)
 		if not bool(pay.get("ok", false)):
@@ -133,13 +164,11 @@ static func _do_put(character: Character, node: ContainerNode, cid: String, cnam
 			return {}
 		var dep := Containers.system_deposit(cid, item_id, qty)
 		if not bool(dep.get("ok", false)):
-			# 容器塞不下 → 退钱。
 			character.inventory_ops().refund_centi(centi)
-			lines.append("「%s」装不下「%s」" % [cname, item_name])
+			lines.append("「%s」装不下" % node.effective_display_name())
 			return {}
 		moved = qty
 	else:
-		# 非货币：从背包按 item_id 提取（最多 available），放进容器；放不下的退回背包。
 		var available := character.inventory_ops().count_item(item_id)
 		var take := mini(qty, available)
 		if take <= 0:
@@ -156,14 +185,89 @@ static func _do_put(character: Character, node: ContainerNode, cid: String, cnam
 		if not leftover.is_empty():
 			character.inventory_ops().restore_extracted_stacks(leftover)
 		if moved <= 0:
-			lines.append("「%s」装不下「%s」" % [cname, item_name])
+			lines.append("「%s」装不下「%s」" % [node.effective_display_name(), item_name])
 			return {}
-	# 标价（仅货架）：put 成功后给该物品所有槽位盖 listing_price_centi。
-	if is_shelf and entry.has("priceCenti"):
-		Containers.set_price_for_item(node, item_id, int(entry.get("priceCenti", 0)))
-	var tail := "（你只有这些）" if moved < qty else ""
-	lines.append("存入 %d 份「%s」%s" % [moved, item_name, tail])
-	return {"itemId": item_id, "quantity": moved}
+	if is_shelf and price_centi >= 0:
+		Containers.set_price_for_item(node, item_id, price_centi)
+	lines.append("存入 %d 份「%s」" % [moved, item_name])
+	return {"ok": true, "kind": "item", "itemId": item_id, "amount": moved}
+
+
+# ─── Endpoint 解析 ────────────────────────────────────────────────────
+
+# 液体 endpoint → {ok, slot:Dictionary(ref), commit:Callable, label}
+static func _resolve_liquid_endpoint(character: Character, ep_v: Variant) -> Dictionary:
+	if typeof(ep_v) != TYPE_DICTIONARY:
+		return {"ok": false, "message": "endpoint 缺失"}
+	var ep := ep_v as Dictionary
+	var where := str(ep.get("where", ""))
+	match where:
+		"backpack":
+			var idx := int(ep.get("slotIndex", -1))
+			if idx < 0 or idx >= character.inventory.size():
+				return {"ok": false, "message": "背包槽无效"}
+			var slot: Dictionary = character.inventory[idx]
+			var label := InventorySlotData.of(slot).display_name()
+			var commit := func() -> void:
+				character.inventory[idx] = slot
+				character.inventory = character.inventory
+				character.inventory_ops().persist_slot(idx)
+			return {"ok": true, "slot": slot, "commit": commit, "label": label}
+		"node":
+			var cid := str(ep.get("containerId", ""))
+			var node := _near_node(character, cid)
+			if node == null:
+				return {"ok": false, "message": "容器不在手边"}
+			var nidx := int(ep.get("slotIndex", -1))
+			if nidx < 0 or nidx >= node.contents.size():
+				return {"ok": false, "message": "容器槽无效"}
+			var nslot: Dictionary = node.contents[nidx]
+			var ncommit := func() -> void:
+				node.contents[nidx] = nslot
+				node.contents = node.contents
+				Db.save_container_slot(cid, nidx, nslot)
+			return {"ok": true, "slot": nslot, "commit": ncommit, "label": node.effective_display_name()}
+		"ground":
+			var gid := str(ep.get("groundItemId", ""))
+			var gi := _find_ground_item(character, gid)
+			if gi == null:
+				return {"ok": false, "message": "地上没有这个容器"}
+			var gslot: Dictionary = gi.slot_data
+			var gcommit := func() -> void:
+				gi.slot_data = gslot
+				Db.save_ground_item(gi.db_id, gi.item_id, gi.global_position, gslot)
+			return {"ok": true, "slot": gslot, "commit": gcommit, "label": gi.display_name()}
+	return {"ok": false, "message": "未知 endpoint: %s" % where}
+
+
+static func _resolve_well(character: Character, ep: Dictionary) -> Dictionary:
+	var cid := str(ep.get("containerId", "well"))
+	var node := _near_node(character, cid)
+	if node == null or not node.is_infinite_source():
+		return {"ok": false, "message": "水井不在手边"}
+	return {"ok": true, "content": node.infinite_content, "quality": float(node.infinite_quality)}
+
+
+static func _near_node(character: Character, cid: String) -> ContainerNode:
+	var node := Containers.find_container_node(cid)
+	if node == null or not is_instance_valid(node):
+		return null
+	if character.global_position.distance_squared_to(node.global_position) > _NEAR_SQ:
+		return null
+	if not node.is_unlocked_by(character):
+		return null
+	return node
+
+
+static func _find_ground_item(character: Character, db_id: String) -> GroundItem:
+	if db_id.is_empty():
+		return null
+	for n in character.get_tree().get_nodes_in_group("ground_items"):
+		var gi := n as GroundItem
+		if gi != null and gi.db_id == db_id:
+			if character.global_position.distance_squared_to(gi.global_position) <= _NEAR_SQ:
+				return gi
+	return null
 
 
 static func _sum_qty(stacks: Array) -> int:

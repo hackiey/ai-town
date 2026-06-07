@@ -285,6 +285,8 @@ func harvest(harvester: Character) -> Dictionary:
 		"maturity_int": maturity_int,
 		"harvests_done": harvests_done,
 		"current_total_hour": GameClock.total_game_hours(),
+		# 醉酒/生病：手抖碰坏一些，收获量按比例缩水（曲线单一来源在 Impairment）。
+		"harvest_yield_mult": Impairment.yield_mult(Impairment.work_impair(harvester)),
 	})
 	if not bool(result.get("ok", false)):
 		return {"item_id": "", "quantity": 0, "quality": 0}

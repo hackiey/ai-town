@@ -33,6 +33,8 @@ func hydrate() -> void:
 	_character.max_hunger = float(row.get("maxHunger", _character.max_hunger))
 	_character.rest = float(row.get("rest", _character.rest))
 	_character.max_rest = float(row.get("maxRest", _character.max_rest))
+	_character.drunk = float(row.get("drunk", _character.drunk))
+	_character.sickness = float(row.get("sickness", _character.sickness))
 	_character.sleep_needed_hours = float(row.get("sleepNeededHours", _character.sleep_needed_hours))
 	if _character.sleep_needed_hours <= 0.0:
 		_character.sleep_needed_hours = Character.DEFAULT_SLEEP_NEEDED_HOURS
@@ -91,6 +93,11 @@ func persist() -> void:
 		"maxHunger": _character.max_hunger,
 		"rest": _character.rest,
 		"maxRest": _character.max_rest,
+		"drunk": _character.drunk,
+		"sickness": _character.sickness,
+		# 派生档位 key 随 raw 一起持久化——阈值只在 Impairment 里判一次，backend 直接读这个 key。
+		"drunkTier": Impairment.drunk_tier_key(_character.drunk),
+		"sicknessTier": Impairment.sickness_tier_key(_character.sickness),
 		"sleepNeededHours": _character.sleep_needed_hours,
 		"temperature": _character.temperature,
 		"burning": _character.burning,

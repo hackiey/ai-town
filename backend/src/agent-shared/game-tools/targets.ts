@@ -220,6 +220,38 @@ export type ResolvedItemRef = {
   listingId?: string;
 };
 
+// 统一扁平编号反查：globalIndex（从 1 顺序往后，全场唯一）→ entry。
+// 不在乎 scope —— 这正是"统一 index"的意义：一个号定位任意背包/地面/容器里的东西。
+export function resolveFlatEntry(
+  index: number | undefined,
+  currentContext?: AgentCurrentContext,
+): ItemIndexEntry | undefined {
+  const flat = currentContext?.itemIndex?.flat;
+  if (!flat || !Number.isInteger(index) || (index as number) < 1 || (index as number) > flat.length) return undefined;
+  return flat[(index as number) - 1];
+}
+
+function resolveFromEntry(entry: ItemIndexEntry, requestedName: string, listLabel: string, index: number): ResolvedItemRef | MoveTargetError {
+  const actualName = localizeStringValue(entry.itemDefId);
+  if (normalizeItemInput(actualName) !== normalizeItemInput(requestedName)) {
+    if (entry.containerContent) {
+      const contentName = localizeStringValue(entry.containerContent);
+      if (normalizeItemInput(contentName) === normalizeItemInput(requestedName)) {
+        const resolved: ResolvedItemRef = { id: entry.containerContent, label: contentName };
+        if (entry.slotIndex != null) resolved.slotIndex = entry.slotIndex;
+        return resolved;
+      }
+    }
+    return {
+      error: t("error.item_index_name_mismatch", getActiveLocale(), { list: listLabel, index, actualName, requestedName }),
+    };
+  }
+  const resolved: ResolvedItemRef = { id: entry.itemDefId, label: actualName };
+  if (entry.slotIndex != null) resolved.slotIndex = entry.slotIndex;
+  if (entry.listingId != null) resolved.listingId = entry.listingId;
+  return resolved;
+}
+
 export function resolveItemByIndex(
   ref: ItemRefParam | undefined,
   list: ItemRefList | ScopedItemRefList,
@@ -229,6 +261,14 @@ export function resolveItemByIndex(
     return { error: t("error.unknown_item", getActiveLocale(), { item: ref?.name?.trim() ?? "" }) };
   }
   const requestedName = ref.name.trim();
+  // 统一扁平编号优先：ref.index 是全局号，跨 scope 反查。scope 提示忽略。
+  const flat = currentContext?.itemIndex?.flat;
+  if (flat && flat.length > 0) {
+    if (ref.index > flat.length) {
+      return { error: t("error.item_index_out_of_range", getActiveLocale(), { list: "可交互物", index: ref.index, size: flat.length }) };
+    }
+    return resolveFromEntry(flat[ref.index - 1], requestedName, "可交互物", ref.index);
+  }
   const entries = pickEntries(list, currentContext);
   const listLabel = itemRefListLabel(list);
   if (ref.index > entries.length) {

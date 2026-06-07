@@ -40,7 +40,7 @@ const RENDERERS: Record<string, EventLineRenderer> = {
   woke_up: renderWokeUpEventLine,
   container_put_take: renderContainerPutTakeEventLine,
   use_item: renderUseItemEventLine,
-  // 9 个 axis event + draw_water 全部走同一个 workstation 渲染器（事件数据 shape 相同）。
+  // 9 个 axis event 全部走同一个 workstation 渲染器（事件数据 shape 相同）。
   // 见 docs/proficiency_system.md + agent-shared/game-tools/craft-registry.ts。
   mine: renderUseWorkstationEventLine,
   woodwork: renderUseWorkstationEventLine,
@@ -51,7 +51,6 @@ const RENDERERS: Record<string, EventLineRenderer> = {
   cook: renderUseWorkstationEventLine,
   mill_grain: renderUseWorkstationEventLine,
   boil_salt: renderUseWorkstationEventLine,
-  draw_water: renderUseWorkstationEventLine,
   drop_item: renderDropItemEventLine,
   give: renderGiveEventLine,
   move_to_location: renderMoveToLocationEventLine,
@@ -67,7 +66,14 @@ export function renderEventLine(
   event: WorldEventRecord,
   viewerId: string,
   locale: Locale,
+  // 听者自身醉酒程度（0..100），仅作听者侧乱码强度（曲线）。默认 0。
+  viewerDrunk: number = 0,
+  // 听者醉酒档位 key（""/tipsy/drunk/wasted）。烂醉(wasted)时 say 行做听者侧乱码（听不清别人说话）。
+  viewerDrunkTier: string = "",
 ): string {
+  if (event.type === "say_to") {
+    return renderSayToEventLine(event, viewerId, locale, viewerDrunk, viewerDrunkTier);
+  }
   const renderer = RENDERERS[event.type] ?? renderFallbackEventLine;
   return renderer(event, viewerId, locale);
 }

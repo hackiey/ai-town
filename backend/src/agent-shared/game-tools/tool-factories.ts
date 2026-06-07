@@ -2,7 +2,7 @@ import type { AgentTool, AgentToolResult, AgentToolUpdateCallback } from "@mario
 import type { GameTimeSnapshot } from "../../godot-link/protocol.js";
 import { getActiveLocale, t } from "../../i18n/index.js";
 import { localizeStringValue } from "../name-resolver/index.js";
-import type { AgentCurrentContext } from "../prompt-context/types.js";
+import type { AgentCurrentContext, ItemIndexEntry } from "../prompt-context/types.js";
 import { sayToThrottleMs } from "../say-to-throttle.js";
 import { td } from "./i18n.js";
 import {
@@ -16,13 +16,13 @@ import {
   createBoilSaltSchema,
   createBurnCharcoalSchema,
   createCookSchema,
-  createDrawWaterSchema,
   createItemSchema,
   createMillGrainSchema,
   createMineSchema,
   createMoveToLocationSchema,
   createPlanFarmWorkSchema,
   createPutTakeSchema,
+  createBrewSchema,
   createSayToSchema,
   createSmeltSchema,
   createSmithSchema,
@@ -43,7 +43,6 @@ import {
   type CookParams,
   type CreateItemParams,
   type DoNothingParams,
-  type DrawWaterParams,
   type DropItemParams,
   type ItemRefParam,
   type MillGrainParams,
@@ -53,6 +52,8 @@ import {
   type PickUpItemParams,
   type PlanFarmWorkParams,
   type PutTakeParams,
+  type BrewParams,
+  type TransferEndpointParam,
   type ReadParams,
   type RespondParams,
   type SayToParams,
@@ -71,6 +72,7 @@ import {
   resolveContainerOrShelfTarget,
   resolveCraftWorkstation,
   resolveItemByIndex,
+  resolveFlatEntry,
   resolveItemTarget,
   resolveMoveTarget,
   resolveOptionalKnownTargetName,
@@ -79,7 +81,7 @@ import {
   resolveTradeTarget,
 } from "./targets.js";
 import { getCraftSpec, verbForWorkstation, type CraftSlug } from "./craft-registry.js";
-import type { ActionName, WorkstationActionTarget } from "../../godot-link/actions.js";
+import type { ActionName, WorkstationActionTarget, TransferWire, ContainerEndpoint } from "../../godot-link/actions.js";
 import type {
   AgentToolInterrupts,
   CharacterActionToolDetails,
@@ -510,44 +512,71 @@ export function createPutTakeTool(
     parameters: createPutTakeSchema(),
     execute: async (_toolCallId, rawArgs, signal, onUpdate) => {
       const args = rawArgs as PutTakeParams;
-      const site = resolveContainerOrShelfTarget(args.container, currentContext);
-      if (isMoveTargetError(site)) throw new Error(site.error);
-      const takeScope = site.kind === "shelf"
-        ? { kind: "shelf" as const, shelfId: site.id }
-        : { kind: "container" as const, containerId: site.id };
-
-      const put = (args.put ?? []).map((entry) => {
-        const r = resolveItemByIndex(entry.item, "backpack", currentContext);
-        if (isMoveTargetError(r)) throw new Error(r.error);
-        const out: { itemId: string; quantity: number; actorSlotIndex?: number; priceCenti?: number } = {
-          itemId: r.id, quantity: entry.quantity,
-        };
-        if (r.slotIndex != null) out.actorSlotIndex = r.slotIndex;
-        if (entry.price_silver != null) out.priceCenti = Math.round(entry.price_silver * 100);
-        return out;
-      });
-      const take = (args.take ?? []).map((entry) => {
-        const r = resolveItemByIndex(entry.item, takeScope, currentContext);
-        if (isMoveTargetError(r)) throw new Error(r.error);
-        const out: { itemId: string; quantity: number; containerSlotIndex?: number } = {
-          itemId: r.id, quantity: entry.quantity,
-        };
-        if (r.slotIndex != null) out.containerSlotIndex = r.slotIndex;
-        return out;
-      });
-      if (put.length === 0 && take.length === 0) {
-        throw new Error(td("put_take.error_empty"));
+      const wire: TransferWire[] = [];
+      for (const tr of args.transfers ?? []) {
+        if (tr.kind === "liquid") {
+          const from = resolveLiquidEndpoint(tr.from, currentContext);
+          const to = resolveLiquidEndpoint(tr.to, currentContext);
+          wire.push({ kind: "liquid", amount: tr.amount, from, to });
+        } else {
+          // 离散：from.item 是全局编号，定位要搬的物（itemId + 来源位置）。
+          if (!tr.from.item) throw new Error("搬离散物需在 from.item 指定物品编号");
+          const e = resolveFlatEntry(tr.from.item.index, currentContext);
+          if (!e) throw new Error("from.item 编号无效");
+          const from = entryToEndpoint(e);
+          const to = containerNameToEndpoint(tr.to, currentContext);
+          if (to.isShelf && tr.price_silver != null) to.priceCenti = Math.round(tr.price_silver * 100);
+          wire.push({ kind: "item", itemId: e.itemDefId, amount: Math.round(tr.amount), from, to });
+        }
       }
+      if (wire.length === 0) throw new Error(td("put_take.error_empty"));
       return submitToolAction(
         runtime.actions,
         characterId,
         "put_take_container",
-        { containerId: site.id, put, take },
-        args.reason ?? td("put_take.reason_format", { label: site.label }),
-        { toolName: "put_take", displayTarget: site.label, gameTime, signal, onUpdate, interrupts },
+        { transfers: wire },
+        args.reason ?? td("put_take.reason_format", { label: "搬运" }),
+        { toolName: "put_take", displayTarget: "搬运", gameTime, signal, onUpdate, interrupts },
       );
     },
   };
+}
+
+// 一个扁平条目 → wire endpoint（按它所在的 scope 定位）。
+function entryToEndpoint(e: ItemIndexEntry): ContainerEndpoint {
+  if (e.scope === "container" || e.scope === "shelf") {
+    return { where: "node", containerId: e.containerId, slotIndex: e.slotIndex, isShelf: e.scope === "shelf" };
+  }
+  if (e.scope === "nearby") {
+    if (e.groundItemId) return { where: "ground", groundItemId: e.groundItemId };
+    throw new Error("地面上的这件东西暂时不能当容器用");
+  }
+  return { where: "backpack", slotIndex: e.slotIndex };
+}
+
+// 把 transfer endpoint 解析成液体 wire endpoint。
+// 优先用 item 全局编号（定位具体桶/酿酒桶/杯，自带所在位置）；只给 container 名时用于水井。
+function resolveLiquidEndpoint(ep: TransferEndpointParam, ctx?: AgentCurrentContext): ContainerEndpoint {
+  if (ep.item) {
+    const e = resolveFlatEntry(ep.item.index, ctx);
+    if (!e) throw new Error("液体容器编号无效");
+    return entryToEndpoint(e);
+  }
+  if (ep.container) {
+    const site = resolveContainerOrShelfTarget(ep.container, ctx);
+    if (isMoveTargetError(site)) throw new Error(site.error);
+    if (site.id === "well") return { where: "well", containerId: site.id };
+    throw new Error(`请用编号指定「${site.label}」里的具体桶/酿酒桶`);
+  }
+  throw new Error("液体来源/目标需给 item 编号或 container 名（水井）");
+}
+
+// 离散搬运的"目标"endpoint：container 名 → node；没给 = 背包。
+function containerNameToEndpoint(ep: TransferEndpointParam, ctx?: AgentCurrentContext): ContainerEndpoint {
+  if (!ep.container) return { where: "backpack" };
+  const site = resolveContainerOrShelfTarget(ep.container, ctx);
+  if (isMoveTargetError(site)) throw new Error(site.error);
+  return { where: "node", containerId: site.id, isShelf: site.kind === "shelf" };
 }
 
 // view_container —— 查看货架/容器内容（货架额外显示标价）。只读，从 currentContext 渲染，不发 action。
@@ -591,8 +620,8 @@ export function createViewContainerTool(
   };
 }
 
-// 打水 —— well 直接使用型工作台。沿用 WorkstationActionTarget 形态走同一 Godot 路径。
-export function createDrawWaterTool(
+// 酿酒 —— 装水的酿酒桶 + 背包麦芽 → 发酵中的酒。Godot BrewHandlers 执行。
+export function createBrewTool(
   runtime: ToolRuntime,
   characterId: string,
   currentContext?: AgentCurrentContext,
@@ -600,33 +629,20 @@ export function createDrawWaterTool(
 ): AgentTool<any, CharacterActionToolDetails> {
   const gameTime = currentContext?.gameTime;
   return {
-    label: td("draw_water.label"),
-    name: "draw_water",
-    description: td("draw_water.description"),
-    parameters: createDrawWaterSchema(),
+    label: "酿酒",
+    name: "brew",
+    description: "把一个装着水的酿酒桶 + 背包里的麦芽变成发酵中的酒（需麦芽数≥水升数）。barrel 指酿酒桶所在：在你背包就填 item，在仓库里就填 container+item。",
+    parameters: createBrewSchema(),
     execute: async (_toolCallId, rawArgs, signal, onUpdate) => {
-      const args = rawArgs as DrawWaterParams;
-      const into = resolveItemByIndex(args.into, "backpack", currentContext);
-      if (isMoveTargetError(into)) throw new Error(into.error);
-      const target: WorkstationActionTarget = {
-        workstationId: "well",
-        verb: "direct",
-        subOption: "",
-        inputItemIds: [into.id],
-        inputItemSlotIndices: [into.slotIndex],
-      };
+      const args = rawArgs as BrewParams;
+      const barrel = resolveLiquidEndpoint(args.barrel, currentContext);
       return submitToolAction(
         runtime.actions,
         characterId,
-        "draw_water",
-        target,
-        args.reason ?? td("draw_water.reason_default_format", { item: into.label }),
-        {
-          toolName: "draw_water",
-          resultNote: td("draw_water.result_note"),
-          displayTarget: into.label,
-          gameTime, signal, onUpdate, interrupts,
-        },
+        "brew",
+        { barrel },
+        args.reason ?? "酿酒",
+        { toolName: "brew", displayTarget: "酿酒", gameTime, signal, onUpdate, interrupts },
       );
     },
   };
@@ -911,7 +927,7 @@ export function createSleepTool(
   };
 }
 
-// 容器三件套（deposit / withdraw / inspect）的 LLM 工具是 createUseContainerTool（上方）：
+// 容器存取的 LLM 工具是 createPutTakeTool / createViewContainerTool（上方）。
 // verb=take/put/inspect。三个 Godot action_kind 仍独立（deposit_to_container / withdraw_from_container
 // / inspect_container），由 createUseContainerTool 内部按 verb 分发。
 

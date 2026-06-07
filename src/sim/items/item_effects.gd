@@ -100,23 +100,12 @@ static func apply_to_caster(caster, effects: Dictionary) -> Array:
 				effect = {"type": "modify_hp", "target": caster, "amount": amount}
 			"rest":
 				effect = {"type": "modify_rest", "target": caster, "amount": amount}
+			"drunk":
+				# 醉酒累计值（啤酒等酒类 base_effects drunk:+N）。衰减/影响见 physiology.lua。
+				effect = {"type": "modify_drunk", "target": caster, "amount": amount}
 			"sickness":
-				# 走 add_status。expires_total_hours 用 GameClock 体系；6 game-hour 后失效。
-				# 注：当前所有食物都不输出 sickness（compute_effects 不会主动产）；这个分支是
-				# 给将来"吃馊东西致病"那类 lua compute_effects 用的占位。
-				var expires := 6
-				var loop := Engine.get_main_loop()
-				if loop is SceneTree:
-					var clk: Node = (loop as SceneTree).root.get_node_or_null("GameClock")
-					if clk != null and clk.has_method("total_game_hours"):
-						expires = int(clk.call("total_game_hours")) + 6
-				effect = {
-					"type": "add_status",
-					"target": caster,
-					"status_id": "sickness",
-					"expires_total_hours": expires,
-					"source": "rotten_food",
-				}
+				# 生病累计值。正 = 致病（吃馊食物），负 = 治疗（吃药）。0..MAX_IMPAIRMENT。
+				effect = {"type": "modify_sickness", "target": caster, "amount": amount}
 			_:
 				push_warning("[ItemEffects] unknown effect key: %s" % key)
 				continue

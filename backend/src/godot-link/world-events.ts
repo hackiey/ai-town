@@ -85,9 +85,12 @@ export type WokeUpEventData = WorldEventDataBase & {
 // put_take：一次存取动作，puts/takes 各列出移动的物品。货架与容器共用（货架=无锁容器）。
 // 附近的人据此感知"谁往这个容器/货架存了/取了什么"。
 export type ContainerPutTakeEventData = WorldEventDataBase & {
-  containerId: string;
-  puts: Array<{ itemId: string; quantity: number }>;
-  takes: Array<{ itemId: string; quantity: number }>;
+  moves: Array<{ kind?: string; itemId?: string; content?: string; amount?: number }>;
+};
+
+export type BrewedEventData = WorldEventDataBase & {
+  liters?: number;
+  ceiling?: number;
 };
 
 // ─── item / workstation ──────────────────────────────────────────────
@@ -106,7 +109,7 @@ export type UseItemEventData = WorldEventDataBase & {
 //      只对 actor 自己渲染（数值成长是私密反馈）。
 //
 // 9 个工作台手艺 axis（mine / woodwork / smelt / smith / assemble / cook / mill_grain /
-// boil_salt / burn_charcoal）+ draw_water 全部共用这个 shape，event 类型名只
+// boil_salt / burn_charcoal）全部共用这个 shape，event 类型名只
 // 用来路由到对应 renderer key。详见 docs/proficiency_system.md 和 craft-registry.ts。
 //
 // 原料折损 / 退回信息不在这条 event 上 —— actor 自己在 tool_response 的
@@ -172,8 +175,9 @@ export type WorldEventDataByType = {
   went_to_sleep: WentToSleepEventData;
   woke_up: WokeUpEventData;
   container_put_take: ContainerPutTakeEventData;
+  brewed: BrewedEventData;
   use_item: UseItemEventData;
-  // 9 个 axis event + draw_water —— 全部共用 WorkstationEventData shape。
+  // 9 个 axis event —— 全部共用 WorkstationEventData shape。
   mine: WorkstationEventData;
   woodwork: WorkstationEventData;
   burn_charcoal: WorkstationEventData;
@@ -183,7 +187,6 @@ export type WorldEventDataByType = {
   cook: WorkstationEventData;
   mill_grain: WorkstationEventData;
   boil_salt: WorkstationEventData;
-  draw_water: WorkstationEventData;
   drop_item: DropItemEventData;
   give: GiveEventData;
   move_to_location: PublicFinishEventData;
@@ -205,6 +208,7 @@ const WORLD_EVENT_TYPE_MARKER: Record<WorldEventDataType, true> = {
   went_to_sleep: true,
   woke_up: true,
   container_put_take: true,
+  brewed: true,
   use_item: true,
   mine: true,
   woodwork: true,
@@ -215,7 +219,6 @@ const WORLD_EVENT_TYPE_MARKER: Record<WorldEventDataType, true> = {
   cook: true,
   mill_grain: true,
   boil_salt: true,
-  draw_water: true,
   drop_item: true,
   give: true,
   move_to_location: true,

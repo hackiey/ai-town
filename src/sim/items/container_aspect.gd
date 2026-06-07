@@ -62,6 +62,11 @@ func is_full() -> bool:
 	return amount() >= capacity()
 
 
+# 液体物质的当前品质 = slot.quality（不另开列）。空容器返回 100 占位。
+func quality() -> float:
+	return float(slot.get("quality", 100))
+
+
 # 写 ─────────────────────────────────────────────
 # 返回 {"container_amount": <float>, "container_content": <String>}。
 # caller 逐字段写回 slot（平铺列；slot["properties"] 子 dict 已废弃）。
@@ -77,3 +82,20 @@ func with_filled(new_amount: float, new_content: String) -> Dictionary:
 
 func with_consumed(qty: float) -> Dictionary:
 	return with_filled(amount() - qty, content_id())
+
+
+# 倒入 add_amount 份品质 add_quality 的 content 液体，按量加权平均品质。
+# 返回 {container_amount, container_content, quality}；caller 逐字段写回 slot。
+# 实际倒入量受容量限制（caller 应已用 transfer 算好 add_amount，但此处再夹一次更安全）。
+func with_blended(add_amount: float, add_quality: float, content: String) -> Dictionary:
+	var cur := amount()
+	var new_amount := clampf(cur + add_amount, 0.0, capacity())
+	var added := new_amount - cur
+	var blended_q := quality()
+	if new_amount > 0.0 and added > 0.0:
+		blended_q = (quality() * cur + add_quality * added) / new_amount
+	return {
+		"container_amount": new_amount,
+		"container_content": content if new_amount > 0.0 else "",
+		"quality": blended_q,
+	}

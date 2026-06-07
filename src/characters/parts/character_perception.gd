@@ -171,6 +171,34 @@ func nearby_item_ids() -> Dictionary:
 	return { "near": near, "far": far }
 
 
+# 附近地面上的液体容器（掉落的桶等）——活容器，可被 put_take 取/存液体。
+# 带 instanceId(db_id) 让 backend 能寻址具体那一个。
+func nearby_ground_container_snapshots() -> Array:
+	var out: Array = []
+	var seen := {}
+	for group_name in ["world_items", "ground_items", "dropped_items", "items"]:
+		for node in character.get_tree().get_nodes_in_group(group_name):
+			if seen.has(node):
+				continue
+			seen[node] = true
+			var gi := node as GroundItem
+			if gi == null or not is_instance_valid(gi):
+				continue
+			if not InventorySlotData.of(gi.slot_data).has_tag("liquid_container"):
+				continue
+			var dist := character.global_position.distance_to(gi.global_position)
+			if dist > ITEM_FAR_RADIUS:
+				continue
+			out.append({
+				"instanceId": gi.db_id,
+				"itemId": gi.item_id,
+				"content": gi.slot_data.get("container_content", ""),
+				"amount": gi.slot_data.get("container_amount", 0.0),
+				"band": "near" if dist <= ITEM_NEAR_RADIUS else "far",
+			})
+	return out
+
+
 # ─── farms / workstations ───────────────────────────────
 
 # 给 backend agent context：附近 max_distance 内的 FarmGroup 状态 dump。
@@ -196,8 +224,8 @@ func nearby_farm_snapshots(max_distance: float = INTERACTIVE_FARM_VISIBLE_RADIUS
 	return out
 
 
-# 给 backend agent context：当前可交互候选工作台列表。只暴露 can_be_used_by(self)
-# 通过的工作台；私有工作台仍会出现在 nearbyBuildings，但不会成为 tool 候选。
+# 给 backend agent context：当前范围内的工作台候选。owner_group 不过滤工作台使用，
+# 只随 snapshot 作为归属/招牌元数据上报。
 func nearby_workstation_snapshots(max_distance: float = INTERACTIVE_WORKSTATION_VISIBLE_RADIUS) -> Array[Dictionary]:
 	return character.workstation_actions().nearby_snapshots(max_distance)
 
@@ -465,6 +493,7 @@ func build_manifest() -> Dictionary:
 		"knownLocationIds": known_location_ids,
 		"perceivedCharacters": character_refs,
 		"perceivedItems": item_refs,
+		"perceivedGroundContainers": nearby_ground_container_snapshots(),
 		"perceivedFarms": farm_refs,
 		"perceivedWorkstations": ws_refs,
 		"perceivedShelves": shelf_refs,

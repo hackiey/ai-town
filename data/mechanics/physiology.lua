@@ -21,6 +21,13 @@ starving_hp_loss_per_hour   = 2.0   -- hunger == 0 时每小时扣血
 hunger_decay_awake_per_hour = 5.0
 hunger_decay_sleep_per_hour = 1.25
 
+-- 损伤层衰减（每 10-min slow_tick 一次）。
+-- drunk：醒酒快——每 tick -1，一杯啤酒(+6) 约 60 game-min 醒透。
+-- sickness：自愈很慢——每 tick -0.25（≈ -1.5/game-hour，100→0 约 66 game-hour），
+--   主要靠吃药（药品 base_effects sickness 为负）才好得快。
+drunk_decay_per_tick    = 1.0
+sickness_decay_per_tick = 0.25
+
 -- ============== 内部 helper ==============
 
 local function _check_hungry_threshold(target, hunger, has_hungry)
@@ -152,6 +159,19 @@ function on_slow_tick(ctx)
         if ctx.hp - hp_loss <= 0 then
             affect.set_alive(ctx.character, false)
         end
+    end
+
+    -- 6) 损伤层自然衰减（drunk 醒酒 / sickness 自愈）。Effects 那边 clamp 到 [0, MAX]，
+    --    这里只在 >0 时往下推，避免对清醒/健康的人空发 effect。
+    local drunk = ctx.drunk or 0
+    if drunk > 0 then
+        local dec = drunk_decay_per_tick * (tick_hours / (1.0 / 6.0))
+        affect.drunk(ctx.character, -math.min(dec, drunk))
+    end
+    local sickness = ctx.sickness or 0
+    if sickness > 0 then
+        local dec = sickness_decay_per_tick * (tick_hours / (1.0 / 6.0))
+        affect.sickness(ctx.character, -math.min(dec, sickness))
     end
 end
 

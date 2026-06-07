@@ -10,11 +10,23 @@ extends PanelContainer
 signal use_requested(slot_index: int)
 signal drop_requested(slot_index: int)
 signal swap_requested(from_index: int, to_index: int)
+signal pour_requested(slot_index: int)
+signal brew_requested(slot_index: int)
 
 const Money = preload("res://src/sim/characters/money.gd")
 const SIZE := Vector2(64, 64)
 const MENU_USE := 1
 const MENU_DROP := 2
+const MENU_POUR := 3
+const MENU_BREW := 4
+
+const BREW_BASE_LIQUID := "water"
+
+# 右键菜单文案（可被 set_menu_labels 改成"取出/存入"等）+ 是否提供"倒出液体"/"酿酒"项。
+var show_pour: bool = false
+var show_brew: bool = false
+var _use_label: String = ""
+var _drop_label: String = ""
 
 var slot_index: int = -1
 var item_id: String = ""
@@ -98,14 +110,51 @@ func _init() -> void:
 	_price.visible = false
 	add_child(_price)
 
+	_use_label = tr("ui.inventory.menu.use")
+	_drop_label = tr("ui.inventory.menu.drop")
 	_menu = PopupMenu.new()
-	_menu.add_item(tr("ui.inventory.menu.use"), MENU_USE)
-	_menu.add_item(tr("ui.inventory.menu.drop"), MENU_DROP)
 	add_child(_menu)
 
 
 func _ready() -> void:
 	_menu.id_pressed.connect(_on_menu_id_pressed)
+
+
+# 右键菜单文案按场景定制：背包用"使用/丢弃"（默认），容器面板改成"取出/存入"等。
+# 信号语义不变（use_requested / drop_requested），只换显示文字。
+func set_menu_labels(use_label: String, drop_label: String) -> void:
+	_use_label = use_label
+	_drop_label = drop_label
+
+
+# 右键时按当前 slot 现搭菜单：use/drop 必有；液体容器且有内容 + show_pour 时多一项"倒出液体"。
+func _rebuild_menu() -> void:
+	_menu.clear()
+	_menu.add_item(_use_label, MENU_USE)
+	_menu.add_item(_drop_label, MENU_DROP)
+	if show_pour and _is_pourable():
+		_menu.add_item(tr("ui.container.menu.pour"), MENU_POUR)
+	if show_brew and _is_brewable():
+		_menu.add_item(tr("ui.container.menu.brew"), MENU_BREW)
+
+
+func _is_pourable() -> bool:
+	var view := InventorySlotData.of(_slot_data)
+	if not view.has_tag("liquid_container"):
+		return false
+	var cont := view.as_container()
+	return cont != null and not cont.is_empty()
+
+
+# 酿酒桶（brewing_vessel）装着基底液体（水）、且没在发酵中 → 可右键"酿酒…"。
+func _is_brewable() -> bool:
+	var view := InventorySlotData.of(_slot_data)
+	if not view.has_tag("brewing_vessel"):
+		return false
+	if _slot_data.get("ferment_ceiling", null) != null or _slot_data.get("transform_age", null) != null:
+		return false
+	var cont := view.as_container()
+	return cont != null and cont.content_id() == BREW_BASE_LIQUID and cont.amount() > 0.0
 
 
 # 接受完整 instance dict（item_id/quality/shape_type/materials/tags/properties/quantity）。
@@ -184,6 +233,7 @@ func _gui_input(event: InputEvent) -> void:
 		return
 	if item_id.is_empty() or quantity <= 0:
 		return
+	_rebuild_menu()
 	# 嵌入式 PopupMenu 的 position 用 viewport 坐标。CanvasLayer 下 Control 的
 	# get_global_mouse_position 就是 viewport 坐标，正好对得上。
 	_menu.position = Vector2i(get_global_mouse_position())
@@ -231,6 +281,10 @@ func _on_menu_id_pressed(id: int) -> void:
 		use_requested.emit(slot_index)
 	elif id == MENU_DROP:
 		drop_requested.emit(slot_index)
+	elif id == MENU_POUR:
+		pour_requested.emit(slot_index)
+	elif id == MENU_BREW:
+		brew_requested.emit(slot_index)
 
 
 func _color_for(id: String) -> Color:

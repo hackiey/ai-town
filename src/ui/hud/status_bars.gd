@@ -68,6 +68,12 @@ func _render() -> void:
 			"hungry": labels.append(tr("ui.status.status.hungry"))
 			"sleeping": labels.append(tr("ui.status.status.sleeping"))
 			_: labels.append(t)
+	var drunk_label := Impairment.drunk_tier_label(_player.drunk)
+	if not drunk_label.is_empty():
+		labels.append(drunk_label)
+	var sick_label := Impairment.sickness_tier_label(_player.sickness)
+	if not sick_label.is_empty():
+		labels.append(sick_label)
 	_status_label.text = "  ".join(labels) if labels.size() > 0 else ""
 
 

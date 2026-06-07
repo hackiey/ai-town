@@ -22,10 +22,7 @@ var display_name: String:
 # 标签。容器型工作站（aging_barrel）打 ["aging_vessel"] 给 passive 反应匹配
 @export var tags: PackedStringArray = []
 
-# 交互模式：决定玩家按 E 时怎么处理。
-# - "action_panel"（默认）：开 ActionPanel，复杂多输入反应（炉/砧/桌/磨/灶用这个）
-# - "direct"：跳过 panel，直接调 player.request_workstation_direct(ws_id) RPC，
-#   server 路由到具体处理（水井 → 耗时装满桶）。适合"按 E 即用"的简单交互。
+# 交互模式：决定玩家按 E 时怎么处理。目前只有 ActionPanel 一种（容器型节点另走 ContainerPanel）。
 @export var interaction_mode: String = "action_panel"
 
 # ActionPanel 显示的 staging 槽数。默认 5；单料加工台（mill）设 1；
