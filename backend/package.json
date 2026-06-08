@@ -7,9 +7,12 @@
   "scripts": {
     "dev": "tsx src/index.ts",
     "balance:economy": "tsx src/tools/economy-balance.ts",
-    "check:protocol": "tsx src/godot-link/protocol-fixtures.ts",
+    "check:protocol": "node --import tsx --test tests/protocol-contract.test.ts",
     "build": "tsc -p tsconfig.json && node scripts/copy-assets.mjs",
     "lint": "tsc --noEmit",
+    "lint:test": "tsc -p tsconfig.test.json --noEmit",
+    "test": "node --import tsx --test tests/*.test.ts",
+    "test:all": "pnpm lint && pnpm lint:test && pnpm test",
     "start": "node dist/index.js"
   },
   "dependencies": {

@@ -108,8 +108,8 @@ export type UseItemEventData = WorldEventDataBase & {
 //   2. after / delta —— 仅当 |delta| ≥ 0.5 才发。Renderer 用作"长进/突破/退步" suffix，
 //      只对 actor 自己渲染（数值成长是私密反馈）。
 //
-// 9 个工作台手艺 axis（mine / woodwork / smelt / smith / assemble / cook / mill_grain /
-// boil_salt / burn_charcoal）全部共用这个 shape，event 类型名只
+// 工作台手艺 axis（mine / woodwork / smelt / smith / assemble / cook / alchemy /
+// mill_grain / boil_salt / burn_charcoal）全部共用这个 shape，event 类型名只
 // 用来路由到对应 renderer key。详见 docs/proficiency_system.md 和 craft-registry.ts。
 //
 // 原料折损 / 退回信息不在这条 event 上 —— actor 自己在 tool_response 的
@@ -177,7 +177,7 @@ export type WorldEventDataByType = {
   container_put_take: ContainerPutTakeEventData;
   brewed: BrewedEventData;
   use_item: UseItemEventData;
-  // 9 个 axis event —— 全部共用 WorkstationEventData shape。
+  // Craft axis events —— 全部共用 WorkstationEventData shape。
   mine: WorkstationEventData;
   woodwork: WorkstationEventData;
   burn_charcoal: WorkstationEventData;
@@ -185,6 +185,7 @@ export type WorldEventDataByType = {
   smith: WorkstationEventData;
   assemble: WorkstationEventData;
   cook: WorkstationEventData;
+  alchemy: WorkstationEventData;
   mill_grain: WorkstationEventData;
   boil_salt: WorkstationEventData;
   drop_item: DropItemEventData;
@@ -217,6 +218,7 @@ const WORLD_EVENT_TYPE_MARKER: Record<WorldEventDataType, true> = {
   smith: true,
   assemble: true,
   cook: true,
+  alchemy: true,
   mill_grain: true,
   boil_salt: true,
   drop_item: true,

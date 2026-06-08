@@ -40,7 +40,7 @@ const RENDERERS: Record<string, EventLineRenderer> = {
   woke_up: renderWokeUpEventLine,
   container_put_take: renderContainerPutTakeEventLine,
   use_item: renderUseItemEventLine,
-  // 9 个 axis event 全部走同一个 workstation 渲染器（事件数据 shape 相同）。
+  // Craft axis events 全部走同一个 workstation 渲染器（事件数据 shape 相同）。
   // 见 docs/proficiency_system.md + agent-shared/game-tools/craft-registry.ts。
   mine: renderUseWorkstationEventLine,
   woodwork: renderUseWorkstationEventLine,
@@ -49,6 +49,7 @@ const RENDERERS: Record<string, EventLineRenderer> = {
   smith: renderUseWorkstationEventLine,
   assemble: renderUseWorkstationEventLine,
   cook: renderUseWorkstationEventLine,
+  alchemy: renderUseWorkstationEventLine,
   mill_grain: renderUseWorkstationEventLine,
   boil_salt: renderUseWorkstationEventLine,
   drop_item: renderDropItemEventLine,
