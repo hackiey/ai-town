@@ -5,7 +5,6 @@
 [ext_resource type="PackedScene" uid="uid://kswe8vk1xvgd" path="res://third-party/polygon-fantasy-kingdom/Assets/PolygonFantasyKingdom/Prefabs/House/SM_Bld_House_Chimney_Stone_Base_01.tscn" id="2_chimney_base"]
 [ext_resource type="PackedScene" uid="uid://nlu72g6hsmmm" path="res://third-party/polygon-fantasy-kingdom/Assets/PolygonFantasyKingdom/Prefabs/Props/SM_Prop_Cooking_Block_02.tscn" id="3_cooking"]
 [ext_resource type="PackedScene" uid="uid://grfniau5mfqp" path="res://third-party/polygon-fantasy-kingdom/Assets/PolygonFantasyKingdom/Prefabs/Props/SM_Prop_Wood_Pile_03.tscn" id="4_woodpile"]
-[ext_resource type="Script" uid="uid://c87hcimotyk3h" path="res://src/sim/workstations/approach_marker.gd" id="approach_script"]
 
 [node name="CharcoalKilnWorkstationNode" unique_id=880008382 instance=ExtResource("1_base")]
 workstation_id = "charcoal_kiln"
@@ -19,18 +18,17 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.4, 0)
 [node name="Prompt" parent="." index="3"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2, 0)
 
-[node name="Chimney" parent="." index="4" unique_id=1853435444 instance=ExtResource("2_chimney")]
+[node name="Chimney" parent="." unique_id=1853435444 instance=ExtResource("2_chimney")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -0.4)
 
-[node name="CookingBlock" parent="." index="5" unique_id=1295130253 instance=ExtResource("3_cooking")]
+[node name="CookingBlock" parent="." unique_id=1295130253 instance=ExtResource("3_cooking")]
 transform = Transform3D(-0.0041364753, 0, 0.9999914, 0, 1, 0, -0.9999914, 0, -0.0041364753, 0, 0, 1.1893244)
 
-[node name="WoodPile" parent="." index="6" unique_id=1583511461 instance=ExtResource("4_woodpile")]
+[node name="WoodPile" parent="." unique_id=1583511461 instance=ExtResource("4_woodpile")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.04220414, -1.1920929e-07, 2.02726)
 
-[node name="Approach" type="Marker3D" parent="." index="7" unique_id=791026455]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 3.297454)
-script = ExtResource("approach_script")
+[node name="Approach" type="Marker3D" parent="SiteMarker" unique_id=791026455]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 2.8)
 
-[node name="ChimneyBase" parent="." index="8" unique_id=191202730 instance=ExtResource("2_chimney_base")]
+[node name="ChimneyBase" parent="." unique_id=191202730 instance=ExtResource("2_chimney_base")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.928638, -0.4)

@@ -8,10 +8,10 @@
 [node name="Title" parent="." index="0"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 4.6, 0)
 
-[node name="Approach" parent="." index="1"]
+[node name="Approach" parent="SiteMarker"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 2.2)
 
 [node name="Prompt" parent="." index="3"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.6, 1.6)
 
-[node name="Stall" parent="." index="4" instance=ExtResource("2_stall")]
+[node name="Stall" parent="." instance=ExtResource("2_stall")]

@@ -16,7 +16,8 @@ extends CanvasLayer
 
 const PICK_MASK := 32          # workstation/container/shelf 的 proximity Area3D 所在 pick 层（layer 6）
 const RAY_LENGTH := 1000.0
-const REACH := 3.0             # 玩家与节点的最大交互距离（与 Containers.INTERACTION_RADIUS 一致；server 再裁）
+# 可交互距离 = 目标对象自己 SiteMarker 的半径（逐对象，玩家和 NPC 同属 Character 行为，共用同一判定）。
+# UI 的"按 E 提示"自然跟随该对象的交互半径（玩家唯一的区别只是显示提示）。
 
 var _player: Node = null
 var _action_panel: Node = null
@@ -91,7 +92,8 @@ func _raycast_node() -> Node:
 func _within_reach(node: Node) -> bool:
 	if not (_player is Node3D) or not (node is Node3D):
 		return false
-	return (_player as Node3D).global_position.distance_to((node as Node3D).global_position) <= REACH
+	# 以节点自身位置为基准，半径 = 该对象自己 SiteMarker 的可交互距离（逐对象，与 NPC 一致）。
+	return (_player as Node3D).global_position.distance_to((node as Node3D).global_position) <= SiteMarker.interaction_radius_of(node)
 
 
 func _unhandled_input(event: InputEvent) -> void:

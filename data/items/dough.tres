@@ -5,6 +5,7 @@
 [resource]
 script = ExtResource("1_item")
 id = "dough"
+weight = 0.1
 kind = "material"
 stackable = true
 max_stack = 99

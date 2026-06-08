@@ -12,6 +12,7 @@ signal drop_requested(slot_index: int)
 signal swap_requested(from_index: int, to_index: int)
 signal pour_requested(slot_index: int)
 signal brew_requested(slot_index: int)
+signal transfer_requested(slot_index: int)   # 选量转移（放入灶台/存入仓库/取出 N…），开分离面板
 
 const Money = preload("res://src/sim/characters/money.gd")
 const SIZE := Vector2(64, 64)
@@ -19,6 +20,7 @@ const MENU_USE := 1
 const MENU_DROP := 2
 const MENU_POUR := 3
 const MENU_BREW := 4
+const MENU_TRANSFER := 5
 
 const BREW_BASE_LIQUID := "water"
 
@@ -27,6 +29,8 @@ var show_pour: bool = false
 var show_brew: bool = false
 var _use_label: String = ""
 var _drop_label: String = ""
+# 选量转移项文案；空 = 不显示。由 ContainerPanel / InventoryPanel 按上下文设置。
+var _transfer_label: String = ""
 
 var slot_index: int = -1
 var item_id: String = ""
@@ -127,11 +131,18 @@ func set_menu_labels(use_label: String, drop_label: String) -> void:
 	_drop_label = drop_label
 
 
+# 选量转移项文案（如"放入灶台…"/"存入仓库…"/"取出…"）。空字符串 = 隐藏该项。
+func set_transfer_label(label: String) -> void:
+	_transfer_label = label
+
+
 # 右键时按当前 slot 现搭菜单：use/drop 必有；液体容器且有内容 + show_pour 时多一项"倒出液体"。
 func _rebuild_menu() -> void:
 	_menu.clear()
 	_menu.add_item(_use_label, MENU_USE)
 	_menu.add_item(_drop_label, MENU_DROP)
+	if not _transfer_label.is_empty():
+		_menu.add_item(_transfer_label, MENU_TRANSFER)
 	if show_pour and _is_pourable():
 		_menu.add_item(tr("ui.container.menu.pour"), MENU_POUR)
 	if show_brew and _is_brewable():
@@ -285,6 +296,8 @@ func _on_menu_id_pressed(id: int) -> void:
 		pour_requested.emit(slot_index)
 	elif id == MENU_BREW:
 		brew_requested.emit(slot_index)
+	elif id == MENU_TRANSFER:
+		transfer_requested.emit(slot_index)
 
 
 func _color_for(id: String) -> Color:

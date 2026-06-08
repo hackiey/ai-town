@@ -1,6 +1,7 @@
-[gd_scene load_steps=6 format=3 uid="uid://bgdi8groundtm"]
+[gd_scene load_steps=7 format=3 uid="uid://bgdi8groundtm"]
 
 [ext_resource type="Script" path="res://src/world/ground_item/ground_item.gd" id="1_script"]
+[ext_resource type="Script" uid="uid://mhnkxhoheim8" path="res://src/world/site_marker.gd" id="site_marker_script"]
 [ext_resource type="ArrayMesh" uid="uid://cnwgphrlvw0gm" path="res://assets/PolygonFantasyKingdom/Models/extracted/SM_Prop_Sack_01.res" id="2_sack_mesh"]
 [ext_resource type="Material" uid="uid://dp6l4j2v4w6o1" path="res://Assets/PolygonFantasyKingdom/Materials/PolygonFantasyKingdom_Mat_01_A_mat.tres" id="3_sack_mat"]
 
@@ -30,3 +31,11 @@ text = "1"
 font_size = 40
 outline_size = 8
 modulate = Color(1, 1, 0.9, 1)
+
+[node name="SiteMarker" type="Marker3D" parent="."]
+script = ExtResource("site_marker_script")
+entity_kind = "item"
+visible_near_radius = 3.0
+visible_far_radius = 10.0
+direct_interaction_radius = 3.0
+arrival_radius = 1.0

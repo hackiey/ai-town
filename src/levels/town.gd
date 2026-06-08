@@ -18,7 +18,7 @@ const TIME_HUD_SCENE := preload("res://src/ui/hud/time_hud.tscn")
 const ACTION_PANEL_SCENE := preload("res://src/ui/action_panel/action_panel.tscn")
 const CONTAINER_PANEL_SCENE := preload("res://src/ui/container/container_panel.tscn")
 const FARM_PANEL_SCENE := preload("res://src/ui/farm/farm_panel.tscn")
-const NAV_TEST_PANEL_SCENE := preload("res://src/ui/dev/nav_test_panel.tscn")
+const MAP_PANEL_SCENE := preload("res://src/ui/map/map_panel.tscn")
 const HEAD_NAMEPLATE_LAYER_SCRIPT := preload("res://src/ui/head_nameplate_layer.gd")
 const WORKSTATION_NAMEPLATE_LAYER_SCRIPT := preload("res://src/ui/workstation_nameplate_layer.gd")
 const SHELF_NAMEPLATE_LAYER_SCRIPT := preload("res://src/ui/shelf_nameplate_layer.gd")
@@ -29,7 +29,7 @@ const NPC_CONTEXT_MENU_SCRIPT := preload("res://src/ui/hud/npc_context_menu.gd")
 const AI_TAKEOVER_PANEL_SCRIPT := preload("res://src/ui/hud/ai_takeover_panel.gd")
 const TRADE_PANEL_SCRIPT := preload("res://src/ui/trade/trade_panel.gd")
 const WATER_DRAW_PANEL_SCRIPT := preload("res://src/ui/water_draw/water_draw_panel.gd")
-const LIQUID_POUR_PANEL_SCRIPT := preload("res://src/ui/water_draw/liquid_pour_panel.gd")
+const SPLIT_PANEL_SCRIPT := preload("res://src/ui/split/split_panel.gd")
 const BREW_PANEL_SCRIPT := preload("res://src/ui/brewing/brew_panel.gd")
 const INTERACTION_CONTROLLER_SCRIPT := preload("res://src/ui/hud/interaction_controller.gd")
 
@@ -52,7 +52,7 @@ var _time_hud: TimeHud = null
 var _action_panel: Node = null  # ActionPanel; 用 Node 避免 class_name cache 未刷新的 parse 错
 var _container_panel: Node = null  # ContainerPanel; 同上理由用 Node 类型
 var _water_draw_panel: Node = null  # WaterDrawPanel; 玩家专用打水面板
-var _liquid_pour_panel: Node = null  # LiquidPourPanel; 玩家专用倒液体面板
+var _split_panel: Node = null  # SplitPanel; 统一分离/转移面板（倒液 + 份数）
 var _brew_panel: Node = null  # BrewPanel; 玩家专用酿酒面板
 var _interaction_controller: Node = null  # InteractionController; 统一鼠标指定 + E 路由
 var _farm_panel: Node = null
@@ -66,7 +66,7 @@ var _npc_context_menu: Node = null
 var _trade_panel: Node = null
 var _farm_proximity_active: Node = null  # client：当前最近 FarmGroup（≤ FARM_PROXIMITY_RADIUS）
 var _farm_proximity_accum: float = 0.0
-var _nav_test_panel: NavTestPanel = null
+var _map_panel: MapPanel = null
 
 const FARM_PROXIMITY_RADIUS := 4.0
 const FARM_PROXIMITY_HYSTERESIS := 0.5  # 离开时多走 0.5m 才算 lost，防止边界抖动
@@ -264,11 +264,19 @@ func _init_client() -> void:
 	_water_draw_panel = WATER_DRAW_PANEL_SCRIPT.new()
 	add_child(_water_draw_panel)
 
-	# 倒液体面板（玩家专用）：在容器面板/背包右键液体容器选"倒出液体"时由 ContainerPanel 打开。
-	_liquid_pour_panel = LIQUID_POUR_PANEL_SCRIPT.new()
-	add_child(_liquid_pour_panel)
-	if _container_panel != null and _container_panel.has_method("set_pour_panel"):
-		_container_panel.set_pour_panel(_liquid_pour_panel)
+	# 统一分离/转移面板（玩家专用）：背包↔仓库↔灶台 的部分量转移/倒液都用它。
+	# 由 ContainerPanel / ActionPanel / InventoryPanel 在右键时打开（注入 on_confirm 回调）。
+	_split_panel = SPLIT_PANEL_SCRIPT.new()
+	add_child(_split_panel)
+	if _container_panel != null and _container_panel.has_method("set_split_panel"):
+		_container_panel.set_split_panel(_split_panel)
+	if _action_panel != null and _action_panel.has_method("set_split_panel"):
+		_action_panel.set_split_panel(_split_panel)
+	if _inventory_panel != null and _inventory_panel.has_method("set_split_panel"):
+		_inventory_panel.set_split_panel(_split_panel)
+	# 背包上下文菜单需要知道当前打开的是灶台还是仓库 → 给 InventoryPanel 两个面板引用。
+	if _inventory_panel != null and _inventory_panel.has_method("set_transfer_panels"):
+		_inventory_panel.set_transfer_panels(_action_panel, _container_panel)
 
 	# 酿酒面板（玩家专用）：右键装水的酿酒桶选"酿酒…"时由 ContainerPanel 打开。
 	_brew_panel = BREW_PANEL_SCRIPT.new()
@@ -287,12 +295,12 @@ func _init_client() -> void:
 	_trade_panel = TRADE_PANEL_SCRIPT.new()
 	add_child(_trade_panel)
 
-	# Dev 测试面板：F2 切换显示，列出所有 anchor，点击直接前往（跳过 backend AI）
-	_nav_test_panel = NAV_TEST_PANEL_SCENE.instantiate()
-	var dev_layer := CanvasLayer.new()
-	dev_layer.name = "DevLayer"
-	add_child(dev_layer)
-	dev_layer.add_child(_nav_test_panel)
+	# 玩家地图面板：列出全城地点，点击直接前往。与 NPC prompt 全城地图同源。
+	_map_panel = MAP_PANEL_SCENE.instantiate()
+	var map_layer := CanvasLayer.new()
+	map_layer.name = "MapLayer"
+	add_child(map_layer)
+	map_layer.add_child(_map_panel)
 
 
 func _on_peer_connected(peer_id: int) -> void:
@@ -424,8 +432,8 @@ func _bind_local_player(node: Node) -> void:
 		_container_panel.set_player(node)
 	if _water_draw_panel != null:
 		_water_draw_panel.set_player(node)
-	if _liquid_pour_panel != null:
-		_liquid_pour_panel.set_player(node)
+	if _split_panel != null:
+		_split_panel.set_player(node)
 	if _brew_panel != null:
 		_brew_panel.set_player(node)
 	if _interaction_controller != null:
@@ -438,8 +446,8 @@ func _bind_local_player(node: Node) -> void:
 		_trade_panel.set_player(node)
 	if _field_status_bubble_layer != null:
 		_field_status_bubble_layer.set_player(node)
-	if _nav_test_panel != null:
-		_nav_test_panel.set_local_player(node)
+	if _map_panel != null:
+		_map_panel.set_local_player(node)
 
 
 func _on_player_despawned(node: Node) -> void:

@@ -44,7 +44,10 @@
         "drunk_wasted": "烂醉",
         "sick_mild": "轻症",
         "sick_moderate": "中症",
-        "sick_severe": "重症"
+        "sick_severe": "重症",
+        "encumber_laden": "负重",
+        "encumber_heavy": "沉重",
+        "encumber_overloaded": "超载"
       }
     },
     "npc_hover": {
@@ -166,9 +169,12 @@
         "empty": "未装备"
       }
     },
-    "nav_test": {
-      "toggle": "📍 前往 ▼",
-      "toggle_open": "📍 前往 ▲"
+    "map": {
+      "toggle": "地图 ▼",
+      "toggle_open": "地图 ▲",
+      "global": "全城地点",
+      "nearby": "周围地点",
+      "interactive": "可交互地点"
     },
     "farm": {
       "title": "农场",
@@ -231,6 +237,23 @@
       "title_format": "从「%s」倒出%s",
       "pour_button": "倒入",
       "empty": "背包里没有可接收的容器"
+    },
+    "split": {
+      "title": "分离",
+      "confirm": "确认",
+      "amount_label": "数量（%s）",
+      "unit": {
+        "liter": "升",
+        "gram": "克",
+        "count": "份"
+      },
+      "stage_title": "放入工作台：%s",
+      "take_title": "取出：%s",
+      "put_title": "存入：%s",
+      "menu": {
+        "stage": "放入工作台…",
+        "store": "存入仓库…"
+      }
     },
     "brewing": {
       "title_format": "「%s」酿酒（%d 升水）",
@@ -313,8 +336,10 @@
       "menu": {
         "take_one": "取出 1 个",
         "take_all": "取出整堆",
+        "take_n": "取出…",
         "put_one": "存入 1 个",
         "put_all": "存入整堆",
+        "put_n": "存入…",
         "pour": "倒出液体…",
         "brew": "酿酒…"
       },

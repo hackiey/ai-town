@@ -1,11 +1,20 @@
 [gd_scene format=3 uid="uid://bd8ytqw6btjqn"]
 
 [ext_resource type="Script" uid="uid://bixto8ovxbvdl" path="res://src/sim/crops/farm_group.gd" id="1_fgroup"]
-[ext_resource type="Script" uid="uid://c87hcimotyk3h" path="res://src/sim/workstations/approach_marker.gd" id="2_approach"]
+[ext_resource type="Script" uid="uid://mhnkxhoheim8" path="res://src/world/site_marker.gd" id="site_marker_script"]
 
 [node name="FarmGroup" type="Node3D" unique_id=753226718]
 script = ExtResource("1_fgroup")
 
-[node name="Approach" type="Marker3D" parent="." unique_id=1786123993]
+[node name="SiteMarker" type="Marker3D" parent="."]
+script = ExtResource("site_marker_script")
+entity_kind = "farm"
+map_registration = "local"
+category = "production"
+visible_near_radius = 10.0
+visible_far_radius = 30.0
+direct_interaction_radius = 1.5
+arrival_radius = 1.5
+
+[node name="Approach" type="Marker3D" parent="SiteMarker" unique_id=1786123993]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.3353838, 0)
-script = ExtResource("2_approach")

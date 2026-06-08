@@ -11,6 +11,7 @@ export { getWorkstationsByIds } from "./workstation-repo.js";
 export { getShelvesByIds } from "./shelf-repo.js";
 export { getContainersByIds } from "./container-repo.js";
 export { getLocationsByIds, getAllLocations } from "./location-repo.js";
+export { getAllSites, getSitesByIds, getGlobalMapSites } from "./site-repo.js";
 export { getPendingTradesFor } from "./trade-repo.js";
 export { getItemDefsByIds, type ItemDefView } from "./item-def-repo.js";
 export { DisplayNameResolver } from "./name-resolver.js";

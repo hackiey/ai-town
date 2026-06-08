@@ -206,7 +206,14 @@ function collectSiteClauses(
       ? t("prompt.context.workstation.lock_format", locale, { key: site.lockItemId ?? "?" })
       : t("prompt.context.workstation.lock_open", locale);
     const items = site.unlocked && site.items && site.items.length > 0
-      ? t("prompt.context.workstation.items_format", locale, { items: site.items.map((i) => `[${i.index}] ${localizeText(i.itemId)}×${i.quantity}`).join(", ") })
+      ? t("prompt.context.workstation.items_format", locale, { items: site.items.map((i) => {
+          // 内容物是装着液体的容器（仓库里的酒桶/木桶）→ 标出液体量 + 发酵态，
+          // 否则 NPC 只看到 "酿酒桶×1" 不知道里面有没有水/酒、酿没酿好。
+          const liq = i.container && i.container.amount > 0 && i.container.content
+            ? `（${localizeText(i.container.content)} ${i.container.amount}L${i.container.fermenting ? `·酿造中(上限${i.container.ceiling ?? "?"})` : ""}）`
+            : "";
+          return `[${i.index}] ${localizeText(i.itemId)}×${i.quantity}${liq}`;
+        }).join(", ") })
       : site.locked && !site.unlocked
         ? t("prompt.context.workstation.items_locked", locale)
         : t("prompt.context.workstation.items_empty", locale);
@@ -346,13 +353,12 @@ function formatCharacterStatusLabel(
 }
 
 // 城镇地图：静态全城地点总览，给 LLM 全局意识 + move_to_location 的合法目的地名单。
-// 纯数据驱动——结构（zone + children）读 backend/data/town/locations.json，文案（介绍/方位/
-// 限制）读 i18n catalog；本函数只负责"读数据→按区分组→拼 markdown"，零硬编码文案。
+// 纯数据驱动——结构（zone + children）来自 Godot 灌进 sites 表的数据（经 site-catalog），
+// 文案（介绍/方位/限制）读 i18n catalog；本函数只"读数据→按区分组→拼 markdown"，零硬编码文案。
 // 同一份内容对所有 NPC 一致，故挂在 system prompt（稳定可缓存），不随 turn 变。
-// 设计见 [[project_town_map_zones]]。返回 undefined 表示无任何带 zone 的地点（不送空段）。
+// 返回 undefined 表示无任何带 zone 的地点（不送空段）。
 //
-// 子地点（农田 / 集市摊位 / 作坊工具）不靠 DB 父子关系推导——通用工作台（forge/stove…）
-// 跨铺子合并成单一逻辑地点，无法归属某栋建筑，故在 locations.json 的 children 里显式编排。
+// 子地点（农田 / 集市摊位 / 作坊工具）由 site 的 parentSiteId 派生（site-catalog 计算 children）。
 const TOWN_MAP_ZONE_ORDER = ["upper_city", "lower_city", "outer_city", "castle", "south_outskirts", "public"] as const;
 
 export function renderTownMap(locale: Locale = getActiveLocale()): string | undefined {
@@ -394,8 +400,8 @@ function renderTownMapLocation(
   return childLines.length > 0 ? `${headLine}\n${childLines.join("\n")}` : headLine;
 }
 
-// 子节点行：解析每个 child 的名字 + 描述（在 locations.json 里 = 子地点，否则按 workstation 类型解析），
-// 相邻且描述相同的折叠成一行（如三块农田 → 一行）。
+// 子节点行：解析每个 child 的名字 + 描述（site-catalog 里 entityKind=location = 子地点，否则按
+// workstation 类型解析），相邻且描述相同的折叠成一行（如三块农田 → 一行）。
 function renderTownMapChildren(
   childIds: string[],
   descriptors: Record<string, LocationDescriptor>,

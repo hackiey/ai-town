@@ -3,7 +3,6 @@
 [ext_resource type="PackedScene" uid="uid://b7r4hwk5xpvld" path="res://src/sim/workstations/workstation_node.tscn" id="1_base"]
 [ext_resource type="Script" uid="uid://xghscckf4yvn" path="res://src/sim/containers/container_node.gd" id="2_container"]
 [ext_resource type="PackedScene" uid="uid://b0woxtrdbrad1" path="res://third-party/polygon-fantasy-kingdom/Assets/PolygonFantasyKingdom/Prefabs/Props/SM_Prop_Barrel_Dispenser_Large_01.tscn" id="4_barrel"]
-[ext_resource type="Script" uid="uid://c87hcimotyk3h" path="res://src/sim/workstations/approach_marker.gd" id="approach_script"]
 
 [node name="FermentingBarrelNode" unique_id=537311950 instance=ExtResource("1_base")]
 script = ExtResource("2_container")
@@ -24,8 +23,7 @@ text = "酒桶"
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.05, 0)
 text = "按 E 查看"
 
-[node name="Barrel" parent="." index="4" unique_id=1963440757 instance=ExtResource("4_barrel")]
+[node name="Barrel" parent="." unique_id=1963440757 instance=ExtResource("4_barrel")]
 
-[node name="Approach" type="Marker3D" parent="." index="5" unique_id=449744946]
+[node name="Approach" type="Marker3D" parent="SiteMarker" unique_id=449744946]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -2.0559454, -0.40218854, -0.038802326)
-script = ExtResource("approach_script")

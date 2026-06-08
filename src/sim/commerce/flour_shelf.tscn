@@ -10,16 +10,16 @@
 [node name="Title" parent="." index="0"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 3.6, 0)
 
-[node name="Approach" parent="." index="1"]
+[node name="Approach" parent="SiteMarker"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.685745, 0, -0.0033255816)
 
-[node name="Table" parent="." index="2" unique_id=1661497426 instance=ExtResource("2_table")]
+[node name="Table" parent="." unique_id=1661497426 instance=ExtResource("2_table")]
 
-[node name="SackStack" parent="." index="3" unique_id=578048472 instance=ExtResource("4_sack_stack")]
+[node name="SackStack" parent="." unique_id=578048472 instance=ExtResource("4_sack_stack")]
 transform = Transform3D(0.7, 0, 0, 0, 0.7, 0, 0, 0, 0.7, -0.3, 0.94, 0)
 
-[node name="SackLeft" parent="." index="4" unique_id=62689732 instance=ExtResource("5_sack")]
+[node name="SackLeft" parent="." unique_id=62689732 instance=ExtResource("5_sack")]
 transform = Transform3D(0.9, 0, 0, 0, 0.9, 0, 0, 0, 0.9, 0.35, 0.94, -0.9)
 
-[node name="SackRight" parent="." index="5" unique_id=1675693251 instance=ExtResource("5_sack")]
+[node name="SackRight" parent="." unique_id=1675693251 instance=ExtResource("5_sack")]
 transform = Transform3D(0.866, 0, 0.5, 0, 1, 0, -0.5, 0, 0.866, 0.3, 0.94, 0.9)

@@ -515,14 +515,13 @@ func _action_target_pos(op: Dictionary) -> Variant:
 		var farm: Variant = op.get("farm_node")
 		if farm == null or not is_instance_valid(farm):
 			return null
-		# 走 Approach Marker（与 WorkstationNode 同模型）：FarmGroup origin 常在
-		# plot collider 中央 / 围栏内，NPC 走不到导致 walking 永久卡死。
-		# get_approach_node 找不到 Approach 子节点会 push_error + 返回 null，
+		# 走 SiteMarker 组件的寻路到达点（approach_world_position：可选 Approach 子节点
+		# 优先，否则自身位置）：FarmGroup origin 常在 plot collider 中央 / 围栏内，NPC 走不到。
+		# get_site_marker 找不到 SiteMarker 会 push_error + 返回 null，
 		# 这里返回 null 上层 _begin_next 标记 op 失败、跳下一个，不进 walking。
-		var approach: Node3D = farm.get_approach_node()
-		if approach == null:
+		if farm.get_site_marker() == null:
 			return null
-		return approach.global_position
+		return farm.approach_world_position()
 	var slot: Variant = op.get("slot_node")
 	if slot == null or not is_instance_valid(slot):
 		return null

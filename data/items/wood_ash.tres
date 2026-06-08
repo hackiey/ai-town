@@ -5,6 +5,7 @@
 [resource]
 script = ExtResource("1_item")
 id = "wood_ash"
+weight = 0.2
 kind = "misc"
 stackable = true
 max_stack = 99

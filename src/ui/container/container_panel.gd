@@ -15,7 +15,7 @@ const PUT_PER_CLICK := 1
 const PAGE_SIZE := ROWS_CONTAINER * COLS   # 每页槽数 = 24
 
 var _player: Node = null
-var _pour_panel: Node = null  # LiquidPourPanel; 右键"倒出液体"时打开
+var _split_panel: Node = null  # SplitPanel; 右键"倒出液体"/"存入 N"/"取出 N"时打开
 var _brew_panel: Node = null  # BrewPanel; 右键"酿酒…"时打开
 var _active_container: Node = null  # ContainerNode 进入 proximity 时记录
 var _open_container: Node = null
@@ -73,8 +73,8 @@ func set_player(player: Node) -> void:
 		_refresh()
 
 
-func set_pour_panel(panel: Node) -> void:
-	_pour_panel = panel
+func set_split_panel(panel: Node) -> void:
+	_split_panel = panel
 
 
 func set_brew_panel(panel: Node) -> void:
@@ -187,10 +187,12 @@ func _build_container_slots() -> void:
 		_container_grid.add_child(slot)
 		# 右键菜单：取出 1 / 取出整堆。信号自带 slot_index（=网格位），不要再 .bind() 否则多传一参报错。
 		slot.set_menu_labels(tr("ui.container.menu.take_one"), tr("ui.container.menu.take_all"))
+		slot.set_transfer_label(tr("ui.container.menu.take_n"))   # 取出 N…（分离面板选份数）
 		slot.show_pour = true   # 装着液体的容器物会多出"倒出液体…"
 		slot.show_brew = true   # 装水的酿酒桶会多出"酿酒…"
 		slot.use_requested.connect(_on_container_take_one)
 		slot.drop_requested.connect(_on_container_take_all)
+		slot.transfer_requested.connect(_on_container_take_n)
 		slot.pour_requested.connect(_on_container_pour)
 		slot.brew_requested.connect(_on_container_brew)
 		_container_slots.append(slot)
@@ -212,10 +214,12 @@ func _build_player_slots() -> void:
 		_player_grid.add_child(slot)
 		# 右键菜单：存入 1 / 存入整堆。信号自带 slot_index，不要 .bind()。
 		slot.set_menu_labels(tr("ui.container.menu.put_one"), tr("ui.container.menu.put_all"))
+		slot.set_transfer_label(tr("ui.container.menu.put_n"))   # 存入 N…（分离面板选份数）
 		slot.show_pour = true
 		slot.show_brew = true
 		slot.use_requested.connect(_on_player_put_one)
 		slot.drop_requested.connect(_on_player_put_all)
+		slot.transfer_requested.connect(_on_player_put_n)
 		slot.pour_requested.connect(_on_player_pour)
 		slot.brew_requested.connect(_on_player_brew)
 		_player_slots.append(slot)
@@ -279,8 +283,54 @@ func _on_container_take_all(grid_i: int) -> void:
 	_request_take(_page * PAGE_SIZE + grid_i, qty)
 
 
+# 取出 N…：分离面板（单量模式）选份数后逐量取出。
+func _on_container_take_n(grid_i: int) -> void:
+	if _split_panel == null:
+		return
+	var slots: Array = _view_slots_for_open_container()
+	if grid_i < 0 or grid_i >= slots.size():
+		return
+	var data: Dictionary = slots[grid_i]
+	var qty := int(data.get("quantity", 0))
+	if qty <= 0:
+		return
+	var idx := _page * PAGE_SIZE + grid_i
+	_split_panel.open({
+		"unit": "count",
+		"need_target": false,
+		"title": tr("ui.split.take_title") % InventorySlotData.of(data).display_name(),
+		"max": qty,
+		"on_confirm": func(n: int) -> void: _request_take(idx, n),
+	})
+
+
 func _on_player_put_one(slot_index: int) -> void:
 	_request_put(slot_index, PUT_PER_CLICK)
+
+
+# 背包上下文菜单"存入仓库…"：InventoryPanel 委托调用，复用存入 N 逻辑。
+func begin_put_split(slot_index: int) -> void:
+	_on_player_put_n(slot_index)
+
+
+# 存入 N…：分离面板（单量模式）选份数后存入容器。
+func _on_player_put_n(slot_index: int) -> void:
+	if _split_panel == null or _player == null:
+		return
+	var inv: Array = _player.inventory
+	if slot_index < 0 or slot_index >= inv.size():
+		return
+	var data: Dictionary = inv[slot_index]
+	var qty := int(data.get("quantity", 0))
+	if qty <= 0:
+		return
+	_split_panel.open({
+		"unit": "count",
+		"need_target": false,
+		"title": tr("ui.split.put_title") % InventorySlotData.of(data).display_name(),
+		"max": qty,
+		"on_confirm": func(n: int) -> void: _request_put(slot_index, n),
+	})
 
 
 func _on_player_put_all(slot_index: int) -> void:
@@ -311,7 +361,7 @@ func _request_put(player_slot_index: int, qty: int) -> void:
 	_player.request_container_put.rpc_id(1, _container_id(), player_slot_index, qty)
 
 
-# ── 倒液体：右键容器物→"倒出液体…" 打开 LiquidPourPanel（源=该容器物，目标=背包液体容器）──
+# ── 倒液体：右键容器物→"倒出液体…" 打开 SplitPanel(目标列表模式)（源=该容器物，目标=背包液体容器）──
 func _on_container_pour(grid_i: int) -> void:
 	var slots: Array = _view_slots_for_open_container()
 	if grid_i < 0 or grid_i >= slots.size():
@@ -329,20 +379,35 @@ func _on_player_pour(slot_index: int) -> void:
 
 
 func _open_pour_from(cid: String, slot_index: int, data: Dictionary) -> void:
-	if _pour_panel == null:
+	if _split_panel == null:
 		return
 	var view := InventorySlotData.of(data)
 	var cont := view.as_container()
 	if cont == null or cont.is_empty():
 		return
-	_pour_panel.open({
-		"container_id": cid,
-		"slot_index": slot_index,
-		"content": cont.content_id(),
+	var content := cont.content_id()
+	# 源在背包时排除自身槽，避免倒回自己。源在容器节点（cid 非空）时背包无此槽，不排除。
+	var exclude := slot_index if cid == "" else -1
+	_split_panel.open({
+		"unit": "liter",
+		"need_target": true,
+		"title": tr("ui.liquid_pour.title_format") % [view.display_name(), _content_name(content)],
+		"content": content,
 		"quality": int(cont.quality()),
-		"amount": cont.amount(),
-		"label": view.display_name(),
+		"max": int(floor(cont.amount())),
+		"exclude_slot": exclude,
+		"on_confirm": func(dst: int, amt: int) -> void:
+			_player.request_pour_liquid.rpc_id(1, cid, slot_index, "", dst, float(amt)),
 	})
+
+
+func _content_name(content: String) -> String:
+	var key := "item.%s.name" % content
+	var n := tr(key)
+	if n != key:
+		return n
+	var mat: Substance = Materials.by_id(content)
+	return mat.display_name if mat != null and not mat.display_name.is_empty() else content
 
 
 # ── 酿酒：右键装水的酿酒桶→"酿酒…" 打开 BrewPanel（桶=源，列出可酿的酒）──

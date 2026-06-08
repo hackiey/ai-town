@@ -112,16 +112,21 @@ var owner_group: String:
 	set(_value): pass
 
 
-# NPC 寻路 / backend perception 用的"位置代表点"。必须在 .tscn 里挂一个名为 Approach
-# 的 Marker3D 子节点（脚本 src/sim/workstations/approach_marker.gd，编辑器有绿色小球
-# 可视化），由 designer 拖到田边 navmesh 可达点。
-# Dev 阶段不做 fallback：找不到 Approach 直接 push_error + 返回 null，
+# site 位置/交互组件（子节点 "SiteMarker"，组合模式）。FarmGroup 自身位置 = 可交互基准；
+# 寻路到达点由 SiteMarker.approach_position() 给（可选 "Approach" 子节点，没有则回退自身）。
+# Dev 阶段不做 fallback：找不到 SiteMarker 直接 push_error + 返回 null，
 # 让 farm_action_runner 立刻 _record_completed 失败而不是默默走 farm origin 卡死。
-func get_approach_node() -> Node3D:
-	var marker := get_node_or_null("Approach") as Node3D
+func get_site_marker() -> Node3D:
+	var marker := get_node_or_null("SiteMarker") as Node3D
 	if marker == null:
-		push_error("[FarmGroup %s] 缺 Approach 子节点（Marker3D）；plan_farm_work water 将失败。在 town.tscn 里挂 src/sim/workstations/approach_marker.gd" % effective_farm_id())
+		push_error("[FarmGroup %s] 缺 SiteMarker 子节点；plan_farm_work water 将失败。在 town.tscn 里加一个 SiteMarker 组件。" % effective_farm_id())
 	return marker
+
+
+# NPC 寻路到达点（世界坐标）。SiteMarker 组件的可选 Approach 子节点优先，否则自身位置。
+func approach_world_position() -> Vector3:
+	var m := get_node_or_null("SiteMarker") as SiteMarker
+	return m.approach_position() if m != null else global_position
 
 
 # 该角色能不能在本片田动土（种 / 浇 / 收 / 铲 / 除虫）。语义见 Access.can_be_used_by。

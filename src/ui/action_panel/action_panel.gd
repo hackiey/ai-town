@@ -16,6 +16,7 @@ const SLOT_COL_LIMIT := 4
 const SLOT_COUNT_FALLBACK := 5
 
 var _player: Node = null
+var _split_panel: Node = null  # SplitPanel; 右键 staging 槽时打开（液体选目标/离散选份数）
 var _active_workstation: Node = null
 var _open_workstation: Node = null
 var _slots: Array = []
@@ -106,6 +107,10 @@ func _inject_action_buttons() -> void:
 
 func set_player(player: Node) -> void:
 	_player = player
+
+
+func set_split_panel(panel: Node) -> void:
+	_split_panel = panel
 
 
 func _on_proximity_changed(workstation: Node, entered: bool) -> void:
@@ -253,20 +258,101 @@ func _build_slots() -> void:
 		slot.configure(i, tr("ui.action_panel.slot.label_format") % (i + 1))
 		slot.staging_request.connect(_on_staging_request)
 		slot.unstaging_request.connect(_on_unstaging_request)
+		slot.split_request.connect(_on_split_request)
 		_grid.add_child(slot)
 		_slots.append(slot)
 
 
-func _on_staging_request(inv_slot: int, qty: int) -> void:
+func _on_staging_request(inv_slot: int, amount: int) -> void:
 	if _player == null:
 		return
-	_player.request_stage_to_workstation.rpc_id(1, inv_slot, qty)
+	_player.request_stage_to_workstation.rpc_id(1, inv_slot, amount)
 
 
 func _on_unstaging_request(staged_idx: int, qty: int) -> void:
 	if _player == null:
 		return
 	_player.request_unstage_from_workstation.rpc_id(1, staged_idx, qty)
+
+
+# 右键 staging 槽：液体 → 分离面板选目标容器+升数（倒到指定桶）；
+# 离散 → 单个直接原路退回，多个开分离面板选份数（退回原路：原槽→可堆叠→空槽）。
+func _on_split_request(staged_idx: int) -> void:
+	if _player == null:
+		return
+	var staged: Array = _player.staged_items if _player.get("staged_items") != null else []
+	if staged_idx < 0 or staged_idx >= staged.size():
+		return
+	var data: Dictionary = staged[staged_idx]
+	var qty := int(data.get("quantity", 0))
+	if qty <= 0:
+		return
+	if data.has("pour_content"):
+		if _split_panel == null:
+			return
+		var content := str(data["pour_content"])
+		_split_panel.open({
+			"unit": "liter",
+			"need_target": true,
+			"title": tr("ui.liquid_pour.title_format") % [InventorySlotData.of(data).display_name(), _content_name(content)],
+			"content": content,
+			"quality": int(data.get("quality", 100)),
+			"max": qty,
+			"exclude_slot": -1,
+			"on_confirm": func(dst: int, amt: int) -> void:
+				_player.request_unstage_liquid_to_container.rpc_id(1, staged_idx, dst, amt),
+		})
+		return
+	# 离散
+	if qty <= 1:
+		_player.request_unstage_from_workstation.rpc_id(1, staged_idx, 1)
+		return
+	if _split_panel == null:
+		_player.request_unstage_from_workstation.rpc_id(1, staged_idx, qty)
+		return
+	_split_panel.open({
+		"unit": "count",
+		"need_target": false,
+		"title": tr("ui.split.take_title") % InventorySlotData.of(data).display_name(),
+		"max": qty,
+		"on_confirm": func(n: int) -> void:
+			_player.request_unstage_from_workstation.rpc_id(1, staged_idx, n),
+	})
+
+
+func _content_name(content: String) -> String:
+	var key := "item.%s.name" % content
+	var n := tr(key)
+	if n != key:
+		return n
+	var mat: Substance = Materials.by_id(content)
+	return mat.display_name if mat != null and not mat.display_name.is_empty() else content
+
+
+# 背包上下文菜单"放入灶台…"：开分离面板选份数/升数 → 倒/放进 staging。InventoryPanel 委托调用。
+func begin_stage_split(inv_slot: int) -> void:
+	if _player == null or _split_panel == null:
+		return
+	var inv: Array = _player.inventory
+	if inv_slot < 0 or inv_slot >= inv.size():
+		return
+	var data: Dictionary = inv[inv_slot]
+	var view := InventorySlotData.of(data)
+	if view.is_empty():
+		return
+	var cont := view.as_container()
+	var is_liquid := view.has_tag("liquid_container") and cont != null and not cont.is_empty()
+	var max_amt := int(floor(cont.amount())) if is_liquid else view.quantity()
+	if max_amt <= 0:
+		return
+	_split_panel.open({
+		"unit": "liter" if is_liquid else "count",
+		"need_target": false,
+		"title": tr("ui.split.stage_title") % view.display_name(),
+		"max": max_amt,
+		"on_confirm": func(n: int) -> void:
+			_player.request_stage_to_workstation.rpc_id(1, inv_slot, n),
+	})
 
 
 # 把 _player.staged_items 同步到 6 个 ActionSlot 显示

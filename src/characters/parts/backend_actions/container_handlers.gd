@@ -15,8 +15,7 @@ extends RefCounted
 # 离散：amount=个数；货币(silver/gold coin) 在背包侧走钱包 centi。
 # 一切 Character 级；玩家与 NPC 同一路径。
 
-const _NEAR_RADIUS := 3.0
-const _NEAR_SQ := _NEAR_RADIUS * _NEAR_RADIUS
+# 靠近判定半径 = 目标对象自己 SiteMarker 的可交互距离（逐对象，玩家/NPC 同路径）。
 
 
 static func run_put_take(character: Character, action_request: Dictionary) -> Dictionary:
@@ -249,10 +248,13 @@ static func _resolve_well(character: Character, ep: Dictionary) -> Dictionary:
 
 
 static func _near_node(character: Character, cid: String) -> ContainerNode:
-	var node := Containers.find_container_node(cid)
+	# 多锚点（水井 6 口共享 "well"）：取离 character 最近的那个节点再判距离，
+	# 否则只有最后注册的那口能用，其余 5 口判"不在手边"。
+	var node := Containers.find_container_node_near(cid, character.global_position)
 	if node == null or not is_instance_valid(node):
 		return null
-	if character.global_position.distance_squared_to(node.global_position) > _NEAR_SQ:
+	var r := SiteMarker.interaction_radius_of(node)
+	if character.global_position.distance_squared_to(node.global_position) > r * r:
 		return null
 	if not node.is_unlocked_by(character):
 		return null
@@ -265,7 +267,8 @@ static func _find_ground_item(character: Character, db_id: String) -> GroundItem
 	for n in character.get_tree().get_nodes_in_group("ground_items"):
 		var gi := n as GroundItem
 		if gi != null and gi.db_id == db_id:
-			if character.global_position.distance_squared_to(gi.global_position) <= _NEAR_SQ:
+			var r := SiteMarker.interaction_radius_of(gi)
+			if character.global_position.distance_squared_to(gi.global_position) <= r * r:
 				return gi
 	return null
 

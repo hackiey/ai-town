@@ -36,6 +36,7 @@ Agent 系统、脚本层、实体模型的活文档。当前在迭代，**未完
 16. [lua-mechanic-migration-plan.md](./lua-mechanic-migration-plan.md) — 把游戏机制全部迁到 `data/mechanics/*.lua` 的实施计划：已 landed Step 0–3.5，余下 physiology / perishable / mining / backend verbs / durative action
 17. [combat-system.md](./combat-system.md) — 哈利波特式魔杖咒语对战：时间分层（frame/tick/LLM）、Spell+Wand schema、Lua 契约、行为树 NPC AI、LLM 战斗边界、P0→P4 实施路径
 18. [impairment-system.md](./impairment-system.md) — 醉酒 / 生病 损伤层：drunk + sickness 两个 0..100 属性，干活惩罚取 max 在执行时临时算（不污染熟练度），醉酒专属双向说话乱码 + 走路踉跄，逐动作影响清单 + 调参索引
+19. [site-system-refactor-plan.md](./site-system-refactor-plan.md) — 统一 Site / Space / 地图 / resolver 重构计划：替代 LocationMarker/ApproachMarker，收口 NPC prompt、玩家地图 UI、move/容器/工作台目标解析
 
 ## 状态总表
 
@@ -57,6 +58,7 @@ Agent 系统、脚本层、实体模型的活文档。当前在迭代，**未完
 | Backend agent host | [backend-agent-host.md](./backend-agent-host.md) | partial | godot-link / agent-host / runtimes / services-world-state 分层、AgentRuntime 抽象、two-track-agent runtime、action_log/action bus、perception-manifest cache |
 | Combat system | [combat-system.md](./combat-system.md) | drafting | 仅设计稿；三层时间线（frame/fast-tick/LLM）+ **三层职责（Spell 投递 / Reaction 物理 / Wand 装备）**：effect/难度/学派复用 reaction-schema，威力四因子，角色无 mana 耗魔杖储能，react.apply 桥 + channel 三段契约 + 投递层物理 API + 行为树 + LLM 战斗边界 + P0→P4 |
 | Impairment system | [impairment-system.md](./impairment-system.md) | landed | drunk + sickness 两个 character_states 数值列；干活惩罚 `max(drunk,sickness)` 执行时临时算不持久化；曲线单一口径 `impairment.gd`；醉酒专属双向说话乱码（speaker Godot + listener backend）+ 走路踉跄；衰减走 physiology.lua；生病=吃馊食、解药=草药茶（来源暂不做）|
+| Site / Space / Map | [site-system-refactor-plan.md](./site-system-refactor-plan.md) | landed | 7 阶段全落地 + 落地后收口（见 §0 权威修订）：SiteMarker 统一锚点，**所有字段 town.tscn 显式 authored、无运行时拼装/推导、缺值 fail-loud**；mapRegistration=global/local；机制身份(defId/entityId)留本体、名字按 site_id 查 locations.json、space 由 SpaceVolume 几何包含算（现休眠）；site_meta.json/locations.json 已删 |
 
 ## 跨域待决问题（高优先级）
 

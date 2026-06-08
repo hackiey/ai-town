@@ -28,7 +28,7 @@
 
 ## 1. 工作台位置
 
-6 个 craft 工作台 + 1 个水井（直接交互模式）：
+6 个 craft 工作台 + 1 个水井（无限水源容器，非工作台）：
 
 | 工作台 | 颜色 | 位置 | 模式 |
 |---|---|---|---|
@@ -38,7 +38,7 @@
 | 磨坊 mill | 米白 | (-16, 1.31, 11) | action_panel |
 | 晾晒架 drying_rack | 麻黄 | 杂货店外 | action_panel |
 | 灶台 stove | 深棕 | (-19, 1.31, 11) | action_panel |
-| 水井 well | 深蓝 | (-12.5, 0.5, 11) | **direct**（按 E 打水，3 游戏分钟后装满身上可用桶，不开 panel） |
+| 水井 well | 深蓝 | (-12.5, 0.5, 11) | 无限水源容器；鼠标悬停 + E 开取水面板（见 §4.8） |
 
 ---
 
@@ -245,29 +245,29 @@ ActionPanel 不是"虚拟引用"，而是 server-authoritative 的物理 staging
 
 适用于所有有 duration 的反应。瞬时反应（duration=0）不受影响。
 
-## 4.8 容器与水井（液体压缩 + direct 工作站）
+## 4.8 容器、水井与酿酒（液体模型）
 
-**容器**（`tags has "liquid_container"`）= 把多份内容物压缩到 1 个 inventory 槽。当前只有 wood_bucket（capacity=10, max_stack=1, kind=container）。
+> 详见 [architecture/game-mechanics.md §7](./architecture/game-mechanics.md)。这里只列测试速查。
 
-容器 properties：
-- `capacity`：能装多少
-- `amount`：当前装了多少
-- `content`：当前装的 material id（"water" / 未来 "milk"...）；空 = 空容器
+**液体容器**（`kind=container` + tag `liquid_container`）：液体只存在于容器里。槽状态 = `container_amount`(升) + `container_content` + 复用 `quality`。
 
-**水井**（workstation，`interaction_mode=direct`）：
-- 按 E → server 找 inventory 第一个 amount=0 的 liquid_container → amount = capacity, content = "water"
-- 找不到空容器 → fail "没有可用的液体容器"（提示通用，因为以后水袋/陶罐都符合）
+| 容器 | 容量 | 备注 |
+|---|---|---|
+| wood_bucket 木桶 | 20 升 | 通用 |
+| brewing_barrel 酿酒桶 | 100 升 | 兼发酵（tag `brewing_vessel`）|
+| cup 杯子 | 小 | 分装/喝 |
 
-**自动倒水**：当玩家把"非空 liquid_container"拖进 ActionPanel staging slot 时，server **不**搬整个桶，而是：
-- 桶 amount -= 1（amount 到 0 时清 content）
-- staging slot 多出 1 份 water 实例（运行时合成的临时 instance：materials.body=water, shape_type=fluid_pouch，没有 item template）
-- 桶继续留在 inventory
+**水井** = 无限水源容器（`ContainerNode` 带 `infinite_content="water"`，**不是 direct 工作站**）：靠近 → 鼠标悬停 + E → 取水面板 → 选背包容器 + 数量打水。
 
-效果：玩家不需要"先倒水再 craft"两步，直接拖桶到 staging 一次出 1 份水。
+**倒液体**：右键装液体的容器 → "倒出液体…" → 选目标 + 数量（同 content 或目标空才行，品质按量加权平均）。
 
-**水不是独立 item**：data/items/ 没有 water.tres——液体只能存在于容器里。dispatcher 的 `materials.body: water` predicate 仍然有效（合成 instance 带这个字段）。MVP 妥协：craft 失败 / 富余的"水"留在 inventory 里是个无 template 的合成 instance（"水袋"），可以再次拖进 staging 做 craft，但不会自动回桶、也不能 /eat 喝。
+**酿酒（被动）**：酿酒桶灌满水 + 背包麦芽(1:1) → 右键桶"酿酒…"选原料 → 水立刻变啤酒(品质0)，48h 爬到上限。上限 = 麦芽品质 × `clamp(0.6+(酿酒熟练度-难度)/100,0,1)`。
 
-**起始包**有 1 个空桶。出生第一件事：走到水井按 E 装满。
+**晾晒（被动）**：小麦放进晾晒架 → 自动晾成麦芽，品质 0→小麦品质，24h。
+
+被动转化（晾晒/发酵）由全局定时器 `PassiveSimulator` 推进，定义在 `data/mechanics/crafting.lua`（`trigger=passive`）。`/eat`/`/drink` 喝酒走容器内液体。
+
+**起始包**有 1 个空桶。出生第一件事：走到水井（鼠标悬停 + E）装满。
 
 ---
 

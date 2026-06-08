@@ -74,6 +74,9 @@ func _render() -> void:
 	var sick_label := Impairment.sickness_tier_label(_player.sickness)
 	if not sick_label.is_empty():
 		labels.append(sick_label)
+	var encumber_label := Impairment.encumbrance_tier_label(_player.carry_ratio())
+	if not encumber_label.is_empty():
+		labels.append(encumber_label)
 	_status_label.text = "  ".join(labels) if labels.size() > 0 else ""
 
 

@@ -610,7 +610,13 @@ export function createViewContainerTool(
         count = items.length;
         lines = items.length === 0
           ? [td("view_container.result_empty")]
-          : items.map((it) => `[${it.index}] ${localizeStringValue(it.itemId)} x${it.quantity}`);
+          : items.map((it) => {
+              // 内容物本身是装液体的容器（仓库里的酒桶）→ 标液体量 + 发酵态。
+              const liq = it.container && it.container.amount > 0 && it.container.content
+                ? `（${localizeStringValue(it.container.content)} ${it.container.amount}L${it.container.fermenting ? `·酿造中(上限${it.container.ceiling ?? "?"})` : ""}）`
+                : "";
+              return `[${it.index}] ${localizeStringValue(it.itemId)} x${it.quantity}${liq}`;
+            });
       }
       return {
         content: [{ type: "text", text: [td("view_container.result_header", { label: site.label }), lines.join("；")].join("\n") }],

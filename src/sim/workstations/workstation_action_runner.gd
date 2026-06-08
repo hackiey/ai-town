@@ -9,7 +9,9 @@ extends RefCounted
 #   dispatcher 调用、材料消耗、产物入包和 world_event summary。
 # - Player 的 ActionPanel staging 仍由 Player 管 UI/RPC，但 commit outcome 复用这里。
 
-const WORKSTATION_INTERACT_DISTANCE := 1.0
+# 可交互距离 = 工作台自己 SiteMarker 的半径（逐对象，SiteMarker.interaction_radius_of）。
+# 以工作台自身位置为基准：NPC 寻路到 Approach（≤半径的对象前方点）后从自身量仍在范围内；
+# 大型对象的 Approach 必须落在此半径内（SiteMarker 会校验）。
 const MINING_TOOL_INPUT_NAME := "pick_head_on_shaft"
 # 所有 cost / duration 数值住在 data/mechanics/{crafting,mining,well,crops}.lua。
 # 体力扣除统一走 StaminaWallet。本文件不再持有任何 stamina/duration 常量。
@@ -52,10 +54,16 @@ func _workstation_logical_id(ws_node: WorkstationNode) -> String:
 		_town_world_cache = character.get_tree().get_first_node_in_group("town_world")
 	if _town_world_cache != null and _town_world_cache.has_method("workstation_logical_id"):
 		return str(_town_world_cache.call("workstation_logical_id", ws_node))
-	return String(ws_node.name)
+	# town_world 缺失时的同源兜底：直接读 SiteMarker.site_id（与主路径一致），绝不退 node.name。
+	var marker := ws_node.get_site_marker() as SiteMarker
+	var sid := "" if marker == null else marker.site_id.strip_edges()
+	if sid.is_empty():
+		push_error("[WorkstationActionRunner] 工作台 %s 的 SiteMarker.site_id 未填" % [ws_node.get_path()])
+		return ""
+	return sid
 
 
-func nearby_snapshots(max_distance: float = WORKSTATION_INTERACT_DISTANCE) -> Array[Dictionary]:
+func nearby_snapshots(max_distance: float = Containers.INTERACTION_RADIUS) -> Array[Dictionary]:
 	var out: Array[Dictionary] = []
 	var max_sq: float = max_distance * max_distance
 	var char_pos_dbg: Vector3 = character.global_position
@@ -67,7 +75,8 @@ func nearby_snapshots(max_distance: float = WORKSTATION_INTERACT_DISTANCE) -> Ar
 		if n is ShelfNode:
 			continue
 		var ws_node := n as WorkstationNode
-		var anchor_pos: Vector3 = ws_node.get_approach_node().global_position
+		# 可交互判定以工作台自身位置为基准（NPC 寻路点 approach 另算）。
+		var anchor_pos: Vector3 = ws_node.global_position
 		var d_dbg: float = char_pos_dbg.distance_to(anchor_pos)
 		if char_pos_dbg.distance_squared_to(anchor_pos) > max_sq:
 			continue
@@ -90,7 +99,7 @@ func nearby_snapshots(max_distance: float = WORKSTATION_INTERACT_DISTANCE) -> Ar
 			"id": _workstation_logical_id(ws_node),
 			"workstationId": String(ws_node.workstation_id),
 			"displayName": String(ws_node.display_name),
-			"directlyInteractable": d_dbg <= WORKSTATION_INTERACT_DISTANCE,
+			"directlyInteractable": d_dbg <= SiteMarker.interaction_radius_of(ws_node),
 			"interactionMode": mode,
 			"verbs": verbs,
 			"slotCount": slot_count,
@@ -107,7 +116,7 @@ func nearby_snapshots(max_distance: float = WORKSTATION_INTERACT_DISTANCE) -> Ar
 			# 全用这个纯 id；backend assemble 拿 manifest id 去 join container_states，复合 id 会
 			# 落空 → 容器从 nearby 列表消失 → put_take "无法识别容器"。复合 id 只是
 			# 真工作台为防 node.name 跨铺重名而设；容器本就有 def 级稳定 id，无需复合。
-			# 导航（move_to_location）另走 location_markers/locations.json 的复合 id，互不影响。
+			# 导航（move_to_location）另走 sites 表的复合 id，互不影响。
 			snap["id"] = cnode.effective_container_id()
 			snap["containerId"] = cnode.effective_container_id()
 			if cnode.is_infinite_source():
@@ -747,19 +756,14 @@ static func craft_label(verb: String, workstation_id: String, sub_option: String
 	return "%s · %s (%s)" % [ws_name, verb_name, sub_option]
 
 
-func _nearby_workstation_node(workstation_id: String, max_distance: float = WORKSTATION_INTERACT_DISTANCE) -> WorkstationNode:
-	return _find_workstation(workstation_id, max_distance).get("node", null)
-
-
 # 返回 {"node": WorkstationNode?, "reason": "" | "not_found" | "not_nearby" | "access_denied"}.
 # 区分三种失败：world 里没有这个 id / 有但距离过远 / 距离够近但节点拒绝使用。
-func _find_workstation(workstation_id: String, max_distance: float = WORKSTATION_INTERACT_DISTANCE) -> Dictionary:
+func _find_workstation(workstation_id: String) -> Dictionary:
 	var requested: String = _normalize_input(workstation_id)
-	var max_sq: float = max_distance * max_distance
 	var matched_any: bool = false
 	var in_range_any: bool = false
 	var best: WorkstationNode = null
-	var best_sq: float = max_sq
+	var best_sq: float = INF
 	for n in character.get_tree().get_nodes_in_group("workstations"):
 		if not n is WorkstationNode:
 			continue
@@ -777,8 +781,10 @@ func _find_workstation(workstation_id: String, max_distance: float = WORKSTATION
 		if not matches:
 			continue
 		matched_any = true
-		var d: float = character.global_position.distance_squared_to(ws.get_approach_node().global_position)
-		if d > max_sq:
+		# 可交互判定以工作台自身位置为基准，半径用该工作台 SiteMarker 的可交互距离（逐对象）。
+		var ws_r: float = SiteMarker.interaction_radius_of(ws)
+		var d: float = character.global_position.distance_squared_to(ws.global_position)
+		if d > ws_r * ws_r:
 			continue
 		in_range_any = true
 		if ws.has_method("can_be_used_by") and not ws.can_be_used_by(character):

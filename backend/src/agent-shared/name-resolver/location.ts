@@ -4,6 +4,7 @@
 import { SOURCE_LOCALE, t, type Locale } from "../../i18n/index.js";
 import { buildAliasIndex, normalizeSlugKey, uniqueDisplayStrings, type AliasIndex } from "./alias-index.js";
 import { locationDescriptors } from "./source-data.js";
+import { siteCatalogVersion } from "./site-catalog.js";
 import { workstationName } from "./workstation.js";
 import { ownerSuffixedSiteName } from "../entity-descriptions/site-naming.js";
 
@@ -74,9 +75,11 @@ export function resolveLocationIdByName(value: unknown): string | undefined {
 }
 
 let cachedIndex: AliasIndex | undefined;
+let cachedIndexVersion = -1;
 
 function locationAliasIndex(): AliasIndex {
-  if (cachedIndex) return cachedIndex;
+  // sites catalog 刷新后（version 变）重建索引——地点结构真值来自 Godot，不能一次性缓存。
+  if (cachedIndex && cachedIndexVersion === siteCatalogVersion()) return cachedIndex;
   const descriptors = locationDescriptors();
   // 顶层 / 子地点 id（locations.json 的键）+ children 里出现的有主工作台组合 id（含 "@"）。
   // 后者不是 locations.json 的键，但 move_to_location 要能按"铁砧（巴克利铁匠铺）"反查到组合 id。
@@ -87,5 +90,6 @@ function locationAliasIndex(): AliasIndex {
     }
   }
   cachedIndex = buildAliasIndex([...ids], locationNameAliases, normalizeSlugKey);
+  cachedIndexVersion = siteCatalogVersion();
   return cachedIndex;
 }

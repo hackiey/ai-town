@@ -71,13 +71,18 @@ var prompt_text: String:
 @onready var _approach: Marker3D = get_node_or_null("Approach")
 
 
-# NPC 寻路 / backend perception 用的"位置代表点"。基类 .tscn 提供一个在原点的
-# Approach Marker3D；带大 mesh 的子类（gold_mine / forge 等）应在自己的 .tscn
-# 里 override Approach.transform，把它推到 collider 外，避免 anchor 落在 navmesh 洞里。
-# 找不到 marker 时 fallback 到 self —— 兼容尚未加 marker 的老节点。
-func get_approach_node() -> Node3D:
-	var marker := get_node_or_null("Approach") as Node3D
+# site 位置/交互组件（子节点 "SiteMarker"，组合模式）。本体自身位置 = 可交互基准；
+# 寻路到达点由 SiteMarker.approach_position() 给（其可选 "Approach" 子节点，没有则回退自身）。
+# 找不到组件时 fallback 到 self —— 兼容尚未加组件的老节点。
+func get_site_marker() -> Node3D:
+	var marker := get_node_or_null("SiteMarker") as Node3D
 	return marker if marker != null else self
+
+
+# NPC 寻路到达点（世界坐标）。SiteMarker 组件的可选 Approach 子节点优先，否则自身位置。
+func approach_world_position() -> Vector3:
+	var m := get_node_or_null("SiteMarker") as SiteMarker
+	return m.approach_position() if m != null else global_position
 
 var _local_active: bool = false
 

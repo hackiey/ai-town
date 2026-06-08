@@ -6,7 +6,7 @@ extends RefCounted
 #   - use_item 可能 deferred（duration>0 走 character.use_item_controller pending），需要 completion；
 #   - drop / pick_up 同步即返回，无 completion。
 
-const _PICK_UP_RADIUS := 3.0   # NPC 自动拾取的搜索半径（米），保守值
+# 拾取半径不另设常量：逐个地面物品读它自己 SiteMarker 的可交互半径（与玩家同源，不分叉）。
 
 
 # use_item：先校验 itemId + target（暂只允许 self）→ 找背包槽 → 委托给 UseItemController。
@@ -88,9 +88,9 @@ static func run_pick_up_item(character: Character, action_request: Dictionary) -
 	var item_id := str(t.get("itemId", "")).strip_edges()
 	if item_id.is_empty():
 		return {"ok": false, "message": "pick_up_item 缺少 itemId"}
-	# 找半径内最近的同 item_id GroundItem。
+	# 找各自拾取半径内、离我最近的同 item_id GroundItem（半径逐物品读其 SiteMarker）。
 	var nearest: GroundItem = null
-	var best_dist := _PICK_UP_RADIUS + 0.01
+	var best_dist := INF
 	var char_pos: Vector3 = character.global_position
 	for n in character.get_tree().get_nodes_in_group("ground_items"):
 		if not (n is GroundItem):
@@ -99,7 +99,7 @@ static func run_pick_up_item(character: Character, action_request: Dictionary) -
 		if gi.item_id != item_id:
 			continue
 		var d := char_pos.distance_to(gi.global_position)
-		if d <= best_dist:
+		if d <= SiteMarker.interaction_radius_of(gi) and d < best_dist:
 			best_dist = d
 			nearest = gi
 	if nearest == null:

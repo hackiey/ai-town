@@ -46,7 +46,9 @@ func effective_move_speed_mult() -> float:
 		_character.stamina,
 		_character.max_stamina,
 	])
-	return float(result) if result != null else 1.0
+	var base := float(result) if result != null else 1.0
+	# 负重惩罚：超过 laden 后线性减速（与 physiology 的 stamina 乘子相乘）。Player/NPC 同走此处。
+	return base * Impairment.encumber_move_mult(_character.carry_ratio())
 
 
 # ─── identity / profile ─────────────────────────────────────

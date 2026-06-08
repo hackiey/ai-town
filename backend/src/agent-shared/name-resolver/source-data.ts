@@ -11,25 +11,17 @@
 // 表现为 LLM 任何中文名都"无法识别"，调起来很痛苦。
 
 import { readFileSync } from "node:fs";
+import { siteDescriptors, type SiteDescriptor } from "./site-catalog.js";
 
-export type LocationDescriptor = {
-  category?: string;
-  primaryNpcs?: string[];
-  // 城镇地图分区（上城/下城/外城/城堡/南郊）。只有顶层地点标 zone；子地点（摊位/农田/
-  // 工作台）靠 parent 的 children 列表渲染，自身不带 zone。见 [[project_town_map_zones]]。
-  zone?: string;
-  // 该地点下挂的子项，有序：可混 workstation 类型 id（forge/stove…，跨铺子共享）与
-  // 子地点 id（农田 / 集市摊位）。工作台类型合并成单一逻辑地点，无法从 DB 父子关系推导，
-  // 故在此显式编排。
-  children?: string[];
-};
+// 地点结构真值已迁到 Godot 灌的 sites 表（见 site-catalog.ts）。LocationDescriptor 现等价
+// SiteDescriptor，locationDescriptors() 只是转发 site catalog —— backend 不再维护地点结构。
+export type LocationDescriptor = SiteDescriptor;
 
 type CharacterDescriptor = {
   name?: string;
   aliases?: string[];
 };
 
-let cachedLocations: Record<string, LocationDescriptor> | undefined;
 let cachedCharacters: Record<string, CharacterDescriptor> | undefined;
 let cachedItemIds: string[] | undefined;
 let cachedWorkstationIds: string[] | undefined;
@@ -48,10 +40,9 @@ export function characterDescriptor(id: string): CharacterDescriptor | undefined
   return characterDescriptors()[id];
 }
 
+// 地点结构来自 Godot 的 sites 表（site-catalog），不再读文件。空 = Godot 尚未 seed。
 export function locationDescriptors(): Record<string, LocationDescriptor> {
-  if (cachedLocations) return cachedLocations;
-  cachedLocations = readJson("../../../data/town/locations.json") as Record<string, LocationDescriptor>;
-  return cachedLocations;
+  return siteDescriptors();
 }
 
 export function locationDescriptor(id: string): LocationDescriptor | undefined {

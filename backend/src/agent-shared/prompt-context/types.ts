@@ -105,7 +105,8 @@ export type WorkstationContext = {
   unlocked?: boolean;
   // 容器内容：每条带 index（LLM 看到的 [N]，与 itemIndex.containers[containerId] 对齐）+
   // slotIndex（item_instances 真 id，take/put 时走 wire 给 Godot）。quality 仅作展示。
-  items?: Array<{ index: number; slotIndex: number; itemId: string; quantity: number; quality?: number }>;
+  // container：内容物本身是液体容器（桶/瓶）时带液体量/发酵态，渲染层展示"水 50L / 啤酒 50L 酿造中"。
+  items?: Array<{ index: number; slotIndex: number; itemId: string; quantity: number; quality?: number; container?: { amount: number; content: string | null; fermenting?: boolean; ceiling?: number } }>;
   // 跨角色单占：非空 = 工作台正被该角色使用，他人调 use_workstation 会吃 workstation_busy。
   // 装配时已剔除"自己"——actor 自己用着的工作台不渲染"使用中"后缀。
   // 容器恒空（容器允许多人并发翻箱）。
@@ -162,7 +163,8 @@ export type InteractiveSiteContext = {
   unlocked?: boolean;
   // 容器内容：每条带 index（LLM 看到的 [N]，与 itemIndex.containers[containerId] 对齐）+
   // slotIndex（item_instances 真 id，take/put 时走 wire 给 Godot）。quality 仅作展示。
-  items?: Array<{ index: number; slotIndex: number; itemId: string; quantity: number; quality?: number }>;
+  // container：内容物本身是液体容器（桶/瓶）时带液体量/发酵态，渲染层展示"水 50L / 啤酒 50L 酿造中"。
+  items?: Array<{ index: number; slotIndex: number; itemId: string; quantity: number; quality?: number; container?: { amount: number; content: string | null; fermenting?: boolean; ceiling?: number } }>;
   // 跨角色单占。同 WorkstationContext.currentOperatorName：装配时已剔除自己，仅在被他人占用时填。
   currentOperatorName?: string;
 };

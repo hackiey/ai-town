@@ -61,6 +61,7 @@ func hydrate_from_db() -> bool:
 			continue
 		inv[idx] = InventorySlotData.normalize(slots[k] as Dictionary)
 	character.inventory = inv  # 触发 synchronizer
+	_recompute_carry()
 	return true
 
 
@@ -81,6 +82,26 @@ func persist_slot(slot_index: int) -> void:
 # 内部使用别名，让 add_instance / remove_item 等内部方法保留 _persist_slot 名称
 func _persist_slot(slot_index: int) -> void:
 	persist_slot(slot_index)
+
+
+# ─── 负重（carry weight）唯一写者 ─────────────────────────
+# 背包当前总重（kg）。空槽/货币（不占 slot）自然不计。
+func carried_weight() -> float:
+	var total := 0.0
+	for slot in character.inventory:
+		var view := InventorySlotData.of(slot)
+		if view.is_empty():
+			continue
+		total += view.total_weight()
+	return total
+
+
+# 重算 character.carry_weight 并持久化（刷新 character_states 的 carry 列）。
+# 单一写者：所有改背包的 mutator 末尾调一次，保证负重物理上不会漂移于背包内容。
+func _recompute_carry() -> void:
+	character.carry_weight = carried_weight()
+	if RunMode.is_runtime():
+		character.state_io().persist()
 
 
 # 便捷入口：按 item_id + quality 加。从 template 派生 shape_type/materials/tags，
@@ -121,6 +142,19 @@ func add_instance(instance: Dictionary, quantity: int) -> int:
 		if tmpl != null and not tmpl.base_effects.is_empty():
 			instance["base_effects"] = tmpl.base_effects.duplicate()
 	ItemEffects.recompute_slot(instance)
+	# 负重硬闸门（fail-closed）：按剩余负重裁掉放不下的件数。被闸门挡下的件数计入返回的 leftover，
+	# 调用方（trade 回滚 / give / harvest）据此知道没全收下。per_unit 用单件总重（含液体内容，如满桶）。
+	# 单件重量 = 自重 + 液体内容（液体只存在于不可堆叠的容器，quantity=1，故不乘 quantity）。
+	# 不用 total_weight()/quantity：此处 instance["quantity"] 尚为 0（数量是单独的参数）。
+	var gate_dropped := 0
+	var gate_view := InventorySlotData.of(instance)
+	var per_unit := gate_view.unit_weight() + gate_view.liquid_weight()
+	if per_unit > 0.0:
+		var headroom := maxf(0.0, character.max_carry_weight - character.carry_weight)
+		var allowed := int(floor(headroom / per_unit))
+		if allowed < quantity:
+			gate_dropped = quantity - maxi(0, allowed)
+			quantity = maxi(0, allowed)
 	var inv: Array[Dictionary] = character.inventory
 	var remaining := quantity
 	var touched: Array[int] = []
@@ -159,7 +193,8 @@ func add_instance(instance: Dictionary, quantity: int) -> int:
 	character.inventory = inv
 	for idx in touched:
 		_persist_slot(idx)
-	return remaining
+	_recompute_carry()
+	return remaining + gate_dropped
 
 
 # 从指定槽减 quantity；减完归空槽。返回实际移除数（< quantity 表示槽里不够）。
@@ -181,6 +216,7 @@ func remove_item(slot_index: int, quantity: int) -> int:
 		inv[slot_index] = slot
 	character.inventory = inv
 	_persist_slot(slot_index)
+	_recompute_carry()
 	return taken
 
 
@@ -225,6 +261,7 @@ func decrement_tool_durability(slot_index: int, amount: int = 1) -> Dictionary:
 		inv[slot_index] = InventorySlotData.empty()
 		character.inventory = inv
 		_persist_slot(slot_index)
+		_recompute_carry()  # 工具报废清空槽位 → 负重变化
 		return {"broke": true, "remaining": 0, "max": max_dur, "item_id": item_id}
 	slot["durability"] = new_dur
 	# durability 当前不影响 displayed_effects 计算（公式只用 quality + freshness），
@@ -329,6 +366,7 @@ func consume_water_amount(amount: float = 1.0, consume: bool = true) -> Dictiona
 		character.inventory = inv  # 触发 synchronizer
 		for idx in touched:
 			_persist_slot(idx)
+		_recompute_carry()  # 桶里水量变化 → 负重变化
 		return {"ok": true, "consumed": required}
 	if saw_other:
 		return {"ok": false, "reason": "other_liquid", "message": "水桶里装的不是水"}
@@ -399,6 +437,7 @@ func tick_spoilage() -> void:
 		character.inventory = inv_after
 		for i in inv_after.size():
 			_persist_slot(i)
+		_recompute_carry()  # 腐烂换成 rotten_food（重量不同）→ 负重变化
 
 
 # tier 降级或 swap 后，原本不同 tier 的 stack 可能变得"同 tier 同 key" → 合并到前面。

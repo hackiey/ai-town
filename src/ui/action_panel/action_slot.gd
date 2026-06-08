@@ -9,8 +9,9 @@ extends Control
 #
 # 设计：docs/architecture/crafting-interaction.md §2.2
 
-signal staging_request(inv_slot: int, qty: int)   # 从背包拖来 → 通知 ActionPanel 发 RPC
-signal unstaging_request(staged_idx: int, qty: int)  # 左键点 → 退还 1 件
+signal staging_request(inv_slot: int, amount: int)   # 从背包拖来 → 通知 ActionPanel 发 RPC（amount<=0=全量）
+signal unstaging_request(staged_idx: int, qty: int)  # 左键点 → 退还 1 件（原路）
+signal split_request(staged_idx: int)                # 右键点 → 开分离面板（液体选目标/份数）
 
 const SIZE := Vector2(96, 96)
 const LABEL_HEIGHT := 18
@@ -242,17 +243,21 @@ func _drop_data(_pos: Vector2, data: Variant) -> void:
 	var inv_slot := int((data as Dictionary).get("from_slot", -1))
 	if inv_slot < 0:
 		return
-	staging_request.emit(inv_slot, 1)
+	# 拖拽 = 全量（amount<=0 由 server 解释为整堆/整桶）
+	staging_request.emit(inv_slot, 0)
 
 
 func _gui_input(event: InputEvent) -> void:
 	if not (event is InputEventMouseButton):
 		return
 	var mb := event as InputEventMouseButton
-	if not mb.pressed:
+	if not mb.pressed or is_empty():
 		return
-	if mb.button_index == MOUSE_BUTTON_LEFT and not is_empty():
-		unstaging_request.emit(slot_index, 1)
+	if mb.button_index == MOUSE_BUTTON_LEFT:
+		unstaging_request.emit(slot_index, 1)   # 左键 = 快速退回 1（原路）
+		accept_event()
+	elif mb.button_index == MOUSE_BUTTON_RIGHT:
+		split_request.emit(slot_index)           # 右键 = 开分离面板
 		accept_event()
 
 

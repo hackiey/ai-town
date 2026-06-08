@@ -9,10 +9,10 @@
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.8, -1.2)
 text = "酒馆柜台"
 
-[node name="Approach" parent="." index="1"]
+[node name="Approach" parent="SiteMarker"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.4, 0, -1.2)
 
 [node name="Prompt" parent="." index="3"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.4, -1.2)
 
-[node name="Bar" parent="." index="4" instance=ExtResource("2_bar")]
+[node name="Bar" parent="." instance=ExtResource("2_bar")]

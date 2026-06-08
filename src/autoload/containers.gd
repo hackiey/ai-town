@@ -3,7 +3,7 @@ extends Node
 const INTERACTION_RADIUS := 3.0
 const _CONTAINERS_JSON_REL := "backend/data/town/containers.json"
 
-var _containers_by_id: Dictionary = {}      # container_id -> ContainerNode
+var _containers_by_id: Dictionary = {}      # container_id -> Array[ContainerNode]（多锚点：6 口井共享 "well"）
 # 内容真值在 ContainerNode.contents（节点属性，server 内存权威 + 同步给 client）。
 # 这里不再缓存内容；所有读写都走 node.contents，DB 仅写穿持久化。
 var _config_cache: Dictionary = {}          # container_id -> {starting_inventory: [...]}; lazy-loaded
@@ -33,9 +33,16 @@ func register_container(node: ContainerNode) -> void:
 	if cid.is_empty():
 		push_warning("[Containers] skipped container with empty id: %s" % node.name)
 		return
-	if _containers_by_id.has(cid) and _containers_by_id[cid] != node:
-		push_warning("[Containers] duplicate id '%s', replacing previous node" % cid)
-	_containers_by_id[cid] = node
+	var nodes: Array = _containers_by_id.get(cid, [])
+	if nodes.has(node):
+		return
+	# 同一 id 多个物理节点只对无限源（水井多锚点：6 口共享 "well"）合法——内容不按节点存，
+	# 任一口出的水相同。储物容器（有槽）撞 id = 真错误（内容归属不明），fail-loud，见
+	# [[feedback_fail_loud_no_silent_fallback]]。
+	if not nodes.is_empty() and not node.is_infinite_source():
+		push_error("[Containers] 储物容器 id '%s' 重复注册（内容归属不明）：%s" % [cid, node.get_path()])
+	nodes.append(node)
+	_containers_by_id[cid] = nodes
 	# 内容从 DB 灌进 node.contents 只在 runtime 做；client 上 node.contents 由
 	# MultiplayerSynchronizer 填（Db 在 client 不开）。
 	if RunMode.is_runtime():
@@ -49,19 +56,61 @@ func unregister_container(node: ContainerNode) -> void:
 	var cid := node.effective_container_id()
 	if cid.is_empty():
 		return
-	if _containers_by_id.get(cid) == node:
+	var nodes: Array = _containers_by_id.get(cid, [])
+	nodes.erase(node)
+	if nodes.is_empty():
 		_containers_by_id.erase(cid)
+	else:
+		_containers_by_id[cid] = nodes
 
 
+# 某 id 当前所有有效物理节点（顺带剔除已 free 的，回写）。
+func _valid_nodes(cid: String) -> Array:
+	var nodes: Array = _containers_by_id.get(cid, [])
+	var out: Array = []
+	for v in nodes:
+		if v is ContainerNode and is_instance_valid(v):
+			out.append(v)
+	if out.size() != nodes.size():
+		if out.is_empty():
+			_containers_by_id.erase(cid)
+		else:
+			_containers_by_id[cid] = out
+	return out
+
+
+# 全部容器节点（扁平展开多锚点）。snapshot / 按名查找等遍历用。
+func _all_nodes() -> Array:
+	var out: Array = []
+	for cid in _containers_by_id.keys():
+		out.append_array(_valid_nodes(cid))
+	return out
+
+
+# 内容 / 系统操作用：返回该 id 任一有效节点（水井内容无差，取第一个即可）。
+# 距离校验请改用 find_container_node_near。
 func find_container_node(container_id: String) -> ContainerNode:
 	var wanted := container_id.strip_edges()
 	if wanted.is_empty():
 		return null
-	var node: Variant = _containers_by_id.get(wanted)
-	if node is ContainerNode and is_instance_valid(node):
-		return node as ContainerNode
-	_containers_by_id.erase(wanted)
-	return null
+	var nodes := _valid_nodes(wanted)
+	return nodes[0] if not nodes.is_empty() else null
+
+
+# 多锚点距离校验用：同 id 多节点（水井 6 口）返回离 from 最近的；单节点容器即返回它本身。
+# proximity 必须走这个——按单一注册节点算距离会让其余水井全部判"太远"。
+func find_container_node_near(container_id: String, from: Vector3) -> ContainerNode:
+	var wanted := container_id.strip_edges()
+	if wanted.is_empty():
+		return null
+	var best: ContainerNode = null
+	var best_sq := INF
+	for c in _valid_nodes(wanted):
+		var d: float = from.distance_squared_to((c as ContainerNode).global_position)
+		if d < best_sq:
+			best_sq = d
+			best = c as ContainerNode
+	return best
 
 
 # 容许 LLM 用 id（"treasury_vault"）或 i18n 名（"领主国库"）找到容器。
@@ -72,14 +121,12 @@ func find_container_by_name(name_or_id: String) -> ContainerNode:
 	var normalized := name_or_id.strip_edges().to_lower()
 	if normalized.is_empty():
 		return null
-	for v in _containers_by_id.values():
-		var c := v as ContainerNode
-		if c == null or not is_instance_valid(c):
-			continue
-		if c.effective_display_name().to_lower() == normalized:
-			return c
-		if c.container_name.strip_edges().to_lower() == normalized:
-			return c
+	for c in _all_nodes():
+		var cn := c as ContainerNode
+		if cn.effective_display_name().to_lower() == normalized:
+			return cn
+		if cn.container_name.strip_edges().to_lower() == normalized:
+			return cn
 	return null
 
 
@@ -90,13 +137,11 @@ func nearby_snapshots_for(character: Character, max_distance: float = INTERACTIO
 		return []
 	var out: Array[Dictionary] = []
 	var max_sq := max_distance * max_distance
-	for node_v in _containers_by_id.values():
-		var node := node_v as ContainerNode
-		if node == null or not is_instance_valid(node):
-			continue
+	for node in _all_nodes():
 		# 可见性 = 物理距离；access 不再过滤掉条目。
 		# _snapshot_for 已包含 can_be_used 字段表达 group 权限。
-		if character.global_position.distance_squared_to(node.global_position) > max_sq:
+		# 水井多锚点：6 口各自按距离判断，离得近的那口才进 snapshot。
+		if character.global_position.distance_squared_to((node as ContainerNode).global_position) > max_sq:
 			continue
 		out.append(_snapshot_for(node, character))
 	return out
@@ -106,11 +151,8 @@ func unlockable_snapshots_for(character: Character) -> Array[Dictionary]:
 	if character == null:
 		return []
 	var out: Array[Dictionary] = []
-	for node_v in _containers_by_id.values():
-		var node := node_v as ContainerNode
-		if node == null or not is_instance_valid(node):
-			continue
-		if not node.can_be_opened_by(character):
+	for node in _all_nodes():
+		if not (node as ContainerNode).can_be_opened_by(character):
 			continue
 		out.append(_snapshot_for(node, character))
 	return out
@@ -173,6 +215,8 @@ func resolve_for_actor(actor: Character, name_or_id: String) -> Dictionary:
 	var node := find_container_by_name(name_or_id)
 	if node == null:
 		return { "ok": false, "node": null, "message": "找不到容器：%s" % name_or_id, "container_id": "", "container_name": name_or_id }
+	# 多锚点（水井）：按名查到的是首个，换成离 actor 最近的同 id 节点，否则 _check_access 距离判误杀。
+	node = find_container_node_near(node.effective_container_id(), actor.global_position)
 	var access := _check_access(actor, node)
 	return {
 		"ok": bool(access.get("ok", false)),
@@ -331,7 +375,9 @@ func _check_access(character: Character, node: ContainerNode) -> Dictionary:
 func _is_character_near(character: Character, node: ContainerNode) -> bool:
 	if character == null or node == null:
 		return false
-	return character.global_position.distance_squared_to(node.global_position) <= INTERACTION_RADIUS * INTERACTION_RADIUS
+	# 可交互距离 = 容器自己 SiteMarker 的半径（逐对象，玩家/NPC 统一）。
+	var r := SiteMarker.interaction_radius_of(node)
+	return character.global_position.distance_squared_to(node.global_position) <= r * r
 
 
 func _hydrate_contents(node: ContainerNode) -> void:

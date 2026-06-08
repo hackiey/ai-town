@@ -797,5 +797,6 @@ func _refresh_trade_contexts(trade: Dictionary, shelf_entries: Array = []) -> vo
 func _is_character_near_shelf(other: Character, shelf: ShelfNode) -> bool:
 	if other == null or shelf == null:
 		return false
-	var radius := Containers.INTERACTION_RADIUS
-	return other.global_position.distance_squared_to(shelf.get_approach_node().global_position) <= radius * radius
+	# 可交互距离 = 货架自己 SiteMarker 的半径（逐对象），以货架自身位置为基准；不用寻路 approach 点。
+	var radius := SiteMarker.interaction_radius_of(shelf)
+	return other.global_position.distance_squared_to(shelf.global_position) <= radius * radius

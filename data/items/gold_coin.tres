@@ -5,6 +5,7 @@
 [resource]
 script = ExtResource("1_item")
 id = "gold_coin"
+weight = 0.01
 kind = "currency"
 stackable = true
 max_stack = 999

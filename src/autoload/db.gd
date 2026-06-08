@@ -114,6 +114,9 @@ const _GAME_WORLD_SCHEMA: Array[String] = [
 		sickness REAL NOT NULL DEFAULT 0.0,
 		drunkTier TEXT NOT NULL DEFAULT '',
 		sicknessTier TEXT NOT NULL DEFAULT '',
+		carryWeight REAL NOT NULL DEFAULT 0.0,
+		maxCarry REAL NOT NULL DEFAULT 50.0,
+		carryTier TEXT NOT NULL DEFAULT '',
 		sleepNeededHours REAL NOT NULL DEFAULT 0.0,
 		temperature REAL NOT NULL,
 		burning INTEGER NOT NULL DEFAULT 0,
@@ -352,7 +355,7 @@ const _GAME_WORLD_SCHEMA: Array[String] = [
 	# shelves: 场景里 ShelfNode 的静态配置（位置 / owner_group / 容量 / 交互半径）。仅作"这个容器是货架"
 	# 的标记 + 命名来源。货架已统一为容器（ShelfNode extends ContainerNode），内容物走 item_instances
 	# (ownerKind='container')，标价走槽位 listingPriceCenti。Backend 按本表 shelfId 查内容 + 标价。
-	# displayName 不存这里——参见 workstation_states 注释，货架同理走 i18n locations.json。
+	# displayName 不存这里——参见 workstation_states 注释，货架同理走 i18n catalog。
 	"""CREATE TABLE IF NOT EXISTS shelves (
 		townId TEXT NOT NULL,
 		shelfId TEXT NOT NULL,
@@ -388,7 +391,7 @@ const _GAME_WORLD_SCHEMA: Array[String] = [
 	# location_markers: TownWorld 从 Positions 下 Marker3D 树和 WorkstationNode anchor 合算出来的
 	# 逻辑地点。Backend 用作 perception 中"附近的地点"来源；ownerGroup 只作为归属元数据返回。
 	# posX/Y/Z 用首个 anchor 的世界坐标；isWorkstation=1 时表示该地点由 WorkstationNode 锚定（well 等）。
-	# displayName 不存这里——参见 workstation_states 注释，地点同理走 i18n locations.json。
+	# displayName 不存这里——参见 workstation_states 注释，地点同理走 i18n catalog。
 	"""CREATE TABLE IF NOT EXISTS location_markers (
 		townId TEXT NOT NULL,
 		locationId TEXT NOT NULL,
@@ -398,6 +401,41 @@ const _GAME_WORLD_SCHEMA: Array[String] = [
 		isWorkstation INTEGER NOT NULL DEFAULT 0,
 		updatedAt TEXT NOT NULL,
 		PRIMARY KEY (townId, locationId)
+	)""",
+
+	# sites: 统一世界锚点（替代 location_markers）。SiteRegistry 从 SiteMarker 树合算，
+	# 把同 site_id 的多个 marker 合并成一行，anchorsJson 存全部物理到达点（[{x,y,z},...]）；
+	# posX/Y/Z 是主锚点（地图坐标）。capabilities / groupGatedCapabilities / anchorsJson 都是
+	# JSON 文本。mapRegistration ∈ {global, local}：只决定是否进城镇地图。名字不存这里，
+	# backend 走 SiteResolver + i18n 推导（nameKey/descriptionKey 为可选 override）。
+	"""CREATE TABLE IF NOT EXISTS sites (
+		townId TEXT NOT NULL,
+		siteId TEXT NOT NULL,
+		entityKind TEXT NOT NULL,
+		entityId TEXT NOT NULL,
+		defId TEXT,
+		mapRegistration TEXT NOT NULL,
+		parentSiteId TEXT,
+		spaceId TEXT NOT NULL,
+		ownerGroup TEXT,
+		posX REAL NOT NULL,
+		posY REAL NOT NULL,
+		posZ REAL NOT NULL,
+		arrivalRadius REAL NOT NULL,
+		visibleNearRadius REAL NOT NULL,
+		visibleFarRadius REAL NOT NULL,
+		directInteractionRadius REAL NOT NULL,
+		capabilities TEXT NOT NULL,
+		anchorsJson TEXT,
+		zone TEXT,
+		category TEXT,
+		sortOrder INTEGER NOT NULL DEFAULT 0,
+		nameKey TEXT,
+		descriptionKey TEXT,
+		lockItemId TEXT,
+		groupGatedCapabilities TEXT,
+		updatedAt TEXT NOT NULL,
+		PRIMARY KEY (townId, siteId)
 	)""",
 
 	# player_accounts: 玩家登录名 → 稳定 characterId 的映射。login UI 输入 name，server
@@ -501,6 +539,11 @@ func _apply_schema_migrations() -> void:
 	# 派生档位 key（Godot 单一写者，随 raw 一起持久化；backend SELECT-only 渲染）。
 	_ensure_column("character_states", "drunkTier", "TEXT NOT NULL DEFAULT ''")
 	_ensure_column("character_states", "sicknessTier", "TEXT NOT NULL DEFAULT ''")
+	# 负重：carryWeight 当前背包总重（kg，派生），maxCarry 上限，carryTier 派生档位 key。
+	# Godot 单一写者（CharacterInventory 重算 + state_io 持久化）；backend SELECT-only 渲染。
+	_ensure_column("character_states", "carryWeight", "REAL NOT NULL DEFAULT 0.0")
+	_ensure_column("character_states", "maxCarry", "REAL NOT NULL DEFAULT 50.0")
+	_ensure_column("character_states", "carryTier", "TEXT NOT NULL DEFAULT ''")
 	_ensure_column("character_states", "sleepNeededHours", "REAL NOT NULL DEFAULT 0.0")
 	# 属性上限：Character 节点 export 的 max_* 值随 buff/装备/等级可能动态变。
 	# 默认 100 与 Character 基类的默认 export 对齐；新角色 save 前老行会用 default。
@@ -1100,7 +1143,7 @@ func save_character_state(character_id: String, fields: Dictionary) -> void:
 		return
 	var now := Time.get_datetime_string_from_system(true)
 	var statuses_json := JSON.stringify(fields.get("activeStatuses", []))
-	var sql := "INSERT INTO character_states (townId, characterId, currentLocationId, posX, posY, posZ, rotY, animState, hp, maxHp, stamina, maxStamina, hunger, maxHunger, rest, maxRest, drunk, sickness, drunkTier, sicknessTier, sleepNeededHours, temperature, burning, alive, equippedRightHand, equippedLeftHand, equippedBody, equippedHead, activeStatuses, silverCentiBalance, updatedAt) VALUES ('%s', '%s', %s, %f, %f, %f, %f, %s, %f, %f, %f, %f, %f, %f, %f, %f, %f, %f, '%s', '%s', %f, %f, %d, %d, %s, %s, %s, %s, %s, %d, '%s') ON CONFLICT(townId, characterId) DO UPDATE SET currentLocationId = excluded.currentLocationId, posX = excluded.posX, posY = excluded.posY, posZ = excluded.posZ, rotY = excluded.rotY, animState = excluded.animState, hp = excluded.hp, maxHp = excluded.maxHp, stamina = excluded.stamina, maxStamina = excluded.maxStamina, hunger = excluded.hunger, maxHunger = excluded.maxHunger, rest = excluded.rest, maxRest = excluded.maxRest, drunk = excluded.drunk, sickness = excluded.sickness, drunkTier = excluded.drunkTier, sicknessTier = excluded.sicknessTier, sleepNeededHours = excluded.sleepNeededHours, temperature = excluded.temperature, burning = excluded.burning, alive = excluded.alive, equippedRightHand = excluded.equippedRightHand, equippedLeftHand = excluded.equippedLeftHand, equippedBody = excluded.equippedBody, equippedHead = excluded.equippedHead, activeStatuses = excluded.activeStatuses, silverCentiBalance = excluded.silverCentiBalance, updatedAt = excluded.updatedAt" % [
+	var sql := "INSERT INTO character_states (townId, characterId, currentLocationId, posX, posY, posZ, rotY, animState, hp, maxHp, stamina, maxStamina, hunger, maxHunger, rest, maxRest, drunk, sickness, drunkTier, sicknessTier, carryWeight, maxCarry, carryTier, sleepNeededHours, temperature, burning, alive, equippedRightHand, equippedLeftHand, equippedBody, equippedHead, activeStatuses, silverCentiBalance, updatedAt) VALUES ('%s', '%s', %s, %f, %f, %f, %f, %s, %f, %f, %f, %f, %f, %f, %f, %f, %f, %f, '%s', '%s', %f, %f, '%s', %f, %f, %d, %d, %s, %s, %s, %s, %s, %d, '%s') ON CONFLICT(townId, characterId) DO UPDATE SET currentLocationId = excluded.currentLocationId, posX = excluded.posX, posY = excluded.posY, posZ = excluded.posZ, rotY = excluded.rotY, animState = excluded.animState, hp = excluded.hp, maxHp = excluded.maxHp, stamina = excluded.stamina, maxStamina = excluded.maxStamina, hunger = excluded.hunger, maxHunger = excluded.maxHunger, rest = excluded.rest, maxRest = excluded.maxRest, drunk = excluded.drunk, sickness = excluded.sickness, drunkTier = excluded.drunkTier, sicknessTier = excluded.sicknessTier, carryWeight = excluded.carryWeight, maxCarry = excluded.maxCarry, carryTier = excluded.carryTier, sleepNeededHours = excluded.sleepNeededHours, temperature = excluded.temperature, burning = excluded.burning, alive = excluded.alive, equippedRightHand = excluded.equippedRightHand, equippedLeftHand = excluded.equippedLeftHand, equippedBody = excluded.equippedBody, equippedHead = excluded.equippedHead, activeStatuses = excluded.activeStatuses, silverCentiBalance = excluded.silverCentiBalance, updatedAt = excluded.updatedAt" % [
 		_esc(RunMode.town_id), _esc(character_id),
 		_sql_str_or_null(fields.get("currentLocationId", "")),
 		float(fields.get("posX", 0.0)), float(fields.get("posY", 0.0)), float(fields.get("posZ", 0.0)),
@@ -1112,6 +1155,7 @@ func save_character_state(character_id: String, fields: Dictionary) -> void:
 		float(fields.get("rest", 0.0)), float(fields.get("maxRest", 100.0)),
 		float(fields.get("drunk", 0.0)), float(fields.get("sickness", 0.0)),
 		_esc(str(fields.get("drunkTier", ""))), _esc(str(fields.get("sicknessTier", ""))),
+		float(fields.get("carryWeight", 0.0)), float(fields.get("maxCarry", 50.0)), _esc(str(fields.get("carryTier", ""))),
 		float(fields.get("sleepNeededHours", 0.0)),
 		float(fields.get("temperature", 0.0)),
 		1 if bool(fields.get("burning", false)) else 0,
@@ -1869,6 +1913,61 @@ func save_location_marker(location_id: String, fields: Dictionary) -> void:
 	]
 	if not _db.query(sql):
 		push_warning("[Db] save_location_marker failed: %s" % _db.error_message)
+
+
+# ─── Public API: sites ────────────────────────────────────────────────
+
+# 整行 UPSERT。SiteRegistry boot 时为每个合并后的 site 调用一次。fields 由
+# TownWorld._seed_sites_to_db 组装（位置/分区/权限取 SiteMarker，def/状态键取机制本体），含 anchors。
+func save_site(site_id: String, fields: Dictionary) -> void:
+	if _db == null or site_id.is_empty():
+		return
+	var now := Time.get_datetime_string_from_system(true)
+	var caps_json := JSON.stringify(fields.get("capabilities", []))
+	var gated_json := JSON.stringify(fields.get("groupGatedCapabilities", []))
+	var anchors_json := JSON.stringify(_anchors_to_json(fields.get("anchors", [])))
+	var sql := "INSERT INTO sites (townId, siteId, entityKind, entityId, defId, mapRegistration, parentSiteId, spaceId, ownerGroup, posX, posY, posZ, arrivalRadius, visibleNearRadius, visibleFarRadius, directInteractionRadius, capabilities, anchorsJson, zone, category, sortOrder, nameKey, descriptionKey, lockItemId, groupGatedCapabilities, updatedAt) VALUES ('%s', '%s', '%s', '%s', %s, '%s', %s, '%s', %s, %f, %f, %f, %f, %f, %f, %f, '%s', '%s', %s, %s, %d, %s, %s, %s, '%s', '%s') ON CONFLICT(townId, siteId) DO UPDATE SET entityKind = excluded.entityKind, entityId = excluded.entityId, defId = excluded.defId, mapRegistration = excluded.mapRegistration, parentSiteId = excluded.parentSiteId, spaceId = excluded.spaceId, ownerGroup = excluded.ownerGroup, posX = excluded.posX, posY = excluded.posY, posZ = excluded.posZ, arrivalRadius = excluded.arrivalRadius, visibleNearRadius = excluded.visibleNearRadius, visibleFarRadius = excluded.visibleFarRadius, directInteractionRadius = excluded.directInteractionRadius, capabilities = excluded.capabilities, anchorsJson = excluded.anchorsJson, zone = excluded.zone, category = excluded.category, sortOrder = excluded.sortOrder, nameKey = excluded.nameKey, descriptionKey = excluded.descriptionKey, lockItemId = excluded.lockItemId, groupGatedCapabilities = excluded.groupGatedCapabilities, updatedAt = excluded.updatedAt" % [
+		_esc(RunMode.town_id),
+		_esc(site_id),
+		_esc(String(fields.get("entityKind", "location"))),
+		_esc(String(fields.get("entityId", site_id))),
+		_sql_str_or_null(fields.get("defId", "")),
+		_esc(String(fields.get("mapRegistration", "global"))),
+		_sql_str_or_null(fields.get("parentSiteId", "")),
+		_esc(String(fields.get("spaceId", SpaceVolume.FALLBACK_SPACE_ID))),
+		_sql_str_or_null(fields.get("ownerGroup", "")),
+		float(fields.get("posX", 0.0)),
+		float(fields.get("posY", 0.0)),
+		float(fields.get("posZ", 0.0)),
+		float(fields.get("arrivalRadius", 1.0)),
+		float(fields.get("visibleNearRadius", 0.0)),
+		float(fields.get("visibleFarRadius", 0.0)),
+		float(fields.get("directInteractionRadius", 0.0)),
+		_esc(caps_json),
+		_esc(anchors_json),
+		_sql_str_or_null(fields.get("zone", "")),
+		_sql_str_or_null(fields.get("category", "")),
+		int(fields.get("sortOrder", 0)),
+		_sql_str_or_null(fields.get("nameKey", "")),
+		_sql_str_or_null(fields.get("descriptionKey", "")),
+		_sql_str_or_null(fields.get("lockItemId", "")),
+		_esc(gated_json),
+		now,
+	]
+	if not _db.query(sql):
+		push_warning("[Db] save_site failed: %s" % _db.error_message)
+
+
+# 把 anchors（Array[Vector3] 或 Array[Dictionary{x,y,z}]）归一成 [{x,y,z},...]。
+func _anchors_to_json(anchors_v: Variant) -> Array:
+	var out: Array = []
+	if anchors_v is Array:
+		for a in anchors_v:
+			if a is Vector3:
+				out.append({"x": a.x, "y": a.y, "z": a.z})
+			elif a is Dictionary:
+				out.append({"x": float(a.get("x", 0.0)), "y": float(a.get("y", 0.0)), "z": float(a.get("z", 0.0))})
+	return out
 
 
 # ─── Hydrate caches ───────────────────────────────────────────────────

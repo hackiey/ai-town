@@ -1,208 +1,123 @@
 # Crafting & interaction layer
 
-> Status: **drafting** — 仅设计稿，尚无代码。本文回答"玩家怎么触发反应"，是 [simulation-layer.md §2.2 反应规则三层](./simulation-layer.md#22-反应规则三层emergence--配方) 的输入侧补完。
+> Status: **implemented**。本文描述玩家/NPC 怎么触发反应、工作台 staging 怎么投料与取回，是 [simulation-layer.md §2.2 反应规则三层](./simulation-layer.md#22-反应规则三层emergence--配方) 的输入侧补完。数值/配方清单见 [game-mechanics.md §7-8](./game-mechanics.md)，反应表格式见 [reaction-schema.md](./reaction-schema.md)。
 
 ## 1. Context
 
-[simulation-layer.md §2.2-2.3](./simulation-layer.md#22-反应规则三层emergence--配方) 已经定了**无 recipe**：物理引擎只有 substance + reaction 表，"配方"活在 NPC 自然语言知识里。但**没说玩家怎么触发反应** —— 是在 3D 世界里 contextual aim（瞄铁砧、对位锤击）？还是打开某种 UI 选？
-
-设计时面对的关键张力：
-
-- **涌现 vs 配方书 UI**：Minecraft 3×3 格 / Stardew 制造菜单都把可能性穷举给玩家，玩家进入"翻菜单挑配方"心态，emergent 立刻退化。但完全不给 UI 又意味着玩家不知道能做什么
-- **3D contextual 操作的真实代价**：TotK Fuse / Noita 之所以可玩，是 200 人团队 + 多年 polish。我们没那个预算，硬做 3D 精确交互（瞄准、对位、力度）操作感会烂
-- **NPC 也要能制造**：[design-doc §3](../design-doc.md) 要求 NPC 真劳作。NPC 走 action → 反应表的链路天然不需要 UI；玩家用 UI 触发的反应必须最终落到**同一张反应表**，否则 NPC 和玩家产出不一致
-- **视觉资产有限**（[design-doc §9](../design-doc.md)）：30-50 base mesh + tint + modifier。组装出来的复合物没有专属 mesh，得 fallback 到组件拼接或最近 base
+物理引擎只有 substance + reaction 表，没有 recipe gating（[simulation-layer.md §2.2-2.3](./simulation-layer.md#22-反应规则三层emergence--配方)）。本层回答"玩家怎么触发反应"：不做 3D 精确交互（瞄准/对位），也不做配方选择菜单，而是**工作站 + 万能 ActionPanel + 动词按钮**。NPC 跳过 UI，直接走 action → **同一张反应表**，保证产出一致。
 
 ## 2. Design
 
 ### 2.1 动词系统：反应表的查询键不是物品
 
-把"制造"拆成一组**动词**，每个动词是反应表的一个查询入口。
+"制造"拆成一组**动词**（`src/sim/verbs/verb.gd` + `data/i18n/<locale>/verbs.json`），每个动词是反应表的一个查询入口，可带 **sub_option**（同一动词的具体产物分支）。当前动词：
 
-| 动词 | 操作语义 | 触发处 | 反应表读什么 |
+| 动词 | sub_options | 动词 | sub_options |
 |---|---|---|---|
-| **swing** | 手持工具朝世界目标挥动 | 鼠标 / 玩家输入 | tool.properties + target.substance |
-| **strike** | 工具 + 静止目标（如铁砧上的热铁）| 工作站 UI | tool.properties + target.properties + mold.shape |
-| **place** | 把物品放进容器 / 放到平面 / 放到火上 | 拖拽 / E 键 | container.properties |
-| **combine** | 多件物品物理拼接 | 工作站 UI | parts[].properties + binding.properties |
-| **heat / cool** | 环境改变物品温度 | place 的特化 | substance + env.temperature |
+| `chop` 砍木 | — | `carve` 雕刻 | plank / shaft |
+| `shape` 锻造 | blade / axe_head / pick_head | `combine` 组装 | knife / axe / pick / shovel / sickle / rope |
+| `hammer` 锤击 | — | `grind` 研磨 | — |
+| `mix` 混合 | — | `bake` 烘烤 | — |
+| `boil` 熬煮 | — | `fire` 烧制 | — |
+| `dig` 采矿 | — | `dry` 晾晒 | save_seed |
+| `mint` 铸币 | — | | |
 
-[simulation-layer.md §2.2](./simulation-layer.md#22-反应规则三层emergence--配方) 原本的反应是 `(substance, condition) → effect`（被动反应，verb 隐式 = passive）。本层把它升维成：
+被动反应（晾晒/发酵）的 verb 隐式 = passive。本层把反应升维成 `(verb, sub_option, 输入属性束, 工作站, 熟练度) → effect`。
 
-```
-(verb, actor_properties, target_properties..., env) → effect
-```
+**关键不变量**：反应表按属性束（`shape_type` / `materials` / `tags`）匹配，**永远不按 item_id**。"挥任意硬扁刃工具到任意软土" 是一条规则，覆盖铁铲/铜铲/木板的笛卡尔积。
 
-老的 `wood + temp > 300 → ignite` 仍然成立，是 `verb=passive, target=wood, env.temp > 300` 的特例。
+### 2.2 工作站 + 万能 ActionPanel
 
-**关键不变量**：反应表按属性束匹配，**永远不按 item_id 匹配**。"挥任意硬扁刃工具到任意软土" 是一条规则，覆盖铁铲 / 铜铲 / 长柄锅 / 木板的笛卡尔积。
-
-### 2.2 工作站 + 万能 UI 模式
-
-不做 contextual 3D 精确交互，也不做 recipe 选择菜单。中间方案：
-
-- **工作站**（Workstation）= 世界里的 `Node3D`，玩家走近显示 prompt（"按 E 打开"）
-- **万能 ActionPanel** = 一个 Control 复用所有工作站，UI 结构：
-  - 标题：当前动词（"锻打" / "组装" / "烹饪"）
-  - N 个槽位（动词决定槽数）
-  - 执行按钮
+- **工作站** = 世界里的 `WorkstationNode`（`src/sim/workstations/`）。鼠标悬停 + `E` 由 `InteractionController`（`src/ui/hud/interaction_controller.gd`）路由：普通工作台 → `ActionPanel`；容器（仓库/货架）→ `ContainerPanel`；水井（无限液体源）→ 取水面板。三者互斥。
+- **Workstation 资源**（`data/workstations/*.tres`，`src/sim/workstations/workstation.gd`）：`workstation_id` / `display_name` / `verbs`（动词列表）/ `slot_count`（输入槽数）。
+- **万能 ActionPanel**（`src/ui/action_panel/action_panel.gd`，所有工作站共用）：N 个 staging 槽（= `slot_count`）+ 从 `verbs` 生成的动词按钮（有 sub_option 的展开成多个按钮）+ 进度条。点动词按钮 = `request_craft`。
 
 ```
-┌─ 组装台 ────────────────────────────┐
-│  零件 A: [ 拖入任意刚体 ]           │
-│  零件 B: [ 拖入任意刚体 ]           │
-│  绑定:   [ 拖入任意绳/铆钉/胶 ]    │
-│                                     │
-│         [ 组装 ]                     │
-│                                     │
-│  预览: ?                            │
+┌─ 工作台 ────────────────────────────┐
+│  [槽1] [槽2] [槽3] [槽4] [槽5]      │   ← 从背包拖物品来此（staging）
+│  组装: [刀][斧][镐][铲][镰][绳]    │   ← 动词按钮（sub_option 展开）
+│  雕刻: [木板][木杆]                 │
 └─────────────────────────────────────┘
 ```
 
-**关键不变量**：槽位**不限定 item_id 类型**。槽位语义只到属性级（"任意刚体" / "任意绳"），具体能不能产出由反应表 / LLM 判定。这是它和 Minecraft 3×3 格的本质差别 —— 后者把"哪两件出什么"暴露在 UI 上，前者只暴露动词，结果靠引擎涌现。
+**关键不变量**：槽位**不限定 item_id**，能不能产出由反应表判定。这是它和 Minecraft 配方格的本质差别——只暴露动词，结果靠引擎涌现。工作站清单与槽数见 [game-mechanics.md §8](./game-mechanics.md)。
 
-### 2.3 三种 fallback 顺序
+### 2.3 dispatcher：反应表匹配
 
-玩家点"执行"后，dispatcher 按顺序找匹配：
+点动词按钮 → `Crafting.resolve(verb, ws_id, sub_option, inputs, proficiency, work_impair)`（`src/sim/crafting/crafting.gd` → `data/mechanics/crafting.lua` 的 `on_resolve` hook）。匹配顺序：
 
-1. **反应表精确属性匹配** → 出预设 effect（设计师写的 .tres）
-2. **反应表"族"匹配** → 通用 effect（"任意硬刃 + 任意软材 + 任意绳" → 复合工具，属性继承自零件）
-3. **LLM 现场判** → 给一个 effect 或拒绝（"苹果绑不住，组装失败"）
+1. **反应表精确属性匹配** → 预设 effect（设计师写的 lua 规则）
+2. **反应表"族"匹配** → 通用 effect（"任意硬刃 + 任意软材 + 任意绑定" → 复合工具，属性继承自零件）
+3. 都不中 → `no_match`，弹失败文案
 
-后期 LLM 判定的成功结果可以**回写成新的反应表条目**（设计师审过的话），让常见组合下次走快路径。这是 [simulation-layer.md §2.3](./simulation-layer.md#23-recipe-退化为-npc-自然语言知识) 说"recipe 活在 NPC 知识里"的程序化对应物。
+返回 `{outcome(match/failure/no_match), 输出, consumed_input_indices, duration, message...}`。
+
+**LLM 只读不写**：LLM 能为 NPC 翻译意图 / 选反应，但**永远不生成新反应**，也没有"LLM 现场判 + 回写反应表"那条路径（反应是设计师手写的世界物理，见 [reaction-schema.md](./reaction-schema.md) 与记忆 `reactions_are_physics`）。
 
 ### 2.4 Item 两层结构：属性束 + 视觉
 
-`Item` resource ([src/sim/items/item.gd](../../src/sim/items/item.gd)) 加两组字段，物理层和视觉层**互不读**：
+物理匹配读 item 的**涌现身份**（`shape_type` / `materials` / `tags`），**不读 item_id**；UI/世界渲染读视觉层（`icon` / `tint` / `world_mesh`，空 icon 退化哈希色块）。两层互不读。
 
-```gdscript
-# === 物理属性束（反应表读这个，不读 id）===
-@export var properties: Dictionary = {}
-# 例：{ "shape": "flat_blade", "hardness": "iron", "blade_area": 0.1, "handle": "long_shaft" }
+item 状态分三层（详见 [reaction-schema.md](./reaction-schema.md) / [game-mechanics.md §6](./game-mechanics.md)）：
 
-# === 视觉表达层（UI/世界渲染读这个）===
-@export var icon: Texture2D                        # 背包/UI；空 = 退化哈希色块
-@export var world_mesh: PackedScene                # 掉地/装备的 3D 视觉
-@export var tint: Color = Color(1, 1, 1, 1)        # 同 mesh 不同材质
-@export var visual_modifiers: PackedStringArray = []  # ["fire_aura", "frost_glow"]
-```
-
-**对接 [design-doc §9](../design-doc.md)**：30-50 个 base mesh + tint 覆盖大部分物品。同一 mesh 不同硬度只换 tint（铁灰 / 铜橙 / 金黄）。涌现的奇异物 LLM 选最近 base + 修饰符。
-
-**视觉对接 combine 输出**有三种策略，第一版选 A：
-
-| 策略 | 做法 | 何时用 |
+| 层 | 内容 | 存哪 |
 |---|---|---|
-| A. **映射表 fallback** | 复合物按属性束查最近 base mesh | MVP，最省 |
-| B. **组件拼接** | mesh 由零件 mesh 在 attachment point 拼出 | 后期，对应 §2.1 combine 的物理结构 |
-| C. **base + modifier 叠加** | 最近 mesh + LLM 选粒子/光晕/tint | 应急表达"这不是普通的" |
+| 模板 | id / kind / stackable / weight / 静态 `properties`（如容器容量）/ lua 行为源 | `src/sim/items/item.gd` `.tres` |
+| 反应涌现身份 | shape_type / materials / tags | inventory 槽位 |
+| 可变 aspect | 容器量(`container_amount`/`content`) / 鲜度 / 耐久 / 效果 | inventory 槽位（typed 平铺列，**不用 customProperties bag**）|
 
-### 2.5 工作站清单（按动词分，不按物品分）
+### 2.5 工作站清单
 
-| 工作站 | 默认动词 | 槽位语义 |
-|---|---|---|
-| 🔧 **工作台** | combine | 零件 A + 零件 B + 绑定（也兼基础切削，knife + wood + 模具）|
-| 🔨 **铁砧** | strike | 软金属 + 模具（手持锤是必要条件）|
-| 🔥 **熔炉** | smelt | 矿石 + 燃料 |
-| 🌾 **磨坊** | grind | 谷物（自动磨，水/畜力驱动）|
-| 🍲 **灶** | cook | 容器（锅/盘）+ 食材 × N + 调味 |
+按动词分、不按物品分；所有工作站共享同一套 ActionPanel，只是动词标签和槽数不同。加新工作站 = 新 `.tres` + 一个 `WorkstationNode`。完整清单（工作台/熔炉/铁砧/灶台/磨坊/盐锅/矿井…）、槽数、配方表见 [game-mechanics.md §8](./game-mechanics.md)。归属：铁砧/熔炉/磨坊/灶是镇上 NPC 公共设施，工作台默认在玩家家里。
 
-5 个工作站覆盖 MVP 全部制造。**不是 5 类 = 5 套代码** —— 共享同一套 ActionPanel，只是动词标签和槽位 schema 不同。加新工作站 = 新 Node3D + 一段配置。
+### 2.6 Staging：投料、取回与原路退回
 
-工作站归属：MVP 阶段铁砧/熔炉/磨坊/灶都是**镇上 NPC 拥有的公共设施**（白天营业时玩家可用，可能要小费）；工作台默认在玩家家里。后期玩家可花钱在自家造私人工作站，提升离线产出和便利性。
+工作台投料是**服务端权威的物理搬运**：Player 持权威 `staged_items`（`STAGED_SLOT_COUNT` 槽），经 MultiplayerSynchronizer 推回 owner client；client 只显示 + 提交意图（`request_stage_to_workstation` / `request_unstage_*` / `request_clear_staging`）。
 
-### 2.6 Recipe = 已知反应的快捷调用
+**统一交互约定**（背包 ↔ 工作台 ↔ 仓库 共用一套**分离面板** `src/ui/split/split_panel.gd`，单位随类型变：液体=升、离散=份数，粉末=克留接口）：
 
-[§2.3](#23-三种-fallback-顺序) 说反应表是引擎，但每次都让玩家手动拖三件物品进 ActionPanel 槽位是不必要的劳累。Recipe **不重新引入 gating**，只是已知反应的**记忆化调用**。
+- **拖拽 = 全量**（拖整堆 / 倒满桶的全部液体）；**右键 = 开分离面板选量**（液体还要选目标容器）。
+- 一个 staging 槽 = 一个反应输入实例。液体在槽里以"液体单位"存在（`1` 单位 = `1` 升）：拖/倒桶时**从原桶扣量**（写平铺列 `container_amount`，桶留背包），合成一个 fluid_pouch 占槽。
 
-| | Recipe 作为 gating（要避开）| Recipe 作为快捷键（这套用的）|
-|---|---|---|
-| 反应表的角色 | 不存在 | 永远是引擎；recipe 只是触发的捷径 |
-| 解锁方式 | 看书 / 升级树解锁 | 玩家自己组合成功一次 → 自动记住；NPC 教 |
-| 没 recipe 能做吗 | ❌ 菜单里没有就做不了 | ✅ 把材料拖进去走原始路径 |
-| Emergent 还在吗 | ❌ 死了 | ✅ 完整保留 |
-| 消耗 | 设计师写死 | 反应表说要啥就要啥（始终一致）|
+**原路退回**（关面板 / 取回 / 制造中途取消 → `_return_staged_slot`）：每个 staging 槽记住背包**原槽地址**（`origin_slot`，液体另记 `pour_content`），统一退回——
 
-**实现**：`Recipe` 是 `{verb, slot_assignments: [item_id...], workstation}` 的快照。玩家 ActionPanel 一侧有"已知配方"列表，点 → 自动从背包抓物品填进槽位 + 点执行。**没有平行数据路径** —— dispatcher 仍然查反应表，recipe 只是 UI 自动化。
+- **液体** → 精确倒回**原桶**（防止稀释不同品质的酒）；右键液体槽也可经分离面板倒到**指定容器**（`request_unstage_liquid_to_container`）。
+- **离散** → 回**原槽**；原槽放不下（被占/不可堆叠）→ 找其它可堆叠槽 → 兜底空槽。
+- 放不下 / 原桶失效 → `push_error` 并把物品留在工作台，**绝不丢、绝不乱倒**（fail-loud）。
 
-**保证**：
+**制造结算**：点动词 → 收集非空 staging 槽为 `inputs` → `Crafting.resolve` → `duration<=0` 立即 commit，否则起进度条（按**游戏秒**计时，随时间倍率加速）到期 commit。Commit 按 `consumed_input_indices` 扣对应槽（每次 −1），输出入背包，未消耗的 staged 物关面板时原路退回。熟练度影响品质/成功率，醉酒/生病经 `work_impair` 临时压低有效熟练度；批量同料投入有品质惩罚（曲线见 [game-mechanics.md §8.4-8.6](./game-mechanics.md)）。
 
-- 反应表规则改了 → 所有 recipe 自动跟进
-- 玩家用 recipe 和手动组合产出**完全一致**
-- "老铁匠死了配方失传"仍然成立 —— recipe 是个人记忆集合，不是世界知识
-
-**学习时机**：
-
-- 玩家成功执行一次某 verb + slot 组合 → 自动加进个人 recipe book
-- NPC 在对话里教 → "我教你做铁铲：要 1 铁刃 + 1 木杆 + 1 绳" → 自动加
-- 拾取笔记 / 食谱书 → 加（可能错误，玩家执行时反应表会拒）
+> Recipe 快捷调用（"已知配方"自动填槽）**未实现**：当前入口就是动词按钮 + 手动投料。即便后续加，也只是 UI 自动化，反应表始终是唯一路径，不引入 gating。
 
 ### 2.7 经济闭环：资源节点是唯一来源
 
-跟 [simulation-layer.md §1](./simulation-layer.md#1-context) 的"NPC 必须真劳作"原则呼应：**世界里 item 的源头永远是资源节点 + 实际劳动**。NPC 商人不是凭空生成库存的自动售货机。
+跟 [simulation-layer.md §1](./simulation-layer.md#1-context) 的"NPC 必须真劳作"呼应：**世界里 item 的源头永远是资源节点 + 实际劳动**，NPC 商人不是凭空生成库存的自动售货机。每件 [base-items.md](./base-items.md) 层 A 原料都满足：① 世界里有资源节点（tree / iron_vein / wheat_field …）；② 有对应职业 NPC 去采（樵夫/矿工/农夫…）；③ NPC 把采集物拉回市集售卖、库存有限。加工件同理（铁匠卖 iron_blade 是自己买矿做的）。
 
-每件 [base-items.md](./base-items.md) 的层 A 原料都得满足：
+**玩家三种供给路径**：自己采（时间+工具）/ 市集买（钱，受 NPC 产能与营业时间）/ 自己加工（时间+工作站+上游材料）。经济节奏由资源节点参数 + NPC 数量决定。数值见 [economy-numeric-design.md](../economy-numeric-design.md) 与 [game-mechanics.md](./game-mechanics.md)。
 
-1. 至少一种**资源节点**存在于世界（tree / iron_vein / wheat_field / chicken_coop ...）
-2. 至少一种**对应 NPC 职业**会去采集（樵夫 / 矿工 / 农夫 / 猎人）
-3. NPC 把采集物拉回市集售卖，**库存有限**，按 NPC 实际产出补充
+### 2.8 NPC 走同一引擎、不经 UI
 
-加工件 / 成品同理：铁匠卖 iron_blade 是因为他买了矿工的 ore + charcoal 自己做出来的。链条任意一环 NPC 死了 / 罢工，整条供给受影响。
+NPC 用 `WorkstationActionRunner`（`src/sim/workstations/workstation_action_runner.gd`）：从自己背包**自动解析输入**（`_resolve_inventory_input_unit`：离散走 remove op、液体走 pour op `_apply_inventory_input_op`，与玩家 staging 同样写平铺列扣桶），再调**同一个 `Crafting.resolve`** → 同一张反应表。无 staging UI、无原路退回概念（即时解析即时消耗）。玩家与 NPC 产出一致是设计硬约束（[design-doc §3](../design-doc.md)）。
 
-**玩家三种供给路径**（每件物品都至少有前两种）：
+## 3. End-to-end 数据流（组装铁铲）
 
-| 路径 | 成本 | 限制 |
-|---|---|---|
-| 自己去节点采 | 时间 + 工具消耗 | 节点刷新速率 |
-| 市集买 | 金钱 | NPC 总产能、营业时间、库存 |
-| 自己加工 | 时间 + 工作站 + 上游材料 | 上游材料供给 |
+| 步骤 | 玩家操作 | 触发 | 反应表查询 |
+|---|---|---|---|
+| 切木杆 | 工作台拖入木材 → 点 `carve · 木杆` | carve(shaft) | `carve + wood + sub=shaft` → wood_shaft |
+| 锻扁刃 | 熔炉熔铁锭、铁砧 `shape · 扁刃` | shape(blade) | `shape + iron + sub=blade` → iron_blade |
+| 组装 | 工作台拖入 iron_blade + wood_shaft + rope → 点 `combine · 铲` | combine(shovel) | `combine + 扁刃 + 长杆 + 绑定` → iron_shovel |
 
-这套结构让镇里**经济节奏天然由资源节点参数 + NPC 数量决定**，设计师调一棵树多久长一次、镇里有几个樵夫，就调出了节奏。玩家行为也是经济变量 —— 砍多卖多 → 木材便宜；买空市场 → 别的 NPC 没料做事。
+全程没有 recipe 表作 gating，每步都是 `(verb, sub_option, 属性束) → 反应表 → 产出`。NPC 走同一组动词、查同一张反应表，产出一致。具体输入清单/时长/产物见 [game-mechanics.md §8.7](./game-mechanics.md)。
 
-具体每个职业 → item 对应、节点参数草稿见 [base-items.md](./base-items.md)。
+## 4. 关键文件
 
-## 3. End-to-end 例子：铁铲（中世纪小镇起点）
-
-中世纪起点：玩家是新移民，开局有 iron_knife + 一些铜币。镇上铁匠 / 樵夫 / 矿工已在工作。完整数据流：
-
-| 步骤 | 玩家操作 | 触发 | 反应表查询 | 产出 |
-|---|---|---|---|---|
-| 0. 起步 | 开局 | — | — | iron_knife × 1, bread × 3, 50 铜 |
-| 1. 砍木 | 走到林子，手持市集买的 iron_axe，对树左键 | swing | `swing + axe.shape=cleaving + target=tree` | wood × N |
-| 2. 切杆 | 回家工作台，放 wood + 选模具"long_shaft"，手持 knife | strike | `strike + knife + wood + mold=long_shaft` | wood_shaft |
-| 3. 攒铁刃 | 矿工太贵，自己去矿洞用 iron_pick 挖 → 拿到铁匠铺熔炉 + 铁砧（付小费）| smelt + strike | 见 [base-items.md](./base-items.md) §2 | iron_blade |
-| 4. 买绳 | 市集买 rope（绳商从农夫处收 fiber 自己搓的）| 经济 | — | rope × 1 |
-| 5. 组装 | 回家工作台，放 iron_blade + wood_shaft + rope，点"组装" | combine | `combine + flat_blade + long_shaft + binding` | **iron_shovel** + 自动入个人 recipe book |
-| 6. 装备 | 背包里右键"使用" | equip | — | 角色手上挂 iron_shovel.world_mesh |
-| 7. 用铲子 | 对软土左键 | swing | `swing + tool.shape=flat_blade + target=soil` | dirt × N，地块出现坑 |
-| 8. 第二把 | 想再做一把送朋友 | recipe 快捷键 | — | 点 recipe → 自动抓材料 → combine 同一条路径 |
-
-**全程没有 recipe 表作为 gating**。每一步都是 `(verb, properties...)` → 反应表 → effect。第 8 步的 recipe 只是第 5 步的快捷键，跑同一条路径。NPC 走 action 路径执行同一组动词、查同一张反应表，产出和玩家一致。
-
-**经济触点**：步骤 1、3、4 都是"自己干 vs 买"的选择 —— 反映 [§2.7](#27-经济闭环资源节点是唯一来源) 的三路径权衡。
-
-## 4. Open questions
-
-- **槽数动态化**：组装台 2 件 + 1 绑定，但玩家想拼 3 件怎么办？固定 N 槽 vs 动态 +/- 按钮
-- **视觉策略落地**：第一版用 A（映射 fallback），但 attachment point 系统（B 方案）何时引入。武器装备到角色手上目前还没系统
-- **LLM fallback 在哪跑**：本地沙箱（[scripting-layer.md](./scripting-layer.md)）还是后端 worker？延迟和体验权衡待定
-- **NPC 是否经过工作站 UI**：NPC 应该跳过 UI 直接 action→反应表。但"NPC 在铁砧前锻打"的动画/位置占用怎么和玩家共存
-- **回写反应表**：LLM 判定成功的 emergent 组合要不要自动沉淀成 .tres？沉淀谁审？
-- **失败反馈**："苹果绑不住"这种失败要不要给玩家清晰提示？是 LLM 的自然语言还是预设错误码
-
-## 5. Implementation status
-
-全部设计稿，未实现。代码上的下一批（按依赖排序，对应任务列表）：
-
-1. `Item` resource 扩 `properties` + 视觉字段（[§2.4](#24-item-两层结构属性束--视觉)）
-2. `inventory_slot.gd` 支持真 icon + tint，fallback 哈希色块
-3. `Workstation` 基类（Node3D，靠近 prompt + E 触发）
-4. `ActionPanel` 万能 UI（标题 + N 槽位 + 执行）
-5. 组装台 + 端到端铁铲（用 §3 第 5 步那条 combine 反应跑通）
-6. 反应表 dispatcher 的 verb 维度扩展（属于 simulation-layer 的工作）
-
-`Recipe`（[§2.6](#26-recipe--已知反应的快捷调用)）和经济闭环（[§2.7](#27-经济闭环资源节点是唯一来源)）暂时不在第一批 —— 第一批跑通后再上：
-- recipe book UI + 自动填槽
-- NPC 商人 stock + 营业时间 + 资源节点 spawn
-
-完整 item 清单和职业 → 节点对应见 [base-items.md](./base-items.md)。铁砧 / 熔炉 / 磨坊 / 灶按工作站基类同模板复制，每个新增大约 1 个 .tres + 几行配置。
+| 关注点 | 文件 |
+|---|---|
+| 反应数据（真值）| `data/mechanics/crafting.lua` |
+| dispatcher 入口 | `src/sim/crafting/crafting.gd` |
+| 动词 / 工作站资源 | `src/sim/verbs/verb.gd`、`src/sim/workstations/workstation.gd`、`data/workstations/*.tres` |
+| 工作站节点 + NPC 解析 | `src/sim/workstations/workstation_node.gd`、`workstation_action_runner.gd` |
+| 玩家 staging / 制造 / 原路退回 | `src/characters/player/player.gd`（`request_stage_to_workstation` / `request_unstage_*` / `request_craft` / `_return_staged_slot`）|
+| ActionPanel / staging 槽 | `src/ui/action_panel/action_panel.gd`、`action_slot.gd` |
+| 统一分离面板 | `src/ui/split/split_panel.gd` |
+| E 路由 | `src/ui/hud/interaction_controller.gd` |

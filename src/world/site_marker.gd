@@ -1,0 +1,251 @@
+@tool
+class_name SiteMarker
+extends Marker3D
+
+# 统一世界锚点。替代 ApproachMarker + LocationMarker。
+#
+# 一个 SiteMarker 既是 NPC 到达点（Marker3D 位置落在 navmesh 上，编辑器可拖），
+# 也携带这个 site 面向导航 / 感知 / 地图 / resolver 的全部元数据，运行时注册到
+# SiteRegistry（见 TownWorld）。
+#
+# 多锚点：多个 SiteMarker 共享同一个 site_id 会被 registry 合并成同一个 site 的
+# 多个 anchor（6 口共享 "well" 的水井、市集东西入口），导航取离 actor 最近的那个。
+#
+# 半径字段无默认/兜底：5 个 base 预制件（location_marker / workstation / container / shelf /
+# farm_group）显式填好，实例继承；缺值或 global 缺 zone 在 _ready fail-loud。
+#
+# @tool：编辑器里画半透明小球 + name Label3D，方便摆点；运行时 visual 由 site_visible
+# 控制（waypoint 这种纯导航点设 false）。
+
+const EDITOR_LABEL := "EditorLabel"
+const EDITOR_VISUAL := "EditorVisual"
+const APPROACH_CHILD := "Approach"
+const _SPHERE_RADIUS := 0.25
+const _SPHERE_COLOR := Color(0.3, 1.0, 0.4, 0.55)
+
+# ══ 身份（常看；纯地点通常这两个都不用改）══════════════════════════
+# 留空 → 用 node name 作为 site id；
+# 设了 → alias 到这个 id（多个 marker 同 id = 同一 site 的多个 anchor）。
+@export var site_id: String = ""
+
+# 背后机制实体类型：location / workstation / container / shelf / farm / item / character。
+# 一切有位置的实体都挂 SiteMarker：固定对象在 .tscn 里挂；动态生成的（地面物品、运行时
+# spawn 的角色）由 Godot 在其场景里带上（ground_item.tscn / npc.tscn / player.tscn）。
+@export_enum("location", "workstation", "container", "shelf", "farm", "item", "character")
+var entity_kind: String = "location"
+
+# ── 地图与分区（顶层公共地点才需要管）──────────────────────────────
+@export_group("地图与分区")
+# 是否进入城镇地图。只决定地图显示，不决定层级 / 能否前往。无 auto 推导——每个 site 显式声明。
+# global  → 进城镇地图（顶层地点；location_marker base 设 global）
+# local   → 不进城镇地图，但仍是 site，可导航 / 感知 / 交互 / 被 resolver 解析（工作台/容器/货架/农田/子地点）
+# （命名用 global/local，避免和「runtime 动态生成 site」的 dynamic 概念撞名。）
+@export_enum("global", "local") var map_registration: String = "local"
+
+# 城镇地图分区。global 站点必填（_ready 校验）；local 站点可空。
+# upper_city/lower_city/outer_city/castle/south_outskirts/public
+@export var zone: String = ""
+@export var category: String = ""
+@export var sort_order: int = 0
+
+# 层级父节点 site id。只表达结构关系，不决定地图显示。留空 = 顶层。
+@export var parent_site_id: String = ""
+
+# ── 能力与权限（预制件已配；手摆 location 一般不动）────────────────
+@export_group("能力与权限")
+# 工具按能力判断目标能否使用，而不是看 entity_kind。
+# move / container / craft / farm / shop / water_source / pickup / talk / sleep / read / write
+@export var capabilities: PackedStringArray = PackedStringArray(["move"])
+
+# 归属 group。"" → 继承父 site；root 下空 = public；"public" → 显式公共；其他 = group id。
+@export var owner_group: String = ""
+
+# 需要钥匙的 site（treasury_vault → royal_key）。
+@export var lock_item_id: String = ""
+
+# 哪些能力真受 group 硬权限闸门（农田 = ["farm"]；工作台默认 []）。
+@export var group_gated_capabilities: PackedStringArray = PackedStringArray()
+
+# ── 范围（必填；半径无默认/兜底，5 个 base 预制件已显式填好，_ready 校验）────
+# direct=0 合法,表示「不可直接交互」(纯地点)；其余三个必须 > 0。
+@export_group("范围（必填）")
+@export var arrival_radius: float = 0.0
+@export var visible_near_radius: float = 0.0
+@export var visible_far_radius: float = 0.0
+@export var direct_interaction_radius: float = 0.0
+
+# ── 进阶（绝大多数情况留空）────────────────────────────────────────
+@export_group("进阶")
+# 纯导航点（waypoint）：只提供位置给 LocationGraph 走廊规划，不是 site，不进 sites 表，
+# 不需要范围/分区/地图字段 → 跳过 _ready 的 fail-loud 校验。
+@export var nav_only: bool = false
+
+# 机制身份不在本组件：def（anvil/stove）与状态键（container_states.containerId /
+# farm_states.farmId）留在机制节点本体（WorkstationNode.workstation_id / ContainerNode.container_id），
+# seed 从本体取（_site_def_id / _site_entity_id）。本组件只管位置/交互/地图/权限，不耦合机制身份。
+# 名字/描述同理不落字段：永远按 site_id 查 i18n catalog（locations.<site_id>.alias/description）。
+# 所属空间也不是本组件字段：space = 包含本 site 位置的「室内地点 SiteMarker 下的 SpaceVolume」，
+# 标识 = 那个地点的 site_id；没被任何室内体积框住 = town_outdoor。由 TownWorld 按位置注入 sites.spaceId。
+
+# 运行时是否隐藏编辑器 visual / label（纯导航 waypoint 设 false）。
+@export var show_visual_at_runtime: bool = false
+
+var _editor_visual: MeshInstance3D
+
+
+# 读任意实体的"可交互/拾取距离"= 它自己 SiteMarker 组件的 direct radius（逐对象，玩家/NPC 统一）。
+# 节点本身是 SiteMarker（纯地点）或带名为 "SiteMarker" 的子组件（工作台/容器/物品/角色…）。
+# 没有组件 = fail-loud + fail-closed：报错并返回 0（任何距离判定恒不通过）。一切定位实体都该挂组件。
+static func interaction_radius_of(node: Node) -> float:
+	var m: SiteMarker = null
+	if node is SiteMarker:
+		m = node as SiteMarker
+	elif node != null:
+		m = node.get_node_or_null("SiteMarker") as SiteMarker
+	if m == null:
+		push_error("[SiteMarker] 节点 %s 没有 SiteMarker 组件，无法判定可交互距离" % [node])
+		return 0.0
+	return m.eff_direct_interaction_radius()
+
+
+func effective_id() -> String:
+	return site_id if not site_id.is_empty() else String(name)
+
+
+# eff_* 直返字段（无默认/兜底；值由 5 个 base 预制件显式填、_ready 校验）。保留方法名给调用方。
+func eff_visible_near_radius() -> float:
+	return visible_near_radius
+
+
+func eff_visible_far_radius() -> float:
+	return visible_far_radius
+
+
+func eff_direct_interaction_radius() -> float:
+	return direct_interaction_radius
+
+
+func eff_arrival_radius() -> float:
+	return arrival_radius
+
+
+# ── 自身位置 vs 寻路点 ────────────────────────────────────────────────
+# 本组件自身的 global_position = 对象自身位置（= 可交互距离基准）。
+# 寻路到达点 = 可选的 "Approach" Marker3D；只有大型对象（晾晒架/大柜子等）
+# navmesh 上够不到本体时才放。没有就回退到自身位置（小物件直接走到跟前）。
+#
+# Approach 永远挂在 SiteMarker 自己下面（组件模型：SiteMarker 是位置组件，Approach
+# 是它的可选子节点）。纯地点和机制节点（容器/工作台）一视同仁，designer 只在 SiteMarker
+# 下拖一个 Approach 即可。
+func _approach_node() -> Node3D:
+	return get_node_or_null(APPROACH_CHILD) as Node3D
+
+
+func has_approach() -> bool:
+	return _approach_node() != null
+
+
+func approach_position() -> Vector3:
+	var n := _approach_node()
+	return n.global_position if n != null else global_position
+
+
+# 距离判定（纯几何；跨 space 遮挡由 SiteRegistry/SpaceVolume 叠加，不在这里判）。
+func is_visible_to(from: Vector3) -> bool:
+	return global_position.distance_to(from) <= eff_visible_far_radius()
+
+
+func visibility_band(from: Vector3) -> String:
+	var d := global_position.distance_to(from)
+	if d <= eff_direct_interaction_radius() and eff_direct_interaction_radius() > 0.0:
+		return "direct"
+	if d <= eff_visible_near_radius():
+		return "near"
+	if d <= eff_visible_far_radius():
+		return "far"
+	return ""
+
+
+func is_directly_interactable(from: Vector3) -> bool:
+	var r := eff_direct_interaction_radius()
+	return r > 0.0 and global_position.distance_to(from) <= r
+
+
+func is_arrived(from: Vector3) -> bool:
+	return global_position.distance_to(from) <= eff_arrival_radius()
+
+
+func _ready() -> void:
+	_sync_label()
+	if not renamed.is_connected(_sync_label):
+		renamed.connect(_sync_label)
+	if not show_visual_at_runtime and not Engine.is_editor_hint():
+		# 运行时隐藏编辑器辅助（小球 + label）。waypoint 这种纯导航点保持隐藏；
+		# 需要运行时显示的（location debug 球）在节点上设 show_visual_at_runtime=true。
+		var visual := get_node_or_null(EDITOR_VISUAL) as Node3D
+		if visual != null:
+			visual.visible = false
+		var label := get_node_or_null(EDITOR_LABEL) as Node3D
+		if label != null:
+			label.visible = false
+	if not Engine.is_editor_hint():
+		_validate_fields()
+		_validate_approach()
+
+
+# fail-loud：每个 site 的范围/地图字段必须显式填好（无默认/兜底），缺了立刻暴露。
+# 纯导航点 waypoint 不是 site，跳过。
+func _validate_fields() -> void:
+	if nav_only:
+		return
+	if visible_near_radius <= 0.0 or visible_far_radius <= 0.0 or arrival_radius <= 0.0:
+		push_error("[SiteMarker %s] 范围未填：near=%.2f far=%.2f arrival=%.2f（必须 > 0；在预制件 base 上填）" % [effective_id(), visible_near_radius, visible_far_radius, arrival_radius])
+	if direct_interaction_radius < 0.0:
+		push_error("[SiteMarker %s] direct_interaction_radius=%.2f 不能为负（0=不可直接交互）" % [effective_id(), direct_interaction_radius])
+	if map_registration == "global" and zone.is_empty():
+		push_error("[SiteMarker %s] map_registration=global 的地点必须填 zone 分区" % [effective_id()])
+
+
+# fail-loud：有 Approach 子节点但落在本对象可交互距离外，NPC 走到了也算不上靠近 → 立刻暴露。
+# 用本对象自己的 direct 半径（逐对象）；direct=0（纯地点不可交互）跳过。
+func _validate_approach() -> void:
+	var n := _approach_node()
+	if n == null:
+		return
+	var r := eff_direct_interaction_radius()
+	if r <= 0.0:
+		return
+	var d := global_position.distance_to(n.global_position)
+	if d > r:
+		push_error("[SiteMarker %s] Approach 距自身 %.2fm 超出可交互半径 %.2fm；NPC 到达后无法交互，把 Approach 拖近。" % [effective_id(), d, r])
+
+
+func _sync_label() -> void:
+	var label := get_node_or_null(EDITOR_LABEL) as Label3D
+	if label != null:
+		label.text = String(name)
+
+
+func _enter_tree() -> void:
+	if not Engine.is_editor_hint():
+		return
+	if _editor_visual != null and is_instance_valid(_editor_visual):
+		return
+	var mat := StandardMaterial3D.new()
+	mat.albedo_color = _SPHERE_COLOR
+	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	var sphere := SphereMesh.new()
+	sphere.radius = _SPHERE_RADIUS
+	sphere.height = _SPHERE_RADIUS * 2.0
+	_editor_visual = MeshInstance3D.new()
+	_editor_visual.mesh = sphere
+	_editor_visual.material_override = mat
+	add_child(_editor_visual)
+	# 不 set_owner —— 留 null 就不会序列化进 .tscn。
+
+
+func _exit_tree() -> void:
+	if _editor_visual != null and is_instance_valid(_editor_visual):
+		_editor_visual.queue_free()
+		_editor_visual = null

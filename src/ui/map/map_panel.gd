@@ -1,13 +1,12 @@
-class_name NavTestPanel
+class_name MapPanel
 extends VBoxContainer
 
-# Dev/test panel：列出全城顶层 anchor location，点按钮直接前往，
-# 跳过 backend AI（走 player.request_test_move_to RPC → start_backend_action）。
+# 玩家地图面板：列出全城地点（mapRegistration=global 的 site：25 个分区地点 + 水井），点击直接前往。
+# 走 global_map_site_ids()——只含 global，不含工作台/容器/货架/田块（那些是 local，玩家走到所属
+# 地点后就近交互）。与 NPC 的 move_to_location 全集（known_position_ids）区分；跟实时 perception
+# （按距离过滤）解耦。
+# 没访问权限的地点仍然列出，按钮标记 [私]，玩家点了由 server 端按归属拒。
 # 顶部 toggle 按钮控制展开/收起。
-#
-# 调试面板需要"全城地点列表"——走 known_position_ids()（与 NPC move_to_location enum 同源），
-# 跟 NPC 的实时 perception（按距离过滤）解耦。
-# 没访问权限的地点仍然列出，按钮标记 [私]，玩家点了由 server 端拒。
 
 @onready var _toggle_btn: Button = %ToggleButton
 @onready var _body: PanelContainer = %Body
@@ -23,7 +22,7 @@ var _last_rebuild_position: Vector3 = Vector3.INF
 func _ready() -> void:
 	_toggle_btn.pressed.connect(_on_toggle)
 	_world = get_tree().get_first_node_in_group("town_world") as TownWorld
-	# 等 TownWorld _ready 完成，anchor 索引才填好
+	# 等 TownWorld _ready 完成，site 索引才填好
 	await get_tree().process_frame
 	_rebuild()
 
@@ -46,7 +45,7 @@ func set_local_player(p: Node) -> void:
 
 func _on_toggle() -> void:
 	_body.visible = not _body.visible
-	_toggle_btn.text = tr("ui.nav_test.toggle_open") if _body.visible else tr("ui.nav_test.toggle")
+	_toggle_btn.text = tr("ui.map.toggle_open") if _body.visible else tr("ui.map.toggle")
 	if _body.visible:
 		_rebuild()
 
@@ -58,7 +57,7 @@ func _rebuild() -> void:
 	if _world == null or _local_player == null:
 		return
 	_last_rebuild_position = _local_player.global_position
-	var ids := _world.known_position_ids()
+	var ids := _world.global_map_site_ids()
 	var player_groups: PackedStringArray = _local_player.groups if _local_player.get("groups") != null else PackedStringArray()
 	var sorted: Array[String] = []
 	for id in ids:
@@ -69,7 +68,7 @@ func _rebuild() -> void:
 		var alias := _world.location_alias(id)
 		var label := alias if not alias.is_empty() else id
 		var owner_group := _world.owner_group_for(id)
-		# 标记带 owner_group 的地点；按钮仍会发请求，方便 dev 验证归属和导航。
+		# 标记带 owner_group 的地点；按钮仍会发请求，方便验证归属和导航。
 		if not owner_group.is_empty() and not player_groups.has(owner_group):
 			label = "[私] " + label
 		btn.text = label
@@ -78,9 +77,8 @@ func _rebuild() -> void:
 		_list.add_child(btn)
 
 
-func _on_button_pressed(location_id: String) -> void:
-	if _local_player == null or not _local_player.has_method("request_test_move_to"):
-		push_warning("[NavTestPanel] no local player or RPC missing")
+func _on_button_pressed(site_id: String) -> void:
+	if _local_player == null or not _local_player.has_method("request_move_to_site"):
+		push_warning("[MapPanel] no local player or RPC missing")
 		return
-	_local_player.request_test_move_to.rpc_id(1, location_id)
-	print("[NavTestPanel] -> %s" % location_id)
+	_local_player.request_move_to_site.rpc_id(1, site_id)

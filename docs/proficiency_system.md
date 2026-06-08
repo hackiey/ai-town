@@ -139,10 +139,13 @@ gain_on_fail = -max(0, p - 70) / 60
 | `cooking` | 烹饪 | mix_dough / bake_omelet / bake_bread / bake_meat / mix_jam / mix_stew / bake_omelet_salted / bake_meat_salted / mix_stew_salted |
 | `milling` | 磨坊 | mill_grind |
 | `salt_making` | 制盐 | boil_salt |
+| `brewing` | 酿酒 | ferment_beer（被动反应；熟练度定发酵品质上限，见下）|
+
+> `brewing` 是唯一**挂在被动反应上**的技能：发酵不掷成败骰，而是熟练度相对配方难度决定品质上限 `ceiling = round(clamp(麦芽品质 × clamp(0.6+(p-d)/100,0,1), 0, 100))`（公式在 `data/mechanics/crafting.lua`）。
 
 **不立技能**：
-- `打水`（well）—— 取水没有"做坏"概念，永远成功，固定品质
-- `种地`（farm_action_runner / 晾架）—— 真值在 `farming_basics` 知识书 + 晾架的被动 timer；不挂 skill check（设计：种地是常识不是手艺）。晾架机制见 `data/mechanics/drying.lua`
+- `打水`（water）—— 取水没有"做坏"概念，永远成功，固定品质
+- `种地`（farm_action_runner / 晾架）—— 真值在 `farming_basics` 知识书；晾晒（小麦→麦芽）是被动反应、品质=输入品质、不挂 skill check（设计：种地是常识不是手艺）。被动转化机制见反应表 `data/mechanics/crafting.lua`（`trigger=passive`）+ `src/autoload/passive_simulator.gd`
 - `treasury_vault` —— 无 reaction
 
 ---

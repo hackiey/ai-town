@@ -20,18 +20,34 @@ const CHARACTER_FAR_RADIUS := 10.0
 const ITEM_NEAR_RADIUS := 3.0
 const ITEM_FAR_RADIUS := 10.0
 const INTERACTIVE_FARM_VISIBLE_RADIUS := 30.0
-const INTERACTIVE_FARM_DIRECT_RADIUS := 1.5
 const INTERACTIVE_WORKSTATION_VISIBLE_RADIUS := 10.0
 const INTERACTIVE_SHELF_VISIBLE_RADIUS := 10.0
 const INTERACTIVE_CONTAINER_VISIBLE_RADIUS := 10.0
-const INTERACTIVE_CONTAINER_DIRECT_RADIUS := 3.0
 
 var character: Character
 var _manifest_pushed_at_frame: int = -1
+var _world_cache: TownWorld
 
 
 func _init(owner: Character) -> void:
 	character = owner
+
+
+# ─── space 遮挡 ──────────────────────────────────────────
+# 室内外遮挡走 TownWorld（Godot 权威）。没有任何 SpaceVolume 时恒 true = 旧的纯距离行为。
+func _world() -> TownWorld:
+	if _world_cache == null or not is_instance_valid(_world_cache):
+		var tree := character.get_tree()
+		if tree != null:
+			_world_cache = tree.get_first_node_in_group("town_world") as TownWorld
+	return _world_cache
+
+
+func _can_perceive(target_pos: Vector3, channel: String) -> bool:
+	var w := _world()
+	if w == null or not w.has_method("can_perceive_between"):
+		return true
+	return w.can_perceive_between(character.global_position, target_pos, channel)
 
 
 # ─── characters ──────────────────────────────────────────
@@ -43,6 +59,8 @@ func nearby_character_ids() -> Dictionary:
 	for node in iter_other_characters():
 		var other_id := character_id_of(node)
 		if other_id.is_empty():
+			continue
+		if not _can_perceive(node.global_position, "vision"):
 			continue
 		var entry: Variant = _character_context_entry(node, other_id)
 		var distance: float = character.global_position.distance_to(node.global_position)
@@ -69,6 +87,9 @@ func voice_affected_character_ids(volume: String) -> Array[String]:
 		if character.global_position.distance_squared_to(node.global_position) > radius_sq:
 			continue
 		if node is Character and (node as Character).sleep_controller().is_sleeping():
+			continue
+		# 室内外隔音：不同 space 且任一室内 → 听不到。同 space / 全室外按距离（上面已判）。
+		if not _can_perceive(node.global_position, "speech"):
 			continue
 		affected.append(other_id)
 	return affected
@@ -163,6 +184,8 @@ func nearby_item_ids() -> Dictionary:
 			var item_id := item_id_of(node)
 			if item_id.is_empty():
 				continue
+			if not _can_perceive((node as Node3D).global_position, "vision"):
+				continue
 			var distance := character.global_position.distance_to((node as Node3D).global_position)
 			if distance <= ITEM_NEAR_RADIUS:
 				near.append(item_id)
@@ -188,6 +211,8 @@ func nearby_ground_container_snapshots() -> Array:
 				continue
 			var dist := character.global_position.distance_to(gi.global_position)
 			if dist > ITEM_FAR_RADIUS:
+				continue
+			if not _can_perceive(gi.global_position, "vision"):
 				continue
 			out.append({
 				"instanceId": gi.db_id,
@@ -243,12 +268,15 @@ func nearby_shelf_snapshots(max_distance: float = INTERACTIVE_SHELF_VISIBLE_RADI
 		var shelf := n as ShelfNode
 		if shelf == null or not is_instance_valid(shelf):
 			continue
-		var anchor := shelf.get_approach_node().global_position
+		# 可见性用 max_distance（visible 半径）；可交互距离用货架自己 SiteMarker 的半径（逐对象）。
+		# 都以货架自身位置为基准（玩家/NPC 一致）；NPC 寻路点是另一回事（approach）。
+		var anchor := shelf.global_position
 		if character.global_position.distance_squared_to(anchor) > max_sq:
 			continue
+		var r := SiteMarker.interaction_radius_of(shelf)
 		out.append({
 			"id": shelf.effective_shelf_id(),
-			"directlyInteractable": character.global_position.distance_squared_to(anchor) <= Containers.INTERACTION_RADIUS * Containers.INTERACTION_RADIUS,
+			"directlyInteractable": character.global_position.distance_squared_to(anchor) <= r * r,
 		})
 	return out
 
@@ -420,7 +448,8 @@ func _farm_center_position(farm: FarmGroup) -> Vector3:
 func _is_farm_directly_interactable(farm: FarmGroup) -> bool:
 	if farm == null or not is_instance_valid(farm):
 		return false
-	var max_sq := INTERACTIVE_FARM_DIRECT_RADIUS * INTERACTIVE_FARM_DIRECT_RADIUS
+	var r := SiteMarker.interaction_radius_of(farm)
+	var max_sq := r * r
 	for slot in farm.slots():
 		if slot == null or not is_instance_valid(slot):
 			continue
@@ -471,10 +500,12 @@ func build_manifest() -> Dictionary:
 	# Items: nearby_item_ids() 已按 near/far 分桶
 	var item_refs := _refs_from_near_far_dict(nearby_item_ids(), false)
 
-	# 交互站点：directlyInteractable=true → "direct"，否则 "near"（已经 ≤ visible 半径才进列表）
-	var farm_refs := _refs_from_interactive_snapshots(nearby_farm_snapshots())
-	var ws_refs := _refs_from_interactive_snapshots(nearby_workstation_snapshots())
-	var shelf_refs := _refs_from_interactive_snapshots(nearby_shelf_snapshots())
+	# 交互站点：directlyInteractable=true → "direct"，否则 "near"（已经 ≤ visible 半径才进列表）。
+	# 室内外遮挡：用各 site 锚点位置过滤掉跨 space 看不见的（如室外看室内灶台）。
+	location_refs = _filter_refs_by_vision(location_refs, world)
+	var farm_refs := _filter_refs_by_vision(_refs_from_interactive_snapshots(nearby_farm_snapshots()), world)
+	var ws_refs := _filter_refs_by_vision(_refs_from_interactive_snapshots(nearby_workstation_snapshots()), world)
+	var shelf_refs := _filter_refs_by_vision(_refs_from_interactive_snapshots(nearby_shelf_snapshots()), world)
 
 	# 容器是 WorkstationNode 子类，已通过 perceivedWorkstations 上报。
 	# Backend 在 assemble 阶段同时查 workstation_states + container_states，无需再单独收集。
@@ -522,6 +553,21 @@ func _refs_from_near_far_dict(dict: Dictionary, entries_are_dicts: bool) -> Arra
 
 # nearby_*_snapshots() 给的每条 dict 都带 id + directlyInteractable。
 # Visible 范围内已被过滤过，所以非 direct = "near"（不存在 "far"）。
+# 按视觉 space 遮挡过滤 [{id,band}] —— 用 site 最近锚点位置判定。没有 SpaceVolume 时原样返回。
+func _filter_refs_by_vision(refs: Array, world: TownWorld) -> Array:
+	if world == null or not world.has_method("get_nearest_position_world"):
+		return refs
+	var out: Array = []
+	for ref in refs:
+		var id := str(ref.get("id", ""))
+		if id.is_empty():
+			continue
+		var target := world.get_nearest_position_world(id, character.global_position)
+		if _can_perceive(target, "vision"):
+			out.append(ref)
+	return out
+
+
 func _refs_from_interactive_snapshots(snaps: Array) -> Array:
 	var out: Array = []
 	for snap in snaps:

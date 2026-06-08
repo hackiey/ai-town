@@ -98,6 +98,10 @@ func persist() -> void:
 		# 派生档位 key 随 raw 一起持久化——阈值只在 Impairment 里判一次，backend 直接读这个 key。
 		"drunkTier": Impairment.drunk_tier_key(_character.drunk),
 		"sicknessTier": Impairment.sickness_tier_key(_character.sickness),
+		# 负重：carry_weight 由 CharacterInventory 单一写者算好；carryTier 派生档位（backend 只读渲染）。
+		"carryWeight": _character.carry_weight,
+		"maxCarry": _character.max_carry_weight,
+		"carryTier": Impairment.encumbrance_tier_key(_character.carry_ratio()),
 		"sleepNeededHours": _character.sleep_needed_hours,
 		"temperature": _character.temperature,
 		"burning": _character.burning,

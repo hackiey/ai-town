@@ -18,6 +18,10 @@ var _player: Node = null
 var _last_snapshot: Array = []
 var _last_wallet_centi: int = -1
 var _slots: Array[InventorySlot] = []
+# 上下文转移：灶台/仓库面板打开时，背包格右键多一项"放入灶台…/存入仓库…"，委托给对应面板开分离面板。
+var _action_panel: Node = null
+var _container_panel: Node = null
+var _last_transfer_label: String = ""
 
 @onready var _root: Control = $Root
 @onready var _wallet_label: Label = $Root/Panel/Margin/VBox/Wallet
@@ -34,6 +38,12 @@ func set_player(player: Node) -> void:
 	_last_wallet_centi = -1
 	if _root.visible:
 		_refresh()
+
+
+# town.gd 注入：背包格上下文转移要委托给当前打开的灶台/仓库面板。
+func set_transfer_panels(action_panel: Node, container_panel: Node) -> void:
+	_action_panel = action_panel
+	_container_panel = container_panel
 
 
 func toggle() -> void:
@@ -59,10 +69,35 @@ func _unhandled_input(event: InputEvent) -> void:
 func _process(_delta: float) -> void:
 	if not _root.visible or _player == null:
 		return
+	_update_transfer_labels()
 	var current: Array = _player.inventory
 	var wallet := int(_player.get("wallet_centi"))
 	if wallet != _last_wallet_centi or not _same_inventory(current, _last_snapshot):
 		_refresh()
+
+
+# 按当前打开的面板给每个背包格设置上下文转移项文案；无面板打开则隐藏该项。
+func _update_transfer_labels() -> void:
+	var label := ""
+	if _action_panel != null and _action_panel.has_method("is_open") and _action_panel.is_open():
+		label = tr("ui.split.menu.stage")
+	elif _container_panel != null and _container_panel.has_method("is_open") and _container_panel.is_open():
+		label = tr("ui.split.menu.store")
+	if label == _last_transfer_label:
+		return
+	_last_transfer_label = label
+	for slot in _slots:
+		slot.set_transfer_label(label)
+
+
+# 委托给当前打开的面板开分离面板（灶台 → 放入；仓库 → 存入）。
+func _on_slot_transfer(index: int) -> void:
+	if _action_panel != null and _action_panel.has_method("is_open") and _action_panel.is_open() \
+			and _action_panel.has_method("begin_stage_split"):
+		_action_panel.begin_stage_split(index)
+	elif _container_panel != null and _container_panel.has_method("is_open") and _container_panel.is_open() \
+			and _container_panel.has_method("begin_put_split"):
+		_container_panel.begin_put_split(index)
 
 
 func _build_slots() -> void:
@@ -75,6 +110,7 @@ func _build_slots() -> void:
 		slot.use_requested.connect(_on_slot_use)
 		slot.drop_requested.connect(_on_slot_drop)
 		slot.swap_requested.connect(_on_slot_swap)
+		slot.transfer_requested.connect(_on_slot_transfer)
 		_slots.append(slot)
 
 
@@ -97,10 +133,9 @@ func _refresh() -> void:
 		_slots[i].set_slot(i, inv[i])
 
 
-# Snapshot 比对：item_id / quantity / quality 任一变化触发 refresh。Phase 2 新增字段
-# (shape_type / materials / tags / properties) 一般跟着 item_id 变，这里不深比，避免每帧
-# 跑 dict==dict 的开销；如果 modify 反应（无 item_id 变化只改 properties）需要刷新，
-# 后续接 EventBus 信号驱动重绘即可。
+# Snapshot 比对：item_id / quantity / quality / 容量(液体) 任一变化触发 refresh。
+# 倒液体只改 container_amount/container_content（item_id/quantity/quality 不变），必须比这两项，
+# 否则倒空桶后背包面板不重绘、显示停在旧的 20/20。其余字段(shape/materials/tags)跟着 item_id 变。
 func _same_inventory(a: Array, b: Array) -> bool:
 	if a.size() != b.size():
 		return false
@@ -113,7 +148,22 @@ func _same_inventory(a: Array, b: Array) -> bool:
 			return false
 		if int(sa.get("quality", 0)) != int(sb.get("quality", 0)):
 			return false
+		if _slot_content(sa) != _slot_content(sb):
+			return false
+		if absf(_slot_amount(sa) - _slot_amount(sb)) > 0.001:
+			return false
 	return true
+
+
+# 容器字段可能为 null（非容器槽）；安全取值用于比对。
+func _slot_content(slot: Dictionary) -> String:
+	var v: Variant = slot.get("container_content", null)
+	return "" if v == null else str(v)
+
+
+func _slot_amount(slot: Dictionary) -> float:
+	var v: Variant = slot.get("container_amount", null)
+	return 0.0 if v == null else float(v)
 
 
 func _on_slot_use(index: int) -> void:

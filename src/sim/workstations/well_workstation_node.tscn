@@ -4,7 +4,6 @@
 [ext_resource type="PackedScene" uid="uid://bhkrnoa5ntwto" path="res://third-party/polygon-fantasy-kingdom/Assets/PolygonFantasyKingdom/Prefabs/Props/SM_Prop_Well_Plinth_01.tscn" id="2_plinth"]
 [ext_resource type="PackedScene" uid="uid://cn6jjw50s5bbd" path="res://third-party/polygon-fantasy-kingdom/Assets/PolygonFantasyKingdom/Prefabs/Props/SM_Prop_Well_01.tscn" id="3_well"]
 [ext_resource type="Script" uid="uid://xghscckf4yvn" path="res://src/sim/containers/container_node.gd" id="2_container"]
-[ext_resource type="Script" uid="uid://c87hcimotyk3h" path="res://src/sim/workstations/approach_marker.gd" id="approach_script"]
 
 [node name="WellWorkstationNode" unique_id=1809196722 instance=ExtResource("1_base")]
 script = ExtResource("2_container")
@@ -22,12 +21,17 @@ text = "水井"
 [node name="Prompt" parent="." index="3"]
 text = "按 E 取水"
 
-[node name="SM_Prop_Well_Plinth_01" parent="." index="4" unique_id=1110489307 instance=ExtResource("2_plinth")]
+[node name="SiteMarker" parent="."]
+site_id = "well"
+map_registration = "global"
+zone = "public"
+category = "civic"
+
+[node name="SM_Prop_Well_Plinth_01" parent="." unique_id=1110489307 instance=ExtResource("2_plinth")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.06, 0)
 
-[node name="SM_Prop_Well_01" parent="." index="5" unique_id=204181474 instance=ExtResource("3_well")]
+[node name="SM_Prop_Well_01" parent="." unique_id=204181474 instance=ExtResource("3_well")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.338, 0)
 
-[node name="Approach" type="Marker3D" parent="." index="6" unique_id=2118186929]
+[node name="Approach" type="Marker3D" parent="SiteMarker" unique_id=2118186929]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.027895689, 0, 1.9985273)
-script = ExtResource("approach_script")

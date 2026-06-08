@@ -295,42 +295,35 @@ func current_waypoint() -> Vector3:
 func resolve_move_to_location_request(action_request: Dictionary) -> Dictionary:
 	# Wire contract: move_to_location target is exactly one of locationId / characterId / itemId / regionId.
 	# See backend/src/godot-link/actions.ts MoveToLocationTarget.
+	#
+	# 动态静态一套逻辑：人物 / 地面物品在 runtime 注册成动态 site（characterId→"character:<id>"、
+	# itemId→"ground_item:<模板>"），与静态地点完全同一套解析——has_position + get_nearest_position_world，
+	# 不再有"按 group 扫节点"的第二条路径。
 	var target: Variant = action_request.get("target")
 	var action_id := str(action_request.get("id", ""))
 	if typeof(target) != TYPE_DICTIONARY:
 		return {"ok": false, "error": "move_to_location target must be object"}
 	var target_dict: Dictionary = target as Dictionary
+	var world: TownWorld = character.get_tree().get_first_node_in_group("town_world") as TownWorld
+	if world == null:
+		return {"ok": false, "error": "TownWorld not found"}
+
+	# 动态实体目标（人物 / 地面物品）：合成动态 site_id，走统一 registry。
 	var target_character_id := str(target_dict.get("characterId", "")).strip_edges()
 	if not target_character_id.is_empty():
-		var character_target := _far_character_target_position(target_character_id)
-		if not bool(character_target.get("ok", false)):
-			return {"ok": false, "error": str(character_target.get("error", "move_to_location character target failed"))}
-		return {
-			"ok": true,
-			"action_id": action_id,
-			"position": character_target.get("position", character.global_position),
-			"arrival_distance": default_arrival_distance(),
-		}
+		return _resolve_dynamic_site_move(world, TownWorld.character_site_id(target_character_id),
+			action_id, "character %s" % target_character_id)
 	var target_item_id := str(target_dict.get("itemId", "")).strip_edges()
 	if not target_item_id.is_empty():
-		var item_target := _far_item_target_position(target_item_id)
-		if not bool(item_target.get("ok", false)):
-			return {"ok": false, "error": str(item_target.get("error", "move_to_location item target failed"))}
-		return {
-			"ok": true,
-			"action_id": action_id,
-			"position": item_target.get("position", character.global_position),
-			"arrival_distance": default_arrival_distance(),
-		}
+		return _resolve_dynamic_site_move(world, TownWorld.ground_item_site_id(target_item_id),
+			action_id, "item %s" % target_item_id)
+
+	# 静态地点 / region。
 	var location_id := str(target_dict.get("locationId", target_dict.get("regionId", ""))).strip_edges()
 	if location_id.is_empty():
 		return {"ok": false, "error": "move_to_location target is empty"}
 	if location_id in ["current_location", "current location", "当前位置"]:
 		return {"ok": true, "action_id": action_id, "done": true}
-
-	var world: TownWorld = character.get_tree().get_first_node_in_group("town_world") as TownWorld
-	if world == null:
-		return {"ok": false, "error": "TownWorld not found"}
 	var resolved_location := world.resolve_location_id(location_id) if world.has_method("resolve_location_id") else location_id
 	if world.has_position(resolved_location):
 		return {
@@ -373,26 +366,22 @@ func start_walk_to_region_common(region_id: String, action_id: String, start_wal
 
 # ─── private ────────────────────────────────────────
 
-func _far_character_target_position(character_id: String) -> Dictionary:
-	var node := character.perception().other_character_node_by_id(character_id)
-	if node == null:
-		return {"ok": false, "error": "unknown character target: %s" % character_id}
-	return _far_node_target_position(node, "character %s" % character_id,
-		CharacterPerception.CHARACTER_NEAR_RADIUS, CharacterPerception.CHARACTER_FAR_RADIUS)
-
-
-func _far_item_target_position(item_id: String) -> Dictionary:
-	var node := character.perception().world_item_node_by_id(item_id)
-	if node == null:
-		return {"ok": false, "error": "unknown item target: %s" % item_id}
-	return _far_node_target_position(node, "item %s" % item_id,
-		CharacterPerception.ITEM_NEAR_RADIUS, CharacterPerception.ITEM_FAR_RADIUS)
-
-
-func _far_node_target_position(node: Node3D, label: String, near_radius: float, far_radius: float) -> Dictionary:
-	var distance: float = character.global_position.distance_to(node.global_position)
-	if distance <= near_radius:
+# 动态 site（人物 / 地面物品）move 解析：取离自己最近的锚点 SiteMarker，按它自己的可见半径
+# 做 move-range 守卫（已在 near 内 = 无需移动；超出 far = 看不见）。半径单一来源 = 该实体的
+# SiteMarker（不再读散落的 CharacterPerception.*_RADIUS 常量），位置走与静态地点同一个
+# approach_position。site_id 未注册（实体已 despawn / 不存在）= unknown target。
+func _resolve_dynamic_site_move(world: TownWorld, site_id: String, action_id: String, label: String) -> Dictionary:
+	var marker := world.nearest_anchor_marker(site_id, character.global_position)
+	if marker == null:
+		return {"ok": false, "error": "unknown move target: %s" % label}
+	var distance := character.global_position.distance_to(marker.global_position)
+	if distance <= marker.eff_visible_near_radius():
 		return {"ok": false, "error": "%s is already within near range" % label}
-	if distance > far_radius:
+	if distance > marker.eff_visible_far_radius():
 		return {"ok": false, "error": "%s is outside far range" % label}
-	return {"ok": true, "position": node.global_position}
+	return {
+		"ok": true,
+		"action_id": action_id,
+		"position": marker.approach_position(),
+		"arrival_distance": default_arrival_distance(),
+	}

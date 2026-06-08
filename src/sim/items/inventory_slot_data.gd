@@ -249,6 +249,36 @@ func is_empty() -> bool:
 	return id().is_empty() or quantity() <= 0
 
 
+# Weight ─────────────────────────────────────────────────
+# 重量唯一公式处。液体密度查 Materials（g/cm³，数值上 1L 水 = 1kg）。
+
+# 单件自重（kg，不含容器内液体）。template.weight 兜底 0（缺值已在 boot 校验 push_error）。
+func unit_weight() -> float:
+	var tmpl := template()
+	return tmpl.weight if tmpl != null else 0.0
+
+
+# 容器内液体重量（kg）= container_amount(升) × content 材质 density。非容器/空容器 = 0。
+func liquid_weight() -> float:
+	var amount_v: Variant = container_amount()
+	if amount_v == null:
+		return 0.0
+	var amount := float(amount_v)
+	if amount <= 0.0:
+		return 0.0
+	var content := String(container_content() if container_content() != null else "")
+	if content.is_empty():
+		return 0.0
+	var mat: Substance = Materials.by_id(content)
+	var density := mat.density if mat != null else 1.0
+	return amount * density
+
+
+# 槽位总重（kg）= 单件自重 × 数量 + 液体内容物重。
+func total_weight() -> float:
+	return unit_weight() * float(quantity()) + liquid_weight()
+
+
 # Template / sub-views ───────────────────────────────────
 
 func template() -> Item:
@@ -364,6 +394,7 @@ func to_backend_dict() -> Dictionary:
 		"baseEffects": _nullable_dict_dup(slot.get("base_effects", null)),
 		"displayedEffects": _nullable_dict_dup(slot.get("displayed_effects", null)),
 		"listingPriceCenti": slot.get("listing_price_centi", null),
+		"weight": total_weight(),
 	}
 
 

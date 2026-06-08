@@ -11,8 +11,7 @@ const GROUND_ITEM_COLLISION_MASK := 4
 const RAY_LENGTH := 1000.0
 const TOOLTIP_OFFSET := Vector2(18.0, 18.0)
 const SCREEN_PADDING := 12.0
-
-const PICKUP_REACH := 2.0   # 与 ground item 的最大距离，超过按 E 不触发
+# 拾取距离不另设常量：读地面物品自己 SiteMarker 的可交互半径（与 server/NPC 同源，不分叉）。
 
 var _panel: PanelContainer = null
 var _tooltip_label: Label = null
@@ -48,7 +47,7 @@ func set_player(node: Node) -> void:
 	_player = node
 
 
-# 拾取触发：hover 中 + player 在场 + 距离 < PICKUP_REACH，按 E。
+# 拾取触发：hover 中 + player 在场 + 距离 ≤ 该物品 SiteMarker 的可交互半径，按 E。
 # 跟 farm_panel / container_panel / action_panel 一样在 HUD 自己捕获 E，避免 player.gd
 # 长成 mega-input dispatcher。
 func _unhandled_input(event: InputEvent) -> void:
@@ -65,7 +64,7 @@ func _unhandled_input(event: InputEvent) -> void:
 	if not (_player is Node3D):
 		return
 	var p3d: Node3D = _player
-	if p3d.global_position.distance_to(target.global_position) > PICKUP_REACH:
+	if p3d.global_position.distance_to(target.global_position) > SiteMarker.interaction_radius_of(target):
 		return
 	if not _player.has_method("request_pickup_item"):
 		push_warning("[GroundItemHoverStatus] player lacks request_pickup_item RPC")

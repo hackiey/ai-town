@@ -92,6 +92,7 @@ func _ready() -> void:
 		inventory_ops().hydrate_from_db()
 		_bind_backend_runtime_client()
 		_register_with_backend()
+		register_world_site()  # 注册 character:<npc_id> 动态 site（与静态地点同一 registry）
 		if _is_backend_runtime_connected():
 			_on_backend_runtime_connected.call_deferred()
 	if not CharacterVisualSetup.apply_visible_mesh(skel, visible_mesh, CHAR_MATERIAL):
@@ -319,6 +320,7 @@ func _is_backend_runtime_connected() -> bool:
 
 func _exit_tree() -> void:
 	if RunMode.is_runtime():
+		unregister_world_site()
 		var backend := get_node_or_null("/root/BackendRuntimeClient")
 		if backend != null:
 			backend.unregister_npc(self)

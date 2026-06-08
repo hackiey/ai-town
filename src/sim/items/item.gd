@@ -28,6 +28,10 @@ var display_name: String:
 @export var stackable: bool = true
 @export var max_stack: int = 99
 
+# 单件重量（kg）。所有物品必填 > 0；缺省 0 会在 boot 校验（town_world._seed_item_defs_to_db）
+# 时 push_error。容器是空容器自重，装液体的额外重量由 InventorySlotData.total_weight 另算。
+@export var weight: float = 0.0
+
 # 关联：非空时表示该物品可种成什么 crop variety。
 # 实际可不可以种，还要看 tags 里是否含 "seed"。
 @export var crop_variety_id: String = ""

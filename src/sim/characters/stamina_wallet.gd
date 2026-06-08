@@ -37,6 +37,9 @@ static func try_spend(character, cost: float, reason: String) -> Dictionary:
 		return _result_ok(character, 0.0, character.stamina, reason)
 	if cost <= 0.0:
 		return _result_ok(character, 0.0, character.stamina, reason)
+	# 负重惩罚：背得越重，同一动作越费体力（倍率与负重平滑成比例）。所有体力扣点必经此处，单点生效。
+	if character.has_method("carry_ratio"):
+		cost *= Impairment.encumber_stamina_mult(character.carry_ratio())
 	if character.stamina + 0.0001 < cost:
 		return {
 			"ok": false,

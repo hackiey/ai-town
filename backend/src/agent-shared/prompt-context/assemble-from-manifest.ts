@@ -26,6 +26,7 @@ import { cropStageDisplayName, getVariety, isRipeStage } from "../../services/wo
 import { getActiveLocale, t, type Locale } from "../../i18n/index.js";
 import { syncRuntimeRegistryFromDb } from "../../services/runtime-character-registry.js";
 import { characterAttributeName } from "../name-resolver/index.js";
+import { refreshSiteCatalog } from "../name-resolver/site-catalog.js";
 import { getCraftSpec, listCraftSlugs, type CraftSlug } from "../game-tools/craft-registry.js";
 import { gameTimeFromRecord } from "./time.js";
 import type {
@@ -66,6 +67,9 @@ export function assembleAgentContextFromManifest(
   // worker 进程的 runtime-character 内存 registry 不会被 character.register 直接填（那发生在
   // server 进程）。渲染前从共享的 runtime_characters 表刷一次，玩家才能解析成真名而非 player_xxx。
   syncRuntimeRegistryFromDb(db);
+  // 地点结构真值 = Godot 灌的 sites 表。刷新内存 catalog，供下游 db-less 的 resolver /
+  // localize / renderTownMap 读取（地点全部由 Godot 传递，backend 只渲染+解析）。
+  refreshSiteCatalog(db, townId);
   const characterId = manifest.characterId;
   const groupIds = manifest.characterGroupIds;
   // 单一 name resolver：所有"id → 中文名"翻译只走这一条链路（i18n catalog → id）。
@@ -268,6 +272,7 @@ function characterAttributesFromState(state: CharacterStateView | undefined): st
     `${characterAttributeName("hunger")}: ${formatCurrentOverMax(state.hunger, state.maxHunger)}`,
     `${characterAttributeName("rest")}: ${formatCurrentOverMax(state.rest, state.maxRest)}`,
     `${characterAttributeName("purse")}: ${(state.walletCenti / 100).toFixed(2)} 银`,
+    `负重: ${formatCurrentOverMax(state.carryWeight, state.maxCarry)} kg`,
   ];
   if (state.burning) lines.push("burning");
   if (state.activeStatuses.length > 0) {
@@ -287,6 +292,8 @@ function characterAttributesFromState(state: CharacterStateView | undefined): st
   // 档位 key 由 Godot 算好持久化（state.drunkTier/sicknessTier）；这里只渲染，不复制阈值。
   pushImpairmentLines(lines, "drunk", state.drunkTier, state.drunk, locale);
   pushImpairmentLines(lines, "sick", state.sicknessTier, state.sickness, locale);
+  // 负重档位（carryTier 非空才渲染）：value 用当前总重 kg。
+  pushImpairmentLines(lines, "encumber", state.carryTier, state.carryWeight, locale);
   return lines;
 }
 
@@ -296,7 +303,7 @@ function characterAttributesFromState(state: CharacterStateView | undefined): st
 // raw value 仍传进来只为了显示 "65/100" 的数字，不参与档位判定。
 function pushImpairmentLines(
   lines: string[],
-  kind: "drunk" | "sick",
+  kind: "drunk" | "sick" | "encumber",
   tierKey: string,
   value: number,
   locale: Locale,
@@ -540,7 +547,12 @@ function containerViewToWorkstationContext(c: ContainerView, actorInventoryRows:
       .filter((r) => r.itemDefId && r.stackCount > 0)
       .forEach((r, idx) => {
         const index = idx + 1;
-        items.push({ index, slotIndex: r.slotIndex, itemId: r.itemDefId, quantity: r.stackCount, quality: r.quality });
+        // 内容物若是装着液体的容器（仓库里的酒桶/木桶），带上液体量/发酵态——
+        // 否则 NPC 只看到 "酿酒桶×1" 不知道里面有没有水/酒、酿没酿好。
+        const liquid = r.container && r.container.amount > 0 && r.container.content
+          ? { amount: r.container.amount, content: r.container.content, fermenting: r.container.fermenting, ceiling: r.container.ceiling }
+          : undefined;
+        items.push({ index, slotIndex: r.slotIndex, itemId: r.itemDefId, quantity: r.stackCount, quality: r.quality, container: liquid });
         entries.push({ itemDefId: r.itemDefId, slotIndex: r.slotIndex });
       });
   }

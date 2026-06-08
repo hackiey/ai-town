@@ -5,6 +5,7 @@
 [resource]
 script = ExtResource("1_item")
 id = "cooked_meat"
+weight = 0.3
 kind = "food"
 max_stack = 50
 use_duration_seconds = 60.0

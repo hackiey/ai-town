@@ -729,6 +729,19 @@ failure_modes = [
 
 `trigger` 字段区分：
 
+> **实现现状（2026-06-07 已落地，与下文设计稿有出入）**：被动反应**第一批已实现**——晾晒（`dry_malt`：小麦→麦芽）和发酵（`ferment_beer`：水+麦芽→啤酒）。实际落地形态比本节的 `.tres` Resource + `delta_properties` / `duration_required` 设计稿**更轻**，要点：
+>
+> - **同表**：被动反应就写在 `data/mechanics/crafting.lua` 的 `reactions` 表里，`trigger="passive"`，与主动反应同表同 query 风格（不是独立 `.tres`）。skill 校验 / active 索引 / metadata 三个 load-time 循环都 `if r.trigger ~= "passive"` 跳过。
+> - **每条自带 `tick_seconds`**（不是 dispatcher 统一频率）：酿酒 3600、晾晒 1800、将来魔咒可 30。这样慢反应不被高频扫、快反应也能秒级跳。
+> - **每条自带 `on_tick(ctx)` lua 钩子**（自定义每 tick 逻辑）+ `strategy` + `match{vessel_tag,input,base_liquid}` + `auto_start`。当前唯一 strategy = `ramp_transform`：**开始即变身成 `output`、品质从 0 线性爬到 `ceiling`、到 `hours` 定格**（晾晒/发酵共用 `ramp_quality` helper）。
+> - **唯一写者 = `src/autoload/passive_simulator.gd`**（server-only autoload）。`_process` 按每条反应各自的下次触发时间调度；到点扫 容器(`containers` 组)/背包(`npcs`/`players` 组)/地面(`ground_items` 组) 的 slot，对进行中的（按成品 `output` 区分）调 `run_tick` 推进 + 持久化，对 `auto_start` 反应给新匹配 slot 起头。**取代了 settle-on-access**（`LiquidOps.settle` 及所有访问点的 settle 调用已删，读路径只读 slot 当前值）。
+> - **进行中状态复用既有 slot 字段** `transform_age` / `transform_settle_hour` / `ferment_ceiling`（无新增 DB 列）；进行中反应按当前成品 `output`（液体看 content、离散看 item_id）反查，不持久化 reaction id。`vessel_tag` 同时匹配宿主容器 `passive_tags`（晾晒架的 `drying`）和物品自身 tag（酿酒桶的 `brewing_vessel`）。
+> - **发酵品质上限公式**（在 crafting.lua，单一真值）：`eff = clamp(0.6 + (熟练度 - 难度)/100, 0, 1)`；`ceiling = round(clamp(原料品质 × eff, 0, 100))`。晾晒无技能 ⇒ `ceiling = 输入品质`。
+> - 起头：晾晒 `auto_start`（放进晾晒架即开始）；发酵由 `brew` 动作起头（`BrewHandlers.run_brew`，NPC + 玩家共用）。
+> - 配套：`MechanicHost.query` 已支持把 Array/Dict 参数转成 lua table（之前只能传 primitive）。
+>
+> 下文 §8.1–§8.2b 仍是更宽的设计愿景（`modify`/`delta_properties` 连续型、`duration_required`、`@inside_container_tags`），**尚未实现**；新增被动反应目前按上面的 lua 形态写。
+
 ### 8.1 active
 
 玩家或 NPC 在工作站按"执行"触发。dispatcher 主流程：

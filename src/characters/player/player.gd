@@ -139,6 +139,7 @@ func _ready() -> void:
 		var backend := get_node_or_null("/root/BackendRuntimeClient")
 		if backend != null and backend.has_method("register_player"):
 			backend.register_player(self)
+		register_world_site()  # 注册 character:<character_id> 动态 site（与静态地点同一 registry）
 		call_deferred("send_perception_manifest")
 		_enable_head_status_rpc.call_deferred()
 
@@ -202,6 +203,7 @@ func _default_sleep_needed_hours() -> float:
 func _exit_tree() -> void:
 	head_status().set_rpc_enabled(false)
 	if RunMode.is_runtime():
+		unregister_world_site()
 		var backend := get_node_or_null("/root/BackendRuntimeClient")
 		if backend != null and backend.has_method("unregister_player"):
 			backend.unregister_player(self)
@@ -588,8 +590,8 @@ func request_pickup_item(path: NodePath) -> void:
 	if node == null or not (node is GroundItem):
 		return
 	var gi: GroundItem = node
-	if global_position.distance_to(gi.global_position) > 2.5:
-		# 客户端 hover 时校验过 2.0，server 留点宽容（移动 + 同步延迟）。
+	# 拾取距离 = 该地面物品自己 SiteMarker 的可交互半径（逐对象，玩家/NPC 统一）。
+	if global_position.distance_to(gi.global_position) > SiteMarker.interaction_radius_of(gi):
 		_fail_owner("距离太远")
 		return
 	var qty := gi.quantity()
@@ -866,15 +868,15 @@ func _trade_target_display_name(target_id: String) -> String:
 	return target_id
 
 
-# 测试面板用：构造 fake action_request 直接走 player 的 move_to_location，跳过 backend AI。
+# 地图面板用：构造 action_request 直接走 player 的 move_to_location，跳过 backend AI。
 @rpc("any_peer", "call_remote", "reliable")
-func request_test_move_to(location_id: String) -> void:
+func request_move_to_site(site_id: String) -> void:
 	if not RunMode.is_runtime():
 		return
 	var action_request := {
-		"id": "test_panel_%d" % Time.get_ticks_msec(),
+		"id": "map_panel_%d" % Time.get_ticks_msec(),
 		"action": "move_to_location",
-		"target": {"locationId": location_id},
+		"target": {"locationId": site_id},
 	}
 	start_backend_action(action_request, func(_ok: bool, _err: String, _result: Dictionary) -> void: pass)
 
@@ -1190,8 +1192,11 @@ func _init_staged_items() -> void:
 		staged_items.append(InventorySlotData.empty())
 
 
+# amount<=0 = 全量（拖拽）；amount>0 = 指定量（分离面板选的份数/升数）。
+# 液体容器 → 倒 amount 升进 staging（桶留 inventory、amount 扣减、记原桶）。
+# 离散物品 → 放 amount 件进一个空 staging 槽（记原槽）。两者都记 origin_slot 供原路退回。
 @rpc("any_peer", "call_remote", "reliable")
-func request_stage_to_workstation(inv_slot: int, qty: int = 1) -> void:
+func request_stage_to_workstation(inv_slot: int, amount: int = 0) -> void:
 	if not RunMode.is_runtime():
 		return
 	if _reject_if_not_owner("request_stage_to_workstation"):
@@ -1206,38 +1211,31 @@ func request_stage_to_workstation(inv_slot: int, qty: int = 1) -> void:
 		return
 	var src: Dictionary = inventory[inv_slot]
 	var src_qty := int(src.get("quantity", 0))
-	if src_qty <= 0 or qty <= 0:
+	if src_qty <= 0:
 		return
-	# 容器自动倒料：拖一个非空 liquid_container → 倒 1 单位 content 进 staging，
-	# bucket 留在 inventory（amount -= 1）。"瓶子里的水也是水"——staging 实际看到的是
-	# water item 而非桶，所以 dispatcher 完全不用知道桶存在。
+	# 容器自动倒料：拖一个非空 liquid_container → 倒 N 升 content 进 staging。
+	# "瓶子里的水也是水"——staging 看到的是液体 item 而非桶，dispatcher 不用知道桶存在；
+	# 余量与原桶地址记在 staged 上，关面板/取出时原路倒回（见 _return_staged_slot）。
 	if _is_pourable_container(src):
-		_stage_pour_from_container(inv_slot)
+		_stage_pour(inv_slot, amount)
 		return
-	var actual := mini(qty, src_qty)
-	# 工作台每个槽表示一个独立输入，不合并等价材料。
-	var moved := 0
-	for _n in actual:
-		var target_idx := -1
-		for i in staged_items.size():
-			var st: Dictionary = staged_items[i]
-			if int(st.get("quantity", 0)) <= 0:
-				target_idx = i
-				break
-		if target_idx == -1:
-			break
-		var staged := src.duplicate(true)
-		staged["quantity"] = 1
-		staged_items[target_idx] = staged
-		moved += 1
-	if moved <= 0:
+	# 离散：把 N 件放进一个空 staging 槽（一个槽 = 一个配方输入实例）。
+	var actual := mini(amount if amount > 0 else src_qty, src_qty)
+	if actual <= 0:
+		return
+	var target_idx := _first_empty_staged_slot()
+	if target_idx == -1:
 		_fail_owner("工作台格子已满")
 		return
+	var staged := src.duplicate(true)
+	staged["quantity"] = actual
+	staged["origin_slot"] = inv_slot
+	staged_items[target_idx] = staged
 	staged_items = staged_items
-	inventory_ops().remove_item(inv_slot, moved)
+	inventory_ops().remove_item(inv_slot, actual)
 
 
-# 判定：是个有内容的液体容器（拖到工作台时倒一份内容物出来用）
+# 判定：是个有内容的液体容器（拖到工作台时倒内容物出来用）
 func _is_pourable_container(slot: Dictionary) -> bool:
 	var view := InventorySlotData.of(slot)
 	if not view.has_tag("liquid_container"):
@@ -1246,33 +1244,140 @@ func _is_pourable_container(slot: Dictionary) -> bool:
 	return container != null and not container.is_empty()
 
 
-# 倒 1 单位内容物到 staging（用 content material 合成临时 item），bucket amount -= 1
-func _stage_pour_from_container(inv_slot: int) -> void:
+func _first_empty_staged_slot() -> int:
+	for i in staged_items.size():
+		if int((staged_items[i] as Dictionary).get("quantity", 0)) <= 0:
+			return i
+	return -1
+
+
+# 倒 N 升内容物到 staging（合成 fluid_pouch，quantity=升数），桶 amount -= N。liters<=0 表示全量。
+# 扣桶写平铺列 container_amount/container_content（properties 子 dict 已废弃），倒空时清发酵态。
+# staged 记 origin_slot/pour_content 供原路倒回。
+func _stage_pour(inv_slot: int, liters: int) -> void:
 	var bucket: Dictionary = inventory[inv_slot]
-	var bucket_view := InventorySlotData.of(bucket)
-	var container := bucket_view.as_container()
+	var container := InventorySlotData.of(bucket).as_container()
 	if container == null or container.is_empty():
 		return
 	var content_id := container.content_id()
-	var poured := WorkstationActionRunner.poured_content_instance(bucket, content_id)
-	# 找空槽放 staging；工作台不堆叠等价材料。
-	var target_idx := -1
-	for i in staged_items.size():
-		var st: Dictionary = staged_items[i]
-		if int(st.get("quantity", 0)) <= 0:
-			target_idx = i
-			break
+	var avail := int(floor(container.amount()))
+	var n := avail if liters <= 0 else mini(liters, avail)
+	if n <= 0:
+		return
+	var target_idx := _first_empty_staged_slot()
 	if target_idx == -1:
 		_fail_owner("工作台格子已满")
 		return
-	poured["quantity"] = 1
+	var poured := WorkstationActionRunner.poured_content_instance(bucket, content_id)
+	poured["quantity"] = n
+	poured["origin_slot"] = inv_slot
+	poured["pour_content"] = content_id
 	staged_items[target_idx] = poured
-	# 扣 bucket amount，amount=0 时清 content（ContainerAspect 统一处理）
-	bucket["properties"] = container.with_consumed(1.0)
+	var fields := container.with_consumed(float(n))
+	bucket["container_amount"] = fields["container_amount"]
+	bucket["container_content"] = fields["container_content"]
+	if float(fields["container_amount"]) <= 0.0:
+		bucket["transform_age"] = null
+		bucket["transform_settle_hour"] = null
+		bucket["ferment_ceiling"] = null
 	inventory[inv_slot] = bucket
 	staged_items = staged_items
 	inventory = inventory
-	Db.save_inventory_slot(backend_character_id(), inv_slot, inventory[inv_slot])
+	inventory_ops().persist_slot(inv_slot)
+
+
+# staging 上的合成键（不属于背包 slot schema），退回背包前剥掉。
+func _strip_staging_keys(slot: Dictionary) -> void:
+	slot.erase("origin_slot")
+	slot.erase("pour_content")
+
+
+# 通用原路退回：把 staged 槽里的 units 个单位退回背包。被 unstage / 关面板 / craft cancel 共用。
+#  - 液体（有 pour_content）→ 倒回原桶（fill_from_source，校验原槽仍是同种或空容器、有余量）
+#  - 离散 → 原槽优先（空则放、可堆叠则堆），剩余 add_instance（其它可堆叠槽 → 空槽）
+# 返回成功退回的单位数；放不下/原桶失效 → push_error，剩余留在 staging（绝不丢、绝不乱倒）。
+func _return_staged_slot(staged_idx: int, units: int) -> int:
+	if staged_idx < 0 or staged_idx >= staged_items.size():
+		return 0
+	var staged: Dictionary = staged_items[staged_idx]
+	var have := int(staged.get("quantity", 0))
+	if have <= 0 or units <= 0:
+		return 0
+	var n := mini(units, have)
+	var moved := _return_liquid_to_origin(staged, n) if staged.has("pour_content") else _return_discrete(staged, n)
+	if moved <= 0:
+		return 0
+	var left := have - moved
+	if left <= 0:
+		staged_items[staged_idx] = InventorySlotData.empty()
+	else:
+		staged["quantity"] = left
+		staged_items[staged_idx] = staged
+	staged_items = staged_items
+	return moved
+
+
+# 液体原路倒回 origin_slot 指定的桶。严格回原桶（防止稀释别的桶）。返回倒回的升数。
+func _return_liquid_to_origin(staged: Dictionary, n: int) -> int:
+	var origin := int(staged.get("origin_slot", -1))
+	var content := str(staged.get("pour_content", ""))
+	if origin < 0 or origin >= inventory.size() or content.is_empty():
+		push_error("[staging] 液体退回缺少原桶信息，留在工作台")
+		return 0
+	var bucket: Dictionary = inventory[origin]
+	var container := InventorySlotData.of(bucket).as_container()
+	if container == null:
+		push_error("[staging] 原槽已不是液体容器，液体留在工作台")
+		return 0
+	if not container.is_empty() and container.content_id() != content:
+		push_error("[staging] 原桶装了别的液体，液体留在工作台")
+		return 0
+	var res := LiquidOps.fill_from_source(bucket, content, float(staged.get("quality", 100)), float(n))
+	if not bool(res.get("ok", false)):
+		push_error("[staging] 液体倒回原桶失败：%s" % str(res.get("message", "")))
+		return 0
+	var moved := int(round(float(res.get("moved", 0.0))))
+	if moved <= 0:
+		return 0
+	inventory[origin] = bucket
+	inventory = inventory
+	inventory_ops().persist_slot(origin)
+	return moved
+
+
+# 离散物品退回：原槽优先（空则放、可堆叠则堆到上限），剩余走 add_instance。返回退回件数。
+func _return_discrete(staged: Dictionary, n: int) -> int:
+	var origin := int(staged.get("origin_slot", -1))
+	var remaining := n
+	if origin >= 0 and origin < inventory.size():
+		var dst: Dictionary = inventory[origin]
+		var dst_view := InventorySlotData.of(dst)
+		if dst_view.is_empty():
+			var put := mini(remaining, Character.INVENTORY_STACK_MAX)
+			var inst := staged.duplicate(true)
+			_strip_staging_keys(inst)
+			inst["quantity"] = put
+			inventory[origin] = inst
+			remaining -= put
+			inventory = inventory
+			inventory_ops().persist_slot(origin)
+		elif dst_view.equals_stackable_with(InventorySlotData.of(staged)):
+			var room := Character.INVENTORY_STACK_MAX - dst_view.quantity()
+			var put := mini(remaining, room)
+			if put > 0:
+				dst["quantity"] = dst_view.quantity() + put
+				inventory[origin] = dst
+				remaining -= put
+				inventory = inventory
+				inventory_ops().persist_slot(origin)
+	if remaining > 0:
+		var inst2 := staged.duplicate(true)
+		_strip_staging_keys(inst2)
+		remaining = inventory_ops().add_instance(inst2, remaining)
+	var moved := n - remaining
+	if moved < n:
+		push_error("[staging] 背包放不下退回物品，%d 件留在工作台" % remaining)
+	return moved
 
 
 @rpc("any_peer", "call_remote", "reliable")
@@ -1289,23 +1394,63 @@ func request_unstage_from_workstation(staged_idx: int, qty: int = 1) -> void:
 		return
 	if staged_idx < 0 or staged_idx >= staged_items.size():
 		return
-	var staged: Dictionary = staged_items[staged_idx]
-	var staged_qty := int(staged.get("quantity", 0))
-	if staged_qty <= 0:
-		return
-	var actual := mini(qty, staged_qty)
-	# 加回背包（add_instance 处理 stacking）
-	var leftover := inventory_ops().add_instance(staged, actual)
-	var moved := actual - leftover
+	var moved := _return_staged_slot(staged_idx, qty if qty > 0 else 1)
 	if moved <= 0:
-		_fail_owner("背包满了")
+		_fail_owner("放不回背包")
+
+
+# 灶台液体取出到玩家选定的目标容器（分离面板路径，区别于强制原桶的 _return_staged_slot）。
+@rpc("any_peer", "call_remote", "reliable")
+func request_unstage_liquid_to_container(staged_idx: int, target_backpack_slot: int, amount: int) -> void:
+	if not RunMode.is_runtime():
 		return
-	staged["quantity"] = staged_qty - moved
-	if int(staged["quantity"]) <= 0:
+	if _reject_if_not_owner("request_unstage_liquid_to_container"):
+		return
+	if not _active_craft.is_empty():
+		_fail_owner("制造中，无法调整材料")
+		return
+	if workstation_actions().is_active():
+		_fail_owner("工作中，无法调整材料")
+		return
+	if staged_idx < 0 or staged_idx >= staged_items.size():
+		return
+	if target_backpack_slot < 0 or target_backpack_slot >= inventory.size() or amount <= 0:
+		return
+	var staged: Dictionary = staged_items[staged_idx]
+	if not staged.has("pour_content"):
+		_fail_owner("这个格子不是液体")
+		return
+	var have := int(staged.get("quantity", 0))
+	if have <= 0:
+		return
+	var content := str(staged.get("pour_content", ""))
+	var target: Dictionary = inventory[target_backpack_slot]
+	var tcont := InventorySlotData.of(target).as_container()
+	if tcont == null:
+		_fail_owner("目标不是容器")
+		return
+	if not tcont.is_empty() and tcont.content_id() != content:
+		_fail_owner("目标容器装着别的液体")
+		return
+	var n := mini(amount, have)
+	var res := LiquidOps.fill_from_source(target, content, float(staged.get("quality", 100)), float(n))
+	if not bool(res.get("ok", false)):
+		_fail_owner(str(res.get("message", "倒不进去")))
+		return
+	var moved := int(round(float(res.get("moved", 0.0))))
+	if moved <= 0:
+		_fail_owner("目标容器满了")
+		return
+	inventory[target_backpack_slot] = target
+	var left := have - moved
+	if left <= 0:
 		staged_items[staged_idx] = InventorySlotData.empty()
 	else:
+		staged["quantity"] = left
 		staged_items[staged_idx] = staged
 	staged_items = staged_items
+	inventory = inventory
+	inventory_ops().persist_slot(target_backpack_slot)
 
 
 # ==============================================================================
@@ -1320,7 +1465,7 @@ func request_container_take(container_id: String, container_slot_index: int, qty
 		return
 	if qty <= 0:
 		return
-	var node := Containers.find_container_node(container_id)
+	var node := Containers.find_container_node_near(container_id, global_position)
 	if node == null:
 		_fail_owner("找不到容器")
 		return
@@ -1351,7 +1496,7 @@ func request_container_put(container_id: String, player_slot_index: int, qty: in
 		return
 	if qty <= 0:
 		return
-	var node := Containers.find_container_node(container_id)
+	var node := Containers.find_container_node_near(container_id, global_position)
 	if node == null:
 		_fail_owner("找不到容器")
 		return
@@ -1385,7 +1530,7 @@ func request_draw_water(container_id: String, backpack_slot_index: int, amount: 
 		return
 	if amount <= 0.0:
 		return
-	var node := Containers.find_container_node(container_id)
+	var node := Containers.find_container_node_near(container_id, global_position)
 	if node == null:
 		_fail_owner("找不到水源")
 		return
@@ -1460,11 +1605,13 @@ func request_brew(container_id: String, slot_index: int, recipe_id: String) -> v
 		return
 	if _reject_if_not_owner("request_brew"):
 		return
-	var target := {
-		"barrel": _pour_endpoint(container_id, slot_index),
+	# run_brew 读 action_request.target.barrel + action_request.recipe，barrel 要包在 target 里
+	# （与 NPC brew 动作同形状），不能把 barrel 平铺在顶层，否则取不到酒桶 endpoint。
+	var action_request := {
+		"target": {"barrel": _pour_endpoint(container_id, slot_index)},
 		"recipe": recipe_id,
 	}
-	var res := BrewHandlers.run_brew(self, target)
+	var res := BrewHandlers.run_brew(self, action_request)
 	if not bool(res.get("ok", false)):
 		_fail_owner(str(res.get("message", "酿不了")))
 
@@ -1498,7 +1645,7 @@ func _recompute_view() -> void:
 	var all_slots: Array = []
 	if view_kind == "container":
 		# 货架也是 ContainerNode，统一从 Containers 查（含货架标价 listing_price_centi）。
-		var node := Containers.find_container_node(view_target_id)
+		var node := Containers.find_container_node_near(view_target_id, global_position)
 		if node != null:
 			all_slots = Containers.adapter_slots(node)
 	var total := all_slots.size()
@@ -1526,7 +1673,8 @@ func _container_access_ok(node: Node) -> bool:
 				key_label = key_id
 			_fail_owner(tr("ui.container.msg_no_key") % [nm, key_label])
 		return false
-	if global_position.distance_squared_to(node.global_position) > Containers.INTERACTION_RADIUS * Containers.INTERACTION_RADIUS:
+	var reach := SiteMarker.interaction_radius_of(node)
+	if global_position.distance_squared_to(node.global_position) > reach * reach:
 		var nm2 := String(node.effective_display_name()) if node.has_method("effective_display_name") else String(node.name)
 		_fail_owner(tr("ui.container.msg_too_far") % nm2)
 		return false
@@ -1552,24 +1700,11 @@ func request_clear_staging() -> void:
 func _return_all_staged() -> void:
 	if staged_items.is_empty():
 		return
-	var changed := false
+	# 逐槽原路退回：液体→原桶、离散→原槽优先（见 _return_staged_slot）。
 	for i in staged_items.size():
-		var s: Dictionary = staged_items[i]
-		var q := int(s.get("quantity", 0))
-		if q <= 0:
-			continue
-		var leftover := inventory_ops().add_instance(s, q)
-		var moved := q - leftover
-		if moved <= 0:
-			continue
-		s["quantity"] = q - moved
-		if int(s["quantity"]) <= 0:
-			staged_items[i] = InventorySlotData.empty()
-		else:
-			staged_items[i] = s
-		changed = true
-	if changed:
-		staged_items = staged_items
+		var q := int((staged_items[i] as Dictionary).get("quantity", 0))
+		if q > 0:
+			_return_staged_slot(i, q)
 
 
 # 应用 outcome：success 加 outputs，failure 弹消息。consume/return 按 dispatcher 索引扣。

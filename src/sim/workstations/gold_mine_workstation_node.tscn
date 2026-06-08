@@ -5,7 +5,6 @@
 [ext_resource type="PackedScene" uid="uid://uqr7wwsvky8n" path="res://third-party/polygon-fantasy-kingdom/Assets/PolygonFantasyKingdom/Prefabs/Environments/SM_Env_Rock_Chunk_01.tscn" id="3_rock"]
 [ext_resource type="PackedScene" uid="uid://dpyjs8qus6wnk" path="res://third-party/polygon-fantasy-kingdom/Assets/PolygonFantasyKingdom/Prefabs/Props/SM_Prop_Ore_Gold_01.tscn" id="4_ore"]
 [ext_resource type="PackedScene" uid="uid://c67r2qephlamu" path="res://third-party/polygon-fantasy-kingdom/Assets/PolygonFantasyKingdom/Prefabs/Items/SM_Item_Pickaxe_01.tscn" id="5_pickaxe"]
-[ext_resource type="Script" uid="uid://c87hcimotyk3h" path="res://src/sim/workstations/approach_marker.gd" id="approach_script"]
 
 [node name="GoldMineWorkstationNode" unique_id=1324509007 instance=ExtResource("1_base")]
 workstation_id = "gold_mine_workstation"
@@ -19,18 +18,17 @@ text = "金矿矿井"
 [node name="Prompt" parent="." index="3"]
 text = "按 E 采矿（需带镐）"
 
-[node name="GroundCrater" parent="." index="4" unique_id=26405442 instance=ExtResource("2_crater")]
+[node name="GroundCrater" parent="." unique_id=26405442 instance=ExtResource("2_crater")]
 transform = Transform3D(1.35, 0, 0, 0, 1.35, 0, 0, 0, 1.35, 0, -0.03, 0)
 
-[node name="RockChunk" parent="." index="5" unique_id=462802014 instance=ExtResource("3_rock")]
+[node name="RockChunk" parent="." unique_id=462802014 instance=ExtResource("3_rock")]
 transform = Transform3D(0.42, 0, 0, 0, 0.42, 0, 0, 0, 0.42, -0.28, 0.18, 0.1)
 
-[node name="GoldOre" parent="." index="6" unique_id=103190836 instance=ExtResource("4_ore")]
+[node name="GoldOre" parent="." unique_id=103190836 instance=ExtResource("4_ore")]
 transform = Transform3D(3.8, 0, 0, 0, 3.8, 0, 0, 0, 3.8, 0.38, 0.18, 0.16)
 
-[node name="Pickaxe" parent="." index="7" unique_id=1636995692 instance=ExtResource("5_pickaxe")]
+[node name="Pickaxe" parent="." unique_id=1636995692 instance=ExtResource("5_pickaxe")]
 transform = Transform3D(1.45, 0, 0, 0, 0, 1.45, 0, -1.45, 0, 0.48, 0.08, -0.48)
 
-[node name="Approach" type="Marker3D" parent="." index="8" unique_id=1499694979]
+[node name="Approach" type="Marker3D" parent="SiteMarker" unique_id=1499694979]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.9288435, 0, -2.086183)
-script = ExtResource("approach_script")

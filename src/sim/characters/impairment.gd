@@ -16,6 +16,14 @@ const SICK_MILD := 10.0
 const SICK_MODERATE := 40.0
 const SICK_SEVERE := 70.0
 
+# 负重（encumbrance）档位阈值——以"负重比例 = carry_weight / max_carry_weight"为输入。
+# **仅用于显示/prompt 的 carryTier 文案**，不参与数值惩罚（惩罚走下面的连续曲线）。
+const ENCUMBER_LADEN := 0.75
+const ENCUMBER_HEAVY := 0.90
+const ENCUMBER_OVERLOADED := 1.0
+# 体力消耗倍率斜率（可调）：mult = 1 + K×ratio。K=1 → 满载×2，超载继续往上。
+const ENCUMBER_STAMINA_K := 1.0
+
 # 醉话乱码用的符号池（说话/听不清都用同一套，与 backend say.ts 保持观感一致）。
 const GARBLE_CHARS := "%^$#@&*"
 
@@ -102,6 +110,40 @@ static func sickness_tier_label(sickness: float) -> String:
 		"moderate": return TranslationServer.translate("ui.status.impairment.sick_moderate")
 		"mild": return TranslationServer.translate("ui.status.impairment.sick_mild")
 	return ""
+
+
+# ─── 负重（encumbrance）─────────────────────────────────────
+# 输入是负重比例 ratio = carry_weight / max_carry_weight。负重不影响"干活产出"
+# （work_impair 不并入它）；代价只有两条：体力消耗加快 + 移动变慢。
+
+# 档位 key（阈值唯一定义处，仅给 HUD/prompt 文案用）。""=轻装。
+static func encumbrance_tier_key(ratio: float) -> String:
+	if ratio >= ENCUMBER_OVERLOADED:
+		return "overloaded"
+	if ratio >= ENCUMBER_HEAVY:
+		return "heavy"
+	if ratio >= ENCUMBER_LADEN:
+		return "laden"
+	return ""
+
+
+static func encumbrance_tier_label(ratio: float) -> String:
+	match encumbrance_tier_key(ratio):
+		"overloaded": return TranslationServer.translate("ui.status.impairment.encumber_overloaded")
+		"heavy": return TranslationServer.translate("ui.status.impairment.encumber_heavy")
+		"laden": return TranslationServer.translate("ui.status.impairment.encumber_laden")
+	return ""
+
+
+# 体力消耗倍率（≥1）：与负重平滑成比例，1 + K×ratio。所有体力扣点（StaminaWallet.try_spend）
+# 乘这个 —— 负重越高、同一动作越费体力（连带越饿）。
+static func encumber_stamina_mult(ratio: float) -> float:
+	return 1.0 + ENCUMBER_STAMINA_K * maxf(0.0, ratio)
+
+
+# 移动速度倍率：轻装(≤laden)不减速；过 laden 后线性下滑，夹底 0.3（超载几乎挪不动）。
+static func encumber_move_mult(ratio: float) -> float:
+	return clampf(1.0 - maxf(0.0, ratio - ENCUMBER_LADEN) * 1.6, 0.3, 1.0)
 
 
 # ─── 醉话乱码（drunk 专属）─────────────────────────────────

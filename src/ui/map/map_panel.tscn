@@ -1,8 +1,8 @@
 [gd_scene load_steps=2 format=3 uid="uid://b1nvtestpanel00"]
 
-[ext_resource type="Script" path="res://src/ui/dev/nav_test_panel.gd" id="1_navtest"]
+[ext_resource type="Script" path="res://src/ui/map/map_panel.gd" id="1_navtest"]
 
-[node name="NavTestPanel" type="VBoxContainer"]
+[node name="MapPanel" type="VBoxContainer"]
 anchors_preset = 1
 anchor_left = 1.0
 anchor_right = 1.0
@@ -16,7 +16,7 @@ script = ExtResource("1_navtest")
 [node name="ToggleButton" type="Button" parent="."]
 unique_name_in_owner = true
 layout_mode = 2
-text = "ui.nav_test.toggle"
+text = "ui.map.toggle"
 
 [node name="Body" type="PanelContainer" parent="."]
 unique_name_in_owner = true

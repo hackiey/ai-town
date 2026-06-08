@@ -29,6 +29,11 @@ export type CharacterStateView = {
   // backend 只读这个 key 渲染，不在 TS 里复制阈值。见 docs/architecture/impairment-system.md §2。
   drunkTier: string;
   sicknessTier: string;
+  // 负重（kg）：carryWeight 当前背包总重，maxCarry 上限，carryTier 派生档位 key
+  // （""/laden/heavy/overloaded，Godot 算好持久化）。backend 只读渲染，不在 TS 里复制阈值。
+  carryWeight: number;
+  maxCarry: number;
+  carryTier: string;
   sleepNeededHours: number;
   temperature: number;
   burning: boolean;
@@ -135,6 +140,45 @@ export type LocationMarkerView = {
   ownerGroup?: string;
   position: { x: number; y: number; z: number };
   isWorkstation: boolean;
+};
+
+// 统一世界锚点。由 Godot SiteRegistry 写入 sites 表，backend 只读（见 site-repo.ts）。
+// 字段形状对齐 SiteMarker.to_site_record() / docs/architecture/site-system-refactor-plan.md §3。
+export type SiteRecordView = {
+  siteId: string;
+  entityKind: "location" | "workstation" | "container" | "shelf" | "farm";
+  entityId: string;
+  defId?: string;
+  mapRegistration: "global" | "local";
+  parentSiteId?: string;
+  spaceId: string;
+  capabilities: string[];
+  position: { x: number; y: number; z: number };
+  // 多锚点：同一逻辑 site 的全部物理到达点。为空时退化为 [position]。
+  anchors: { x: number; y: number; z: number }[];
+  arrivalRadius: number;
+  visibleNearRadius: number;
+  visibleFarRadius: number;
+  directInteractionRadius: number;
+  ownerGroup?: string;
+  lockItemId?: string;
+  groupGatedCapabilities: string[];
+  zone?: string;
+  category?: string;
+  sortOrder: number;
+  nameKey?: string;
+  descriptionKey?: string;
+};
+
+// 室内 / 室外空间。第一版可只在 Godot 内存维护、manifest 输出已过滤结果；
+// 若落 spaces 表则 backend 也只读。
+export type SpaceRecordView = {
+  spaceId: string;
+  environment: "outdoor" | "indoor";
+  blocksVisionToOtherSpaces: boolean;
+  blocksSpeechToOtherSpaces: boolean;
+  defaultVisibleNearRadius?: number;
+  defaultVisibleFarRadius?: number;
 };
 
 export type FarmPlotView = {

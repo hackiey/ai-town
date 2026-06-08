@@ -55,6 +55,12 @@ var burning: bool = false
 @export var max_hunger: float = 100.0
 @export var max_rest: float = 100.0
 @export var sleep_needed_hours: float = 0.0
+# 负重上限（kg）。背包总重超过此值不能再放入（add_instance 硬闸门）；超重还会按比例增加
+# 体力消耗、压低移动速度（见 src/sim/characters/impairment.gd encumbrance 层）。
+# 后续可在 npcs.json override。
+@export var max_carry_weight: float = 50.0
+# 当前背包总重（kg）。派生运行时值，单一写者 = CharacterInventory._recompute_carry()。
+var carry_weight: float = 0.0
 var hp: float
 var stamina: float
 var hunger: float
@@ -176,6 +182,11 @@ func inventory_ops() -> CharacterInventory:
 	if _inventory_runner == null:
 		_inventory_runner = _CHARACTER_INVENTORY.new(self)
 	return _inventory_runner
+
+
+# 负重比例 = 当前背包总重 / 上限。0 = 空手；1.0 = 满载；>1 = 超载（闸门拦获取，但打水等可顶过）。
+func carry_ratio() -> float:
+	return carry_weight / maxf(max_carry_weight, 0.001)
 
 
 func workstation_actions() -> WorkstationActionRunner:
@@ -541,6 +552,42 @@ func first_inventory_slot_for_item(item_id: String) -> int:
 
 func backend_character_id() -> String:
 	return ""
+
+
+# ── 动态 site 注册（人物）──────────────────────────────────────────────
+# 人物在 runtime spawn，自己把 SiteMarker 子组件注册进 TownWorld，成为与静态地点同一套
+# registry 里的动态 site（character:<id>）——move / nearest / resolve 全走同一条路。
+# server-only（client 端是 puppet，不跑 AI / nav 解析）。NPC/Player 在各自 runtime _ready
+# 调 register、_exit_tree 调 unregister。
+func register_world_site() -> void:
+	if not RunMode.is_runtime():
+		return
+	var cid := backend_character_id()
+	if cid.is_empty():
+		return
+	var marker := get_node_or_null("SiteMarker") as SiteMarker
+	if marker == null:
+		push_error("[Character %s] 缺 SiteMarker 子节点，无法注册动态 site" % cid)
+		return
+	var world := get_tree().get_first_node_in_group("town_world") as TownWorld
+	if world == null:
+		return
+	world.register_dynamic_site(TownWorld.character_site_id(cid), marker)
+
+
+func unregister_world_site() -> void:
+	if not RunMode.is_runtime():
+		return
+	var cid := backend_character_id()
+	if cid.is_empty():
+		return
+	var marker := get_node_or_null("SiteMarker") as SiteMarker
+	if marker == null:
+		return
+	var world := get_tree().get_first_node_in_group("town_world") as TownWorld
+	if world == null:
+		return
+	world.unregister_dynamic_site(TownWorld.character_site_id(cid), marker)
 
 
 # 角色身份 snapshot —— 给 prompt / UI 用。NPC override 加配置文件里的字段（name/age 等）。

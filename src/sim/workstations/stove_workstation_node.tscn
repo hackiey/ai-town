@@ -2,7 +2,6 @@
 
 [ext_resource type="PackedScene" uid="uid://b7r4hwk5xpvld" path="res://src/sim/workstations/workstation_node.tscn" id="1_base"]
 [ext_resource type="PackedScene" uid="uid://iw755pudydp1" path="res://third-party/polygon-fantasy-kingdom/Assets/PolygonFantasyKingdom/Prefabs/Props/Furniture/SM_Prop_Stove_02.tscn" id="2_stove"]
-[ext_resource type="Script" uid="uid://c87hcimotyk3h" path="res://src/sim/workstations/approach_marker.gd" id="approach_script"]
 
 [node name="StoveWorkstationNode" unique_id=426652032 instance=ExtResource("1_base")]
 workstation_id = "stove"
@@ -18,8 +17,7 @@ text = "灶台"
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.1, 0)
 text = "按 E 烹饪"
 
-[node name="SM_Prop_Stove_02" parent="." index="4" unique_id=188236190 instance=ExtResource("2_stove")]
+[node name="SM_Prop_Stove_02" parent="." unique_id=188236190 instance=ExtResource("2_stove")]
 
-[node name="Approach" type="Marker3D" parent="." index="5" unique_id=852716911]
+[node name="Approach" type="Marker3D" parent="SiteMarker" unique_id=852716911]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.06984115, 0, 1.0194463)
-script = ExtResource("approach_script")

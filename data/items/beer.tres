@@ -5,6 +5,7 @@
 [resource]
 script = ExtResource("1_item")
 id = "beer"
+weight = 1.0
 kind = "drink"
 use_duration_seconds = 30.0
 shape_type = "tankard"

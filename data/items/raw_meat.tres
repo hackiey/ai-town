@@ -5,6 +5,7 @@
 [resource]
 script = ExtResource("1_item")
 id = "raw_meat"
+weight = 0.5
 kind = "material"
 stackable = true
 max_stack = 99

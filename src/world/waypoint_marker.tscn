@@ -1,6 +1,6 @@
 [gd_scene format=3 uid="uid://b2e17e6a22eba"]
 
-[ext_resource type="Script" path="res://src/world/location_marker.gd" id="1_locm"]
+[ext_resource type="Script" uid="uid://mhnkxhoheim8" path="res://src/world/site_marker.gd" id="1_locm"]
 
 [sub_resource type="SphereMesh" id="SphereMesh_wp"]
 radius = 0.35
@@ -17,7 +17,7 @@ emission_energy_multiplier = 0.6
 
 [node name="WaypointMarker" type="Marker3D"]
 script = ExtResource("1_locm")
-hide_at_runtime = true
+nav_only = true
 
 [node name="EditorVisual" type="MeshInstance3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.6, 0)

@@ -1,7 +1,8 @@
-[gd_scene load_steps=7 format=3]
+[gd_scene load_steps=8 format=3]
 
 [ext_resource type="PackedScene" uid="uid://celevj4es5c3m" path="res://third-party/polygon-fantasy-kingdom/Assets/PolygonFantasyKingdom/Models/FantasyKingdom_Characters.fbx" id="1_fbx"]
 [ext_resource type="Script" path="res://src/characters/npcs/npc.gd" id="2_script"]
+[ext_resource type="Script" uid="uid://mhnkxhoheim8" path="res://src/world/site_marker.gd" id="site_marker_script"]
 [ext_resource type="Animation" path="res://assets/animations/idle.res" id="3_idle"]
 [ext_resource type="Animation" path="res://assets/animations/walking.res" id="4_walk"]
 
@@ -90,3 +91,11 @@ autoplay = "Idle"
 
 [node name="MultiplayerSynchronizer" type="MultiplayerSynchronizer" parent="."]
 replication_config = SubResource("SceneReplicationConfig_npc")
+
+[node name="SiteMarker" type="Marker3D" parent="."]
+script = ExtResource("site_marker_script")
+entity_kind = "character"
+visible_near_radius = 3.0
+visible_far_radius = 50.0
+direct_interaction_radius = 3.0
+arrival_radius = 1.0

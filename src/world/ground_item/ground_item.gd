@@ -45,6 +45,44 @@ func _ready() -> void:
 	for g in ITEM_GROUPS:
 		add_to_group(g)
 	_refresh_quantity_label()
+	_register_world_site()
+
+
+func _exit_tree() -> void:
+	_unregister_world_site()
+
+
+# 动态 site 注册（地面物品）：把 SiteMarker 子组件注册进 TownWorld，成为与静态地点同一套
+# registry 里的动态 site（ground_item:<模板 item_id>，同模板多锚点，move 取最近）。server-only：
+# GroundItem 经 MultiplayerSpawner 在 server+client 两端实例化，但 AI / nav 解析只在 server。
+func _register_world_site() -> void:
+	if not RunMode.is_runtime():
+		return
+	if item_id.is_empty():
+		push_error("[GroundItem %s] item_id 为空，无法注册动态 site" % db_id)
+		return
+	var marker := get_node_or_null("SiteMarker") as SiteMarker
+	if marker == null:
+		push_error("[GroundItem %s] 缺 SiteMarker 子节点，无法注册动态 site" % db_id)
+		return
+	var world := get_tree().get_first_node_in_group("town_world") as TownWorld
+	if world == null:
+		return
+	world.register_dynamic_site(TownWorld.ground_item_site_id(item_id), marker)
+
+
+func _unregister_world_site() -> void:
+	if not RunMode.is_runtime():
+		return
+	if item_id.is_empty():
+		return
+	var marker := get_node_or_null("SiteMarker") as SiteMarker
+	if marker == null:
+		return
+	var world := get_tree().get_first_node_in_group("town_world") as TownWorld
+	if world == null:
+		return
+	world.unregister_dynamic_site(TownWorld.ground_item_site_id(item_id), marker)
 
 
 # Spawner / hydrate 调。slot 会被深拷贝，原 dict 不动。label 由 _ready 统一刷（入树后
