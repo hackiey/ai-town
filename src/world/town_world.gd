@@ -20,9 +20,9 @@ var _parent_location_by_id: Dictionary = {}
 var _child_locations_by_id: Dictionary = {}
 var _top_level_location_ids: PackedStringArray = PackedStringArray()
 var _logical_ids: PackedStringArray = PackedStringArray()
-# 城镇地图（玩家 MapPanel）专用：仅 SiteMarker.map_registration=="global" 的 site。
+# 城镇地图（玩家 MapPanel）专用：仅 WorldObjectIdentity.map_registration=="global" 的 object。
 # 是 _logical_ids（NPC move 全集）的真子集——工作台/容器/货架/田块都是 local，不进城镇地图。
-# 注册时按 marker.map_registration 收集（见 _register_* 各处）。
+# 注册时按 identity.map_registration 收集（见 _register_* 各处）。
 var _global_map_site_ids: PackedStringArray = PackedStringArray()
 # nav-only waypoint id 集；锚点本身仍写入 _anchors_by_id。LocationGraph 会同时使用
 # 这些 waypoint 和 _logical_ids；backend context 仍只暴露 logical location。
@@ -32,12 +32,13 @@ var _nav_only_ids: PackedStringArray = PackedStringArray()
 # 「动态静态一套逻辑」就靠这个。不进 _logical_ids：动态 site 不 seed 进 sites 表、不参与
 # 地点感知与 move_to_location enum（人物/物品的感知与可交互由 CharacterPerception 实时另算）。
 var _dynamic_site_ids: Dictionary = {}
+var _object_def_by_id: Dictionary = {}
 # 公用工作台 location id -> display_name（中文别名），给 location_alias() 反查用。
 var _workstation_aliases: Dictionary = {}
 # location id -> true。只要某个 logical location 挂了 WorkstationNode anchor，就按工作台语义
 # 处理（例如 well 既有普通地点 marker，又有工作台交互点）。
 var _workstation_location_ids: Dictionary = {}
-# location id -> 归属 group（"" = public）。注册时 SiteMarker.owner_group 经过继承解析。
+# location id -> 归属 group（"" = public）。注册时 WorldObjectIdentity.owner_group 经过继承解析。
 # 仅供 access 校验使用；visibility 由 perceived_position_names_for 按距离决定，不查此表。
 var _owner_group_by_id: Dictionary = {}
 # site id -> {"kind": String, "node": Node}。kind ∈ location/workstation/container/shelf/farm。
@@ -120,7 +121,7 @@ func _seed_workstation_states_to_db() -> void:
 				node_id, seen_ids[node_id], ws.get_path(),
 			])
 		seen_ids[node_id] = ws.get_path()
-		var def_id := String(ws.workstation_id)
+		var def_id := ws.world_object_def_id()
 		var location_id := node_id
 		# posX = SiteMarker 组件自身位置（= 本体原点 = 可交互基准）；NPC 寻路点在 sites.anchorsJson 单列。
 		var pos := ws.get_site_marker().global_position
@@ -136,7 +137,7 @@ func _seed_workstation_states_to_db() -> void:
 		Db.save_workstation_state(node_id, {
 			"workstationDefId": def_id,
 			"locationId": location_id,
-			"ownerGroup": String(ws.owner_group),
+			"ownerGroup": _resolve_workstation_owner_group(ws),
 			"posX": pos.x,
 			"posY": pos.y,
 			"posZ": pos.z,
@@ -167,7 +168,7 @@ func _seed_container_states_to_db() -> void:
 			continue
 		var pos := c.global_position
 		Db.save_container_state(cid, {
-			"lockItemId": String(c.lock_item_id),
+			"lockItemId": c.world_object_lock_item_id(),
 			"ownerGroup": _resolve_workstation_owner_group(c),
 			"slotCount": c.slot_count,
 			"interactionRadius": SiteMarker.interaction_radius_of(c),
@@ -194,7 +195,7 @@ func _seed_shelf_states_to_db() -> void:
 			continue
 		var pos := s.get_site_marker().global_position
 		Db.save_shelf_state(sid, {
-			"ownerGroup": String(s.owner_group),
+			"ownerGroup": _resolve_workstation_owner_group(s),
 			"locationId": s.effective_location_id(),
 			"slotCount": s.slot_count,
 			"interactionRadius": SiteMarker.interaction_radius_of(s),
@@ -382,7 +383,11 @@ func _seed_sites_to_db() -> void:
 		if id.is_empty():
 			continue
 		var meta: Dictionary = _site_meta_by_id.get(id, {})
-		var kind := String(meta.get("kind", "location"))
+		var identity := meta.get("identity", null) as WorldObjectIdentity
+		if identity == null:
+			push_error("[TownWorld] site '%s' 缺 WorldObjectIdentity，无法播种" % id)
+			continue
+		var kind := identity.effective_kind()
 		var node: Node = meta.get("node", null)
 		var marker := _site_marker_for(node)
 		if marker == null:
@@ -393,15 +398,15 @@ func _seed_sites_to_db() -> void:
 		var main_pos: Vector3 = site_self_position(id)
 		Db.save_site(id, {
 			"entityKind": kind,
-			"entityId": _site_entity_id(id, kind, node),
-			"defId": _site_def_id(kind, node),
-			"mapRegistration": _resolve_map_registration(marker, id),
-			# parentSiteId 显式写在每个子 site 的 SiteMarker.parent_site_id 上（不再从场景树/ownerGroup 推），
+			"entityId": _site_entity_id(id, kind, node, identity),
+			"defId": identity.effective_def_id(),
+			"mapRegistration": _resolve_map_registration(identity, id),
+			# parentSiteId 由 WorldObjectIdentity.parent_object_id 提供。
 			# 方便 debug；顶层与公共设施留空。
-			"parentSiteId": marker.parent_site_id,
+			"parentSiteId": identity.parent_object_id,
 			# space = 包含本 site 位置的「室内地点体积」，无则 town_outdoor（见 SpaceVolume）。
 			"spaceId": space_id_at(main_pos),
-			"capabilities": _site_capabilities(kind, node),
+			"capabilities": _site_capabilities(identity, kind, node),
 			"anchors": anchor_positions,
 			"posX": main_pos.x,
 			"posY": main_pos.y,
@@ -411,12 +416,12 @@ func _seed_sites_to_db() -> void:
 			"visibleFarRadius": marker.eff_visible_far_radius(),
 			"directInteractionRadius": marker.eff_direct_interaction_radius(),
 			"ownerGroup": owner_group_for(id),
-			"lockItemId": _site_lock_item(kind, node),
-			"groupGatedCapabilities": (["farm"] if kind == "farm" else []),
-			"zone": marker.zone,
-			"category": marker.category,
-			"sortOrder": marker.sort_order,
-			# 名字/描述不落 SiteMarker 字段：backend 永远按 site_id 查 locations.<id>.alias/description。
+			"lockItemId": identity.lock_item_id,
+			"groupGatedCapabilities": Array(identity.effective_group_gated_capabilities()),
+			"zone": identity.zone,
+			"category": identity.category,
+			"sortOrder": identity.sort_order,
+# 名字/描述不落 SiteMarker 字段：backend 永远按 object_id 查 locations.<id>.alias/description。
 			"nameKey": "",
 			"descriptionKey": "",
 		})
@@ -432,30 +437,36 @@ func _site_marker_for(node: Node) -> SiteMarker:
 	return null
 
 
-# map_registration 完全由 SiteMarker 显式声明（无 auto 推导）：base 预制件已设 global/local。
-func _resolve_map_registration(marker: SiteMarker, id: String) -> String:
-	var raw := String(marker.map_registration)
+# map_registration 完全由 WorldObjectIdentity 显式声明（无 auto 推导）。
+func _resolve_map_registration(identity: WorldObjectIdentity, id: String) -> String:
+	var raw := String(identity.map_registration)
 	if raw == "global" or raw == "local":
 		return raw
 	push_error("[TownWorld] site '%s' map_registration='%s' 非法（只能 global/local）" % [id, raw])
 	return "local"
 
 
-# 注册一个新 site 时收集进城镇地图集（仅 global）。marker 为空（老式非 SiteMarker 锚点）= 不进。
-func _track_global_map_site(marker: SiteMarker, id: String) -> void:
-	if marker != null and _resolve_map_registration(marker, id) == "global":
+# 注册一个新 site 时收集进城镇地图集（仅 global）。
+func _track_global_map_site(identity: WorldObjectIdentity, id: String) -> void:
+	if identity != null and _resolve_map_registration(identity, id) == "global":
 		_global_map_site_ids.append(id)
 
 
-func _site_capabilities(kind: String, node: Node) -> Array:
+func _site_capabilities(identity: WorldObjectIdentity, kind: String, node: Node) -> Array:
+	var caps := identity.effective_capabilities()
+	if not caps.is_empty():
+		var out := Array(caps)
+		if kind == "container" and node != null and not String(node.get("infinite_content")).is_empty() and not out.has("water_source"):
+			out.append("water_source")
+		return out
 	match kind:
 		"workstation":
 			return ["move", "craft"]
 		"container":
-			var caps := ["move", "container"]
+			var container_caps := ["move", "container"]
 			if node != null and not String(node.get("infinite_content")).is_empty():
-				caps.append("water_source")
-			return caps
+				container_caps.append("water_source")
+			return container_caps
 		"shelf":
 			return ["move", "container", "shop"]
 		"farm":
@@ -464,7 +475,7 @@ func _site_capabilities(kind: String, node: Node) -> Array:
 			return ["move"]
 
 
-func _site_entity_id(id: String, kind: String, node: Node) -> String:
+func _site_entity_id(id: String, kind: String, node: Node, identity: WorldObjectIdentity) -> String:
 	if node == null:
 		return id
 	match kind:
@@ -475,19 +486,7 @@ func _site_entity_id(id: String, kind: String, node: Node) -> String:
 		"farm":
 			return String(node.call("effective_farm_id")) if node.has_method("effective_farm_id") else id
 		_:
-			return id
-
-
-func _site_def_id(kind: String, node: Node) -> String:
-	if node != null and (kind == "workstation" or kind == "container" or kind == "shelf"):
-		return String(node.get("workstation_id"))
-	return ""
-
-
-func _site_lock_item(kind: String, node: Node) -> String:
-	if node != null and (kind == "workstation" or kind == "container" or kind == "shelf"):
-		return String(node.get("lock_item_id"))
-	return ""
+			return identity.effective_object_id()
 
 
 # 收集场景里所有 SpaceVolume，缓存供 boot seeding + 每帧感知用。
@@ -639,6 +638,7 @@ func _rebuild_anchor_index() -> void:
 	_workstation_location_ids.clear()
 	_owner_group_by_id.clear()
 	_site_meta_by_id.clear()
+	_object_def_by_id.clear()
 	if positions_root != null:
 		for child in positions_root.get_children():
 			if not (child is Marker3D):
@@ -667,6 +667,9 @@ func _register_workstations() -> void:
 		var ws := n as WorkstationNode
 		if ws == null:
 			continue
+		var identity := _identity_for_node(ws, "workstation")
+		if identity == null:
+			continue
 		var site_marker := ws.get_site_marker() as SiteMarker
 		var resolved_group := _resolve_workstation_owner_group(ws)
 		# 逻辑 id 同源走 workstation_logical_id：有主工作台按 owner 拆成独立逻辑地点
@@ -688,43 +691,29 @@ func _register_workstations() -> void:
 			continue
 		_anchors_by_id[id] = [approach_node]
 		_workstation_location_ids[id] = true
-		var parent_id := _explicit_parent_id(site_marker)
+		var parent_id := identity.parent_object_id.strip_edges()
 		_parent_location_by_id[id] = parent_id
 		_child_locations_by_id[id] = []
 		_logical_ids.append(id)
 		_top_level_location_ids.append(id)
 		if not parent_id.is_empty():
 			_append_child_location(parent_id, id)
-		_track_global_map_site(site_marker, id)
+		_track_global_map_site(identity, id)
 		_owner_group_by_id[id] = resolved_group
-		# kind：容器 / 货架是 WorkstationNode 子类，分别归 container / shelf；其余 workstation。
-		var ws_kind := "workstation"
-		if ws is ShelfNode:
-			ws_kind = "shelf"
-		elif ws is ContainerNode:
-			ws_kind = "container"
-		_site_meta_by_id[id] = {"kind": ws_kind, "node": ws}
+		_site_meta_by_id[id] = {"kind": identity.effective_kind(), "node": ws, "identity": identity}
+		_object_def_by_id[id] = identity.effective_def_id()
 		# owned 工作台（id 形如 "anvil@blacksmith_shop"）不存 _workstation_aliases，显示名走
 		# 烘焙进 catalog 的 location.<id>.alias；公共工作台（水井）仍存通用别名供反查。
 		if resolved_group.is_empty() and not ws.display_name.is_empty():
 			_workstation_aliases[id] = ws.display_name
 
 
-# 工作台的逻辑 id —— anchor 注册 / workstation_states seed / perception manifest / busy
-# 占用镜像四处共用同一函数。id 不再运行时拼装，而是 town.tscn 实例的 SiteMarker.site_id
-# 显式填好（多锚点共享同 id，如 6 口井都填 "well"；现存值仍是 "<def>@<group>" 形态，
-# backend locationName 见 "@" 拆 def+group 算显示名）。未填 = fail-loud（绝不退 node.name：
-# 实例化默认沿用场景根名，跨铺子必重名）。owner_group/access 仍由 _resolve_workstation_owner_group
-# 单独解析，与 id 无关。
+# 工作台对象 id —— anchor 注册 / workstation_states seed / perception manifest / busy
+# 占用镜像四处共用同一函数。唯一来源是 WorldObjectIdentity.object_id。
 func workstation_logical_id(ws: WorkstationNode) -> String:
 	if ws == null:
 		return ""
-	var marker := ws.get_site_marker() as SiteMarker
-	var sid := "" if marker == null else marker.site_id.strip_edges()
-	if sid.is_empty():
-		push_error("[TownWorld] 工作台 %s 的 SiteMarker.site_id 未填——请在 town.tscn 实例上显式填 site_id（不再自动拼 def@group）" % [ws.get_path()])
-		return ""
-	return sid
+	return ws.world_object_id()
 
 
 # WorkstationNode.owner_group 解析（语义对齐 LocationMarker）：
@@ -733,17 +722,12 @@ func workstation_logical_id(ws: WorkstationNode) -> String:
 #   其他字符串 → 该 group 名
 # 依赖 _register_location_tree 已跑完（_owner_group_by_id 对所有 LocationMarker 已填）。
 func _resolve_workstation_owner_group(ws: WorkstationNode) -> String:
-	var literal := String(ws.owner_group)
+	var identity := WorldObjectIdentity.for_node(ws)
+	var literal := identity.owner_group.strip_edges() if identity != null else ""
 	if literal == "public":
 		return ""
 	if not literal.is_empty():
 		return literal
-	var ancestor := ws.get_parent()
-	while ancestor != null:
-		if ancestor is SiteMarker:
-			var ancestor_id := (ancestor as SiteMarker).effective_id()
-			return str(_owner_group_by_id.get(ancestor_id, ""))
-		ancestor = ancestor.get_parent()
 	return ""
 
 
@@ -759,6 +743,9 @@ func _register_farms() -> void:
 		var farm := n as FarmGroup
 		if farm == null:
 			continue
+		var identity := _identity_for_node(farm, "farm")
+		if identity == null:
+			continue
 		var id := farm.effective_location_id()
 		if id.is_empty():
 			continue
@@ -772,16 +759,17 @@ func _register_farms() -> void:
 			(_anchors_by_id[id] as Array).append(approach_node)
 			continue
 		_anchors_by_id[id] = [approach_node]
-		var parent_id := _explicit_parent_id(site_marker)
+		var parent_id := identity.parent_object_id.strip_edges()
 		_parent_location_by_id[id] = parent_id
 		_child_locations_by_id[id] = []
 		_logical_ids.append(id)
 		_top_level_location_ids.append(id)
 		if not parent_id.is_empty():
 			_append_child_location(parent_id, id)
-		_track_global_map_site(site_marker, id)
+		_track_global_map_site(identity, id)
 		_owner_group_by_id[id] = resolved_group
-		_site_meta_by_id[id] = {"kind": "farm", "node": farm}
+		_site_meta_by_id[id] = {"kind": identity.effective_kind(), "node": farm, "identity": identity}
+		_object_def_by_id[id] = identity.effective_def_id()
 
 
 # FarmGroup.owner_group_literal 解析。语义：
@@ -790,19 +778,20 @@ func _register_farms() -> void:
 # Dev 阶段：literal 空必须 push_error —— 不再静默回 public 或继承 LocationMarker，
 # 那种 fallback 容易让设计师漏填后表现成"全员可访问"，bug 难定位。
 func _resolve_farm_owner_group(farm: FarmGroup) -> String:
-	var literal := String(farm.owner_group_literal).strip_edges()
+	var identity := WorldObjectIdentity.for_node(farm)
+	var literal := identity.owner_group.strip_edges() if identity != null else ""
 	if literal == "public":
 		return ""
 	if not literal.is_empty():
 		return literal
-	push_error("[TownWorld] FarmGroup '%s' owner_group_literal 未填；请在 town.tscn 里写 'public' 或 group id（如 'millward_mill'）" % farm.effective_farm_id())
+	push_error("[TownWorld] FarmGroup '%s' WorldObjectIdentity.owner_group 未填；请在 town.tscn 里写 'public' 或 group id（如 'millward_mill'）" % farm.effective_farm_id())
 	return ""
 
 
 # nav-only 图节点（waypoint）注册：扁平进 _anchors_by_id + _nav_only_ids，不建父子、不进
 # backend/zone。判据是 SiteMarker.nav_only（语义自带），与节点摆在哪个容器无关。
 func _register_nav_only(marker: SiteMarker) -> void:
-	var id := _effective_id(marker)
+	var id := String(marker.name)
 	if _anchors_by_id.has(id):
 		# 同 id 重复注册，追加 anchor。但避免重复进 _nav_only_ids。
 		(_anchors_by_id[id] as Array).append(marker)
@@ -828,13 +817,13 @@ func _register_location_tree(marker: Marker3D, parent_id: String, parent_group: 
 	if nav_marker != null and nav_marker.nav_only:
 		_register_nav_only(nav_marker)
 		return
-	# 优先用 LocationMarker.location_id（同 id 多 marker = 多 anchor，比如 market_square 东西入口）；
-	# 没设就退到 node name。recurse 时仍用 effective id 当父，让 alias marker 下面的子节点
-	# 父挂在 logical location 而不是 alias 节点。
-	var id := _effective_id(marker)
-	var explicit_parent_id := _explicit_parent_id(nav_marker)
+	var identity := _identity_for_node(marker, "location")
+	if identity == null:
+		return
+	var id := identity.effective_object_id()
+	var explicit_parent_id := identity.parent_object_id.strip_edges()
 	var effective_parent_id := explicit_parent_id if not explicit_parent_id.is_empty() else parent_id
-	var effective_group := _resolve_owner_group(marker, parent_group)
+	var effective_group := _resolve_owner_group(identity, parent_group)
 	var recurse_parent := id
 	if _anchors_by_id.has(id):
 		# 已注册：仅追加 anchor，不再建独立 location（owner_group 以首次注册为准）
@@ -845,8 +834,9 @@ func _register_location_tree(marker: Marker3D, parent_id: String, parent_group: 
 		_child_locations_by_id[id] = []
 		_logical_ids.append(id)
 		_owner_group_by_id[id] = effective_group
-		_site_meta_by_id[id] = {"kind": "location", "node": marker}
-		_track_global_map_site(marker as SiteMarker, id)
+		_site_meta_by_id[id] = {"kind": identity.effective_kind(), "node": marker, "identity": identity}
+		_object_def_by_id[id] = identity.effective_def_id()
+		_track_global_map_site(identity, id)
 		if effective_parent_id.is_empty():
 			_top_level_location_ids.append(id)
 		else:
@@ -861,19 +851,13 @@ func _register_location_tree(marker: Marker3D, parent_id: String, parent_group: 
 #   "public"  → 显式公用，覆盖继承
 #   其他       → 字面 group 名
 # 非 LocationMarker 的普通 Marker3D 没有 owner_group，按"继承父"处理。
-func _resolve_owner_group(marker: Marker3D, parent_group: String) -> String:
-	var literal := ""
-	if marker is SiteMarker:
-		literal = (marker as SiteMarker).owner_group
+func _resolve_owner_group(identity: WorldObjectIdentity, parent_group: String) -> String:
+	var literal := identity.owner_group.strip_edges() if identity != null else ""
 	if literal == "public":
 		return ""
 	if literal.is_empty():
 		return parent_group
 	return literal
-
-
-func _explicit_parent_id(marker: SiteMarker) -> String:
-	return marker.parent_site_id.strip_edges() if marker != null else ""
 
 
 func _append_child_location(parent_id: String, child_id: String) -> void:
@@ -883,10 +867,14 @@ func _append_child_location(parent_id: String, child_id: String) -> void:
 	_child_locations_by_id[parent_id] = siblings
 
 
-func _effective_id(marker: Marker3D) -> String:
-	if marker is SiteMarker:
-		return (marker as SiteMarker).effective_id()
-	return String(marker.name)
+func _identity_for_node(node: Node, context: String) -> WorldObjectIdentity:
+	var identity := WorldObjectIdentity.for_node(node)
+	if identity == null:
+		push_error("[TownWorld] %s '%s' 缺 WorldObjectIdentity" % [context, node.get_path()])
+		return null
+	if not identity.validate_identity(str(node.get_path())):
+		return null
+	return identity
 
 
 func region_at_world(p: Vector3) -> MapRegion:
@@ -1201,21 +1189,21 @@ func get_nearest_position_world(position_name: String, from: Vector3) -> Vector3
 	return m.approach_position()
 
 
-# ── 动态 site（运行时人物 / 地面物品）────────────────────────────────
-# 静态 site 在 boot 时由 _rebuild_anchor_index 扫场景注册；人物和地面物品在 runtime spawn，
+# ── 动态 object（运行时人物 / 地面物品）────────────────────────────────
+# 静态 object 在 boot 时由 _rebuild_anchor_index 扫场景注册；人物和地面物品在 runtime spawn，
 # 自己调 register_dynamic_site 把 SiteMarker 注册成 anchor、_exit_tree 时 unregister。
 # 注册进同一个 _anchors_by_id —— move 解析、最近锚点、has_position 与静态地点完全同一套逻辑，
-# 这就是 godot 给动态实体「动态生成 site_id」的落点。id 约定单一来源见下两个静态方法。
+# 这就是 godot 给动态实体「动态生成 object_id」的落点。id 约定单一来源见下两个静态方法。
 
 # 人物动态 site id：character:<character_id>（1:1，单锚点）。
 static func character_site_id(character_id: String) -> String:
 	return "character:" + character_id
 
 
-# 地面物品动态 site id：ground_item:<模板 item_id>。同模板的多个地面物品共享同一 site，
-# 形成多锚点，move 取最近——与 6 口井共享 "well" 完全同构（move wire 本就按模板 itemId 找最近）。
-static func ground_item_site_id(item_id: String) -> String:
-	return "ground_item:" + item_id
+# 地面物品动态 object id：ground_item:<item_instances.id>。模板 item_id 是 def_id，
+# 需要按模板找最近物品时用 nearest_dynamic_object_id_for_def。
+static func ground_item_site_id(instance_id: String) -> String:
+	return "ground_item:" + instance_id
 
 
 # 运行时把一个动态实体的 SiteMarker 注册成 site anchor。marker 是实体场景里的 SiteMarker
@@ -1224,6 +1212,10 @@ func register_dynamic_site(site_id: String, marker: SiteMarker) -> void:
 	if site_id.is_empty() or marker == null:
 		push_error("[TownWorld] register_dynamic_site 参数非法：id='%s' marker=%s" % [site_id, marker])
 		return
+	var identity := WorldObjectIdentity.for_node(marker)
+	if identity == null or identity.effective_object_id() != site_id:
+		push_error("[TownWorld] dynamic object '%s' 缺匹配的 WorldObjectIdentity" % site_id)
+		return
 	if _anchors_by_id.has(site_id):
 		var arr: Array = _anchors_by_id[site_id]
 		if not arr.has(marker):
@@ -1231,6 +1223,7 @@ func register_dynamic_site(site_id: String, marker: SiteMarker) -> void:
 	else:
 		_anchors_by_id[site_id] = [marker]
 	_dynamic_site_ids[site_id] = true
+	_object_def_by_id[site_id] = identity.effective_def_id()
 
 
 # 反注册：从锚点数组移除该 marker，数组空了删整条 + 出 _dynamic_site_ids。
@@ -1242,6 +1235,9 @@ func unregister_dynamic_site(site_id: String, marker: SiteMarker) -> void:
 	if arr.is_empty():
 		_anchors_by_id.erase(site_id)
 		_dynamic_site_ids.erase(site_id)
+		_object_def_by_id.erase(site_id)
+	else:
+		_anchors_by_id[site_id] = arr
 
 
 func is_dynamic_site(site_id: String) -> bool:
@@ -1264,6 +1260,26 @@ func nearest_anchor_marker(site_id: String, from: Vector3) -> SiteMarker:
 			best_d = d
 			best = m
 	return best
+
+
+func nearest_dynamic_object_id_for_def(def_id: String, from: Vector3) -> String:
+	var wanted := def_id.strip_edges()
+	if wanted.is_empty():
+		return ""
+	var best_id := ""
+	var best_d := INF
+	for id_v in _dynamic_site_ids.keys():
+		var id := str(id_v)
+		if str(_object_def_by_id.get(id, "")) != wanted:
+			continue
+		var marker := nearest_anchor_marker(id, from)
+		if marker == null:
+			continue
+		var d := from.distance_squared_to(marker.global_position)
+		if d < best_d:
+			best_d = d
+			best_id = id
+	return best_id
 
 
 # 该 logical id 下所有锚点的寻路到达点。LocationGraph bake 用——多 anchor 的地点

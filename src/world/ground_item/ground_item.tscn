@@ -34,7 +34,6 @@ modulate = Color(1, 1, 0.9, 1)
 
 [node name="SiteMarker" type="Marker3D" parent="."]
 script = ExtResource("site_marker_script")
-entity_kind = "item"
 visible_near_radius = 3.0
 visible_far_radius = 10.0
 direct_interaction_radius = 3.0

@@ -7,10 +7,11 @@
 [node name="FermentingBarrelNode" unique_id=537311950 instance=ExtResource("1_base")]
 script = ExtResource("2_container")
 slot_count = 3
-container_id = ""
-key_item_id = ""
-container_name = ""
-workstation_id = "fermenting_barrel"
+
+[node name="WorldObjectIdentity" parent="."]
+def_id = "fermenting_barrel"
+kind = "container"
+capabilities = PackedStringArray("move", "container")
 
 [node name="Mesh" parent="." index="0"]
 visible = false

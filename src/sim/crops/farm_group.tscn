@@ -2,15 +2,21 @@
 
 [ext_resource type="Script" uid="uid://bixto8ovxbvdl" path="res://src/sim/crops/farm_group.gd" id="1_fgroup"]
 [ext_resource type="Script" uid="uid://mhnkxhoheim8" path="res://src/world/site_marker.gd" id="site_marker_script"]
+[ext_resource type="Script" path="res://src/world/world_object_identity.gd" id="world_identity_script"]
 
 [node name="FarmGroup" type="Node3D" unique_id=753226718]
 script = ExtResource("1_fgroup")
 
-[node name="SiteMarker" type="Marker3D" parent="."]
-script = ExtResource("site_marker_script")
-entity_kind = "farm"
+[node name="WorldObjectIdentity" type="Node" parent="."]
+script = ExtResource("world_identity_script")
+kind = "farm"
 map_registration = "local"
 category = "production"
+capabilities = PackedStringArray("move", "farm")
+group_gated_capabilities = PackedStringArray("farm")
+
+[node name="SiteMarker" type="Marker3D" parent="."]
+script = ExtResource("site_marker_script")
 visible_near_radius = 10.0
 visible_far_radius = 30.0
 direct_interaction_radius = 1.5

@@ -5,7 +5,6 @@
 
 [node name="StackableCabinetContainerNode" instance=ExtResource("1_base")]
 slot_count = 18
-container_name = "柜子"
 
 [node name="Mesh" parent="." index="0"]
 visible = false

@@ -1,13 +1,9 @@
 class_name ContainerNode
 extends WorkstationNode
 
-# 容器节点 = WorkstationNode 的子类型。继承 proximity / approach / owner_group / lock。
+# 容器节点 = WorkstationNode 的子类型。继承 proximity / approach / lock。
 # 额外语义：slot 库存（持久化在 Containers autoload + DB），交互模式 "container"
 # 触发独立 inventory UI 而不是 ActionPanel slot grid。
-#
-# 迁移期：`container_id` / `key_item_id` / `container_name` / `interaction_radius`
-# 是兼容旧 .tscn 字段的 setter shim，会自动同步到基类的对应字段。新写法直接
-# 用 workstation_id / lock_item_id / i18n display_name。
 
 @export_range(1, 999, 1) var slot_count: int = 12
 
@@ -39,25 +35,6 @@ func has_passive_tag(tag: String) -> bool:
 func is_infinite_source() -> bool:
 	return not infinite_content.strip_edges().is_empty()
 
-# === 兼容旧字段 ===
-# 老 .tscn 实例可能仍设这些字段；setter 把值同步到基类对应字段，让后续代码统一读基类即可。
-@export var container_id: String = "":
-	set(value):
-		container_id = value
-		var v := value.strip_edges()
-		if not v.is_empty() and workstation_id.strip_edges().is_empty():
-			workstation_id = v
-
-@export var key_item_id: String = "":
-	set(value):
-		key_item_id = value
-		var v := value.strip_edges()
-		if not v.is_empty() and lock_item_id.strip_edges().is_empty():
-			lock_item_id = v
-
-@export var container_name: String = ""
-
-
 # 容器同时进 "workstations"（让 backend perception / E-key 走统一通道）
 # 和 "containers"（让 Containers autoload + ContainerPanel 用类型分支查找）。
 func _runtime_groups() -> PackedStringArray:
@@ -80,20 +57,12 @@ func _exit_tree() -> void:
 
 
 func effective_container_id() -> String:
-	var wid := workstation_id.strip_edges()
-	if not wid.is_empty():
-		return wid
-	var cid := container_id.strip_edges()
-	return cid if not cid.is_empty() else name
+	return world_object_id()
 
 
-# 显示名查找顺序：手动 container_name → container.<id>.name（旧 i18n 命名空间）
-# → 基类 workstation.<id>.name → id 兜底。两个 i18n 命名空间并存为迁移期妥协。
+# 显示名查找顺序：container.<def_id>.name → 基类 workstation.<def_id>.name → def_id 兜底。
 func effective_display_name() -> String:
-	var custom := container_name.strip_edges()
-	if not custom.is_empty():
-		return custom
-	var cid := effective_container_id()
+	var cid := world_object_def_id()
 	var key := "container.%s.name" % cid
 	var localized := tr(key)
 	if localized != key:

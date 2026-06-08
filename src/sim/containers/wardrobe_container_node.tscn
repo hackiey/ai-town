@@ -5,7 +5,6 @@
 
 [node name="WardrobeContainerNode" instance=ExtResource("1_base")]
 slot_count = 24
-container_name = "衣柜"
 
 [node name="Mesh" parent="." index="0"]
 visible = false

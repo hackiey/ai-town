@@ -58,7 +58,7 @@ func _exit_tree() -> void:
 func _register_world_site() -> void:
 	if not RunMode.is_runtime():
 		return
-	if item_id.is_empty():
+	if item_id.is_empty() or db_id.is_empty():
 		push_error("[GroundItem %s] item_id 为空，无法注册动态 site" % db_id)
 		return
 	var marker := get_node_or_null("SiteMarker") as SiteMarker
@@ -68,13 +68,15 @@ func _register_world_site() -> void:
 	var world := get_tree().get_first_node_in_group("town_world") as TownWorld
 	if world == null:
 		return
-	world.register_dynamic_site(TownWorld.ground_item_site_id(item_id), marker)
+	var object_id := TownWorld.ground_item_site_id(db_id)
+	WorldObjectIdentity.ensure_for_node(self, object_id, item_id, "item")
+	world.register_dynamic_site(object_id, marker)
 
 
 func _unregister_world_site() -> void:
 	if not RunMode.is_runtime():
 		return
-	if item_id.is_empty():
+	if db_id.is_empty():
 		return
 	var marker := get_node_or_null("SiteMarker") as SiteMarker
 	if marker == null:
@@ -82,7 +84,7 @@ func _unregister_world_site() -> void:
 	var world := get_tree().get_first_node_in_group("town_world") as TownWorld
 	if world == null:
 		return
-	world.unregister_dynamic_site(TownWorld.ground_item_site_id(item_id), marker)
+	world.unregister_dynamic_site(TownWorld.ground_item_site_id(db_id), marker)
 
 
 # Spawner / hydrate 调。slot 会被深拷贝，原 dict 不动。label 由 _ready 统一刷（入树后

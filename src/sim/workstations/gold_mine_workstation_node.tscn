@@ -7,7 +7,11 @@
 [ext_resource type="PackedScene" uid="uid://c67r2qephlamu" path="res://third-party/polygon-fantasy-kingdom/Assets/PolygonFantasyKingdom/Prefabs/Items/SM_Item_Pickaxe_01.tscn" id="5_pickaxe"]
 
 [node name="GoldMineWorkstationNode" unique_id=1324509007 instance=ExtResource("1_base")]
-workstation_id = "gold_mine_workstation"
+
+[node name="WorldObjectIdentity" parent="."]
+def_id = "gold_mine_workstation"
+kind = "workstation"
+capabilities = PackedStringArray("move", "craft")
 
 [node name="Mesh" parent="." index="0"]
 visible = false

@@ -7,10 +7,14 @@
 
 [node name="WellWorkstationNode" unique_id=1809196722 instance=ExtResource("1_base")]
 script = ExtResource("2_container")
-workstation_id = "well"
 slot_count = 1
 infinite_content = "water"
 infinite_quality = 100
+
+[node name="WorldObjectIdentity" parent="."]
+def_id = "well"
+kind = "container"
+capabilities = PackedStringArray("move", "container")
 
 [node name="Mesh" parent="." index="0"]
 visible = false
@@ -22,10 +26,6 @@ text = "水井"
 text = "按 E 取水"
 
 [node name="SiteMarker" parent="."]
-site_id = "well"
-map_registration = "global"
-zone = "public"
-category = "civic"
 
 [node name="SM_Prop_Well_Plinth_01" parent="." unique_id=1110489307 instance=ExtResource("2_plinth")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.06, 0)

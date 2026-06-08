@@ -2,17 +2,16 @@
 class_name SiteMarker
 extends Marker3D
 
-# 统一世界锚点。替代 ApproachMarker + LocationMarker。
+# 世界对象的空间锚点。替代 ApproachMarker。
 #
-# 一个 SiteMarker 既是 NPC 到达点（Marker3D 位置落在 navmesh 上，编辑器可拖），
-# 也携带这个 site 面向导航 / 感知 / 地图 / resolver 的全部元数据，运行时注册到
-# SiteRegistry（见 TownWorld）。
+# 一个 SiteMarker 是 NPC 到达点（Marker3D 位置落在 navmesh 上，编辑器可拖），
+# 只携带空间半径与可选 Approach。对象身份 / 归属 / 地图 / 能力由 WorldObjectIdentity 维护。
 #
-# 多锚点：多个 SiteMarker 共享同一个 site_id 会被 registry 合并成同一个 site 的
+# 多锚点：一个 WorldObjectIdentity.object_id 可以注册多个 SiteMarker，形成同一个对象的
 # 多个 anchor（6 口共享 "well" 的水井、市集东西入口），导航取离 actor 最近的那个。
 #
 # 半径字段无默认/兜底：5 个 base 预制件（location_marker / workstation / container / shelf /
-# farm_group）显式填好，实例继承；缺值或 global 缺 zone 在 _ready fail-loud。
+# farm_group）显式填好，实例继承；缺值在 _ready fail-loud。
 #
 # @tool：编辑器里画半透明小球 + name Label3D，方便摆点；运行时 visual 由 site_visible
 # 控制（waypoint 这种纯导航点设 false）。
@@ -22,49 +21,6 @@ const EDITOR_VISUAL := "EditorVisual"
 const APPROACH_CHILD := "Approach"
 const _SPHERE_RADIUS := 0.25
 const _SPHERE_COLOR := Color(0.3, 1.0, 0.4, 0.55)
-
-# ══ 身份（常看；纯地点通常这两个都不用改）══════════════════════════
-# 留空 → 用 node name 作为 site id；
-# 设了 → alias 到这个 id（多个 marker 同 id = 同一 site 的多个 anchor）。
-@export var site_id: String = ""
-
-# 背后机制实体类型：location / workstation / container / shelf / farm / item / character。
-# 一切有位置的实体都挂 SiteMarker：固定对象在 .tscn 里挂；动态生成的（地面物品、运行时
-# spawn 的角色）由 Godot 在其场景里带上（ground_item.tscn / npc.tscn / player.tscn）。
-@export_enum("location", "workstation", "container", "shelf", "farm", "item", "character")
-var entity_kind: String = "location"
-
-# ── 地图与分区（顶层公共地点才需要管）──────────────────────────────
-@export_group("地图与分区")
-# 是否进入城镇地图。只决定地图显示，不决定层级 / 能否前往。无 auto 推导——每个 site 显式声明。
-# global  → 进城镇地图（顶层地点；location_marker base 设 global）
-# local   → 不进城镇地图，但仍是 site，可导航 / 感知 / 交互 / 被 resolver 解析（工作台/容器/货架/农田/子地点）
-# （命名用 global/local，避免和「runtime 动态生成 site」的 dynamic 概念撞名。）
-@export_enum("global", "local") var map_registration: String = "local"
-
-# 城镇地图分区。global 站点必填（_ready 校验）；local 站点可空。
-# upper_city/lower_city/outer_city/castle/south_outskirts/public
-@export var zone: String = ""
-@export var category: String = ""
-@export var sort_order: int = 0
-
-# 层级父节点 site id。只表达结构关系，不决定地图显示。留空 = 顶层。
-@export var parent_site_id: String = ""
-
-# ── 能力与权限（预制件已配；手摆 location 一般不动）────────────────
-@export_group("能力与权限")
-# 工具按能力判断目标能否使用，而不是看 entity_kind。
-# move / container / craft / farm / shop / water_source / pickup / talk / sleep / read / write
-@export var capabilities: PackedStringArray = PackedStringArray(["move"])
-
-# 归属 group。"" → 继承父 site；root 下空 = public；"public" → 显式公共；其他 = group id。
-@export var owner_group: String = ""
-
-# 需要钥匙的 site（treasury_vault → royal_key）。
-@export var lock_item_id: String = ""
-
-# 哪些能力真受 group 硬权限闸门（农田 = ["farm"]；工作台默认 []）。
-@export var group_gated_capabilities: PackedStringArray = PackedStringArray()
 
 # ── 范围（必填；半径无默认/兜底，5 个 base 预制件已显式填好，_ready 校验）────
 # direct=0 合法,表示「不可直接交互」(纯地点)；其余三个必须 > 0。
@@ -79,13 +35,6 @@ var entity_kind: String = "location"
 # 纯导航点（waypoint）：只提供位置给 LocationGraph 走廊规划，不是 site，不进 sites 表，
 # 不需要范围/分区/地图字段 → 跳过 _ready 的 fail-loud 校验。
 @export var nav_only: bool = false
-
-# 机制身份不在本组件：def（anvil/stove）与状态键（container_states.containerId /
-# farm_states.farmId）留在机制节点本体（WorkstationNode.workstation_id / ContainerNode.container_id），
-# seed 从本体取（_site_def_id / _site_entity_id）。本组件只管位置/交互/地图/权限，不耦合机制身份。
-# 名字/描述同理不落字段：永远按 site_id 查 i18n catalog（locations.<site_id>.alias/description）。
-# 所属空间也不是本组件字段：space = 包含本 site 位置的「室内地点 SiteMarker 下的 SpaceVolume」，
-# 标识 = 那个地点的 site_id；没被任何室内体积框住 = town_outdoor。由 TownWorld 按位置注入 sites.spaceId。
 
 # 运行时是否隐藏编辑器 visual / label（纯导航 waypoint 设 false）。
 @export var show_visual_at_runtime: bool = false
@@ -106,10 +55,6 @@ static func interaction_radius_of(node: Node) -> float:
 		push_error("[SiteMarker] 节点 %s 没有 SiteMarker 组件，无法判定可交互距离" % [node])
 		return 0.0
 	return m.eff_direct_interaction_radius()
-
-
-func effective_id() -> String:
-	return site_id if not site_id.is_empty() else String(name)
 
 
 # eff_* 直返字段（无默认/兜底；值由 5 个 base 预制件显式填、_ready 校验）。保留方法名给调用方。
@@ -202,11 +147,9 @@ func _validate_fields() -> void:
 	if nav_only:
 		return
 	if visible_near_radius <= 0.0 or visible_far_radius <= 0.0 or arrival_radius <= 0.0:
-		push_error("[SiteMarker %s] 范围未填：near=%.2f far=%.2f arrival=%.2f（必须 > 0；在预制件 base 上填）" % [effective_id(), visible_near_radius, visible_far_radius, arrival_radius])
+		push_error("[SiteMarker %s] 范围未填：near=%.2f far=%.2f arrival=%.2f（必须 > 0；在预制件 base 上填）" % [_debug_id(), visible_near_radius, visible_far_radius, arrival_radius])
 	if direct_interaction_radius < 0.0:
-		push_error("[SiteMarker %s] direct_interaction_radius=%.2f 不能为负（0=不可直接交互）" % [effective_id(), direct_interaction_radius])
-	if map_registration == "global" and zone.is_empty():
-		push_error("[SiteMarker %s] map_registration=global 的地点必须填 zone 分区" % [effective_id()])
+		push_error("[SiteMarker %s] direct_interaction_radius=%.2f 不能为负（0=不可直接交互）" % [_debug_id(), direct_interaction_radius])
 
 
 # fail-loud：有 Approach 子节点但落在本对象可交互距离外，NPC 走到了也算不上靠近 → 立刻暴露。
@@ -220,7 +163,14 @@ func _validate_approach() -> void:
 		return
 	var d := global_position.distance_to(n.global_position)
 	if d > r:
-		push_error("[SiteMarker %s] Approach 距自身 %.2fm 超出可交互半径 %.2fm；NPC 到达后无法交互，把 Approach 拖近。" % [effective_id(), d, r])
+		push_error("[SiteMarker %s] Approach 距自身 %.2fm 超出可交互半径 %.2fm；NPC 到达后无法交互，把 Approach 拖近。" % [_debug_id(), d, r])
+
+
+func _debug_id() -> String:
+	var identity := WorldObjectIdentity.for_node(self)
+	if identity != null and not identity.effective_object_id().is_empty():
+		return identity.effective_object_id()
+	return String(name)
 
 
 func _sync_label() -> void:

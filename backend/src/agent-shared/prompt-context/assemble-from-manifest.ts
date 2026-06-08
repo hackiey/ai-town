@@ -613,8 +613,8 @@ function containerViewToWorkstationContext(c: ContainerView, actorInventoryRows:
   }
   const context: WorkstationContext = {
     id: c.containerId,
-    workstationId: c.containerId,
-    displayName: names.container(c.containerId),
+    workstationId: defIdFromObjectId(c.containerId),
+    displayName: names.location(c.containerId),
     directlyInteractable: bands.get(c.containerId) === "direct",
     // 容器对所有人可用——group 不再闸门。能否打开只看锁（locked/unlocked）。
     accessible: true,
@@ -662,7 +662,7 @@ function buildShelfContexts(
       context: {
         id: view.shelfId,
         locationId: view.locationId ?? view.shelfId,
-        displayName: names.location(view.locationId ?? view.shelfId),
+        displayName: names.location(view.shelfId),
         directlyInteractable: bands.get(view.shelfId) === "direct",
         slotCount: view.slotCount,
         interactionRadiusMeters: view.interactionRadius,
@@ -730,12 +730,17 @@ function buildInteractiveSites(
   const shelfSites: InteractiveSiteContext[] = shelves.map((shelf, index) => ({
     id: shelf.id,
     locationId: shelf.locationId,
-    displayName: names.location(shelf.locationId ?? shelf.id) || `shelf_${index + 1}`,
+    displayName: shelf.displayName || names.location(shelf.id) || `shelf_${index + 1}`,
     kind: "shelf",
     directlyInteractable: shelf.directlyInteractable ?? true,
     availableActions: ["view_container", "put_take"],
   }));
   return [...farmSites, ...workstationSites, ...shelfSites];
+}
+
+function defIdFromObjectId(objectId: string): string {
+  const at = objectId.indexOf("@");
+  return at > 0 ? objectId.slice(0, at) : objectId;
 }
 
 // owner_group 真值都在 Godot 场景树（WorkstationNode / LocationMarker / 沿链解析的 farm），

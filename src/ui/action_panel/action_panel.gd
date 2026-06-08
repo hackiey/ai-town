@@ -147,7 +147,7 @@ func open(workstation: Node) -> void:
 	_open_workstation = workstation
 	_title.text = String(workstation.display_name)
 	_build_slots()
-	_populate_action_buttons(String(workstation.workstation_id))
+	_populate_action_buttons(_workstation_def_id(workstation))
 	_refresh_staged_view()
 	_root.visible = true
 	# 持续 polling staged_items 变化（server 推回 → MultiplayerSynchronizer 改 _player.staged_items）
@@ -249,7 +249,7 @@ func _build_slots() -> void:
 	# 1 槽时不要排 4 列空位
 	var count := SLOT_COUNT_FALLBACK
 	if _open_workstation != null:
-		var ws_def: Workstation = Workstations.by_id(String(_open_workstation.workstation_id))
+		var ws_def: Workstation = Workstations.by_id(_workstation_def_id(_open_workstation))
 		if ws_def != null:
 			count = max(1, ws_def.slot_count)
 	_grid.columns = min(SLOT_COL_LIMIT, count)
@@ -377,7 +377,13 @@ func _on_action_button_pressed(verb_id: String, sub_id: String) -> void:
 		EventBus.notification_posted.emit(tr("ui.action_panel.notification.no_verb"), "warn")
 		return
 	_player.request_craft.rpc_id(1, verb_id,
-		String(_open_workstation.workstation_id), sub_id)
+		_workstation_def_id(_open_workstation), sub_id)
+
+
+func _workstation_def_id(workstation: Node) -> String:
+	if workstation != null and workstation.has_method("world_object_def_id"):
+		return String(workstation.call("world_object_def_id"))
+	return ""
 
 
 func _on_craft_started(reaction_name: String, duration_sec: float) -> void:

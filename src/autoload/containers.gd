@@ -433,7 +433,7 @@ func _check_access(character: Character, node: ContainerNode) -> Dictionary:
 	if not _is_character_near(character, node):
 		return {"ok": false, "message": "离「%s」太远，先走过去再操作" % node.effective_display_name()}
 	if not node.is_unlocked_by(character):
-		var key_id := node.lock_item_id.strip_edges()
+		var key_id := node.world_object_lock_item_id()
 		var key_label := tr("item.%s.name" % key_id)
 		if key_label == "item.%s.name" % key_id:
 			key_label = key_id

@@ -405,7 +405,7 @@ const ECONOMY = {
     { group: "produce_raw", itemId: "tomato_fruit", hungerShare: 0.05, fallbackHunger: 10 },
     { group: "vegetable_stew", itemId: "veg_stew", hungerShare: 0.05, fallbackHunger: 25 },
     { group: "preserved", itemId: "cured_meat", hungerShare: 0.05, fallbackHunger: 30 },
-  ] satisfies Array<{ group: string; itemId: string; hungerShare: number; fallbackHunger: number; householdFuel?: Dict<number> }>,
+  ] satisfies Array<{ group: string; itemId: string; hungerShare: number; fallbackHunger: number }>,
   livestockFeed: {
     raw_meat: { itemId: "wheat", qtyPerUnit: 1.0 },
     egg: { itemId: "wheat", qtyPerUnit: 0.3 },
@@ -747,12 +747,6 @@ function planFood(catalog: Catalog, state: ModelState, npcCount: number): FoodPl
     const targetHunger = dailyHunger * entry.hungerShare;
     const targetQty = targetHunger / Math.max(1, hungerPerItem);
     addDemand(state, entry.itemId, targetQty, `food_plan:${entry.group}:${round(targetHunger, 2)}_hunger`, "household_consumption");
-    for (const [fuelItemId, qtyPerUnit] of Object.entries(entry.householdFuel ?? {})) {
-      const fuelQty = targetQty * qtyPerUnit;
-      addDemand(state, fuelItemId, fuelQty, `household_cooking:${entry.group}`, "household_consumption");
-      // 让 fuel demand 也驱动 kiln_burn 增产，否则只看 recipe input 会少算供给。
-      planRecipeOutput(catalog, state, fuelItemId, fuelQty, `household_fuel:${entry.group}`);
-    }
     planRecipeOutput(catalog, state, entry.itemId, targetQty, `food_plan:${entry.group}`);
     rows.push({
       group: entry.group,

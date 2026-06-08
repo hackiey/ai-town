@@ -14,17 +14,6 @@ const WATERING_WATER_COST := 20.0
 const WATERING_MOISTURE_DELTA := 0.2
 const DEFAULT_MOISTURE_DECAY_PER_HOUR := 0.05
 
-# 稳定逻辑 id。场景树节点名只作为未填写时的 fallback。
-# 同时是该农田作为 logical location 注册到 TownWorld 的 id（FarmGroup 取代了
-# 原 Positions/<owner>/<farm_id> 那个 LocationMarker 叶子节点的角色）。
-@export var farm_id: String = ""
-
-# 归属 group 字面值。必填（dev 阶段 strict）：
-#   "public"  → 公用（owner_group 空）
-#   其他       → 该 group 名（如 "millward_mill"）
-# 空串会让 TownWorld._resolve_farm_owner_group push_error，强制 designer 显式声明。
-@export var owner_group_literal: String = ""
-
 var moisture: float = 0.6:
 	set(value):
 		var clamped := clampf(value, 0.0, 1.0)
@@ -75,8 +64,14 @@ func _persist_to_db() -> void:
 
 
 func effective_farm_id() -> String:
-	var id := farm_id.strip_edges()
-	return id if not id.is_empty() else String(name)
+	var identity := WorldObjectIdentity.for_node(self)
+	if identity == null:
+		push_error("[FarmGroup] %s 缺 WorldObjectIdentity" % get_path())
+		return ""
+	var id := identity.effective_object_id()
+	if id.is_empty():
+		push_error("[FarmGroup] %s 的 WorldObjectIdentity.object_id 未填" % get_path())
+	return id
 
 
 # FarmGroup 既是田又是 logical location；location id 永远等同 farm id（@export
@@ -107,7 +102,8 @@ var owner_group: String:
 	get:
 		var world := get_tree().get_first_node_in_group("town_world") as TownWorld
 		if world == null:
-			return owner_group_literal
+			var identity := WorldObjectIdentity.for_node(self)
+			return identity.owner_group if identity != null else ""
 		return world.owner_group_for(effective_location_id())
 	set(_value): pass
 

@@ -3,32 +3,11 @@ extends ContainerNode
 
 # 货架 = 无锁的容器。继承 ContainerNode 的 proximity / approach / slot 库存 / 注册到 Containers。
 # 货架与容器的唯一区别：
-#   1. 永不上锁（lock_item_id 留空）→ 人人可存取。
+#   1. 永不上锁（WorldObjectIdentity.lock_item_id 留空）→ 人人可存取。
 #   2. 槽位可带 listing_price_centi 标价；put_take 直接取带标价商品时会校验货架钱包付款。
-#   3. 显示名走 location.<id>.name（铺面名），而非 container.<id>.name。
-#
-# 迁移期：shelf_id / shelf_name / location_id 是兼容旧 .tscn 字段的 setter shim，
-# 自动同步到基类的 workstation_id / container_name。
+#   3. 显示名走 WorldObjectIdentity.def_id 对应的 workstation i18n。
 
 const _SHELF_DISPLAY_NAME := "货架"
-
-@export var shelf_id: String = "":
-	set(value):
-		shelf_id = value
-		var v := value.strip_edges()
-		if not v.is_empty() and workstation_id.strip_edges().is_empty():
-			workstation_id = v
-
-@export var shelf_name: String = "":
-	set(value):
-		shelf_name = value
-		var v := value.strip_edges()
-		if not v.is_empty() and container_name.strip_edges().is_empty():
-			container_name = v
-
-# 货架所属铺面，用于显示名（location.<id>.name）。owner_group（继承自基类）已不再闸门使用。
-@export var location_id: String = ""
-
 
 # 货架进 "workstations"+"containers"（走容器统一通道）+"shelves"（场景扫描 / 静态 seed 用）。
 func _runtime_groups() -> PackedStringArray:
@@ -40,21 +19,16 @@ func effective_shelf_id() -> String:
 
 
 func effective_location_id() -> String:
-	var loc := location_id.strip_edges()
-	return loc if not loc.is_empty() else effective_shelf_id()
+	var identity := world_object_identity()
+	if identity != null and not identity.parent_object_id.strip_edges().is_empty():
+		return identity.parent_object_id.strip_edges()
+	return effective_shelf_id()
 
 
-# 货架显示名：手动 shelf_name（→ container_name）→ location.<id>.name → 默认"货架"。
+# 货架显示名：workstation.<def_id>.name → 默认"货架"。
 func effective_display_name() -> String:
-	var custom := container_name.strip_edges()
-	if not custom.is_empty():
-		return custom
-	var loc_id := effective_location_id()
-	var key := "location.%s.name" % loc_id
-	var localized := tr(key)
-	if localized != key:
-		return localized
-	return _SHELF_DISPLAY_NAME
+	var name := display_name.strip_edges()
+	return name if not name.is_empty() else _SHELF_DISPLAY_NAME
 
 
 func matches_shelf_id(value: String) -> bool:

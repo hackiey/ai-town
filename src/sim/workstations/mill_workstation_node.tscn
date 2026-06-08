@@ -20,7 +20,11 @@ material = SubResource("Material_wood")
 size = Vector3(0.08, 0.08, 0.58)
 
 [node name="MillWorkstationNode" unique_id=1111079741 instance=ExtResource("1_base")]
-workstation_id = "mill"
+
+[node name="WorldObjectIdentity" parent="."]
+def_id = "mill"
+kind = "workstation"
+capabilities = PackedStringArray("move", "craft")
 
 [node name="Mesh" parent="." index="0"]
 visible = false

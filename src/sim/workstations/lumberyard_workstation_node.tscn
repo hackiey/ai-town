@@ -3,7 +3,11 @@
 [ext_resource type="PackedScene" uid="uid://b7r4hwk5xpvld" path="res://src/sim/workstations/workstation_node.tscn" id="1_base"]
 
 [node name="LumberyardWorkstationNode" instance=ExtResource("1_base")]
-workstation_id = "lumberyard_workstation"
+
+[node name="WorldObjectIdentity" parent="."]
+def_id = "lumberyard_workstation"
+kind = "workstation"
+capabilities = PackedStringArray("move", "craft")
 
 [node name="Mesh" parent="." index="0"]
 visible = false

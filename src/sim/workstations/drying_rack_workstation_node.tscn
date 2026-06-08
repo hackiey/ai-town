@@ -52,9 +52,13 @@ size = Vector3(2.40, 1.30, 1.05)
 
 [node name="DryingRackWorkstationNode" unique_id=1974611999 instance=ExtResource("1_base")]
 script = ExtResource("2_container")
-workstation_id = "drying_rack"
 passive_tags = PackedStringArray("drying")
 slot_count = 6
+
+[node name="WorldObjectIdentity" parent="."]
+def_id = "drying_rack"
+kind = "container"
+capabilities = PackedStringArray("move", "container")
 
 [node name="Mesh" parent="." index="0"]
 visible = false

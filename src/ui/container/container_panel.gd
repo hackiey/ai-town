@@ -270,7 +270,9 @@ func _container_id() -> String:
 		return ""
 	if _open_container.has_method("effective_container_id"):
 		return String(_open_container.effective_container_id())
-	return String(_open_container.workstation_id)
+	if _open_container.has_method("world_object_id"):
+		return String(_open_container.call("world_object_id"))
+	return ""
 
 
 func _build_container_slots() -> void:

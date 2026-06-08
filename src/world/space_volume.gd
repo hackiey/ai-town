@@ -10,7 +10,7 @@ extends Area3D
 #   不同 space_id，任一方 indoor  → 不可见、不可听
 #
 # SpaceVolume 挂在「地点 SiteMarker」下作为子节点：这块体积 = 那个地点的 space，
-# space 标识 = 父 SiteMarker 的 site_id（不再有独立 space_id 字段）。室外很大不框，
+# space 标识 = 所属 WorldObjectIdentity.object_id。室外很大不框，
 # 没被任何体积框住的点 = town_outdoor（唯一兜底）。
 # TownWorld boot 时收集所有 SpaceVolume，按 contains_point() 给 site / actor / 地上物品
 # 归属 space。遮挡判断是 Godot 权威，backend 不复算。
@@ -28,14 +28,18 @@ const FALLBACK_SPACE_ID := "town_outdoor"
 @export var default_visible_far_radius: float = 0.0
 
 
-# space 标识 = 父 SiteMarker 的 site_id（这块体积属于那个地点）。
+# space 标识 = 所属 WorldObjectIdentity.object_id（这块体积属于那个地点）。
 # 没挂在 SiteMarker 下 = 配置错误，fail-loud。
 func effective_space_id() -> String:
 	var parent := get_parent() as SiteMarker
 	if parent == null:
-		push_error("[SpaceVolume %s] 必须挂在地点 SiteMarker 之下（space=该地点 site_id）" % [name])
+		push_error("[SpaceVolume %s] 必须挂在地点 SiteMarker 之下（space=该地点 object_id）" % [name])
 		return FALLBACK_SPACE_ID
-	return parent.effective_id()
+	var identity := WorldObjectIdentity.for_node(parent)
+	if identity == null or identity.effective_object_id().is_empty():
+		push_error("[SpaceVolume %s] 所属地点缺 WorldObjectIdentity.object_id" % [name])
+		return FALLBACK_SPACE_ID
+	return identity.effective_object_id()
 
 
 func is_indoor() -> bool:

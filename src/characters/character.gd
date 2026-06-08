@@ -770,10 +770,12 @@ func register_world_site() -> void:
 	if marker == null:
 		push_error("[Character %s] 缺 SiteMarker 子节点，无法注册动态 site" % cid)
 		return
+	var object_id := TownWorld.character_site_id(cid)
+	WorldObjectIdentity.ensure_for_node(self, object_id, "character", "character")
 	var world := get_tree().get_first_node_in_group("town_world") as TownWorld
 	if world == null:
 		return
-	world.register_dynamic_site(TownWorld.character_site_id(cid), marker)
+	world.register_dynamic_site(object_id, marker)
 
 
 func unregister_world_site() -> void:

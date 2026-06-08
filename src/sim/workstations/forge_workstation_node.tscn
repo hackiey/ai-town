@@ -4,7 +4,11 @@
 [ext_resource type="PackedScene" uid="uid://khwecfaeiv5n" path="res://third-party/polygon-fantasy-kingdom/Assets/PolygonFantasyKingdom/Prefabs/Props/SM_Prop_Forge_03.tscn" id="2_forge"]
 
 [node name="ForgeWorkstationNode" unique_id=1675199972 instance=ExtResource("1_base")]
-workstation_id = "forge"
+
+[node name="WorldObjectIdentity" parent="."]
+def_id = "forge"
+kind = "workstation"
+capabilities = PackedStringArray("move", "craft")
 
 [node name="Mesh" parent="." index="0"]
 visible = false

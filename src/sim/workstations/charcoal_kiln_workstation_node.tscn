@@ -7,7 +7,11 @@
 [ext_resource type="PackedScene" uid="uid://grfniau5mfqp" path="res://third-party/polygon-fantasy-kingdom/Assets/PolygonFantasyKingdom/Prefabs/Props/SM_Prop_Wood_Pile_03.tscn" id="4_woodpile"]
 
 [node name="CharcoalKilnWorkstationNode" unique_id=880008382 instance=ExtResource("1_base")]
-workstation_id = "charcoal_kiln"
+
+[node name="WorldObjectIdentity" parent="."]
+def_id = "charcoal_kiln"
+kind = "workstation"
+capabilities = PackedStringArray("move", "craft")
 
 [node name="Mesh" parent="." index="0"]
 visible = false

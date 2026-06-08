@@ -4,7 +4,11 @@
 [ext_resource type="PackedScene" uid="uid://0eeugre07vip" path="res://third-party/polygon-fantasy-kingdom/Assets/PolygonFantasyKingdom/Prefabs/Props/Furniture/SM_Prop_Workbench_01_Preset.tscn" id="2_workbench"]
 
 [node name="WorkbenchWorkstationNode" unique_id=2004377453 instance=ExtResource("1_base")]
-workstation_id = "workbench"
+
+[node name="WorldObjectIdentity" parent="."]
+def_id = "workbench"
+kind = "workstation"
+capabilities = PackedStringArray("move", "craft")
 
 [node name="Mesh" parent="." index="0"]
 visible = false

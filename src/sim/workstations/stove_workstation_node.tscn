@@ -4,7 +4,11 @@
 [ext_resource type="PackedScene" uid="uid://iw755pudydp1" path="res://third-party/polygon-fantasy-kingdom/Assets/PolygonFantasyKingdom/Prefabs/Props/Furniture/SM_Prop_Stove_02.tscn" id="2_stove"]
 
 [node name="StoveWorkstationNode" unique_id=426652032 instance=ExtResource("1_base")]
-workstation_id = "stove"
+
+[node name="WorldObjectIdentity" parent="."]
+def_id = "stove"
+kind = "workstation"
+capabilities = PackedStringArray("move", "craft")
 
 [node name="Mesh" parent="." index="0"]
 visible = false

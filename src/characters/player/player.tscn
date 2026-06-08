@@ -181,7 +181,6 @@ replication_config = SubResource("SceneReplicationConfig_inventory")
 
 [node name="SiteMarker" type="Marker3D" parent="."]
 script = ExtResource("site_marker_script")
-entity_kind = "character"
 visible_near_radius = 3.0
 visible_far_radius = 50.0
 direct_interaction_radius = 3.0

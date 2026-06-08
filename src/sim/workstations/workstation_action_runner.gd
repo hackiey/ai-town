@@ -46,21 +46,14 @@ func _init(owner) -> void:
 	character = owner
 
 
-# 工作台复合逻辑 id —— 与 TownWorld.workstation_logical_id / workstation_states seed 同源。
-# perception manifest、active work、busy 占用镜像统一走这里，绝不用 node.name：实例化工作台
-# 默认沿用场景根名（如 4 个 StoveWorkstationNode），跨铺子必重名，backend 按 id 反查会拿到错铺子。
+# 工作台对象 id —— 与 TownWorld.workstation_logical_id / workstation_states seed 同源。
+# perception manifest、active work、busy 占用镜像统一走 WorldObjectIdentity.object_id。
 func _workstation_logical_id(ws_node: WorkstationNode) -> String:
 	if _town_world_cache == null or not is_instance_valid(_town_world_cache):
 		_town_world_cache = character.get_tree().get_first_node_in_group("town_world")
 	if _town_world_cache != null and _town_world_cache.has_method("workstation_logical_id"):
 		return str(_town_world_cache.call("workstation_logical_id", ws_node))
-	# town_world 缺失时的同源兜底：直接读 SiteMarker.site_id（与主路径一致），绝不退 node.name。
-	var marker := ws_node.get_site_marker() as SiteMarker
-	var sid := "" if marker == null else marker.site_id.strip_edges()
-	if sid.is_empty():
-		push_error("[WorkstationActionRunner] 工作台 %s 的 SiteMarker.site_id 未填" % [ws_node.get_path()])
-		return ""
-	return sid
+	return ws_node.world_object_id()
 
 
 func nearby_snapshots(max_distance: float = Containers.INTERACTION_RADIUS) -> Array[Dictionary]:
@@ -82,7 +75,7 @@ func nearby_snapshots(max_distance: float = Containers.INTERACTION_RADIUS) -> Ar
 			continue
 		# 可见性 = 物理距离；access 不再过滤掉条目，只通过 accessible 字段标记
 		var can_use: bool = not ws_node.has_method("can_be_used_by") or ws_node.can_be_used_by(character)
-		var ws_def: Workstation = Workstations.by_id(String(ws_node.workstation_id))
+		var ws_def: Workstation = Workstations.by_id(String(ws_node.world_object_def_id()))
 		var verbs: PackedStringArray = PackedStringArray()
 		var mode: String = "action_panel"
 		var slot_count: int = 5
@@ -97,7 +90,7 @@ func nearby_snapshots(max_distance: float = Containers.INTERACTION_RADIUS) -> Ar
 			slot_count = ws_def.slot_count
 		var snap := {
 			"id": _workstation_logical_id(ws_node),
-			"workstationId": String(ws_node.workstation_id),
+			"workstationId": String(ws_node.world_object_def_id()),
 			"displayName": String(ws_node.display_name),
 			"directlyInteractable": d_dbg <= SiteMarker.interaction_radius_of(ws_node),
 			"interactionMode": mode,
@@ -105,7 +98,7 @@ func nearby_snapshots(max_distance: float = Containers.INTERACTION_RADIUS) -> Ar
 			"slotCount": slot_count,
 			"locked": ws_node.is_locked(),
 			"unlocked": ws_node.is_unlocked_by(character),
-			"lockItemId": String(ws_node.lock_item_id),
+			"lockItemId": String(ws_node.world_object_lock_item_id()),
 			"accessible": can_use,
 		}
 		# Container 型 workstation 额外暴露当前库存（让 LLM 知道里面有什么）。
@@ -153,7 +146,7 @@ func start_from_action(action_request: Dictionary) -> String:
 				return _fail_before_start(workstation_id, "", "", "workstation_access_denied", "%s 不归你管，无权使用" % ws_name)
 			_:
 				return _fail_before_start(workstation_id, "", "", "workstation_not_found", "找不到 %s" % ws_name)
-	var ws_def: Workstation = Workstations.by_id(String(ws_node.workstation_id))
+	var ws_def: Workstation = Workstations.by_id(String(ws_node.world_object_def_id()))
 	if ws_def == null:
 		return _fail_before_start(workstation_id, "", "", "unknown_workstation", "未登记的工作台：%s" % ws_name)
 
@@ -771,7 +764,7 @@ func _find_workstation(workstation_id: String) -> Dictionary:
 		var ws: WorkstationNode = n as WorkstationNode
 		var aliases: Array[String] = [
 			_workstation_logical_id(ws),
-			String(ws.workstation_id),
+			String(ws.world_object_def_id()),
 			String(ws.display_name),
 		]
 		var matches: bool = false

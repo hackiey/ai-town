@@ -315,7 +315,8 @@ func resolve_move_to_location_request(action_request: Dictionary) -> Dictionary:
 			action_id, "character %s" % target_character_id)
 	var target_item_id := str(target_dict.get("itemId", "")).strip_edges()
 	if not target_item_id.is_empty():
-		return _resolve_dynamic_site_move(world, TownWorld.ground_item_site_id(target_item_id),
+		var object_id := world.nearest_dynamic_object_id_for_def(target_item_id, character.global_position)
+		return _resolve_dynamic_site_move(world, object_id,
 			action_id, "item %s" % target_item_id)
 
 	# 静态地点 / region。

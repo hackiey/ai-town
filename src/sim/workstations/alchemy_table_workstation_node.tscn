@@ -4,8 +4,12 @@
 [ext_resource type="PackedScene" uid="uid://0eeugre07vip" path="res://third-party/polygon-fantasy-kingdom/Assets/PolygonFantasyKingdom/Prefabs/Props/Furniture/SM_Prop_Workbench_01_Preset.tscn" id="2_table"]
 
 [node name="AlchemyTableWorkstationNode" instance=ExtResource("1_base")]
-workstation_id = "alchemy_table"
 tint_color = Color(0.32, 0.55, 0.36, 1)
+
+[node name="WorldObjectIdentity" parent="."]
+def_id = "alchemy_table"
+kind = "workstation"
+capabilities = PackedStringArray("move", "craft")
 
 [node name="Mesh" parent="." index="0"]
 visible = false

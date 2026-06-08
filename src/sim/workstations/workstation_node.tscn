@@ -2,6 +2,7 @@
 
 [ext_resource type="Script" uid="uid://bo56p3yarafmx" path="res://src/sim/workstations/workstation_node.gd" id="1_script"]
 [ext_resource type="Script" uid="uid://mhnkxhoheim8" path="res://src/world/site_marker.gd" id="site_marker_script"]
+[ext_resource type="Script" path="res://src/world/world_object_identity.gd" id="world_identity_script"]
 
 [sub_resource type="StandardMaterial3D" id="Material_placeholder"]
 albedo_color = Color(0.62, 0.45, 0.25, 1)
@@ -15,6 +16,12 @@ radius = 1.5
 
 [node name="WorkstationNode" type="Node3D" unique_id=1132618419]
 script = ExtResource("1_script")
+
+[node name="WorldObjectIdentity" type="Node" parent="." unique_id=291000001]
+script = ExtResource("world_identity_script")
+kind = "workstation"
+map_registration = "local"
+capabilities = PackedStringArray("move", "craft")
 
 [node name="Mesh" type="MeshInstance3D" parent="." unique_id=1161232324]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.4, 0)
@@ -50,9 +57,6 @@ outline_size = 6
 
 [node name="SiteMarker" type="Marker3D" parent="." unique_id=1027835496]
 script = ExtResource("site_marker_script")
-entity_kind = "workstation"
-capabilities = PackedStringArray("move")
-group_gated_capabilities = PackedStringArray()
 arrival_radius = 0.6
 visible_near_radius = 3.0
 visible_far_radius = 10.0

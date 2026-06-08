@@ -66,7 +66,11 @@ radial_segments = 32
 rings = 1
 
 [node name="SaltworksPanWorkstationNode" unique_id=1793478811 instance=ExtResource("1_base")]
-workstation_id = "saltworks_pan"
+
+[node name="WorldObjectIdentity" parent="."]
+def_id = "saltworks_pan"
+kind = "workstation"
+capabilities = PackedStringArray("move", "craft")
 
 [node name="Mesh" parent="." index="0"]
 visible = false

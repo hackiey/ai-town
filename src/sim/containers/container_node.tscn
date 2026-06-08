@@ -1,7 +1,8 @@
-[gd_scene load_steps=6 format=3 uid="uid://cgy2x4qr8mvld"]
+[gd_scene load_steps=7 format=3 uid="uid://cgy2x4qr8mvld"]
 
 [ext_resource type="Script" path="res://src/sim/containers/container_node.gd" id="1_script"]
 [ext_resource type="Script" uid="uid://mhnkxhoheim8" path="res://src/world/site_marker.gd" id="site_marker_script"]
+[ext_resource type="Script" path="res://src/world/world_object_identity.gd" id="world_identity_script"]
 
 [sub_resource type="StandardMaterial3D" id="Material_chest"]
 albedo_color = Color(0.4, 0.28, 0.18, 1)
@@ -16,6 +17,12 @@ height = 1.5
 
 [node name="ContainerNode" type="Node3D"]
 script = ExtResource("1_script")
+
+[node name="WorldObjectIdentity" type="Node" parent="."]
+script = ExtResource("world_identity_script")
+kind = "container"
+map_registration = "local"
+capabilities = PackedStringArray("move", "container")
 
 [node name="Mesh" type="MeshInstance3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.3, 0)
@@ -51,8 +58,6 @@ modulate = Color(0.9, 0.9, 0.7, 1)
 
 [node name="SiteMarker" type="Marker3D" parent="."]
 script = ExtResource("site_marker_script")
-entity_kind = "container"
-map_registration = "local"
 visible_near_radius = 3.0
 visible_far_radius = 10.0
 direct_interaction_radius = 3.0

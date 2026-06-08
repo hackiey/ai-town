@@ -12,13 +12,6 @@ extends Node3D
 # 设计：docs/architecture/crafting-interaction.md §2.2
 # 反应规则：docs/architecture/base-items.md
 
-# 必填，对应 data/workstations/<id>.tres
-@export var workstation_id: String = "":
-	set(value):
-		workstation_id = value
-		if is_inside_tree():
-			call_deferred("_refresh_labels")
-
 const _WORKSTATIONS_I18N_JSON_REL := "data/i18n/zh/workstations.json"
 const _DEFAULT_DISPLAY_NAME := "工作站"
 const _DEFAULT_PROMPT_TEXT := "按 E 使用"
@@ -30,39 +23,29 @@ static var _WORKSTATIONS_I18N_JSON_LOADED: bool = false
 # .tscn 实例不再 override；setter no-op 兼容旧文件。
 var display_name: String:
 	get:
-		if workstation_id.is_empty():
+		var def := world_object_def_id()
+		if def.is_empty():
 			return _translated_or_fallback("ui.workstation.label_default", _DEFAULT_DISPLAY_NAME)
-		var key := "workstation.%s.name" % workstation_id
+		var key := "workstation.%s.name" % def
 		var value := _translated_text(key)
 		if value.is_empty():
-			value = _get_workstation_i18n_field(workstation_id, "name")
+			value = _get_workstation_i18n_field(def, "name")
 		return value if not value.is_empty() else _translated_or_fallback("ui.workstation.label_default", _DEFAULT_DISPLAY_NAME)
 	set(_value): pass
 
 var prompt_text: String:
 	get:
-		if workstation_id.is_empty():
+		var def := world_object_def_id()
+		if def.is_empty():
 			return _translated_or_fallback("ui.workstation.prompt_default", _DEFAULT_PROMPT_TEXT)
-		var key := "workstation.%s.prompt" % workstation_id
+		var key := "workstation.%s.prompt" % def
 		var value := _translated_text(key)
 		if value.is_empty():
-			value = _get_workstation_i18n_field(workstation_id, "prompt")
+			value = _get_workstation_i18n_field(def, "prompt")
 		return value if not value.is_empty() else _translated_or_fallback("ui.workstation.prompt_default", _DEFAULT_PROMPT_TEXT)
 	set(_value): pass
 
 @export var tint_color: Color = Color(0, 0, 0, 0)    # alpha=0 → 用 .tscn 默认棕色
-
-# 归属 group。语义对齐 LocationMarker.owner_group（解析在 TownWorld._resolve_workstation_owner_group）：
-#   ""        → 从父链上最近的 LocationMarker 继承（场景树即真值）；没找到 = public
-#   "public"  → 显式公用，覆盖继承（私有园子里的公用水井等）
-#   其他字符串 → 该 group 名（如 "blacksmith_shop"）
-# 把工作台直接放进对应 location 子树即可自动归属，不必每个节点重复填。
-@export var owner_group: String = ""
-
-# 锁。空=未上锁；非空=角色背包需有该 item id 才能 use。
-# 与 owner_group 正交：owner_group 只做归属/招牌，lock 控硬使用门槛。
-# 没人能开（仅 system_* 接口能写）= 用一个没人会获得的钥匙 id（如 "__none__"）。
-@export var lock_item_id: String = ""
 
 @onready var _area: Area3D = get_node_or_null("Area3D")
 @onready var _label: Label3D = get_node_or_null("Prompt")
@@ -77,6 +60,37 @@ var prompt_text: String:
 func get_site_marker() -> Node3D:
 	var marker := get_node_or_null("SiteMarker") as Node3D
 	return marker if marker != null else self
+
+
+func world_object_identity() -> WorldObjectIdentity:
+	return WorldObjectIdentity.for_node(self)
+
+
+func world_object_id() -> String:
+	var identity := world_object_identity()
+	if identity == null:
+		push_error("[WorkstationNode] %s 缺 WorldObjectIdentity" % get_path())
+		return ""
+	var id := identity.effective_object_id()
+	if id.is_empty():
+		push_error("[WorkstationNode] %s 的 WorldObjectIdentity.object_id 未填" % get_path())
+	return id
+
+
+func world_object_def_id() -> String:
+	var identity := world_object_identity()
+	if identity == null:
+		return ""
+	var id := identity.effective_def_id()
+	return id
+
+
+func world_object_lock_item_id() -> String:
+	var identity := world_object_identity()
+	if identity == null:
+		return ""
+	var id := identity.lock_item_id.strip_edges()
+	return id
 
 
 # NPC 寻路到达点（世界坐标）。SiteMarker 组件的可选 Approach 子节点优先，否则自身位置。
@@ -206,7 +220,7 @@ func can_be_used_by(_character: Node) -> bool:
 
 
 func is_locked() -> bool:
-	return not lock_item_id.strip_edges().is_empty()
+	return not world_object_lock_item_id().is_empty()
 
 
 # 钥匙维度：无锁 → true；上锁但持钥匙 → true；其他 false。
@@ -216,7 +230,7 @@ func is_unlocked_by(character: Node) -> bool:
 		return true
 	if character == null or not character.has_method("inventory_ops"):
 		return false
-	return character.inventory_ops().count_item(lock_item_id.strip_edges()) > 0
+	return character.inventory_ops().count_item(world_object_lock_item_id()) > 0
 
 
 # 综合节点可用性与锁；actor 实际能否操作此节点用这个。
@@ -247,7 +261,7 @@ func current_operator_id() -> String:
 
 
 func _max_concurrent_users() -> int:
-	var ws_def: Workstation = Workstations.by_id(String(workstation_id))
+	var ws_def: Workstation = Workstations.by_id(world_object_def_id())
 	return ws_def.max_concurrent_users if ws_def != null else 1
 
 

@@ -1,5 +1,5 @@
 {
-  "fermenting_barrel": {
+  "fermenting_barrel@tavern": {
     "starting_inventory": [
       {
         "item_id": "brewing_barrel",
@@ -14,7 +14,7 @@
       }
     ]
   },
-  "bakery_bread_shelf": {
+  "bakery_bread_shelf@hale_bakery": {
     "starting_inventory": [
       {
         "item_id": "bread",
@@ -23,7 +23,7 @@
       }
     ]
   },
-  "general_store_shelf": {
+  "general_store_shelf@general_store": {
     "starting_inventory": [
       {
         "item_id": "rope",
@@ -42,7 +42,7 @@
       }
     ]
   },
-  "treasury_vault": {
+  "treasury_vault@royal_house": {
     "starting_wallet_silver": 3000,
     "starting_inventory": [
       {
