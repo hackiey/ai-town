@@ -5,6 +5,7 @@
     },
     "tooltip": {
       "quality_format": "品质：%s（%d）",
+      "weight_format": "重量：%s kg",
       "shape_format": "形状：%s",
       "materials": "材质：",
       "tags_format": "标签：%s",
@@ -25,6 +26,7 @@
     },
     "status": {
       "meter_format": "%s %.0f / %.0f",
+      "carry_format": "负重 %.1f / %.1f kg",
       "status_with_effect_format": "%s（%s）",
       "status": {
         "hungry": "饥饿",
@@ -115,6 +117,7 @@
     "inventory": {
       "title": "背包 (B 关闭)",
       "backpack_title": "背包栏",
+      "backpack_carry_format": "背包栏  总负重：%.1f / %.1f kg",
       "wallet_format": "钱包：%s",
       "menu": {
         "use": "使用",

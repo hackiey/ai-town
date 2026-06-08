@@ -171,8 +171,11 @@ func is_directly_interactable(from: Vector3) -> bool:
 	return r > 0.0 and global_position.distance_to(from) <= r
 
 
+# 到达 = 走到了寻路目标（approach_position，可选 Approach 子节点，没有则回退自身），
+# 不是相对本体 global_position。运行时实际到达走 NavigationAgent 对 approach_position 量，
+# 此处与之同基准。
 func is_arrived(from: Vector3) -> bool:
-	return global_position.distance_to(from) <= eff_arrival_radius()
+	return approach_position().distance_to(from) <= eff_arrival_radius()
 
 
 func _ready() -> void:

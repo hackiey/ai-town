@@ -266,14 +266,18 @@ function bandMap(refs: PerceivedRef[]): Map<string, PerceptionBand> {
 
 function characterAttributesFromState(state: CharacterStateView | undefined): string[] {
   if (!state) return [];
+  const locale = getActiveLocale();
   const lines: string[] = [
     `${characterAttributeName("hp")}: ${formatCurrentOverMax(state.hp, state.maxHp)}`,
-    `${characterAttributeName("stamina")}: ${formatCurrentOverMax(state.stamina, state.maxStamina)}`,
-    `${characterAttributeName("hunger")}: ${formatCurrentOverMax(state.hunger, state.maxHunger)}`,
-    `${characterAttributeName("rest")}: ${formatCurrentOverMax(state.rest, state.maxRest)}`,
+    `${characterAttributeName("stamina")}: ${formatSicknessRiskMeter(state.stamina, state.maxStamina, 30, locale)}`,
+    `${characterAttributeName("hunger")}: ${formatSicknessRiskMeter(state.hunger, state.maxHunger, 50, locale)}`,
+    `${characterAttributeName("rest")}: ${formatSicknessRiskMeter(state.rest, state.maxRest, 40, locale)}`,
+    `${characterAttributeName("strength")}: ${formatNumber(state.strength)}`,
+    `${characterAttributeName("constitution")}: ${formatNumber(state.constitution)}`,
     `${characterAttributeName("purse")}: ${(state.walletCenti / 100).toFixed(2)} 银`,
     `负重: ${formatCurrentOverMax(state.carryWeight, state.maxCarry)} kg`,
   ];
+  lines.push(...bodyCommonSenseLines(locale));
   if (state.burning) lines.push("burning");
   if (state.activeStatuses.length > 0) {
     const tags = state.activeStatuses
@@ -288,13 +292,20 @@ function characterAttributesFromState(state: CharacterStateView | undefined): st
       .filter(Boolean);
     if (tags.length > 0) lines.push(`statuses: ${tags.join(", ")}`);
   }
-  const locale = getActiveLocale();
   // 档位 key 由 Godot 算好持久化（state.drunkTier/sicknessTier）；这里只渲染，不复制阈值。
   pushImpairmentLines(lines, "drunk", state.drunkTier, state.drunk, locale);
   pushImpairmentLines(lines, "sick", state.sicknessTier, state.sickness, locale);
   // 负重档位（carryTier 非空才渲染）：value 用当前总重 kg。
   pushImpairmentLines(lines, "encumber", state.carryTier, state.carryWeight, locale);
   return lines;
+}
+
+function bodyCommonSenseLines(locale: Locale): string[] {
+  return [
+    t("prompt.context.body_common_sense.strength", locale),
+    t("prompt.context.body_common_sense.constitution", locale),
+    t("prompt.context.body_common_sense.sickness_risk_rule", locale),
+  ];
 }
 
 // 醉酒 / 生病：超阈值才向自我感知里塞三行——状态档位、可能后果、roleplay 指令。
@@ -320,6 +331,17 @@ function formatCurrentOverMax(current: number, max: number | undefined): string 
   const cur = Math.round(current);
   if (max == null || !Number.isFinite(max)) return String(cur);
   return `${cur}/${Math.round(max)}`;
+}
+
+function formatSicknessRiskMeter(current: number, max: number | undefined, riskThresholdPct: number, locale: Locale): string {
+  const text = formatCurrentOverMax(current, max);
+  if (max == null || !Number.isFinite(max) || max <= 0) return text;
+  const pct = current / max * 100;
+  return pct < riskThresholdPct ? `${text} ${t("prompt.context.body_common_sense.sickness_risk_suffix", locale)}` : text;
+}
+
+function formatNumber(value: number): string {
+  return Number.isFinite(value) ? String(Math.round(value)) : "0";
 }
 
 function bandCharacterRefs(
@@ -829,5 +851,3 @@ function formatEffectsLine(effects: Record<string, number> | null | undefined, _
   }
   return parts.join(", ");
 }
-
-

@@ -14,7 +14,7 @@ anchor_bottom = 0.0
 offset_left = 16.0
 offset_top = 16.0
 offset_right = 280.0
-offset_bottom = 184.0
+offset_bottom = 204.0
 theme_override_constants/separation = 4
 
 [node name="HpRow" type="HBoxContainer" parent="Root"]
@@ -67,6 +67,10 @@ show_percentage = false
 
 [node name="RestLabel" type="Label" parent="Root/RestRow"]
 custom_minimum_size = Vector2(96, 0)
+text = ""
+
+[node name="CarryLabel" type="Label" parent="Root"]
+modulate = Color(0.78, 0.86, 1, 1)
 text = ""
 
 [node name="StatusLabel" type="Label" parent="Root"]

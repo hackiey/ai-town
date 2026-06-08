@@ -7,6 +7,8 @@
   "other": [
     "你刚开始独立讨生活，手艺还在练，得一边干一边学。"
   ],
+  "strength": 50,
+  "constitution": 50,
   "proficiency": {
     "cooking": 20,
     "woodworking": 15,

@@ -16,6 +16,7 @@ static func format(view: InventorySlotData, item: Item, name_for_tip: String) ->
 	else:
 		lines.append("%s x%d" % [name_for_tip, view.quantity()])
 	lines.append(TranslationServer.translate("ui.tooltip.quality_format") % [QualityTier.display_name(view.quality()), view.quality()])
+	lines.append(TranslationServer.translate("ui.tooltip.weight_format") % _format_weight(view.total_weight()))
 	# Kind-aware instance 描述（容量、鲜度、耐久等）— 各 aspect typed getter 在 UI 端就地渲染。
 	# Backend agent context 走另一条路（Phase 3 backend/agent-shared/item-display），跟此处独立。
 	_append_aspect_lines(lines, view, item)
@@ -98,4 +99,12 @@ static func _localized_effect_label(name: String) -> String:
 static func _format_amount(value: float) -> String:
 	if absf(value - roundf(value)) < 0.05:
 		return str(int(roundf(value)))
+	return "%.1f" % value
+
+
+static func _format_weight(value: float) -> String:
+	if absf(value - roundf(value)) < 0.005:
+		return str(int(roundf(value)))
+	if absf(value) < 1.0:
+		return "%.2f" % value
 	return "%.1f" % value

@@ -3,6 +3,8 @@
     "name": "Oren Vale",
     "age": 38,
     "gender": "male",
+    "strength": 68,
+    "constitution": 58,
     "mesh": "SM_Chr_Peasant_Male_01",
     "initial_wake_time": "06:08",
     "agent_models": {
@@ -377,6 +379,8 @@
     },
     "age": 17,
     "gender": "female",
+    "strength": 22,
+    "constitution": 24,
     "mesh": "SM_Chr_Peasant_Female_01",
     "initial_wake_time": "06:40",
     "starting_inventory": [
@@ -707,6 +711,8 @@
     },
     "age": 48,
     "gender": "male",
+    "strength": 62,
+    "constitution": 56,
     "mesh": "SM_Chr_Peasant_Male_01",
     "initial_wake_time": "06:10",
     "starting_inventory": [
@@ -948,6 +954,8 @@
     },
     "age": 15,
     "gender": "female",
+    "strength": 36,
+    "constitution": 52,
     "mesh": "SM_Chr_Peasant_Female_01",
     "initial_wake_time": "07:00",
     "starting_inventory": [
@@ -2024,6 +2032,8 @@
     },
     "age": 23,
     "gender": "male",
+    "strength": 72,
+    "constitution": 70,
     "mesh": "SM_Chr_Peasant_Male_01",
     "initial_wake_time": "06:20",
     "starting_inventory": [
@@ -2077,6 +2087,8 @@
     },
     "age": 35,
     "gender": "female",
+    "strength": 64,
+    "constitution": 72,
     "mesh": "SM_Chr_Peasant_Female_01",
     "initial_wake_time": "06:05",
     "starting_inventory": [

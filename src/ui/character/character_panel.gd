@@ -98,6 +98,9 @@ func _render_attributes(snapshot: Dictionary) -> String:
 	var physical_lines := [
 		_field_line("ui.character.field.material", _material_text(snapshot)),
 		_field_line("ui.character.field.mass", "%.1f kg" % float(snapshot.get("mass", 0.0))),
+		_attribute_line("strength", "%.0f" % float(snapshot.get("strength", 0.0))),
+		_attribute_line("constitution", "%.0f" % float(snapshot.get("constitution", 0.0))),
+		_attribute_line("carry_capacity", "%.1f kg" % float(snapshot.get("maxCarryWeight", 0.0))),
 		_field_line("ui.character.field.volume", "%.3f m^3" % float(snapshot.get("volume", 0.0))),
 		_field_line("ui.character.field.moisture", "%.0f%%" % (float(snapshot.get("moisture", 0.0)) * 100.0)),
 		_field_line("ui.character.field.temperature", "%.1f C" % float(snapshot.get("temperature", 0.0))),

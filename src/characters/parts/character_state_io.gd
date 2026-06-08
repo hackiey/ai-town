@@ -33,6 +33,9 @@ func hydrate() -> void:
 	_character.max_hunger = float(row.get("maxHunger", _character.max_hunger))
 	_character.rest = float(row.get("rest", _character.rest))
 	_character.max_rest = float(row.get("maxRest", _character.max_rest))
+	_character.strength = float(row.get("strength", _character.strength))
+	_character.constitution = float(row.get("constitution", _character.constitution))
+	_character.recompute_derived_attributes()
 	_character.drunk = float(row.get("drunk", _character.drunk))
 	_character.sickness = float(row.get("sickness", _character.sickness))
 	_character.sleep_needed_hours = float(row.get("sleepNeededHours", _character.sleep_needed_hours))
@@ -74,6 +77,7 @@ func persist() -> void:
 	var cid := _character.backend_character_id()
 	if cid.is_empty():
 		return
+	_character.recompute_derived_attributes()
 	var world: TownWorld = _character.get_tree().get_first_node_in_group("town_world") as TownWorld
 	var loc_id := _character.perception().current_location_id(world) if world != null else ""
 	Db.save_character_state(cid, {
@@ -93,6 +97,8 @@ func persist() -> void:
 		"maxHunger": _character.max_hunger,
 		"rest": _character.rest,
 		"maxRest": _character.max_rest,
+		"strength": _character.strength,
+		"constitution": _character.constitution,
 		"drunk": _character.drunk,
 		"sickness": _character.sickness,
 		# 派生档位 key 随 raw 一起持久化——阈值只在 Impairment 里判一次，backend 直接读这个 key。

@@ -168,6 +168,29 @@ func visible_locations(world: TownWorld) -> Array[Dictionary]:
 	return world.perceived_location_snapshots_for(character.global_position, LOCATION_FAR_RADIUS)
 
 
+# 角色共享的地点感知入口：NPC manifest 和玩家地图都走这里，避免 UI 自己重写一套附近 site 扫描。
+func perceived_location_refs(world: TownWorld = null) -> Array:
+	var w := world if world != null else _world()
+	var refs: Array = []
+	if w != null and w.has_method("perceived_position_refs_for"):
+		refs = w.perceived_position_refs_for(character.global_position, LOCATION_NEAR_RADIUS, LOCATION_FAR_RADIUS)
+	return _filter_refs_by_vision(refs, w)
+
+
+# 玩家地图消费的角色视角 site 分区。这里只产出数据；MapPanel 只渲染按钮。
+func map_site_sections() -> Dictionary:
+	var w := _world()
+	if w == null:
+		return {"global": [], "nearby": []}
+	var global_ids := PackedStringArray()
+	if w.has_method("global_map_site_ids"):
+		global_ids = w.global_map_site_ids()
+	return {
+		"global": _map_entries_from_ids(global_ids, w, "global"),
+		"nearby": _map_entries_from_refs(perceived_location_refs(w), w),
+	}
+
+
 # ─── items ───────────────────────────────────────────────
 
 func nearby_item_ids() -> Dictionary:
@@ -429,6 +452,50 @@ func _has_nearby_group_node(group_name: String, max_distance: float) -> bool:
 	return false
 
 
+func _map_entries_from_ids(ids: PackedStringArray, world: TownWorld, band: String) -> Array:
+	var refs: Array = []
+	for id in ids:
+		refs.append({"id": str(id), "band": band})
+	return _map_entries_from_refs(refs, world)
+
+
+func _map_entries_from_refs(refs: Array, world: TownWorld) -> Array:
+	var out: Array = []
+	var seen := {}
+	for ref_v in refs:
+		if not (ref_v is Dictionary):
+			continue
+		var ref: Dictionary = ref_v
+		var id := str(ref.get("id", ""))
+		if id.is_empty() or seen.has(id):
+			continue
+		seen[id] = true
+		out.append(_map_entry_for_site(id, str(ref.get("band", "")), world))
+	return out
+
+
+func _map_entry_for_site(site_id: String, band: String, world: TownWorld) -> Dictionary:
+	var alias := ""
+	if world != null and world.has_method("location_alias"):
+		alias = str(world.location_alias(site_id))
+	var label := alias if not alias.is_empty() else site_id
+	var owner_group := ""
+	if world != null and world.has_method("owner_group_for"):
+		owner_group = str(world.owner_group_for(site_id))
+	var parent_id := ""
+	if world != null and world.has_method("parent_location_id"):
+		parent_id = str(world.parent_location_id(site_id))
+	return {
+		"id": site_id,
+		"label": label,
+		"band": band,
+		"parentId": parent_id,
+		"depth": 1 if not parent_id.is_empty() else 0,
+		"ownerGroup": owner_group,
+		"inaccessible": not owner_group.is_empty() and not character.groups.has(owner_group),
+	}
+
+
 func _farm_center_position(farm: FarmGroup) -> Vector3:
 	if farm == null or not is_instance_valid(farm):
 		return character.global_position
@@ -483,13 +550,10 @@ func send_manifest() -> void:
 func build_manifest() -> Dictionary:
 	var world: TownWorld = character.get_tree().get_first_node_in_group("town_world") as TownWorld
 	var cid := character.backend_character_id()
-	var pos := character.global_position
 
 	# Locations: 由 world 算 band（near/far）。距离过滤；不再有"顶层永远可见"——
 	# NPC 知道哪些地点存在（move_to_location enum）走 known_location_ids 另一字段。
-	var location_refs: Array = []
-	if world != null and world.has_method("perceived_position_refs_for"):
-		location_refs = world.perceived_position_refs_for(pos, LOCATION_NEAR_RADIUS, LOCATION_FAR_RADIUS)
+	var location_refs: Array = perceived_location_refs(world)
 	var known_location_ids: PackedStringArray = PackedStringArray()
 	if world != null and world.has_method("known_position_ids"):
 		known_location_ids = world.known_position_ids()
@@ -502,7 +566,7 @@ func build_manifest() -> Dictionary:
 
 	# 交互站点：directlyInteractable=true → "direct"，否则 "near"（已经 ≤ visible 半径才进列表）。
 	# 室内外遮挡：用各 site 锚点位置过滤掉跨 space 看不见的（如室外看室内灶台）。
-	location_refs = _filter_refs_by_vision(location_refs, world)
+	# location_refs 已由 perceived_location_refs 过滤；下面只过滤交互站点。
 	var farm_refs := _filter_refs_by_vision(_refs_from_interactive_snapshots(nearby_farm_snapshots()), world)
 	var ws_refs := _filter_refs_by_vision(_refs_from_interactive_snapshots(nearby_workstation_snapshots()), world)
 	var shelf_refs := _filter_refs_by_vision(_refs_from_interactive_snapshots(nearby_shelf_snapshots()), world)

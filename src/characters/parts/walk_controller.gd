@@ -326,11 +326,16 @@ func resolve_move_to_location_request(action_request: Dictionary) -> Dictionary:
 		return {"ok": true, "action_id": action_id, "done": true}
 	var resolved_location := world.resolve_location_id(location_id) if world.has_method("resolve_location_id") else location_id
 	if world.has_position(resolved_location):
+		# 寻路目标点（approach_position）与到达阈值（arrival_radius）取自同一个最近锚点，
+		# 保证「走去的点」和「到达圈」来自同一 SiteMarker，多锚点站点不会错配。
+		var marker := world.nearest_nav_anchor(resolved_location, character.global_position)
+		if marker == null:
+			return {"ok": false, "error": "no anchor for location: %s" % resolved_location}
 		return {
 			"ok": true,
 			"action_id": action_id,
-			"position": world.get_nearest_position_world(resolved_location, character.global_position),
-			"arrival_distance": default_arrival_distance(),
+			"position": marker.approach_position(),
+			"arrival_distance": marker.eff_arrival_radius(),
 		}
 	if world.has_region(resolved_location):
 		return {"ok": true, "action_id": action_id, "region_id": resolved_location}
@@ -383,5 +388,5 @@ func _resolve_dynamic_site_move(world: TownWorld, site_id: String, action_id: St
 		"ok": true,
 		"action_id": action_id,
 		"position": marker.approach_position(),
-		"arrival_distance": default_arrival_distance(),
+		"arrival_distance": marker.eff_arrival_radius(),
 	}

@@ -723,6 +723,7 @@ func _register_workstations() -> void:
 		var ws := n as WorkstationNode
 		if ws == null:
 			continue
+		var site_marker := ws.get_site_marker() as SiteMarker
 		var resolved_group := _resolve_workstation_owner_group(ws)
 		# 逻辑 id 同源走 workstation_logical_id：有主工作台按 owner 拆成独立逻辑地点
 		# （id = "<def>@<group>"），公共工作台（owner_group 空，如各处水井）按 def 合并、move 选最近锚点。
@@ -743,11 +744,14 @@ func _register_workstations() -> void:
 			continue
 		_anchors_by_id[id] = [approach_node]
 		_workstation_location_ids[id] = true
-		_parent_location_by_id[id] = ""
+		var parent_id := _explicit_parent_id(site_marker)
+		_parent_location_by_id[id] = parent_id
 		_child_locations_by_id[id] = []
 		_logical_ids.append(id)
 		_top_level_location_ids.append(id)
-		_track_global_map_site(ws.get_site_marker() as SiteMarker, id)
+		if not parent_id.is_empty():
+			_append_child_location(parent_id, id)
+		_track_global_map_site(site_marker, id)
 		_owner_group_by_id[id] = resolved_group
 		# kind：容器 / 货架是 WorkstationNode 子类，分别归 container / shelf；其余 workstation。
 		var ws_kind := "workstation"
@@ -814,6 +818,7 @@ func _register_farms() -> void:
 		var id := farm.effective_location_id()
 		if id.is_empty():
 			continue
+		var site_marker := farm.get_site_marker() as SiteMarker
 		var approach_node: Node3D = farm.get_site_marker()
 		var resolved_group := _resolve_farm_owner_group(farm)
 		if _anchors_by_id.has(id):
@@ -823,11 +828,14 @@ func _register_farms() -> void:
 			(_anchors_by_id[id] as Array).append(approach_node)
 			continue
 		_anchors_by_id[id] = [approach_node]
-		_parent_location_by_id[id] = ""
+		var parent_id := _explicit_parent_id(site_marker)
+		_parent_location_by_id[id] = parent_id
 		_child_locations_by_id[id] = []
 		_logical_ids.append(id)
 		_top_level_location_ids.append(id)
-		_track_global_map_site(farm.get_site_marker() as SiteMarker, id)
+		if not parent_id.is_empty():
+			_append_child_location(parent_id, id)
+		_track_global_map_site(site_marker, id)
 		_owner_group_by_id[id] = resolved_group
 		_site_meta_by_id[id] = {"kind": "farm", "node": farm}
 
@@ -847,27 +855,41 @@ func _resolve_farm_owner_group(farm: FarmGroup) -> String:
 	return ""
 
 
-# 递归收集 waypoints_root 下所有 Marker3D 当 nav-only 图节点，扁平注册（不建父子关系）。
+# nav-only 图节点（waypoint）注册：扁平进 _anchors_by_id + _nav_only_ids，不建父子、不进
+# backend/zone。判据是 SiteMarker.nav_only（语义自带），与节点摆在哪个容器无关。
+func _register_nav_only(marker: SiteMarker) -> void:
+	var id := _effective_id(marker)
+	if _anchors_by_id.has(id):
+		# 同 id 重复注册，追加 anchor。但避免重复进 _nav_only_ids。
+		(_anchors_by_id[id] as Array).append(marker)
+	else:
+		_anchors_by_id[id] = [marker]
+		_nav_only_ids.append(id)
+
+
+# 递归收集 waypoints_root 下所有 nav_only SiteMarker 当 nav-only 图节点。
 # 用 subtree 方式而不是只看一级子节点，是为了允许编辑器里按区域分组（比如 "MainRoad" 容器）。
 func _register_waypoint_subtree(node: Node) -> void:
 	for child in node.get_children():
-		if child is Marker3D:
-			var marker := child as Marker3D
-			var id := _effective_id(marker)
-			if _anchors_by_id.has(id):
-				# 同 id 重复注册，追加 anchor。但避免重复进 _nav_only_ids。
-				(_anchors_by_id[id] as Array).append(marker)
-			else:
-				_anchors_by_id[id] = [marker]
-				_nav_only_ids.append(id)
+		var marker := child as SiteMarker
+		if marker != null:
+			_register_nav_only(marker)
 		_register_waypoint_subtree(child)
 
 
 func _register_location_tree(marker: Marker3D, parent_id: String, parent_group: String) -> void:
+	# nav_only SiteMarker 无论摆在哪（含 Positions 下）都按 waypoint 处理：扁平注册、不当 location、
+	# 不递归子节点。让 nav_only 标志成为「是不是 waypoint」的唯一真值。
+	var nav_marker := marker as SiteMarker
+	if nav_marker != null and nav_marker.nav_only:
+		_register_nav_only(nav_marker)
+		return
 	# 优先用 LocationMarker.location_id（同 id 多 marker = 多 anchor，比如 market_square 东西入口）；
 	# 没设就退到 node name。recurse 时仍用 effective id 当父，让 alias marker 下面的子节点
 	# 父挂在 logical location 而不是 alias 节点。
 	var id := _effective_id(marker)
+	var explicit_parent_id := _explicit_parent_id(nav_marker)
+	var effective_parent_id := explicit_parent_id if not explicit_parent_id.is_empty() else parent_id
 	var effective_group := _resolve_owner_group(marker, parent_group)
 	var recurse_parent := id
 	if _anchors_by_id.has(id):
@@ -875,18 +897,16 @@ func _register_location_tree(marker: Marker3D, parent_id: String, parent_group: 
 		(_anchors_by_id[id] as Array).append(marker)
 	else:
 		_anchors_by_id[id] = [marker]
-		_parent_location_by_id[id] = parent_id
+		_parent_location_by_id[id] = effective_parent_id
 		_child_locations_by_id[id] = []
 		_logical_ids.append(id)
 		_owner_group_by_id[id] = effective_group
 		_site_meta_by_id[id] = {"kind": "location", "node": marker}
 		_track_global_map_site(marker as SiteMarker, id)
-		if parent_id.is_empty():
+		if effective_parent_id.is_empty():
 			_top_level_location_ids.append(id)
 		else:
-			var siblings: Array = _child_locations_by_id.get(parent_id, [])
-			siblings.append(id)
-			_child_locations_by_id[parent_id] = siblings
+			_append_child_location(effective_parent_id, id)
 	for child in marker.get_children():
 		if child is Marker3D:
 			_register_location_tree(child as Marker3D, recurse_parent, effective_group)
@@ -906,6 +926,17 @@ func _resolve_owner_group(marker: Marker3D, parent_group: String) -> String:
 	if literal.is_empty():
 		return parent_group
 	return literal
+
+
+func _explicit_parent_id(marker: SiteMarker) -> String:
+	return marker.parent_site_id.strip_edges() if marker != null else ""
+
+
+func _append_child_location(parent_id: String, child_id: String) -> void:
+	var siblings: Array = _child_locations_by_id.get(parent_id, [])
+	if not siblings.has(child_id):
+		siblings.append(child_id)
+	_child_locations_by_id[parent_id] = siblings
 
 
 func _effective_id(marker: Marker3D) -> String:
@@ -1161,28 +1192,42 @@ func get_position_world(position_name: String) -> Vector3:
 
 
 # 锚点的"寻路到达点"：SiteMarker 组件用 approach_position()（可选 Approach 子节点，
-# 没有则回退自身位置）；非 SiteMarker 的老节点用自身位置。
+# 没有则回退自身位置）。锚点现已全是 SiteMarker（location/workstation/farm/waypoint 同源）；
+# 非 SiteMarker = fail-loud（不静默回退自身，否则错配难定位）。
 func _anchor_nav_pos(anchor: Node3D) -> Vector3:
-	if anchor is SiteMarker:
-		return (anchor as SiteMarker).approach_position()
-	return anchor.global_position
+	var m := anchor as SiteMarker
+	if m == null:
+		push_error("[TownWorld] anchor %s 不是 SiteMarker，无法取寻路到达点" % anchor)
+		return anchor.global_position
+	return m.approach_position()
+
+
+# 在该 logical id 的所有锚点里挑离 from 最近（按寻路到达点距离）的 SiteMarker。
+# 寻路目标点 + arrival_radius 基准都从这同一个锚点取（approach_position / eff_arrival_radius），
+# 保证「走去的点」和「到达阈值」来自同一锚点，多锚点站点（井/市集多入口）不会错配。
+func nearest_nav_anchor(position_name: String, from: Vector3) -> SiteMarker:
+	if not _anchors_by_id.has(position_name):
+		return null
+	var best: SiteMarker = null
+	var best_d := INF
+	for a in _anchors_by_id[position_name]:
+		var m := a as SiteMarker
+		if m == null:
+			continue
+		var d := from.distance_squared_to(m.approach_position())
+		if d < best_d:
+			best_d = d
+			best = m
+	return best
 
 
 # 在该 logical id 的所有锚点里挑离 from 最近的寻路到达点（世界坐标）。
 func get_nearest_position_world(position_name: String, from: Vector3) -> Vector3:
-	if not _anchors_by_id.has(position_name):
+	var m := nearest_nav_anchor(position_name, from)
+	if m == null:
 		push_warning("[TownWorld] unknown position: %s" % position_name)
 		return Vector3.ZERO
-	var anchors: Array = _anchors_by_id[position_name]
-	var best: Vector3 = _anchor_nav_pos(anchors[0] as Node3D)
-	var best_d := from.distance_squared_to(best)
-	for i in range(1, anchors.size()):
-		var p := _anchor_nav_pos(anchors[i] as Node3D)
-		var d := from.distance_squared_to(p)
-		if d < best_d:
-			best_d = d
-			best = p
-	return best
+	return m.approach_position()
 
 
 # ── 动态 site（运行时人物 / 地面物品）────────────────────────────────

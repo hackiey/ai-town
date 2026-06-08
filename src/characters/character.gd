@@ -31,6 +31,9 @@ const INVENTORY_SLOT_COUNT := 20
 const INVENTORY_STACK_MAX := 99
 const ITEM_DEFAULT_QUALITY := 100
 const DEFAULT_SLEEP_NEEDED_HOURS := 8.0
+const DEFAULT_BASE_ATTRIBUTE := 50.0
+const MIN_CARRY_WEIGHT := 15.0
+const CARRY_WEIGHT_PER_STRENGTH := 0.7
 
 # 物理 ───────────────────────────────────────────────
 @export var material: Substance                   # _ready 兜底为 flesh
@@ -55,10 +58,17 @@ var burning: bool = false
 @export var max_hunger: float = 100.0
 @export var max_rest: float = 100.0
 @export var sleep_needed_hours: float = 0.0
-# 负重上限（kg）。背包总重超过此值不能再放入（add_instance 硬闸门）；超重还会按比例增加
-# 体力消耗、压低移动速度（见 src/sim/characters/impairment.gd encumbrance 层）。
-# 后续可在 npcs.json override。
-@export var max_carry_weight: float = 50.0
+# 基础身体属性（0..100）。strength 先用于派生负重上限；constitution 用于生病风险。
+@export_range(0.0, 100.0) var strength: float = DEFAULT_BASE_ATTRIBUTE:
+	set(value):
+		strength = clampf(value, 0.0, 100.0)
+		max_carry_weight = carry_capacity_for_strength(strength)
+@export_range(0.0, 100.0) var constitution: float = DEFAULT_BASE_ATTRIBUTE:
+	set(value):
+		constitution = clampf(value, 0.0, 100.0)
+# 负重上限（kg）是 strength 派生投影，不是基础配置。背包总重超过此值不能再放入
+#（add_instance 硬闸门）；超重还会按比例增加体力消耗、压低移动速度。
+var max_carry_weight: float = 50.0
 # 当前背包总重（kg）。派生运行时值，单一写者 = CharacterInventory._recompute_carry()。
 var carry_weight: float = 0.0
 var hp: float
@@ -178,6 +188,11 @@ func build_perception_manifest() -> Dictionary:
 	return perception().build_manifest()
 
 
+# 玩家地图面板也只消费角色视角数据；附近 site 的判定与 NPC perception manifest 同源。
+func map_site_sections() -> Dictionary:
+	return perception().map_site_sections()
+
+
 func inventory_ops() -> CharacterInventory:
 	if _inventory_runner == null:
 		_inventory_runner = _CHARACTER_INVENTORY.new(self)
@@ -187,6 +202,14 @@ func inventory_ops() -> CharacterInventory:
 # 负重比例 = 当前背包总重 / 上限。0 = 空手；1.0 = 满载；>1 = 超载（闸门拦获取，但打水等可顶过）。
 func carry_ratio() -> float:
 	return carry_weight / maxf(max_carry_weight, 0.001)
+
+
+static func carry_capacity_for_strength(value: float) -> float:
+	return MIN_CARRY_WEIGHT + clampf(value, 0.0, 100.0) * CARRY_WEIGHT_PER_STRENGTH
+
+
+func recompute_derived_attributes() -> void:
+	max_carry_weight = carry_capacity_for_strength(strength)
 
 
 func workstation_actions() -> WorkstationActionRunner:
@@ -262,6 +285,7 @@ func _ready() -> void:
 		material = Materials.by_id("flesh")
 	if sleep_needed_hours <= 0.0:
 		sleep_needed_hours = DEFAULT_SLEEP_NEEDED_HOURS
+	recompute_derived_attributes()
 	hp = max_hp
 	stamina = max_stamina
 	hunger = max_hunger
@@ -343,9 +367,12 @@ func apply_ten_minute_tick(total_minute: int) -> void:
 		"max_hunger": max_hunger,
 		"rest": rest,
 		"max_rest": max_rest,
+		"strength": strength,
+		"constitution": constitution,
 		"drunk": drunk,
 		"sickness": sickness,
 		"max_impairment": MAX_IMPAIRMENT,
+		"sickness_roll": randf(),
 		"is_sleeping": sleep_controller().is_sleeping(),
 		"has_hungry": has_status("hungry"),
 	})

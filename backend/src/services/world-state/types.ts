@@ -22,6 +22,9 @@ export type CharacterStateView = {
   maxHunger: number;
   rest: number;
   maxRest: number;
+  // 基础身体属性（0..100）。maxCarry 是 strength 的 Godot 派生投影；constitution 参与生病风险。
+  strength: number;
+  constitution: number;
   // 损伤层：drunk 醉酒 / sickness 生病累计值（0..100）。0 = 清醒健康。
   drunk: number;
   sickness: number;

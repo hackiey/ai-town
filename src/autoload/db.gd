@@ -110,6 +110,8 @@ const _GAME_WORLD_SCHEMA: Array[String] = [
 		maxHunger REAL NOT NULL DEFAULT 100.0,
 		rest REAL NOT NULL DEFAULT 100.0,
 		maxRest REAL NOT NULL DEFAULT 100.0,
+		strength REAL NOT NULL DEFAULT 50.0,
+		constitution REAL NOT NULL DEFAULT 50.0,
 		drunk REAL NOT NULL DEFAULT 0.0,
 		sickness REAL NOT NULL DEFAULT 0.0,
 		drunkTier TEXT NOT NULL DEFAULT '',
@@ -525,6 +527,7 @@ func _open() -> void:
 	_ensure_groups_seeded(RunMode.town_id)
 	_ensure_town_clock_seeded(RunMode.town_id)
 	_ensure_npc_character_states_seeded(RunMode.town_id)
+	_backfill_configured_npc_body_attributes(RunMode.town_id)
 	_ensure_proficiency_seeded(RunMode.town_id)
 	# Hydrate caches：把 character_states / item_instances / farm_states / farm_plots
 	# 整表 SELECT 进内存 dict，等各 scene 节点 _ready 时 take_* / all_* 拿走。
@@ -551,6 +554,8 @@ func _apply_schema_migrations() -> void:
 	_ensure_column("character_states", "maxStamina", "REAL NOT NULL DEFAULT 100.0")
 	_ensure_column("character_states", "maxHunger", "REAL NOT NULL DEFAULT 100.0")
 	_ensure_column("character_states", "maxRest", "REAL NOT NULL DEFAULT 100.0")
+	_ensure_column("character_states", "strength", "REAL NOT NULL DEFAULT 50.0")
+	_ensure_column("character_states", "constitution", "REAL NOT NULL DEFAULT 50.0")
 	# currentActivity*：见 character_states schema 注释。老 DB 加列后默认 NULL = idle。
 	_ensure_column("character_states", "currentActivityKind", "TEXT")
 	_ensure_column("character_states", "currentActivityTarget", "TEXT")
@@ -715,6 +720,41 @@ func _ensure_npc_character_states_seeded(town_id: String) -> void:
 		_seed_character_inventory(npc_id, conf.get("starting_inventory", []))
 
 
+# 迁移兼容：已有存档里的 NPC 行不会再走首次 seed。对 npcs.json 新增的基础身体属性，
+# 只在行仍是旧默认 50/50 时回填；以后如果训练/装备/buff 改过基础值，这里不会覆盖。
+func _backfill_configured_npc_body_attributes(town_id: String) -> void:
+	if _db == null or town_id.is_empty():
+		return
+	var json_path := _resolve_npcs_json_path()
+	if not FileAccess.file_exists(json_path):
+		return
+	var parsed: Variant = JSON.parse_string(FileAccess.get_file_as_string(json_path))
+	if typeof(parsed) != TYPE_DICTIONARY:
+		return
+	var npcs: Dictionary = parsed as Dictionary
+	for npc_id_v in npcs.keys():
+		var npc_id := str(npc_id_v)
+		var conf_v: Variant = npcs.get(npc_id, {})
+		if npc_id.is_empty() or typeof(conf_v) != TYPE_DICTIONARY:
+			continue
+		var conf: Dictionary = conf_v as Dictionary
+		if not conf.has("strength") and not conf.has("constitution"):
+			continue
+		var strength := clampf(float(conf.get("strength", Character.DEFAULT_BASE_ATTRIBUTE)), 0.0, 100.0)
+		var constitution := clampf(float(conf.get("constitution", Character.DEFAULT_BASE_ATTRIBUTE)), 0.0, 100.0)
+		var sql := "UPDATE character_states SET strength = %f, constitution = %f, maxCarry = %f WHERE townId = '%s' AND characterId = '%s' AND ABS(strength - %f) < 0.0001 AND ABS(constitution - %f) < 0.0001" % [
+			strength,
+			constitution,
+			Character.carry_capacity_for_strength(strength),
+			_esc(town_id),
+			_esc(npc_id),
+			Character.DEFAULT_BASE_ATTRIBUTE,
+			Character.DEFAULT_BASE_ATTRIBUTE,
+		]
+		if not _db.query(sql):
+			push_warning("[Db] body attribute backfill failed for %s: %s" % [npc_id, _db.error_message])
+
+
 # 把 npcs.json 里 proficiency 字段（{skill_id: value}）按 (town, character, skill)
 # INSERT OR IGNORE 进 npc_proficiency。已存在的行不动 —— 玩家进度 / NPC 已涨上去
 # 的数值不会被启动 seed 抹掉。新加 skill 到 npcs.json 时，下次 boot 会补上缺的行。
@@ -857,6 +897,8 @@ func _initial_character_state_fields(character_id: String, conf: Dictionary, sle
 		rest = clampf(100.0 * minf(1.0, slept_by_start / maxf(sleep_needed_hours, 0.1)), 0.0, 100.0)
 	var hunger := _MORNING_INITIAL_HUNGER
 	var stamina := _initial_effective_stamina_max(hunger, rest)
+	var strength := clampf(float(conf.get("strength", Character.DEFAULT_BASE_ATTRIBUTE)), 0.0, 100.0)
+	var constitution := clampf(float(conf.get("constitution", Character.DEFAULT_BASE_ATTRIBUTE)), 0.0, 100.0)
 	var statuses := []
 	if wake_minute > _MORNING_START_GAME_MINUTE:
 		statuses.append({
@@ -876,6 +918,9 @@ func _initial_character_state_fields(character_id: String, conf: Dictionary, sle
 		"stamina": stamina,
 		"hunger": hunger,
 		"rest": rest,
+		"strength": strength,
+		"constitution": constitution,
+		"maxCarry": Character.carry_capacity_for_strength(strength),
 		"sleepNeededHours": sleep_needed_hours,
 		"temperature": 36.5,
 		"burning": false,
@@ -1135,7 +1180,7 @@ func take_character_state(character_id: String) -> Dictionary:
 	return row as Dictionary
 
 # UPSERT 当前角色态。fields 期望键：currentLocationId / posX/Y/Z / rotY / animState /
-# hp / stamina / hunger / rest / sleepNeededHours / temperature / burning(bool) / alive(bool) / equipped*(4) /
+# hp / stamina / hunger / rest / strength / constitution / sleepNeededHours / temperature / burning(bool) / alive(bool) / equipped*(4) /
 # activeStatuses(Array)。缺字段按 SQL 默认值 / 上一次值（用 COALESCE 兜底太重，
 # MVP 先要求 caller 传齐主字段）。
 func save_character_state(character_id: String, fields: Dictionary) -> void:
@@ -1143,7 +1188,7 @@ func save_character_state(character_id: String, fields: Dictionary) -> void:
 		return
 	var now := Time.get_datetime_string_from_system(true)
 	var statuses_json := JSON.stringify(fields.get("activeStatuses", []))
-	var sql := "INSERT INTO character_states (townId, characterId, currentLocationId, posX, posY, posZ, rotY, animState, hp, maxHp, stamina, maxStamina, hunger, maxHunger, rest, maxRest, drunk, sickness, drunkTier, sicknessTier, carryWeight, maxCarry, carryTier, sleepNeededHours, temperature, burning, alive, equippedRightHand, equippedLeftHand, equippedBody, equippedHead, activeStatuses, silverCentiBalance, updatedAt) VALUES ('%s', '%s', %s, %f, %f, %f, %f, %s, %f, %f, %f, %f, %f, %f, %f, %f, %f, %f, '%s', '%s', %f, %f, '%s', %f, %f, %d, %d, %s, %s, %s, %s, %s, %d, '%s') ON CONFLICT(townId, characterId) DO UPDATE SET currentLocationId = excluded.currentLocationId, posX = excluded.posX, posY = excluded.posY, posZ = excluded.posZ, rotY = excluded.rotY, animState = excluded.animState, hp = excluded.hp, maxHp = excluded.maxHp, stamina = excluded.stamina, maxStamina = excluded.maxStamina, hunger = excluded.hunger, maxHunger = excluded.maxHunger, rest = excluded.rest, maxRest = excluded.maxRest, drunk = excluded.drunk, sickness = excluded.sickness, drunkTier = excluded.drunkTier, sicknessTier = excluded.sicknessTier, carryWeight = excluded.carryWeight, maxCarry = excluded.maxCarry, carryTier = excluded.carryTier, sleepNeededHours = excluded.sleepNeededHours, temperature = excluded.temperature, burning = excluded.burning, alive = excluded.alive, equippedRightHand = excluded.equippedRightHand, equippedLeftHand = excluded.equippedLeftHand, equippedBody = excluded.equippedBody, equippedHead = excluded.equippedHead, activeStatuses = excluded.activeStatuses, silverCentiBalance = excluded.silverCentiBalance, updatedAt = excluded.updatedAt" % [
+	var sql := "INSERT INTO character_states (townId, characterId, currentLocationId, posX, posY, posZ, rotY, animState, hp, maxHp, stamina, maxStamina, hunger, maxHunger, rest, maxRest, strength, constitution, drunk, sickness, drunkTier, sicknessTier, carryWeight, maxCarry, carryTier, sleepNeededHours, temperature, burning, alive, equippedRightHand, equippedLeftHand, equippedBody, equippedHead, activeStatuses, silverCentiBalance, updatedAt) VALUES ('%s', '%s', %s, %f, %f, %f, %f, %s, %f, %f, %f, %f, %f, %f, %f, %f, %f, %f, %f, %f, '%s', '%s', %f, %f, '%s', %f, %f, %d, %d, %s, %s, %s, %s, %s, %d, '%s') ON CONFLICT(townId, characterId) DO UPDATE SET currentLocationId = excluded.currentLocationId, posX = excluded.posX, posY = excluded.posY, posZ = excluded.posZ, rotY = excluded.rotY, animState = excluded.animState, hp = excluded.hp, maxHp = excluded.maxHp, stamina = excluded.stamina, maxStamina = excluded.maxStamina, hunger = excluded.hunger, maxHunger = excluded.maxHunger, rest = excluded.rest, maxRest = excluded.maxRest, strength = excluded.strength, constitution = excluded.constitution, drunk = excluded.drunk, sickness = excluded.sickness, drunkTier = excluded.drunkTier, sicknessTier = excluded.sicknessTier, carryWeight = excluded.carryWeight, maxCarry = excluded.maxCarry, carryTier = excluded.carryTier, sleepNeededHours = excluded.sleepNeededHours, temperature = excluded.temperature, burning = excluded.burning, alive = excluded.alive, equippedRightHand = excluded.equippedRightHand, equippedLeftHand = excluded.equippedLeftHand, equippedBody = excluded.equippedBody, equippedHead = excluded.equippedHead, activeStatuses = excluded.activeStatuses, silverCentiBalance = excluded.silverCentiBalance, updatedAt = excluded.updatedAt" % [
 		_esc(RunMode.town_id), _esc(character_id),
 		_sql_str_or_null(fields.get("currentLocationId", "")),
 		float(fields.get("posX", 0.0)), float(fields.get("posY", 0.0)), float(fields.get("posZ", 0.0)),
@@ -1153,6 +1198,7 @@ func save_character_state(character_id: String, fields: Dictionary) -> void:
 		float(fields.get("stamina", 0.0)), float(fields.get("maxStamina", 100.0)),
 		float(fields.get("hunger", 0.0)), float(fields.get("maxHunger", 100.0)),
 		float(fields.get("rest", 0.0)), float(fields.get("maxRest", 100.0)),
+		float(fields.get("strength", Character.DEFAULT_BASE_ATTRIBUTE)), float(fields.get("constitution", Character.DEFAULT_BASE_ATTRIBUTE)),
 		float(fields.get("drunk", 0.0)), float(fields.get("sickness", 0.0)),
 		_esc(str(fields.get("drunkTier", ""))), _esc(str(fields.get("sicknessTier", ""))),
 		float(fields.get("carryWeight", 0.0)), float(fields.get("maxCarry", 50.0)), _esc(str(fields.get("carryTier", ""))),
@@ -1986,7 +2032,7 @@ func _hydrate_character_states(town_id: String) -> void:
 	var rows: Array = _db.select_rows("character_states", "townId = '%s'" % _esc(town_id), [
 		"characterId", "currentLocationId", "posX", "posY", "posZ", "rotY", "animState",
 		"hp", "maxHp", "stamina", "maxStamina", "hunger", "maxHunger", "rest", "maxRest",
-		"drunk", "sickness", "sleepNeededHours", "temperature", "burning", "alive",
+		"strength", "constitution", "drunk", "sickness", "sleepNeededHours", "temperature", "burning", "alive",
 		"equippedRightHand", "equippedLeftHand", "equippedBody", "equippedHead",
 		"activeStatuses", "silverCentiBalance",
 	])
@@ -2004,7 +2050,7 @@ func _select_character_state(character_id: String) -> Dictionary:
 	var rows: Array = _db.select_rows("character_states", "townId = '%s' AND characterId = '%s'" % [_esc(RunMode.town_id), _esc(character_id)], [
 		"characterId", "currentLocationId", "posX", "posY", "posZ", "rotY", "animState",
 		"hp", "maxHp", "stamina", "maxStamina", "hunger", "maxHunger", "rest", "maxRest",
-		"drunk", "sickness", "sleepNeededHours", "temperature", "burning", "alive",
+		"strength", "constitution", "drunk", "sickness", "sleepNeededHours", "temperature", "burning", "alive",
 		"equippedRightHand", "equippedLeftHand", "equippedBody", "equippedHead",
 		"activeStatuses", "silverCentiBalance",
 	])
@@ -2035,6 +2081,8 @@ func _character_state_row_to_cache(r: Dictionary) -> Dictionary:
 		"maxHunger": float(r.get("maxHunger", 100.0)),
 		"rest": float(r.get("rest", 100.0)),
 		"maxRest": float(r.get("maxRest", 100.0)),
+		"strength": float(r.get("strength", Character.DEFAULT_BASE_ATTRIBUTE)),
+		"constitution": float(r.get("constitution", Character.DEFAULT_BASE_ATTRIBUTE)),
 		"drunk": float(r.get("drunk", 0.0)),
 		"sickness": float(r.get("sickness", 0.0)),
 		"sleepNeededHours": float(r.get("sleepNeededHours", 0.0)),

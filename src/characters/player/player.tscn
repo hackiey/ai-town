@@ -124,6 +124,18 @@ properties/28/replication_mode = 2
 properties/29/path = NodePath(".:sickness")
 properties/29/spawn = false
 properties/29/replication_mode = 2
+properties/30/path = NodePath(".:carry_weight")
+properties/30/spawn = false
+properties/30/replication_mode = 2
+properties/31/path = NodePath(".:max_carry_weight")
+properties/31/spawn = false
+properties/31/replication_mode = 2
+properties/32/path = NodePath(".:strength")
+properties/32/spawn = false
+properties/32/replication_mode = 2
+properties/33/path = NodePath(".:constitution")
+properties/33/spawn = false
+properties/33/replication_mode = 2
 
 [node name="Player" type="CharacterBody3D"]
 collision_layer = 2

@@ -215,6 +215,12 @@
           "roleplay": "扮演要求: 你正背着{level}的行囊——动作沉重、气喘吁吁，会想着尽快卸下点东西或找地方放下。"
         }
       },
+      "body_common_sense": {
+        "strength": "常识: 力量是基础属性，会派生负重上限；力量越高，能背的总重量越高。",
+        "constitution": "常识: 体质是基础属性，体质越低，身体越容易被疲劳、缺觉和饥饿拖垮。",
+        "sickness_risk_rule": "常识: 低体力、低精力或饥饿状态下，可能会引发疾病；体质差的人更不该长期硬扛。",
+        "sickness_risk_suffix": "（可能有生病风险）"
+      },
       "soul": {
         "name_format": "姓名: {value}",
         "age_format": "年龄: {value}",

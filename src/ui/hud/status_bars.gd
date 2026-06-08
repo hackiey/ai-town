@@ -15,6 +15,7 @@ extends CanvasLayer
 @onready var _hunger_label: Label = $Root/HungerRow/HungerLabel
 @onready var _rest_bar: ProgressBar = $Root/RestRow/RestBar
 @onready var _rest_label: Label = $Root/RestRow/RestLabel
+@onready var _carry_label: Label = $Root/CarryLabel
 @onready var _status_label: Label = $Root/StatusLabel
 @onready var _god_badge: Label = $GodBadge
 
@@ -38,6 +39,7 @@ func _process(_delta: float) -> void:
 func _render() -> void:
 	if _player == null:
 		_god_badge.visible = false
+		_carry_label.text = ""
 		_status_label.text = ""
 		return
 	_god_badge.visible = _player.groups.has("god")
@@ -56,6 +58,8 @@ func _render() -> void:
 	_rest_bar.max_value = _player.max_rest
 	_rest_bar.value = _player.rest
 	_rest_label.text = _meter_label("rest", _player.rest, _player.max_rest)
+
+	_carry_label.text = tr("ui.status.carry_format") % [_player.carry_weight, _player.max_carry_weight]
 
 	var labels: Array[String] = []
 	if not _player.alive:

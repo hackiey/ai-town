@@ -17,6 +17,8 @@ const Money = preload("res://src/sim/characters/money.gd")
 var _player: Node = null
 var _last_snapshot: Array = []
 var _last_wallet_centi: int = -1
+var _last_carry_weight: float = -1.0
+var _last_max_carry_weight: float = -1.0
 var _slots: Array[InventorySlot] = []
 # 上下文转移：灶台/仓库面板打开时，背包格右键多一项"放入灶台…/存入仓库…"，委托给对应面板开分离面板。
 var _action_panel: Node = null
@@ -25,6 +27,7 @@ var _last_transfer_label: String = ""
 
 @onready var _root: Control = $Root
 @onready var _wallet_label: Label = $Root/Panel/Margin/VBox/Wallet
+@onready var _backpack_title: Label = $Root/Panel/Margin/VBox/BackpackTitle
 @onready var _grid: GridContainer = $Root/Panel/Margin/VBox/Grid
 
 
@@ -36,6 +39,8 @@ func set_player(player: Node) -> void:
 	_player = player
 	_last_snapshot.clear()
 	_last_wallet_centi = -1
+	_last_carry_weight = -1.0
+	_last_max_carry_weight = -1.0
 	if _root.visible:
 		_refresh()
 
@@ -72,7 +77,12 @@ func _process(_delta: float) -> void:
 	_update_transfer_labels()
 	var current: Array = _player.inventory
 	var wallet := int(_player.get("wallet_centi"))
-	if wallet != _last_wallet_centi or not _same_inventory(current, _last_snapshot):
+	var carry := float(_player.get("carry_weight"))
+	var max_carry := float(_player.get("max_carry_weight"))
+	if wallet != _last_wallet_centi \
+			or absf(carry - _last_carry_weight) > 0.001 \
+			or absf(max_carry - _last_max_carry_weight) > 0.001 \
+			or not _same_inventory(current, _last_snapshot):
 		_refresh()
 
 
@@ -120,12 +130,18 @@ func _refresh() -> void:
 			slot.set_slot(slot.slot_index, {})
 		_last_snapshot.clear()
 		_last_wallet_centi = -1
+		_last_carry_weight = -1.0
+		_last_max_carry_weight = -1.0
 		_wallet_label.text = tr("ui.inventory.wallet_format") % Money.format_silver_from_centi(0)
+		_backpack_title.text = tr("ui.inventory.backpack_title")
 		return
 	var inv: Array = _player.inventory
 	_last_snapshot = inv.duplicate(true)
 	_last_wallet_centi = int(_player.get("wallet_centi"))
+	_last_carry_weight = float(_player.get("carry_weight"))
+	_last_max_carry_weight = float(_player.get("max_carry_weight"))
 	_wallet_label.text = tr("ui.inventory.wallet_format") % Money.format_silver_from_centi(_last_wallet_centi)
+	_backpack_title.text = tr("ui.inventory.backpack_carry_format") % [_last_carry_weight, _last_max_carry_weight]
 	for i in _slots.size():
 		if i >= inv.size():
 			_slots[i].set_slot(i, {})

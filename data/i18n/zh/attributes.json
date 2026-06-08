@@ -4,6 +4,9 @@
     "stamina": { "name": "体力" },
     "hunger": { "name": "饱食" },
     "rest": { "name": "精力" },
+    "strength": { "name": "力量" },
+    "constitution": { "name": "体质" },
+    "carry_capacity": { "name": "负重上限" },
     "temperature": { "name": "体温" },
     "burning": { "name": "燃烧" },
     "purse": { "name": "钱包" }

@@ -28,6 +28,15 @@ hunger_decay_sleep_per_hour = 1.25
 drunk_decay_per_tick    = 1.0
 sickness_decay_per_tick = 0.25
 
+-- 生病触发风险（每 10-min slow_tick）。体质只控制"低体力/低饱食/低精力时有多容易病"；
+-- 身体资源健康时 chance=0。每个低于阈值的资源都是一份风险暴露，多项低值叠加。
+-- 校准：Lysa constitution=24，只靠体力 <30% 持续 3 小时（18 tick）累计生病概率约 82%。
+sickness_risk_chance_per_low_resource = 0.12
+sickness_onset_per_tick               = 3.0
+sickness_stamina_risk_threshold       = 30.0
+sickness_hunger_risk_threshold        = 50.0
+sickness_rest_risk_threshold          = 40.0
+
 -- ============== 内部 helper ==============
 
 local function _check_hungry_threshold(target, hunger, has_hungry)
@@ -80,6 +89,17 @@ local function _rest_ratio(rest, max_rest)
     return _clamp((rest or 0) / max_rest, 0.0, 1.0)
 end
 
+local function _percent(current, max_value)
+    if (max_value or 0) <= 0 then return 0 end
+    return _clamp((current or 0) / max_value * 100.0, 0.0, 100.0)
+end
+
+local function _low_exposure(percent, threshold)
+    if threshold <= 0 then return 0.0 end
+    if percent < threshold then return 1.0 end
+    return 0.0
+end
+
 local function _stamina_cap(max_stamina, hunger_percent, rest, max_rest)
     local rest_cap = max_stamina * _rest_ratio(rest, max_rest)
     local hunger_cap = max_stamina * _hunger_stamina_cap_ratio(hunger_percent)
@@ -98,6 +118,15 @@ function move_speed_mult(stamina, max_stamina)
         pct = _clamp((stamina or 0) / max_stamina * 100.0, 0.0, 100.0)
     end
     return _stamina_move_speed_ratio(pct)
+end
+
+function sickness_chance(stamina, max_stamina, hunger, max_hunger, rest, max_rest, constitution)
+    local low_resources =
+        _low_exposure(_percent(stamina, max_stamina), sickness_stamina_risk_threshold) +
+        _low_exposure(_hunger_percent(hunger, max_hunger), sickness_hunger_risk_threshold) +
+        _low_exposure(_percent(rest, max_rest), sickness_rest_risk_threshold)
+    local vulnerability = _clamp((100.0 - (constitution or 50.0)) / 100.0, 0.0, 1.0)
+    return _clamp(sickness_risk_chance_per_low_resource * low_resources * vulnerability, 0.0, 0.5)
 end
 
 -- ============== hooks ==============
@@ -172,6 +201,14 @@ function on_slow_tick(ctx)
     if sickness > 0 then
         local dec = sickness_decay_per_tick * (tick_hours / (1.0 / 6.0))
         affect.sickness(ctx.character, -math.min(dec, sickness))
+    end
+
+    -- 7) 生病风险：体质低的人在低体力、低饱食、低精力时更容易生病。
+    --    随机数由 GDScript 传入，lua 保持纯公式 + effect 声明。
+    local chance = sickness_chance(new_stamina, max_stamina, new_hunger, max_hunger, new_rest, max_rest, ctx.constitution)
+    local roll = ctx.sickness_roll or 1.0
+    if chance > 0.0 and roll < chance then
+        affect.sickness(ctx.character, sickness_onset_per_tick)
     end
 end
 
