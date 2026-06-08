@@ -14,6 +14,7 @@ materials = {
 "blade": "iron",
 "handle": "wood_oak"
 }
+tags = PackedStringArray("metal", "sharp", "harvest_tool")
 properties = {
 "blade_area": 0.08
 }

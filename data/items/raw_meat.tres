@@ -8,6 +8,7 @@ id = "raw_meat"
 kind = "material"
 weight = 0.2
 shape_type = "lump"
+tags = PackedStringArray("meat", "raw")
 materials = {
 "body": "raw_meat"
 }

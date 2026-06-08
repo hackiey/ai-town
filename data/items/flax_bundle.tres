@@ -8,6 +8,7 @@ id = "flax_bundle"
 kind = "material"
 weight = 0.2
 shape_type = "fiber_bundle"
+tags = PackedStringArray("crop_harvest", "fiber_source")
 materials = {
 "body": "hemp"
 }

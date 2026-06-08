@@ -9,6 +9,7 @@ id = "iron_ore"
 kind = "material"
 weight = 0.5
 shape_type = "ore_chunk"
+tags = PackedStringArray("ore", "ferrous")
 materials = {
 "body": "iron_ore"
 }

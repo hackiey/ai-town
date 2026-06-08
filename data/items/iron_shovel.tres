@@ -15,6 +15,7 @@ materials = {
 "head": "iron",
 "shaft": "wood_oak"
 }
+tags = PackedStringArray("tool", "metal")
 properties = {
 "blade_area": 0.1,
 "can_dig": ["soil", "sand", "snow"],

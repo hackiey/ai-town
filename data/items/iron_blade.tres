@@ -11,6 +11,7 @@ shape_type = "flat_blade"
 materials = {
 "body": "iron"
 }
+tags = PackedStringArray("metal", "tool_part")
 properties = {
 "blade_area": 0.1
 }

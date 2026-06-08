@@ -8,6 +8,7 @@ id = "flour"
 kind = "material"
 weight = 0.1
 shape_type = "powder"
+tags = PackedStringArray("grain_processed")
 materials = {
 "body": "flour"
 }

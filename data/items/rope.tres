@@ -11,6 +11,7 @@ shape_type = "rope"
 materials = {
 "body": "hemp"
 }
+tags = PackedStringArray("fiber", "binding")
 properties = {
 "flexibility": "high"
 }

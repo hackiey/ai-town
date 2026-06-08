@@ -9,6 +9,7 @@ kind = "drink"
 weight = 0.1
 use_duration_seconds = 30.0
 shape_type = "tankard"
+tags = PackedStringArray("drink", "medicine", "liquid")
 materials = {
 "body": "herbal_remedy"
 }

@@ -8,3 +8,4 @@ id = "tomato_seed"
 kind = "seed"
 weight = 0.01
 crop_variety_id = "tomato"
+tags = PackedStringArray("seed")

@@ -8,6 +8,7 @@ id = "egg"
 kind = "material"
 weight = 0.05
 shape_type = "fruit_whole"
+tags = PackedStringArray("egg")
 materials = {
 "body": "egg"
 }

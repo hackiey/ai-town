@@ -9,6 +9,7 @@ id = "iron_ingot"
 kind = "material"
 weight = 0.5
 shape_type = "ingot"
+tags = PackedStringArray("metal", "ingot", "ferrous")
 materials = {
 "body": "iron"
 }

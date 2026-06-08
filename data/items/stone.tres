@@ -9,6 +9,7 @@ id = "stone"
 kind = "material"
 weight = 0.5
 shape_type = "lump"
+tags = PackedStringArray("stone", "mineral")
 materials = {
 "body": "stone"
 }

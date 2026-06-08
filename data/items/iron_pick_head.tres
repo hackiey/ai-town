@@ -11,6 +11,7 @@ shape_type = "pick_head"
 materials = {
 "body": "iron"
 }
+tags = PackedStringArray("metal", "tool_part")
 properties = {
 "point_count": 2
 }

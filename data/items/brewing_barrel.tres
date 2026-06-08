@@ -10,6 +10,7 @@ stackable = false
 max_stack = 1
 weight = 5.0
 shape_type = "bucket"
+tags = PackedStringArray("liquid_container", "brewing_vessel")
 materials = {
 "body": "wood"
 }

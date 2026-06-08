@@ -10,6 +10,7 @@ stackable = false
 max_stack = 1
 weight = 0.1
 shape_type = "bowl"
+tags = PackedStringArray("liquid_container")
 materials = {
 "body": "wood"
 }

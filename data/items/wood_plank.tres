@@ -8,6 +8,7 @@ id = "wood_plank"
 kind = "material"
 weight = 0.4
 shape_type = "plank"
+tags = PackedStringArray("wood", "building_material")
 materials = {
 "body": "wood_oak"
 }

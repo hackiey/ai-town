@@ -8,6 +8,7 @@ id = "wood_shaft"
 kind = "part"
 weight = 0.3
 shape_type = "shaft"
+tags = PackedStringArray("wood", "tool_part")
 materials = {
 "body": "wood_oak"
 }

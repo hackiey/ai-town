@@ -8,6 +8,7 @@ id = "malt"
 kind = "material"
 weight = 0.1
 shape_type = "grain"
+tags = PackedStringArray("grain", "intermediate")
 materials = {
 "body": "malt"
 }

@@ -8,4 +8,5 @@ id = "flax_seed"
 kind = "seed"
 weight = 0.01
 crop_variety_id = "flax"
+tags = PackedStringArray("seed")
 tint = Color(0.68, 0.55, 0.3, 1)
