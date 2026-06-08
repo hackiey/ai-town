@@ -122,6 +122,15 @@ function farmOpDurationMinutes(kind: PlanFarmWorkParams["ops"][number]["kind"]):
   }
 }
 
+function putTakeTimeoutMs(wire: TransferWire[]): number | undefined {
+  const wellLiters = wire.reduce((sum, tr) => {
+    if (tr.kind !== "liquid" || tr.from.where !== "well") return sum;
+    return sum + Math.max(0, tr.amount);
+  }, 0);
+  if (wellLiters <= 0) return undefined;
+  return timeScaledActionTimeoutMs(wellLiters * 0.15);
+}
+
 function sleepActionTimeoutMs(durationMinutes: number): number {
   return timeScaledActionTimeoutMs(durationMinutes);
 }
@@ -564,7 +573,7 @@ export function createPutTakeTool(
         "put_take_container",
         { transfers: wire },
         args.reason ?? td("put_take.reason_format", { label: "搬运" }),
-        { toolName: "put_take", displayTarget: "搬运", gameTime, signal, onUpdate, interrupts },
+        { toolName: "put_take", displayTarget: "搬运", gameTime, signal, timeoutMs: putTakeTimeoutMs(wire), onUpdate, interrupts },
       );
     },
   };

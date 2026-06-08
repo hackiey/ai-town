@@ -10,7 +10,7 @@
 | mill 磨坊 | grind | 面粉 |
 | drying_rack 晾晒架 | dry、passive | 种子、纤维、麦芽 |
 | stove 灶台 | bake、mix | 面包、肉、蛋饼、果酱、炖菜 |
-| well 水井 | water draw | 水 |
+| well 水井 | 取水面板，按升数耗时 | 水 |
 | saltworks_pan 盐锅 | boil | 盐 |
 
 ## 数据中存在的扩展工作站

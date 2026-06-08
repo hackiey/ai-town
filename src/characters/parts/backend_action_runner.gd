@@ -191,6 +191,8 @@ func cancel(action_id: String, reason: String = "interrupted") -> String:
 		character.sleep_controller().cancel(reason)
 	elif character.use_item_controller().is_pending():
 		character.use_item_controller().cancel()
+	elif character.water_draw_actions().is_active():
+		character.water_draw_actions().cancel(reason)
 	elif character.trade_runner().has_pending():
 		character.trade_runner().cancel_pending(reason)
 	else:
@@ -292,6 +294,8 @@ func _preempt_if_active() -> void:
 		character.sleep_controller().preempt()
 	if character.use_item_controller().is_pending():
 		character.use_item_controller().preempt()
+	if character.water_draw_actions().is_active():
+		character.water_draw_actions().preempt()
 	if character.trade_runner().has_pending():
 		character.trade_runner().preempt()
 	# 被本人下达的新 action_request 抢占，不是可反应失败 → 不发 action_failed。
@@ -391,7 +395,7 @@ func _complete_instant_action(action_request: Dictionary) -> void:
 		"respond":
 			structured = character.trade_runner().run_respond(action_request)
 		"put_take_container":
-			structured = ContainerHandlers.run_put_take(character, action_request)
+			structured = ContainerHandlers.run_put_take(character, action_request, finish)
 		"brew":
 			structured = BrewHandlers.run_brew(character, action_request)
 		"write":

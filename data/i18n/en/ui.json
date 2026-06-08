@@ -89,6 +89,11 @@
         "empty": "Empty"
       }
     },
+    "water_draw": {
+      "action_label": "Drawing water...",
+      "completed_format": "Drew %.1f L of water",
+      "cancelled_move": "player moved"
+    },
     "split": {
       "confirm": "Confirm",
       "amount_label": "Amount (%s)",

@@ -319,7 +319,7 @@ func _head_status_text() -> String:
 		return tr("ui.head_status.moving")
 	if not _active_craft.is_empty():
 		return tr("ui.head_status.crafting")
-	if (_workstation_runner != null and workstation_actions().is_active()) or farm_actions().active_state() == "working":
+	if (_workstation_runner != null and workstation_actions().is_active()) or farm_actions().active_state() == "working" or water_draw_actions().is_active():
 		return tr("ui.head_status.working")
 	if backend_actions().is_active():
 		return tr("ui.head_status.busy")
@@ -341,6 +341,8 @@ func request_move_to(pos: Vector3, click_debug: Dictionary = {}) -> void:
 	if not _active_craft.is_empty():
 		_emit_walk_blocked_owner(pos)
 		return
+	if water_draw_actions().is_active():
+		_cancel_active_water_draw(tr("ui.water_draw.cancelled_move"))
 	var map_rid := nav.get_navigation_map()
 	if not map_rid.is_valid():
 		push_warning("[player %s] nav map not ready" % name)
@@ -378,6 +380,8 @@ func confirm_cancel_craft_and_move(pos: Vector3) -> void:
 		return
 	if not _active_craft.is_empty():
 		_cancel_active_craft("玩家移动")
+	if water_draw_actions().is_active():
+		_cancel_active_water_draw(tr("ui.water_draw.cancelled_move"))
 	_cancel_non_backend_workstation_action("玩家移动")
 	_preempt_backend_action_for_user_walk()
 	var err := walk().plan_direct_to_world_position(pos)
@@ -635,6 +639,9 @@ func request_eat_food(slot_index: int) -> void:
 func _start_use_item_slot(slot_index: int, food_only: bool = false) -> void:
 	if not _active_use_item.is_empty():
 		_fail_owner("正在使用物品，请等当前完成")
+		return
+	if water_draw_actions().is_active():
+		_fail_owner(str(TranslationServer.translate("error.water_draw.busy")))
 		return
 	if not _active_craft.is_empty():
 		_fail_owner("正在制作中，不能使用物品")
@@ -1117,6 +1124,9 @@ func request_craft(verb: String, workstation_id: String, sub_option: String) -> 
 		return
 	if not _active_use_item.is_empty():
 		_fail_owner("正在使用物品，请等当前完成")
+		return
+	if water_draw_actions().is_active():
+		_fail_owner(str(TranslationServer.translate("error.water_draw.busy")))
 		return
 	if workstation_actions().is_active():
 		_fail_owner("正在工作中，请等当前完成")
@@ -1606,41 +1616,65 @@ func request_container_wallet_transfer(container_id: String, direction: String, 
 
 
 # 玩家专用打水：从无限液体源（水井）把 amount 升灌进背包里指定的液体容器。
-# 不复用 NPC 的 put_take 工具——玩家走独立 RPC + WaterDrawPanel。核心仍是 LiquidOps，
-# 与 NPC 同一原语保证水量/品质一致（服务端权威，见 [[feedback_godot_is_authority]]）。
+# 玩家走独立 RPC + WaterDrawPanel，但提交的仍是与 NPC 等价的 put_take transfer；
+# 耗时/体力/缩水结算统一由 WaterDrawRunner 处理。
 @rpc("any_peer", "call_remote", "reliable")
 func request_draw_water(container_id: String, backpack_slot_index: int, amount: float) -> void:
 	if not RunMode.is_runtime():
 		return
 	if _reject_if_not_owner("request_draw_water"):
 		return
-	if amount <= 0.0:
+	var action_request: Dictionary = {
+		"target": {
+			"transfers": [{
+				"kind": "liquid",
+				"amount": amount,
+				"from": {"where": "well", "containerId": container_id},
+				"to": {"where": "backpack", "slotIndex": backpack_slot_index},
+			}],
+		},
+	}
+	var started: Dictionary = water_draw_actions().start_from_put_take(action_request, Callable(self, "_on_player_water_draw_completed"))
+	if not bool(started.get("ok", false)):
+		_fail_owner(str(started.get("message", TranslationServer.translate("error.water_draw.failed"))))
 		return
-	var node := Containers.find_container_node_near(container_id, global_position)
-	if node == null:
-		_fail_owner("找不到水源")
+	_emit_player_action_started_owner(tr("ui.water_draw.action_label"), float(started.get("duration_seconds", 0.0)))
+
+
+func _on_player_water_draw_completed(ok: bool, error: String, result: Dictionary) -> void:
+	if not ok:
+		_fail_water_draw(error if not error.is_empty() else str(TranslationServer.translate("error.water_draw.failed")))
 		return
-	if not _container_access_ok(node):
+	var moved := _sum_water_draw_moves(result.get("moves", []))
+	var message := tr("ui.water_draw.completed_format") % moved
+	_emit_player_action_completed_owner(message)
+	_ok_owner(message)
+
+
+func _fail_water_draw(message: String) -> void:
+	_emit_player_action_cancelled_owner(message)
+	_fail_owner(message)
+
+
+func _cancel_active_water_draw(reason: String) -> void:
+	if not water_draw_actions().is_active():
 		return
-	if not node.is_infinite_source() or String(node.infinite_content) != "water":
-		_fail_owner("这里打不到水")
-		return
-	if backpack_slot_index < 0 or backpack_slot_index >= inventory.size():
-		return
-	var slot: Dictionary = inventory[backpack_slot_index]
-	var result := LiquidOps.fill_from_source(slot, String(node.infinite_content), float(node.infinite_quality), amount)
-	if not bool(result.get("ok", false)):
-		_fail_owner(str(result.get("message", "装不进去")))
-		return
-	inventory[backpack_slot_index] = slot
-	inventory = inventory
-	inventory_ops().persist_slot(backpack_slot_index)
-	var moved := float(result.get("moved", 0.0))
-	emit_world_event("container_put_take", {
-		"actorId": backend_character_id(),
-		"affectedCharacterIds": perception().voice_affected_character_ids("far"),
-		"moves": [{"kind": "liquid", "content": "water", "amount": moved}],
-	})
+	water_draw_actions().cancel(reason)
+	_emit_player_action_cancelled_owner(reason)
+
+
+func _sum_water_draw_moves(moves_v: Variant) -> float:
+	var total := 0.0
+	if typeof(moves_v) != TYPE_ARRAY:
+		return total
+	var moves: Array = moves_v as Array
+	for move_v in moves:
+		if typeof(move_v) != TYPE_DICTIONARY:
+			continue
+		var move := move_v as Dictionary
+		if str(move.get("kind", "")) == "liquid" and str(move.get("content", "")) == "water":
+			total += float(move.get("amount", 0.0))
+	return total
 
 
 # 玩家专用倒液体：把一个液体容器的内容倒进另一个。container_id="" 表示背包槽，否则附近容器节点槽。

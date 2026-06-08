@@ -1,1 +1,19 @@
-{}
+{
+  "error": {
+    "put_take": {
+      "invalid_target": "put_take target must be an object",
+      "empty_transfers": "put_take requires at least one transfer"
+    },
+    "water_draw": {
+      "amount_positive": "Draw amount must be greater than 0",
+      "invalid_source": "Invalid water source",
+      "not_water_source": "This source does not provide water",
+      "not_liquid_container": "Target is not a liquid container",
+      "incompatible_content": "Target container holds a different liquid",
+      "container_full": "Container is full",
+      "invalid_slot": "Invalid backpack slot",
+      "busy": "Already drawing water; wait for it to finish",
+      "failed": "Failed to draw water"
+    }
+  }
+}

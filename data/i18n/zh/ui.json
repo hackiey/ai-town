@@ -235,6 +235,9 @@
     },
     "water_draw": {
       "title_format": "%s · 取水",
+      "action_label": "取水…",
+      "completed_format": "取水 %.1f 升",
+      "cancelled_move": "玩家移动",
       "row_format": "%s（%d/%d 升）",
       "draw_button": "取水",
       "empty": "背包里没有可装水的容器",

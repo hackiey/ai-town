@@ -18,13 +18,22 @@ extends RefCounted
 # 靠近判定半径 = 目标对象自己 SiteMarker 的可交互距离（逐对象，玩家/NPC 同路径）。
 
 
-static func run_put_take(character: Character, action_request: Dictionary) -> Dictionary:
+static func run_put_take(character: Character, action_request: Dictionary, completion: Callable = Callable()) -> Dictionary:
+	var draw_amount: Dictionary = character.water_draw_actions().amount_liters_for_action(action_request)
+	if not bool(draw_amount.get("ok", false)):
+		return draw_amount
+	if float(draw_amount.get("amount_liters", 0.0)) > 0.0:
+		return character.water_draw_actions().start_from_put_take(action_request, completion)
+	return run_put_take_now(character, action_request)
+
+
+static func run_put_take_now(character: Character, action_request: Dictionary) -> Dictionary:
 	var target: Variant = action_request.get("target", {})
 	if typeof(target) != TYPE_DICTIONARY:
-		return {"ok": false, "message": "put_take target must be object"}
+		return {"ok": false, "message": _msg("error.put_take.invalid_target")}
 	var transfers_v: Variant = (target as Dictionary).get("transfers", [])
 	if typeof(transfers_v) != TYPE_ARRAY or (transfers_v as Array).is_empty():
-		return {"ok": false, "message": "put_take 没有指定 transfers"}
+		return {"ok": false, "message": _msg("error.put_take.empty_transfers")}
 	if Containers == null:
 		return {"ok": false, "message": "Containers autoload is unavailable"}
 	var prepared := _prepare_shelf_payments(character, transfers_v as Array)
@@ -215,7 +224,7 @@ static func _do_liquid(character: Character, tr: Dictionary, lines: Array) -> Di
 		if not bool(well.get("ok", false)):
 			lines.append(str(well.get("message", "水井无效")))
 			return {}
-		result = LiquidOps.fill_from_source(dst_slot, str(well["content"]), float(well["quality"]), amount)
+		result = character.water_draw_actions().draw_into_slot_now(dst_slot, well["node"], amount)
 		if bool(result.get("ok", false)):
 			(to_ep["commit"] as Callable).call()
 	else:
@@ -415,7 +424,7 @@ static func _resolve_well(character: Character, ep: Dictionary) -> Dictionary:
 	var node := _near_node(character, cid)
 	if node == null or not node.is_infinite_source():
 		return {"ok": false, "message": "水井不在手边"}
-	return {"ok": true, "content": node.infinite_content, "quality": float(node.infinite_quality)}
+	return {"ok": true, "node": node, "content": node.infinite_content, "quality": float(node.infinite_quality)}
 
 
 static func _near_node(character: Character, cid: String) -> ContainerNode:
@@ -463,3 +472,8 @@ static func _as_dict_array(value: Variant) -> Array[Dictionary]:
 	if typeof(value) == TYPE_ARRAY:
 		out.assign(value as Array)
 	return out
+
+
+static func _msg(key: String) -> String:
+	var translated := str(TranslationServer.translate(key))
+	return translated if not translated.is_empty() and translated != key else key

@@ -46,7 +46,15 @@ func _check_well() -> bool:
 	var ok_case := absf(float(d.get("stamina_cost", 0.0)) - 3.0) < 0.001 \
 		and absf(float(d.get("duration_seconds", 0.0)) - 180.0) < 0.001
 	_report("well.on_draw_cost = {stamina=3, duration=180}", ok_case, d)
-	return ok_case
+	var r10 := ScriptExecutor.call_hook(state, "on_draw_cost", {"amount_liters": 10.0})
+	var d10_v: Variant = r10.get("return_value")
+	if not (d10_v is Dictionary):
+		return _fail("well.on_draw_cost(10L) did not return dict") and ok_case
+	var d10: Dictionary = d10_v
+	var ok_linear := absf(float(d10.get("stamina_cost", 0.0)) - 1.5) < 0.001 \
+		and absf(float(d10.get("duration_seconds", 0.0)) - 90.0) < 0.001
+	_report("well.on_draw_cost(10L) = {stamina=1.5, duration=90}", ok_linear, d10)
+	return ok_case and ok_linear
 
 
 func _check_crops() -> bool:

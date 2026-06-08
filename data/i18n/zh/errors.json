@@ -31,6 +31,21 @@
     "unknown_shelf": "无法识别货架：{shelf}。请使用当前上下文中的货架名称或 id。",
     "unknown_shelf_listing": "无法识别货架 listing：{listing}。请使用当前货架中列出的 listing_id。",
     "unknown_target": "无法识别目标：{target}。请使用当前上下文中的角色、地点、工作台或物品名称。",
-    "tool_failure_reflecting": "工具调用失败，当前 agent loop 已停止；正在交给慢思考反思这次失败，随后会带着新的判断继续"
+    "tool_failure_reflecting": "工具调用失败，当前 agent loop 已停止；正在交给慢思考反思这次失败，随后会带着新的判断继续",
+    "put_take": {
+      "invalid_target": "put_take target 必须是 object",
+      "empty_transfers": "put_take 没有指定 transfers"
+    },
+    "water_draw": {
+      "amount_positive": "打水数量必须大于 0",
+      "invalid_source": "水源无效",
+      "not_water_source": "这里打不到水",
+      "not_liquid_container": "不是液体容器",
+      "incompatible_content": "目标容器装着别的液体",
+      "container_full": "容器满了",
+      "invalid_slot": "背包槽无效",
+      "busy": "正在取水，请等当前完成",
+      "failed": "取水失败"
+    }
   }
 }

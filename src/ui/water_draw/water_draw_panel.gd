@@ -3,7 +3,7 @@ extends CanvasLayer
 
 # 玩家专用打水面板（client only）。InteractionController 在水井（infinite water source）上按 E 时
 # 调 open(well)。列出背包里可装水的液体容器，每行：容器槽 + 数字框（默认=装满所需量）+ [取水]。
-# 点取水 → player.request_draw_water RPC（服务端权威，复用 LiquidOps）。背包变化靠 _process 跟随刷新。
+# 点取水 → player.request_draw_water RPC（服务端权威，复用 WaterDrawRunner）。背包变化靠 _process 跟随刷新。
 #
 # 不复用 NPC 的 put_take 工具——玩家走独立 RPC + 本面板。见 plan: 玩家侧水井打水 UI。
 

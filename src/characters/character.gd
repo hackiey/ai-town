@@ -19,6 +19,7 @@ const _HEAD_STATUS_CONTROLLER := preload("res://src/characters/parts/head_status
 const _WALK_CONTROLLER := preload("res://src/characters/parts/walk_controller.gd")
 const _FARM_ACTION_RUNNER := preload("res://src/characters/parts/farm_action_runner.gd")
 const _BACKEND_ACTION_RUNNER := preload("res://src/characters/parts/backend_action_runner.gd")
+const _WATER_DRAW_RUNNER := preload("res://src/characters/parts/water_draw_runner.gd")
 const _TRADE_RUNNER := preload("res://src/characters/parts/trade_runner.gd")
 const _SLEEP_CONTROLLER := preload("res://src/characters/parts/sleep_controller.gd")
 const _USE_ITEM_CONTROLLER := preload("res://src/characters/parts/use_item_controller.gd")
@@ -161,6 +162,7 @@ var _inventory_runner: CharacterInventory = null
 var _workstation_runner: WorkstationActionRunner = null
 var _farm_runner: FarmActionRunner = null
 var _backend_runner: BackendActionRunner = null
+var _water_draw_runner = null
 var _head_status_runner: HeadStatusController = null
 var _trade_runner_inst: TradeRunner = null
 var _sleep_controller_inst: SleepController = null
@@ -234,6 +236,12 @@ func backend_actions() -> BackendActionRunner:
 	if _backend_runner == null:
 		_backend_runner = _BACKEND_ACTION_RUNNER.new(self)
 	return _backend_runner
+
+
+func water_draw_actions():
+	if _water_draw_runner == null:
+		_water_draw_runner = _WATER_DRAW_RUNNER.new(self)
+	return _water_draw_runner
 
 
 func head_status() -> HeadStatusController:
@@ -915,8 +923,8 @@ func cancel_backend_action(action_id: String, reason: String = "interrupted") ->
 	return backend_actions().cancel(action_id, reason)
 
 
-# 由 NPC / Player physics_process 每帧调一次：sleep / use_item deadline 检查。
-# BackendActionRunner 本身无 timer 需要 tick，子系统各自驱动。
+# 由 NPC / Player physics_process 每帧调一次：durative action deadline 检查。
 func _tick_backend_action(delta: float) -> void:
+	water_draw_actions().tick(delta)
 	sleep_controller().tick(delta)
 	use_item_controller().tick(delta)
