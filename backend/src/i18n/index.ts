@@ -12,7 +12,7 @@ export type Locale = (typeof SUPPORTED_LOCALES)[number];
 
 const DOMAINS = [
   "ui", "items", "materials", "shapes", "verbs", "workstations", "containers", "reactions",
-  "npcs", "locations", "skills", "groups", "attributes",
+  "npcs", "locations", "skills", "groups", "attributes", "diseases", "symptoms",
   "tools", "errors",
   // Agent 共享的 prompt 渲染文案（section 标签、世界设定、距离/状态/动作 label 等）。
   // Per-agent 的策略文案（system prompt / persona / compaction）仍由 agent 自己加载。

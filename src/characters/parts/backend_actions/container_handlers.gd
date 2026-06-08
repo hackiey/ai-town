@@ -27,10 +27,15 @@ static func run_put_take(character: Character, action_request: Dictionary) -> Di
 		return {"ok": false, "message": "put_take 没有指定 transfers"}
 	if Containers == null:
 		return {"ok": false, "message": "Containers autoload is unavailable"}
+	var prepared := _prepare_shelf_payments(character, transfers_v as Array)
+	if not bool(prepared.get("ok", false)):
+		return {"ok": false, "message": str(prepared.get("message", "你给的钱不够"))}
+	var transfers: Array = prepared.get("transfers", [])
+	var change_centi := int(prepared.get("change_centi", 0))
 
 	var lines: Array = []
 	var moves: Array = []
-	for tr_v in (transfers_v as Array):
+	for tr_v in transfers:
 		if typeof(tr_v) != TYPE_DICTIONARY:
 			continue
 		var tr := tr_v as Dictionary
@@ -45,6 +50,8 @@ static func run_put_take(character: Character, action_request: Dictionary) -> Di
 
 	if moves.is_empty():
 		return {"ok": false, "message": "；".join(lines) if not lines.is_empty() else "没有可搬运的内容"}
+	if change_centi > 0:
+		lines.append("找零 %s" % Money.format_silver_from_centi(change_centi))
 
 	character.emit_world_event("container_put_take", {
 		"actorId": character.backend_character_id(),
@@ -56,6 +63,137 @@ static func run_put_take(character: Character, action_request: Dictionary) -> Di
 	for l in lines:
 		msg_lines.append(str(l))
 	return {"ok": true, "message": "\n".join(msg_lines), "result": {"moves": moves}}
+
+
+# 货架购买预检：从货架取带标价商品时，必须同次把足额银币付进同一货架钱包。
+# 多付不进入货架钱包，执行前把付款 transfer 裁到应付额，差额作为找零提示。
+static func _prepare_shelf_payments(character: Character, raw_transfers: Array) -> Dictionary:
+	var transfers: Array = []
+	for tr_v in raw_transfers:
+		if typeof(tr_v) == TYPE_DICTIONARY:
+			transfers.append((tr_v as Dictionary).duplicate(true))
+		else:
+			transfers.append(tr_v)
+	var required_by_cid := {}
+	var paid_by_cid := {}
+	for tr_v in transfers:
+		if typeof(tr_v) != TYPE_DICTIONARY:
+			continue
+		var tr_req := tr_v as Dictionary
+		if str(tr_req.get("kind", "item")) != "item":
+			continue
+		var item_id_req := str(tr_req.get("itemId", ""))
+		var coin_centi_req := CharacterInventory.currency_item_centi(item_id_req)
+		var from_req: Dictionary = tr_req.get("from", {}) if typeof(tr_req.get("from", {})) == TYPE_DICTIONARY else {}
+		var to_req: Dictionary = tr_req.get("to", {}) if typeof(tr_req.get("to", {})) == TYPE_DICTIONARY else {}
+		if str(from_req.get("where", "")) == "node" and str(to_req.get("where", "")) == "backpack" and bool(from_req.get("isShelf", false)) and coin_centi_req <= 0:
+			var cid_req := str(from_req.get("containerId", ""))
+			var node_req := _near_node(character, cid_req)
+			if node_req == null:
+				return {"ok": false, "message": "「%s」不在手边" % cid_req}
+			var qty_req := int(round(float(tr_req.get("amount", 0.0))))
+			if qty_req <= 0:
+				continue
+			var slot_index_req := int(from_req.get("slotIndex", -1))
+			if slot_index_req < 0 or slot_index_req >= node_req.contents.size():
+				return {"ok": false, "message": "货架槽无效"}
+			var slot_req: Dictionary = node_req.contents[slot_index_req]
+			if str(slot_req.get("item_id", "")) != item_id_req or int(slot_req.get("quantity", 0)) < qty_req:
+				return {"ok": false, "message": "「%s」里没有足够的「%s」" % [node_req.effective_display_name(), character.localize_item_name(item_id_req)]}
+			var price_centi_req := int(slot_req.get("listing_price_centi", 0)) if slot_req.get("listing_price_centi", null) != null else 0
+			if price_centi_req > 0:
+				required_by_cid[cid_req] = int(required_by_cid.get(cid_req, 0)) + price_centi_req * qty_req
+		elif str(from_req.get("where", "")) == "backpack" and str(to_req.get("where", "")) == "node" and bool(to_req.get("isShelf", false)) and coin_centi_req > 0:
+			var pay_cid_req := str(to_req.get("containerId", ""))
+			paid_by_cid[pay_cid_req] = int(paid_by_cid.get(pay_cid_req, 0)) + _currency_transfer_centi(item_id_req, float(tr_req.get("amount", 0.0)))
+
+	for cid_check in required_by_cid.keys():
+		if int(paid_by_cid.get(cid_check, 0)) < int(required_by_cid[cid_check]):
+			return {"ok": false, "message": "你给的钱不够"}
+	var total_required := 0
+	for cid_total in required_by_cid.keys():
+		total_required += int(required_by_cid[cid_total])
+	if total_required > character.wallet_balance_centi():
+		return {"ok": false, "message": "你给的钱不够"}
+
+	var kept_by_cid := {}
+	var change_centi := 0
+	for tr_v in transfers:
+		if typeof(tr_v) != TYPE_DICTIONARY:
+			continue
+		var tr_pay := tr_v as Dictionary
+		if str(tr_pay.get("kind", "item")) != "item":
+			continue
+		var item_id_pay := str(tr_pay.get("itemId", ""))
+		var coin_centi_pay := CharacterInventory.currency_item_centi(item_id_pay)
+		if coin_centi_pay <= 0:
+			continue
+		var from_pay: Dictionary = tr_pay.get("from", {}) if typeof(tr_pay.get("from", {})) == TYPE_DICTIONARY else {}
+		var to_pay: Dictionary = tr_pay.get("to", {}) if typeof(tr_pay.get("to", {})) == TYPE_DICTIONARY else {}
+		if not (str(from_pay.get("where", "")) == "backpack" and str(to_pay.get("where", "")) == "node" and bool(to_pay.get("isShelf", false))):
+			continue
+		var cid_pay := str(to_pay.get("containerId", ""))
+		var due_pay := int(required_by_cid.get(cid_pay, 0))
+		if due_pay <= 0:
+			continue
+		var original_pay := _currency_transfer_centi(item_id_pay, float(tr_pay.get("amount", 0.0)))
+		var keep_pay := mini(original_pay, maxi(0, due_pay - int(kept_by_cid.get(cid_pay, 0))))
+		kept_by_cid[cid_pay] = int(kept_by_cid.get(cid_pay, 0)) + keep_pay
+		change_centi += original_pay - keep_pay
+		tr_pay["amount"] = float(keep_pay) / float(coin_centi_pay)
+
+	if not required_by_cid.is_empty():
+		var total_outgoing_centi := 0
+		for tr_v in transfers:
+			if typeof(tr_v) != TYPE_DICTIONARY:
+				continue
+			var tr_out := tr_v as Dictionary
+			if str(tr_out.get("kind", "item")) != "item":
+				continue
+			var item_id_out := str(tr_out.get("itemId", ""))
+			if CharacterInventory.currency_item_centi(item_id_out) <= 0:
+				continue
+			var from_out: Dictionary = tr_out.get("from", {}) if typeof(tr_out.get("from", {})) == TYPE_DICTIONARY else {}
+			if str(from_out.get("where", "")) == "backpack":
+				total_outgoing_centi += _currency_transfer_centi(item_id_out, float(tr_out.get("amount", 0.0)))
+		if total_outgoing_centi > character.wallet_balance_centi():
+			return {"ok": false, "message": "你给的钱不够"}
+
+		var normal_transfers: Array = []
+		var purchase_payments: Array = []
+		for tr_v in transfers:
+			if typeof(tr_v) != TYPE_DICTIONARY:
+				normal_transfers.append(tr_v)
+				continue
+			var tr_sort := tr_v as Dictionary
+			var item_id_sort := str(tr_sort.get("itemId", ""))
+			var from_sort: Dictionary = tr_sort.get("from", {}) if typeof(tr_sort.get("from", {})) == TYPE_DICTIONARY else {}
+			var to_sort: Dictionary = tr_sort.get("to", {}) if typeof(tr_sort.get("to", {})) == TYPE_DICTIONARY else {}
+			var is_purchase_payment := str(tr_sort.get("kind", "item")) == "item"
+			if is_purchase_payment:
+				is_purchase_payment = CharacterInventory.currency_item_centi(item_id_sort) > 0
+			if is_purchase_payment:
+				is_purchase_payment = str(from_sort.get("where", "")) == "backpack"
+			if is_purchase_payment:
+				is_purchase_payment = str(to_sort.get("where", "")) == "node"
+			if is_purchase_payment:
+				is_purchase_payment = bool(to_sort.get("isShelf", false))
+			if is_purchase_payment:
+				is_purchase_payment = int(required_by_cid.get(str(to_sort.get("containerId", "")), 0)) > 0
+			if is_purchase_payment:
+				purchase_payments.append(tr_sort)
+			else:
+				normal_transfers.append(tr_sort)
+		transfers = normal_transfers + purchase_payments
+
+	return {"ok": true, "transfers": transfers, "change_centi": change_centi}
+
+
+static func _currency_transfer_centi(item_id: String, amount: float) -> int:
+	var unit_centi := CharacterInventory.currency_item_centi(item_id)
+	if unit_centi <= 0 or amount <= 0.0:
+		return 0
+	return maxi(0, int(round(amount * float(unit_centi))))
 
 
 # ─── 液体 transfer ────────────────────────────────────────────────────
@@ -106,28 +244,55 @@ static func _do_liquid(character: Character, tr: Dictionary, lines: Array) -> Di
 
 static func _do_item(character: Character, tr: Dictionary, lines: Array) -> Dictionary:
 	var item_id := str(tr.get("itemId", "")).strip_edges()
-	var qty := int(tr.get("amount", 0))
-	if item_id.is_empty() or qty <= 0:
+	var amount := float(tr.get("amount", 0.0))
+	if item_id.is_empty() or amount <= 0.0:
 		return {}
 	var from_where := str((tr.get("from", {}) as Dictionary).get("where", ""))
 	var to_where := str((tr.get("to", {}) as Dictionary).get("where", ""))
 	var item_name := character.localize_item_name(item_id)
 	if from_where == "node" and to_where == "backpack":
-		return _take_from_node(character, str((tr["from"] as Dictionary).get("containerId", "")), item_id, qty, item_name, lines)
+		var from_d := tr["from"] as Dictionary
+		return _take_from_node(character, str(from_d.get("containerId", "")), item_id, amount, item_name, int(from_d.get("slotIndex", -1)), bool(from_d.get("isShelf", false)), lines)
 	if from_where == "backpack" and to_where == "node":
 		var to_d := tr["to"] as Dictionary
-		return _put_to_node(character, str(to_d.get("containerId", "")), item_id, qty, item_name, bool(to_d.get("isShelf", false)), int(to_d.get("priceCenti", -1)), lines)
+		return _put_to_node(character, str(to_d.get("containerId", "")), item_id, amount, item_name, bool(to_d.get("isShelf", false)), int(to_d.get("priceCenti", -1)), lines)
 	lines.append("不支持的搬运：%s→%s" % [from_where, to_where])
 	return {}
 
 
-static func _take_from_node(character: Character, cid: String, item_id: String, qty: int, item_name: String, lines: Array) -> Dictionary:
+static func _take_from_node(character: Character, cid: String, item_id: String, amount: float, item_name: String, slot_index: int, is_shelf: bool, lines: Array) -> Dictionary:
 	var node := _near_node(character, cid)
 	if node == null:
 		lines.append("「%s」不在手边" % cid)
 		return {}
 	var unit_centi := CharacterInventory.currency_item_centi(item_id)
-	var res := Containers.system_withdraw(cid, item_id, qty)
+	if unit_centi > 0:
+		var centi := _currency_transfer_centi(item_id, amount)
+		if centi <= 0:
+			return {}
+		if not Containers.wallet_spend_centi(cid, centi):
+			lines.append("「%s」的钱包里没有足够的「%s」" % [node.effective_display_name(), item_name])
+			return {}
+		character.wallet_add(centi)
+		var moved_amount := float(centi) / float(unit_centi)
+		lines.append("取出 %s 份「%s」" % [_format_amount(moved_amount), item_name])
+		return {"ok": true, "kind": "item", "itemId": item_id, "amount": moved_amount}
+	var qty := int(round(amount))
+	if qty <= 0:
+		return {}
+	var res: Dictionary
+	if slot_index >= 0:
+		if slot_index >= node.contents.size():
+			lines.append("容器槽无效")
+			return {}
+		var slot: Dictionary = node.contents[slot_index]
+		if str(slot.get("item_id", "")) != item_id or int(slot.get("quantity", 0)) < qty:
+			lines.append("「%s」里没有足够的「%s」" % [node.effective_display_name(), item_name])
+			return {}
+		res = Containers.adapter_take(node, {"slot_index": slot_index, "item_id": item_id}, qty)
+		res["ok"] = int(res.get("taken_qty", 0)) == qty
+	else:
+		res = Containers.system_withdraw(cid, item_id, qty)
 	if not bool(res.get("ok", false)):
 		lines.append("「%s」里没有「%s」" % [node.effective_display_name(), item_name])
 		return {}
@@ -136,56 +301,62 @@ static func _take_from_node(character: Character, cid: String, item_id: String, 
 	if moved <= 0:
 		lines.append("「%s」里没有「%s」" % [node.effective_display_name(), item_name])
 		return {}
-	if unit_centi > 0:
-		character.wallet_add(moved * unit_centi)
+	var rollback_stacks: Array[Dictionary] = []
+	if is_shelf:
+		for stack in stacks:
+			rollback_stacks.append(stack.duplicate(true))
+			stack["listing_price_centi"] = null
 	else:
-		var recv := character.inventory_ops().receive_stacks(stacks)
-		if not bool(recv.get("ok", false)):
-			Containers.adapter_place(node, stacks)
-			lines.append("背包装不下「%s」" % item_name)
-			return {}
+		rollback_stacks = stacks
+	var recv := character.inventory_ops().receive_stacks(stacks)
+	if not bool(recv.get("ok", false)):
+		Containers.adapter_place(node, rollback_stacks)
+		lines.append("背包装不下「%s」" % item_name)
+		return {}
 	lines.append("取出 %d 份「%s」" % [moved, item_name])
 	return {"ok": true, "kind": "item", "itemId": item_id, "amount": moved}
 
 
-static func _put_to_node(character: Character, cid: String, item_id: String, qty: int, item_name: String, is_shelf: bool, price_centi: int, lines: Array) -> Dictionary:
+static func _put_to_node(character: Character, cid: String, item_id: String, amount: float, item_name: String, is_shelf: bool, price_centi: int, lines: Array) -> Dictionary:
 	var node := _near_node(character, cid)
 	if node == null:
 		lines.append("「%s」不在手边" % cid)
 		return {}
 	var unit_centi := CharacterInventory.currency_item_centi(item_id)
-	var moved := 0
 	if unit_centi > 0:
-		var centi := qty * unit_centi
+		var centi := _currency_transfer_centi(item_id, amount)
+		if centi <= 0:
+			return {}
 		var pay := character.inventory_ops().pay_centi(centi)
 		if not bool(pay.get("ok", false)):
 			lines.append(str(pay.get("message", "钱不够")))
 			return {}
-		var dep := Containers.system_deposit(cid, item_id, qty)
-		if not bool(dep.get("ok", false)):
-			character.inventory_ops().refund_centi(centi)
-			lines.append("「%s」装不下" % node.effective_display_name())
-			return {}
-		moved = qty
-	else:
-		var available := character.inventory_ops().count_item(item_id)
-		var take := mini(qty, available)
-		if take <= 0:
-			lines.append("你身上没有「%s」" % item_name)
-			return {}
-		var ext := character.inventory_ops().extract_item_id_across_stacks(item_id, take)
-		if not bool(ext.get("ok", false)):
-			lines.append("你身上没有足够的「%s」" % item_name)
-			return {}
-		var stacks := _as_dict_array(ext.get("stacks", []))
-		var placed := Containers.adapter_place(node, stacks)
-		moved = int(placed.get("placed_qty", 0))
-		var leftover := _as_dict_array(placed.get("leftover", []))
-		if not leftover.is_empty():
-			character.inventory_ops().restore_extracted_stacks(leftover)
-		if moved <= 0:
-			lines.append("「%s」装不下「%s」" % [node.effective_display_name(), item_name])
-			return {}
+		Containers.wallet_add_centi(cid, centi)
+		var moved_amount := float(centi) / float(unit_centi)
+		lines.append("存入 %s 份「%s」" % [_format_amount(moved_amount), item_name])
+		return {"ok": true, "kind": "item", "itemId": item_id, "amount": moved_amount}
+	var qty := int(round(amount))
+	if qty <= 0:
+		return {}
+	var moved := 0
+	var available := character.inventory_ops().count_item(item_id)
+	var take := mini(qty, available)
+	if take <= 0:
+		lines.append("你身上没有「%s」" % item_name)
+		return {}
+	var ext := character.inventory_ops().extract_item_id_across_stacks(item_id, take)
+	if not bool(ext.get("ok", false)):
+		lines.append("你身上没有足够的「%s」" % item_name)
+		return {}
+	var stacks := _as_dict_array(ext.get("stacks", []))
+	var placed := Containers.adapter_place(node, stacks)
+	moved = int(placed.get("placed_qty", 0))
+	var leftover := _as_dict_array(placed.get("leftover", []))
+	if not leftover.is_empty():
+		character.inventory_ops().restore_extracted_stacks(leftover)
+	if moved <= 0:
+		lines.append("「%s」装不下「%s」" % [node.effective_display_name(), item_name])
+		return {}
 	if is_shelf and price_centi >= 0:
 		Containers.set_price_for_item(node, item_id, price_centi)
 	lines.append("存入 %d 份「%s」" % [moved, item_name])
@@ -279,6 +450,12 @@ static func _sum_qty(stacks: Array) -> int:
 		if typeof(s_v) == TYPE_DICTIONARY:
 			total += int((s_v as Dictionary).get("quantity", 0))
 	return total
+
+
+static func _format_amount(value: float) -> String:
+	if absf(value - roundf(value)) < 0.0001:
+		return "%d" % int(roundf(value))
+	return "%.2f" % value
 
 
 static func _as_dict_array(value: Variant) -> Array[Dictionary]:

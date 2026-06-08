@@ -27,6 +27,8 @@ func attributes() -> Dictionary:
 		"rest": { "current": roundf(_character.rest), "max": roundf(_character.max_rest) },
 		"drunk": { "current": roundf(_character.drunk), "max": roundf(Character.MAX_IMPAIRMENT) },
 		"sickness": { "current": roundf(_character.sickness), "max": roundf(Character.MAX_IMPAIRMENT) },
+		"diseaseId": _character.disease_id,
+		"symptoms": _character.symptoms.duplicate(true),
 	}
 
 
@@ -82,6 +84,8 @@ func ui_profile() -> Dictionary:
 		"ignitionPoint": _character.ignition_point(),
 		"alive": _character.alive,
 		"burning": _character.burning,
+		"diseaseId": _character.disease_id,
+		"symptoms": _character.symptoms.duplicate(true),
 		"sleeping": _character.sleep_controller().is_sleeping(),
 		"sleepNeededHours": _character.sleep_needed_hours,
 		"statusIds": active_status_ids(),
@@ -94,6 +98,8 @@ func ui_profile() -> Dictionary:
 			"rest": { "current": roundf(_character.rest), "max": roundf(_character.max_rest) },
 			"drunk": { "current": roundf(_character.drunk), "max": roundf(Character.MAX_IMPAIRMENT) },
 			"sickness": { "current": roundf(_character.sickness), "max": roundf(Character.MAX_IMPAIRMENT) },
+			"diseaseId": _character.disease_id,
+			"symptoms": _character.symptoms.duplicate(true),
 		},
 		"proficiency": _proficiency_entries(),
 	}

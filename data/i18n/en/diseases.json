@@ -1,0 +1,8 @@
+{
+  "disease": {
+    "cold": { "name": "Cold" },
+    "stomach_illness": { "name": "Stomach illness" },
+    "wound_infection": { "name": "Wound infection" },
+    "exhaustion_sickness": { "name": "Exhaustion sickness" }
+  }
+}

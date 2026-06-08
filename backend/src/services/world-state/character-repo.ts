@@ -8,7 +8,7 @@ const SELECT_CHARACTER_STATE = `
   SELECT characterId, currentLocationId, posX, posY, posZ, animState,
          hp, maxHp, stamina, maxStamina, hunger, maxHunger, rest, maxRest,
          strength, constitution,
-         drunk, sickness, drunkTier, sicknessTier,
+         drunk, sickness, diseaseId, symptoms, drunkTier, sicknessTier,
          carryWeight, maxCarry, carryTier,
          sleepNeededHours, temperature, burning, alive,
          equippedRightHand, equippedLeftHand, equippedBody, equippedHead,
@@ -60,6 +60,8 @@ function rowToCharacterStateView(r: Record<string, unknown>): CharacterStateView
     constitution: numberOr(r.constitution, 50),
     drunk: numberOr(r.drunk, 0),
     sickness: numberOr(r.sickness, 0),
+    diseaseId: typeof r.diseaseId === "string" ? r.diseaseId : "",
+    symptoms: parseJsonNumberRecord(r.symptoms),
     // 档位 key 由 Godot 算好持久化（""/tipsy/drunk/wasted、""/mild/moderate/severe）；backend 不重判阈值。
     drunkTier: typeof r.drunkTier === "string" ? r.drunkTier : "",
     sicknessTier: typeof r.sicknessTier === "string" ? r.sicknessTier : "",
@@ -128,6 +130,26 @@ function parseJsonArray(value: unknown): unknown[] {
   } catch {
     return [];
   }
+}
+
+function parseJsonNumberRecord(value: unknown): Record<string, number> {
+  if (value === null || value === undefined) return {};
+  let parsed: unknown = value;
+  if (typeof value === "string") {
+    if (value.length === 0) return {};
+    try {
+      parsed = JSON.parse(value);
+    } catch {
+      return {};
+    }
+  }
+  if (parsed === null || typeof parsed !== "object" || Array.isArray(parsed)) return {};
+  const out: Record<string, number> = {};
+  for (const [key, raw] of Object.entries(parsed as Record<string, unknown>)) {
+    const valueNum = numberOr(raw, NaN);
+    if (Number.isFinite(valueNum) && Math.abs(valueNum) > 0.01) out[key] = valueNum;
+  }
+  return out;
 }
 
 // 表可能不存在（Godot 还没起 / 测试场景）；用 try 让 SELECT 失败时返回 undefined/[]，

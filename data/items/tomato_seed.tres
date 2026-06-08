@@ -5,7 +5,6 @@
 [resource]
 script = ExtResource("1_item")
 id = "tomato_seed"
-weight = 0.02
 kind = "seed"
+weight = 0.01
 crop_variety_id = "tomato"
-tags = PackedStringArray("seed")

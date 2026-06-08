@@ -1,15 +1,15 @@
 [gd_resource type="Resource" script_class="Item" format=3 uid="uid://dqyl6d40u5oq8"]
 
 [ext_resource type="Script" uid="uid://dqr5snte2lo05" path="res://src/sim/items/item.gd" id="1_item"]
-[ext_resource type="PackedScene" uid="uid://bgi9ironpickm" path="res://src/world/ground_item/items/iron_pick.tscn" id="2_ground"]
+[ext_resource type="PackedScene" uid="uid://bgjaironpickm" path="res://src/world/ground_item/items/iron_pick.tscn" id="2_ground"]
 
 [resource]
 script = ExtResource("1_item")
 id = "iron_pick"
-weight = 3.0
 kind = "tool"
 stackable = false
 max_stack = 1
+weight = 1.0
 shape_type = "pick_head_on_shaft"
 materials = {
 "binding": "hemp",

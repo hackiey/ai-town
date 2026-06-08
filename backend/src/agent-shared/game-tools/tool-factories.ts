@@ -13,6 +13,7 @@ import {
 } from "./action-results.js";
 import {
   createAssembleSchema,
+  createAlchemySchema,
   createBoilSaltSchema,
   createBurnCharcoalSchema,
   createCookSchema,
@@ -38,6 +39,7 @@ import {
   useItemSchema,
   writeSchema,
   type AssembleParams,
+  type AlchemyParams,
   type BoilSaltParams,
   type BurnCharcoalParams,
   type CookParams,
@@ -211,7 +213,7 @@ export function createPlanFarmWorkTool(
 }
 
 // ───────────────────────────── 工作台 axis tools ─────────────────────────────
-// 12 个按 proficiency skill axis 拆分的 tool 替代旧 use_workstation —— 见 craft-registry.ts +
+// 按 proficiency skill axis 拆分的 tool 替代旧 use_workstation —— 见 craft-registry.ts +
 // docs/proficiency_system.md。每个 tool 一个 wire action，共享 WorkstationActionTarget 形态。
 // workstation 检测仍由 Godot _find_workstation 兜底（[[feedback_godot_is_authority]]）。
 
@@ -445,6 +447,31 @@ export function createCookTool(
   };
 }
 
+export function createAlchemyTool(
+  runtime: ToolRuntime,
+  characterId: string,
+  currentContext?: AgentCurrentContext,
+  interrupts?: AgentToolInterrupts,
+): AgentTool<any, CharacterActionToolDetails> {
+  const gameTime = currentContext?.gameTime;
+  return {
+    label: td("alchemy.label"),
+    name: "alchemy",
+    description: td("alchemy.description"),
+    parameters: createAlchemySchema(),
+    execute: async (_toolCallId, rawArgs, signal, onUpdate) => {
+      const args = rawArgs as AlchemyParams;
+      const workstation = resolveCraftWorkstation("alchemy", undefined, currentContext);
+      if (isMoveTargetError(workstation)) throw new Error(workstation.error);
+      return runAxisCraftAction({
+        axis: "alchemy", runtime, characterId, currentContext, gameTime, signal, onUpdate, interrupts,
+        workstation, verb: getCraftSpec("alchemy").fixedVerb!, subOption: "", inputs: args.inputs,
+        reason: args.reason,
+      });
+    },
+  };
+}
+
 export function createMillGrainTool(
   runtime: ToolRuntime,
   characterId: string,
@@ -497,7 +524,7 @@ export function createBoilSaltTool(
 
 // put_take —— 货架/容器统一存取：一次调用同时存入(put)+取出(take)，批量。
 // put 项从背包取（resolve backpack 索引）；take 项从容器/货架取（按 kind 选 scope）。
-// price_silver 仅货架的 put 项有意义（标价，仅展示）。单个 wire action put_take_container。
+// price_silver 仅货架的 put 项有意义（上架标价）。单个 wire action put_take_container。
 export function createPutTakeTool(
   runtime: ToolRuntime,
   characterId: string,
@@ -526,7 +553,8 @@ export function createPutTakeTool(
           const from = entryToEndpoint(e);
           const to = containerNameToEndpoint(tr.to, currentContext);
           if (to.isShelf && tr.price_silver != null) to.priceCenti = Math.round(tr.price_silver * 100);
-          wire.push({ kind: "item", itemId: e.itemDefId, amount: Math.round(tr.amount), from, to });
+          const amount = CURRENCY_ITEM_IDS.has(e.itemDefId) ? tr.amount : Math.round(tr.amount);
+          wire.push({ kind: "item", itemId: e.itemDefId, amount, from, to });
         }
       }
       if (wire.length === 0) throw new Error(td("put_take.error_empty"));

@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="Substance" format=3]
+
+[ext_resource type="Script" path="res://src/sim/materials/substance.gd" id="1_mat"]
+
+[resource]
+script = ExtResource("1_mat")
+id = "valerian_tonic"
+category = "food"
+density = 1.0
+default_state = 1
+tint = Color(0.52, 0.42, 0.68, 1)
+shelf_life_hours = 720.0
+rotten_into = "rotten_food"
+tags = PackedStringArray("drink", "medicine", "liquid")

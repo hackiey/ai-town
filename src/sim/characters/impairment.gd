@@ -112,6 +112,14 @@ static func sickness_tier_label(sickness: float) -> String:
 	return ""
 
 
+static func disease_label(disease_id: String) -> String:
+	if disease_id.is_empty():
+		return ""
+	var key := "disease.%s.name" % disease_id
+	var translated := str(TranslationServer.translate(key))
+	return "" if translated == key else translated
+
+
 # ─── 负重（encumbrance）─────────────────────────────────────
 # 输入是负重比例 ratio = carry_weight / max_carry_weight。负重不影响"干活产出"
 # （work_impair 不并入它）；代价只有两条：体力消耗加快 + 移动变慢。

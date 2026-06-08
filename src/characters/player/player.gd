@@ -56,6 +56,7 @@ var view_page: int = 0
 var view_page_size: int = 24
 var view_page_count: int = 1
 var view_slots: Array[Dictionary] = []
+var view_wallet_centi: int = 0
 
 # Client puppet 的 root transform 由 server 同步；Visual 在 client 端做轻量插值，
 # 既抹掉网络/step-assist 的小跳动，也让 CameraRig 跟到平滑后的模型。
@@ -1471,7 +1472,30 @@ func request_container_take(container_id: String, container_slot_index: int, qty
 		return
 	if not _container_access_ok(node):
 		return
-	var take_result: Dictionary = Containers.adapter_take(node, {"slot_index": container_slot_index}, qty)
+	var shelf_mode := node is ShelfNode or node.is_in_group("shelves")
+	var price_centi := 0
+	var take_qty := qty
+	if shelf_mode:
+		var slots: Array = Containers.adapter_slots(node)
+		if container_slot_index < 0 or container_slot_index >= slots.size():
+			_fail_owner("货架槽无效")
+			return
+		var shelf_slot: Dictionary = slots[container_slot_index]
+		var shelf_view := InventorySlotData.of(shelf_slot)
+		if shelf_view.is_empty():
+			_fail_owner("货架格里没有物品")
+			return
+		take_qty = mini(qty, shelf_view.quantity())
+		var price_v: Variant = shelf_slot.get("listing_price_centi", null)
+		price_centi = maxi(0, int(price_v)) if price_v != null else 0
+		var estimated_cost := price_centi * take_qty
+		if estimated_cost > wallet_balance_centi():
+			_fail_owner("钱包余额不足（需要 %s，有 %s）" % [
+				Money.format_silver_from_centi(estimated_cost),
+				Money.format_silver_from_centi(wallet_balance_centi()),
+			])
+			return
+	var take_result: Dictionary = Containers.adapter_take(node, {"slot_index": container_slot_index}, take_qty)
 	var stacks_v: Variant = take_result.get("stacks", [])
 	var stacks: Array[Dictionary] = []
 	if stacks_v is Array:
@@ -1481,11 +1505,35 @@ func request_container_take(container_id: String, container_slot_index: int, qty
 	if stacks.is_empty():
 		_fail_owner("容器格里没有物品")
 		return
-	var receive: Dictionary = inventory_ops().receive_stacks(stacks)
+	var actual_qty := 0
+	var receive_stacks: Array[Dictionary] = []
+	for stack in stacks:
+		actual_qty += int(stack.get("quantity", 0))
+		var receive_stack := stack.duplicate(true)
+		if shelf_mode:
+			receive_stack["listing_price_centi"] = null
+		receive_stacks.append(receive_stack)
+	var receive: Dictionary = inventory_ops().receive_stacks(receive_stacks)
 	if not bool(receive.get("ok", false)):
 		# 背包装不下 → 把刚取出的塞回容器，避免吞物
 		Containers.adapter_place(node, stacks)
 		_fail_owner(str(receive.get("message", "背包装不下")))
+		return
+	var actual_cost := price_centi * actual_qty if shelf_mode else 0
+	if actual_cost > 0:
+		var pay := inventory_ops().pay_centi(actual_cost)
+		if not bool(pay.get("ok", false)):
+			var received_stacks: Array[Dictionary] = []
+			var received_v: Variant = receive.get("stacks", [])
+			if received_v is Array:
+				for r in (received_v as Array):
+					if r is Dictionary:
+						received_stacks.append(r as Dictionary)
+			inventory_ops().rollback_received_stacks(received_stacks)
+			Containers.adapter_place(node, stacks)
+			_fail_owner(str(pay.get("message", "钱不够")))
+			return
+		Containers.wallet_add_centi(container_id, actual_cost)
 
 
 @rpc("any_peer", "call_remote", "reliable")
@@ -1517,6 +1565,44 @@ func request_container_put(container_id: String, player_slot_index: int, qty: in
 		inventory_ops().receive_stacks(leftover)
 		if int(place.get("placed_qty", 0)) <= 0:
 			_fail_owner(str(place.get("message", "容器装不下")))
+
+
+@rpc("any_peer", "call_remote", "reliable")
+func request_container_wallet_transfer(container_id: String, direction: String, centi: int) -> void:
+	if not RunMode.is_runtime():
+		return
+	if _reject_if_not_owner("request_container_wallet_transfer"):
+		return
+	centi = maxi(0, centi)
+	if centi <= 0:
+		return
+	var node := Containers.find_container_node_near(container_id, global_position)
+	if node == null:
+		_fail_owner("找不到容器")
+		return
+	if not _container_access_ok(node):
+		return
+	match direction:
+		"put":
+			var pay := inventory_ops().pay_centi(centi)
+			if not bool(pay.get("ok", false)):
+				_fail_owner(str(pay.get("message", "钱不够")))
+				return
+			Containers.wallet_add_centi(container_id, centi)
+		"take":
+			if not Containers.wallet_spend_centi(container_id, centi):
+				_fail_owner("容器钱包余额不足")
+				return
+			wallet_add(centi)
+		_:
+			return
+	emit_world_event("container_put_take", {
+		"actorId": backend_character_id(),
+		"affectedCharacterIds": perception().voice_affected_character_ids("far"),
+		"moves": [{"kind": "item", "itemId": "silver_coin", "amount": centi / 100.0}],
+	})
+	perception().send_manifest()
+	_recompute_view()
 
 
 # 玩家专用打水：从无限液体源（水井）把 amount 升灌进背包里指定的液体容器。
@@ -1641,13 +1727,16 @@ func _recompute_view() -> void:
 		if not view_slots.is_empty():
 			view_slots = []
 			view_page_count = 1
+		view_wallet_centi = 0
 		return
 	var all_slots: Array = []
+	var wallet := 0
 	if view_kind == "container":
 		# 货架也是 ContainerNode，统一从 Containers 查（含货架标价 listing_price_centi）。
 		var node := Containers.find_container_node_near(view_target_id, global_position)
 		if node != null:
 			all_slots = Containers.adapter_slots(node)
+			wallet = Containers.wallet_balance_centi(view_target_id)
 	var total := all_slots.size()
 	var size := maxi(view_page_size, 1)
 	view_page_count = maxi(1, int(ceil(float(total) / float(size))))
@@ -1657,6 +1746,7 @@ func _recompute_view() -> void:
 	for i in range(start, mini(start + size, total)):
 		page_slots.append(all_slots[i])
 	view_slots = page_slots
+	view_wallet_centi = wallet
 
 
 func _container_access_ok(node: Node) -> bool:

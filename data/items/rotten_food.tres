@@ -1,18 +1,14 @@
-[gd_resource type="Resource" script_class="Item" format=3]
+[gd_resource type="Resource" script_class="Item" format=3 uid="uid://kendl03j5dh6"]
 
-[ext_resource type="Script" path="res://src/sim/items/item.gd" id="1_item"]
+[ext_resource type="Script" uid="uid://dqr5snte2lo05" path="res://src/sim/items/item.gd" id="1_item"]
 
 [resource]
 script = ExtResource("1_item")
 id = "rotten_food"
-weight = 0.3
 kind = "trash"
-stackable = true
-max_stack = 99
-source = ""
+weight = 0.2
 shape_type = "lump"
 materials = {
-"body": "rotten_food",
+"body": "rotten_food"
 }
-tags = PackedStringArray("spoiled", "inedible")
-tint = Color(0.32, 0.30, 0.18, 1)
+tint = Color(0.32, 0.3, 0.18, 1)

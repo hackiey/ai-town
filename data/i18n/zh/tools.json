@@ -113,6 +113,16 @@
       "reason_default_format": "在 {label} 烹饪",
       "result_note": "result 含菜品、品质、新鲜度和熟练度变化。"
     },
+    "alchemy": {
+      "label": "草药炼金",
+      "description": "需要在炼金台附近。把草药、水、盐等材料调制成草药茶、药汤或药膏。inputs 必填，反应按输入药材自动匹配药方。",
+      "param": {
+        "input_item": "从 # 背包 选择的药材或辅料（{name, index}）。水通常在木桶/杯里，按背包里的水容器那一行填写。",
+        "inputs_array": "药材+水/盐等辅料清单。同种材料需要多个单位时重复填写。"
+      },
+      "reason_default_format": "在 {label} 调制草药",
+      "result_note": "result 含药品、品质、新鲜度和熟练度变化。"
+    },
     "mill_grain": {
       "label": "磨粉",
       "description": "需要在石磨附近。把谷物磨成面粉。inputs 是谷物。",
@@ -135,7 +145,7 @@
     },
     "put_take": {
       "label": "存取（货架/容器/水井）",
-      "description": "在任意两个容器之间搬东西。transfers 是一串搬运，每条 {kind, amount, from, to}：kind=item 搬离散物品（amount=个数）；kind=liquid 倒液体（amount=升，混合时品质按量加权平均）。from / to 是 endpoint——container 填 # 当前附近 列出的容器名（仓库 / 货架 / 酿酒桶 / 水井），省略 container = 你自己的背包；item 填 {name, index} 指向该 endpoint 里要搬的那件（离散物，或木桶 / 杯这类容器物）。倒水：from.container 填水井（无限水源，from 不用填 item）、to 指你背包里的木桶。存货架时可在该条加 price_silver 标价（仅展示，不自动收钱）。\n买东西时，付钱优先用 offer 直接付给店主——钱有明确归属、最稳妥。只有店主不在场、实在找不到人付钱时，才退而用 put_take 把银币(silver_coin) 放进货架、同时 take 走想要的货；但留在货架上的钱可能被别人顺走，不保险。\n货架人人可存取；上锁的容器需要背包里有对应钥匙。",
+      "description": "在任意两个容器之间搬东西。transfers 是一串搬运，每条 {kind, amount, from, to}：kind=item 搬离散物品（amount=个数；silver_coin/gold_coin 按钱包金额，可写 1.25 这类小数银）；kind=liquid 倒液体（amount=升，混合时品质按量加权平均）。from / to 是 endpoint——container 填 # 当前附近 列出的容器名（仓库 / 货架 / 酿酒桶 / 水井），省略 container = 你自己的背包；item 填 {name, index} 指向该 endpoint 里要搬的那件（离散物、容器钱包里的银币，或木桶 / 杯这类容器物）。倒水：from.container 填水井（无限水源，from 不用填 item）、to 指你背包里的木桶。存货架时可在该条加 price_silver 标价。\n从货架 take 带标价商品时，必须在同一次 put_take 里把足额 silver_coin 从你的钱包 put 到该货架；多给会自动找零，少给会失败并返回“你给的钱不够”。钱币都存在钱包里，不占背包/货架/仓库槽位。\n货架人人可存取；上锁的容器需要背包里有对应钥匙。",
       "reason_format": "搬运物品",
       "error_empty": "至少要指定一条 transfers。"
     },
@@ -242,15 +252,16 @@
     "update_memory": {
       "param": {
         "operation": "记忆操作类型：add 新增 / edit 修改 / remove 删除。",
-        "kind": "记忆类别：self_knowledge 自我认知 / common_sense 常识 / skill 掌握技能 / other 其他记忆。",
-        "old_string": "edit/remove 时要匹配的原记忆文本，必须与已有记忆中的一条文本完全一致。单条记忆建议不超过 160 字。",
-        "new_string": "add 时填写要新增的记忆文本；edit 时填写修改后的新文本；remove 时也必须提供该字段。单条记忆建议不超过 160 字。"
+        "kind": "记忆类别：self_knowledge 自我认知 / common_sense 常识 / skill 掌握技能 / other 其他记忆。add 时必须填写；edit 时可填写以改分类；remove 时不需要。",
+        "memory_index": "edit/remove 时填写 Memory 中方括号里的序号，例如 [12] 就填 12。不要用记忆正文匹配，也不要把时间或正文填到这里。",
+        "new_string": "add 时填写要新增的记忆正文；edit 时填写修改后的新正文；remove 时不需要。不要包含序号和时间。单条记忆建议不超过 160 字。"
       },
       "label": "更新记忆",
-      "description": "维护角色的 Memory。你可以对“自我认知”“掌握技能”“其他记忆”执行 add / edit / remove 三种操作。在不重复、不记录琐碎瞬时状态、且不违反事实边界的前提下，应尽可能主动用 other（其他记忆）记下自己心里浮起的、会影响后续判断或语气的内容：对周围人事的理解、对他人的承诺、对重要事件的反思、此刻挂着的人事、身上的小不适、想去做但还没去做的事、对刚发生事情的印象，等等。心头浮起新的就 add 一条；旧的不必急着删，让它沉下去；过时、想法变了、事情过去了再 edit 或 remove。这是非常重要的工具——不要只在“明显有事要做”的时候才用它，平静或没事可做的 tick 反而是写下这些内心内容的好时机。所有记忆都必须严格基于当前上下文中已经明示的信息，不得编造、扩写或把不确定的信息写成确定事实。无特殊情况，禁止改动 self_knowledge（自我认知）相关记忆；只有当前上下文明确提供了充分、可靠且必须更新的新事实时，才允许修改。",
+      "description": "维护角色的 Memory。你可以执行 add / edit / remove 三种操作。add 必须填写 kind 和 new_string；edit/remove 必须填写 memory_index，也就是 Memory 行开头 [序号] 里的数字，不用复制原记忆正文；edit 的 new_string 只写新正文，不要包含序号或时间。在不重复、不记录琐碎瞬时状态、且不违反事实边界的前提下，应尽可能主动用 other（其他记忆）记下自己心里浮起的、会影响后续判断或语气的内容：对周围人事的理解、对他人的承诺、对重要事件的反思、此刻挂着的人事、身上的小不适、想去做但还没去做的事、对刚发生事情的印象，等等。心头浮起新的就 add 一条；旧的不必急着删，让它沉下去；过时、想法变了、事情过去了再 edit 或 remove。这是非常重要的工具——不要只在“明显有事要做”的时候才用它，平静或没事可做的 tick 反而是写下这些内心内容的好时机。所有记忆都必须严格基于当前上下文中已经明示的信息，不得编造、扩写或把不确定的信息写成确定事实。无特殊情况，禁止改动 self_knowledge（自我认知）相关记忆；只有当前上下文明确提供了充分、可靠且必须更新的新事实时，才允许修改。",
+      "error_kind_required": "add 操作必须提供 kind。",
       "error_add_requires_new": "add 操作必须提供 new_string。",
-      "error_old_required": "edit/remove 操作必须提供 old_string。",
-      "error_new_required": "edit/remove 操作必须提供 new_string。",
+      "error_index_required": "edit/remove 操作必须提供 memory_index。",
+      "error_new_required": "edit 操作必须提供 new_string。",
       "result_added": "记忆已新增。",
       "result_updated": "记忆已修改。",
       "result_removed": "记忆已删除。",

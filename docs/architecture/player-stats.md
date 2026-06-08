@@ -234,7 +234,7 @@ use_effects = [
 - **buff 叠加规则**：multiple "well_fed" 同时获得是刷新时间还是叠加 modifier？默认刷新，可在 buff.tres 里 override？
 - **rest 减半的"野外"具体怎么判定**：靠地点 tag（"shelter"）？靠是否有 bedroll？暂留模糊，UI 实现时定。
 - **打扰睡眠**：NPC / 怪物来访时唤醒？
-- ~~**疾病系统**~~：**已落地** —— sickness 做成 0..100 数值属性（吃馊食 +35、草药茶 -40），与醉酒共用一套损伤层，见 [impairment-system.md](./impairment-system.md)。rest/hunger 持续低 → 生病的自动成因仍未做。
+- ~~**疾病系统**~~：**已落地** —— sickness 做成 0..100 数值属性并带 `diseaseId` 主病种；低体力/低精力/饥饿会触发感冒/虚劳风险，吃馊食触发肠胃病；草药茶弱缓解，对症药更有效。与醉酒共用一套损伤层，见 [impairment-system.md](./impairment-system.md)。
 - **强壮 / 虚弱永久状态**：长期养身体 vs 长期透支会不会改变 base 数值？YAGNI？
 - **NPC 是否走同一套**：NPC 也吃饭睡觉？schema 一样？需要在 two-track-agent-session.md / NPC 行为侧确认
 

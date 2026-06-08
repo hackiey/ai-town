@@ -1,21 +1,14 @@
-[gd_resource type="Resource" script_class="Item" format=3]
+[gd_resource type="Resource" script_class="Item" format=3 uid="uid://df352rb5h1fwf"]
 
-[ext_resource type="Script" path="res://src/sim/items/item.gd" id="1_item"]
+[ext_resource type="Script" uid="uid://dqr5snte2lo05" path="res://src/sim/items/item.gd" id="1_item"]
 
 [resource]
 script = ExtResource("1_item")
 id = "flax_bundle"
-weight = 0.5
 kind = "material"
-stackable = true
-max_stack = 99
-crop_variety_id = ""
+weight = 0.2
 shape_type = "fiber_bundle"
 materials = {
-"body": "hemp",
+"body": "hemp"
 }
-tags = PackedStringArray("crop_harvest", "fiber_source")
 tint = Color(0.72, 0.67, 0.42, 1)
-dries_into = "flax_seed"
-drying_hours = 24.0
-drying_yield_qty = 2

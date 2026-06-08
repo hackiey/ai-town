@@ -3,12 +3,13 @@ extends CanvasLayer
 
 # 屏幕顶部时间栏：年/月/日/周几/时间。
 # 数据从 GameClock autoload 拉：360 天/年 → 12 月 × 30 日；7 天周（game_day % 7）。
-# 初始 06:00 开服，game_day=0 视为"周一"。
+# 初始为统治五年3月4日 06:00；weekday offset 保证该日显示为周二。
 # 刷新：ten_minute_tick（10 game-min 一次）足够细，省得每帧 _process 重渲。
 
 const WEEKDAY_NAMES := ["周一", "周二", "周三", "周四", "周五", "周六", "周日"]
 const DAYS_PER_MONTH := 30
 const MONTHS_PER_YEAR := 12
+const GAME_WEEKDAY_OFFSET := 3
 
 @onready var _label: Label = $Root/Panel/Label
 
@@ -38,7 +39,7 @@ func _refresh() -> void:
 	var day_of_year := int(snap.get("dayOfYear", 1)) - 1  # 0-indexed
 	var month := int(day_of_year / DAYS_PER_MONTH) + 1
 	var day_of_month := (day_of_year % DAYS_PER_MONTH) + 1
-	var weekday: String = WEEKDAY_NAMES[int(snap.get("day", 0)) % WEEKDAY_NAMES.size()]
+	var weekday: String = WEEKDAY_NAMES[(int(snap.get("day", 0)) + GAME_WEEKDAY_OFFSET) % WEEKDAY_NAMES.size()]
 	var hour := int(snap.get("hour", 0))
 	var minute := int(snap.get("minute", 0))
 	_label.text = "%d 年 %d 月 %d 日 · %s · %02d:%02d" % [year, month, day_of_month, weekday, hour, minute]

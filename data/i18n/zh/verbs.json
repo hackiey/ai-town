@@ -21,6 +21,9 @@
         "sickle": "镰刀"
       }
     },
+    "compound": {
+      "name": "调制"
+    },
     "fire": {
       "name": "烧制"
     },

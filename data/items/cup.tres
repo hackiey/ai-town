@@ -5,12 +5,11 @@
 [resource]
 script = ExtResource("1_item")
 id = "cup"
-weight = 0.2
 kind = "container"
 stackable = false
 max_stack = 1
+weight = 0.1
 shape_type = "bowl"
-tags = PackedStringArray("liquid_container")
 materials = {
 "body": "wood"
 }

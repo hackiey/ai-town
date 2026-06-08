@@ -1,1 +1,14 @@
-{}
+{
+  "tool": {
+    "alchemy": {
+      "label": "Alchemy",
+      "description": "Use an alchemy table to compound herbs, water, salt, and other ingredients into teas, broths, or salves.",
+      "param": {
+        "input_item": "Ingredient or reagent from # Backpack ({name, index}).",
+        "inputs_array": "Herbs plus water/salt/reagents. Repeat entries when multiple units are needed."
+      },
+      "reason_default_format": "compound medicine at {label}",
+      "result_note": "result includes medicine, quality, freshness, and proficiency changes."
+    }
+  }
+}

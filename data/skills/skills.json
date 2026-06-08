@@ -11,6 +11,11 @@
         "breadmaking_basics"
       ]
     },
+    "alchemy": {
+      "books": [
+        "herbal_medicine_basics"
+      ]
+    },
     "mining": {
       "books": [
         "mining_basics"

@@ -1,0 +1,22 @@
+[gd_scene format=3]
+
+[ext_resource type="PackedScene" uid="uid://cgy2x4qr8mvld" path="res://src/sim/containers/container_node.tscn" id="1_base"]
+[ext_resource type="PackedScene" uid="uid://07748m3giqaf" path="res://third-party/polygon-fantasy-kingdom/Assets/PolygonFantasyKingdom/Prefabs/Props/Furniture/SM_Prop_Chest_01.tscn" id="2_visual"]
+
+[node name="StorageChestContainerNode" instance=ExtResource("1_base")]
+slot_count = 12
+container_name = "储物箱"
+
+[node name="Mesh" parent="." index="0"]
+visible = false
+
+[node name="Title" parent="." index="2"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.2, 0)
+
+[node name="Prompt" parent="." index="3"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.85, 0)
+
+[node name="Visual" parent="." instance=ExtResource("2_visual")]
+
+[node name="Approach" parent="SiteMarker" index="0"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 1.0)

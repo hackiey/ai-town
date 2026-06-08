@@ -17,6 +17,9 @@ extends WorkstationNode
 # 「玩家正在查看的那一页」（Player.view_slots，owner-private 同步，见 player.gd）。
 var contents: Array[Dictionary] = []
 
+# 容器/货架钱包。钱币不占 contents 槽位；所有 silver_coin/gold_coin 都折算进这里。
+var wallet_centi: int = 0
+
 # 被动反应的 vessel 能力 tag 集合。匹配反应表里 match.vessel_tag（data/mechanics/crafting.lua）：
 #   "drying" → 槽内匹配的物品(如 wheat)被 PassiveSimulator 自动晾成 malt（auto_start）。
 #   （未来加 "smoking" 等就在这里追加；发酵的 brewing_vessel 在物品自身 tag 上，不在这里）
@@ -99,6 +102,17 @@ func effective_display_name() -> String:
 	if not ws_name.is_empty() and not ws_name.begins_with("workstation."):
 		return ws_name
 	return cid
+
+
+func _refresh_labels() -> void:
+	var title := get_node_or_null("Title") as Label3D
+	if title != null:
+		title.text = effective_display_name()
+	var label := get_node_or_null("Prompt") as Label3D
+	if label != null:
+		var key := "ui.container.prompt_default"
+		var prompt := tr(key)
+		label.text = prompt if prompt != key and not prompt.is_empty() else "按 E 查看"
 
 
 func matches_container_id(value: String) -> bool:

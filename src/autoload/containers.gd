@@ -47,6 +47,7 @@ func register_container(node: ContainerNode) -> void:
 	# MultiplayerSynchronizer 填（Db 在 client 不开）。
 	if RunMode.is_runtime():
 		_hydrate_contents(node)
+		_hydrate_wallet(node)
 		_apply_starting_inventory_if_first_boot(node)
 
 
@@ -171,6 +172,10 @@ func system_deposit(container_id: String, item_id: String, qty: int, quality: in
 		return {"ok": false, "message": "找不到容器：%s" % container_id}
 	if not Items.has_id(item_id):
 		return {"ok": false, "message": "未知物品：%s" % item_id}
+	var coin_centi := CharacterInventory.currency_item_centi(item_id)
+	if coin_centi > 0:
+		wallet_add_centi(container_id, qty * coin_centi)
+		return {"ok": true, "placed_qty": qty}
 	var stack := InventorySlotData.from_template(item_id, quality)
 	stack["quantity"] = qty
 	return _place_stacks_into_container(node, [stack])
@@ -183,6 +188,14 @@ func system_withdraw(container_id: String, item_id: String, qty: int) -> Diction
 	var node := find_container_node(container_id)
 	if node == null:
 		return {"ok": false, "message": "找不到容器：%s" % container_id}
+	var coin_centi := CharacterInventory.currency_item_centi(item_id)
+	if coin_centi > 0:
+		var centi := qty * coin_centi
+		if not wallet_spend_centi(container_id, centi):
+			return {"ok": false, "message": "容器钱包余额不足"}
+		var stack := InventorySlotData.from_template(item_id, 100)
+		stack["quantity"] = qty
+		return {"ok": true, "stacks": [stack]}
 	return _extract_from_container(node, item_id, qty)
 
 
@@ -193,6 +206,9 @@ func system_inventory_summary(container_id: String) -> Dictionary:
 	if node == null:
 		return {}
 	var totals: Dictionary = {}
+	var wallet := wallet_balance_centi(container_id)
+	if wallet > 0:
+		totals["silver_coin"] = wallet / 100.0
 	for slot_v in node.contents:
 		var slot: Dictionary = slot_v as Dictionary
 		if InventorySlotData.of(slot).is_empty():
@@ -202,6 +218,36 @@ func system_inventory_summary(container_id: String) -> Dictionary:
 			continue
 		totals[iid] = int(totals.get(iid, 0)) + int(slot.get("quantity", 0))
 	return totals
+
+
+func wallet_balance_centi(container_id: String) -> int:
+	var node := find_container_node(container_id)
+	if node == null:
+		return 0
+	return maxi(0, int(node.wallet_centi))
+
+
+func wallet_add_centi(container_id: String, centi: int) -> void:
+	if centi == 0:
+		return
+	var node := find_container_node(container_id)
+	if node == null:
+		return
+	node.wallet_centi = maxi(0, int(node.wallet_centi) + centi)
+	Db.save_container_wallet(container_id, node.wallet_centi)
+
+
+func wallet_spend_centi(container_id: String, centi: int) -> bool:
+	if centi <= 0:
+		return true
+	var node := find_container_node(container_id)
+	if node == null:
+		return false
+	if int(node.wallet_centi) < centi:
+		return false
+	node.wallet_centi = int(node.wallet_centi) - centi
+	Db.save_container_wallet(container_id, node.wallet_centi)
+	return true
 
 
 # ─── Internal: access / hydration / contents ─────────────────────────
@@ -261,6 +307,16 @@ func adapter_take(node: ContainerNode, query: Dictionary, qty: int) -> Dictionar
 	var stacks: Array = []
 	if node == null or qty <= 0:
 		return { "taken_qty": 0, "stacks": stacks }
+	var query_item := str(query.get("item_id", ""))
+	var coin_centi := CharacterInventory.currency_item_centi(query_item)
+	if coin_centi > 0:
+		var centi := qty * coin_centi
+		if not wallet_spend_centi(node.effective_container_id(), centi):
+			return { "taken_qty": 0, "stacks": stacks }
+		var stack := InventorySlotData.from_template(query_item, 100)
+		stack["quantity"] = qty
+		stacks.append(stack)
+		return { "taken_qty": qty, "stacks": stacks }
 	var cid := node.effective_container_id()
 	_ensure_hydrated(node)
 	var slots: Array[Dictionary] = node.contents
@@ -302,14 +358,27 @@ func adapter_place(node: ContainerNode, stacks: Array) -> Dictionary:
 	if node == null or stacks.is_empty():
 		return { "placed_qty": 0, "leftover": [] }
 	var before_qty := 0
+	var currency_qty := 0
+	var non_currency: Array = []
 	for s_v in stacks:
 		if typeof(s_v) == TYPE_DICTIONARY:
-			before_qty += int((s_v as Dictionary).get("quantity", 0))
-	var result := _place_stacks_into_container(node, stacks)
+			var stack := s_v as Dictionary
+			var qty := int(stack.get("quantity", 0))
+			before_qty += qty
+			var item_id := str(stack.get("item_id", ""))
+			var coin_centi := CharacterInventory.currency_item_centi(item_id)
+			if coin_centi > 0:
+				wallet_add_centi(node.effective_container_id(), qty * coin_centi)
+				currency_qty += qty
+			else:
+				non_currency.append(stack)
+	if non_currency.is_empty():
+		return { "placed_qty": currency_qty, "leftover": [] }
+	var result := _place_stacks_into_container(node, non_currency)
 	if bool(result.get("ok", false)):
 		return { "placed_qty": before_qty, "leftover": [] }
 	# 失败：result 里没暴露具体 leftover，保守按"全部 leftover"返回；caller rollback 即可
-	return { "placed_qty": 0, "leftover": stacks }
+	return { "placed_qty": currency_qty, "leftover": non_currency }
 
 
 func adapter_set_slot(node: ContainerNode, slot_index: int, fields: Dictionary) -> bool:
@@ -391,8 +460,15 @@ func _hydrate_contents(node: ContainerNode) -> void:
 		var idx := int(k)
 		if idx < 0 or idx >= slot_count:
 			continue
-		slots[idx] = InventorySlotData.normalize(persisted[k] as Dictionary)
+			slots[idx] = InventorySlotData.normalize(persisted[k] as Dictionary)
 	_set_contents(node, slots)
+
+
+func _hydrate_wallet(node: ContainerNode) -> void:
+	if node == null:
+		return
+	var container_id := node.effective_container_id()
+	node.wallet_centi = Db.get_container_wallet_centi(container_id)
 
 
 func _snapshot_for(node: ContainerNode, viewer: Character) -> Dictionary:
@@ -627,6 +703,9 @@ func _apply_starting_inventory_if_first_boot(node: ContainerNode) -> void:
 	if Db.has_seeded_container(cid):
 		return
 	var conf := _get_container_config(cid)
+	var starting_wallet := Money.silver_to_centi(float(conf.get("starting_wallet_silver", 0.0)))
+	if starting_wallet > 0:
+		wallet_add_centi(cid, starting_wallet)
 	var inv: Variant = conf.get("starting_inventory", [])
 	if not (inv is Array):
 		Db.mark_container_seeded(cid)
@@ -643,10 +722,14 @@ func _apply_starting_inventory_if_first_boot(node: ContainerNode) -> void:
 		if not Items.has_id(item_id):
 			push_warning("[Containers] %s starting_inventory unknown item '%s'" % [cid, item_id])
 			continue
+		var coin_centi := CharacterInventory.currency_item_centi(item_id)
+		if coin_centi > 0:
+			wallet_add_centi(cid, qty * coin_centi)
+			continue
 		var quality := int(entry.get("quality", 100))
 		var stack := InventorySlotData.from_template(item_id, quality)
 		stack["quantity"] = qty
-		# 货架陈列标价（仅展示）。containers.json 的 starting_inventory entry 可带 price_silver。
+		# 货架陈列标价。containers.json 的 starting_inventory entry 可带 price_silver。
 		if entry.has("price_silver"):
 			stack["listing_price_centi"] = Money.silver_to_centi(float(entry.get("price_silver", 0.0)))
 		# 液体容器物（木桶/酿酒桶）可预灌内容：container_amount(升) + container_content(液体 id)。

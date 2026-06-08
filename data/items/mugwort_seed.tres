@@ -1,0 +1,12 @@
+[gd_resource type="Resource" script_class="Item" format=3]
+
+[ext_resource type="Script" path="res://src/sim/items/item.gd" id="1_item"]
+
+[resource]
+script = ExtResource("1_item")
+id = "mugwort_seed"
+weight = 0.01
+kind = "seed"
+crop_variety_id = "mugwort"
+tags = PackedStringArray("seed")
+tint = Color(0.48, 0.62, 0.40, 1)

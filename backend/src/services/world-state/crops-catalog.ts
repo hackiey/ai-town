@@ -38,6 +38,42 @@ const VARIETIES: Record<string, CropVarietyCatalogEntry> = {
     optimalMoistureMin: 0.2,
     optimalMoistureMax: 0.8,
   },
+  mint: {
+    id: "mint",
+    displayName: "薄荷",
+    optimalMoistureMin: 0.3,
+    optimalMoistureMax: 0.85,
+  },
+  mugwort: {
+    id: "mugwort",
+    displayName: "艾草",
+    optimalMoistureMin: 0.15,
+    optimalMoistureMax: 0.7,
+  },
+  ginger: {
+    id: "ginger",
+    displayName: "姜",
+    optimalMoistureMin: 0.35,
+    optimalMoistureMax: 0.85,
+  },
+  plantain: {
+    id: "plantain",
+    displayName: "车前草",
+    optimalMoistureMin: 0.2,
+    optimalMoistureMax: 0.85,
+  },
+  calendula: {
+    id: "calendula",
+    displayName: "金盏花",
+    optimalMoistureMin: 0.2,
+    optimalMoistureMax: 0.75,
+  },
+  valerian: {
+    id: "valerian",
+    displayName: "缬草",
+    optimalMoistureMin: 0.35,
+    optimalMoistureMax: 0.85,
+  },
 };
 
 export function getVariety(id: string | undefined): CropVarietyCatalogEntry | undefined {

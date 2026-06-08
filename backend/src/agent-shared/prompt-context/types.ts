@@ -106,7 +106,7 @@ export type WorkstationContext = {
   // 容器内容：每条带 index（LLM 看到的 [N]，与 itemIndex.containers[containerId] 对齐）+
   // slotIndex（item_instances 真 id，take/put 时走 wire 给 Godot）。quality 仅作展示。
   // container：内容物本身是液体容器（桶/瓶）时带液体量/发酵态，渲染层展示"水 50L / 啤酒 50L 酿造中"。
-  items?: Array<{ index: number; slotIndex: number; itemId: string; quantity: number; quality?: number; container?: { amount: number; content: string | null; fermenting?: boolean; ceiling?: number } }>;
+  items?: Array<{ index: number; slotIndex?: number; itemId: string; quantity: number; quality?: number; container?: { amount: number; content: string | null; fermenting?: boolean; ceiling?: number } }>;
   // 跨角色单占：非空 = 工作台正被该角色使用，他人调 use_workstation 会吃 workstation_busy。
   // 装配时已剔除"自己"——actor 自己用着的工作台不渲染"使用中"后缀。
   // 容器恒空（容器允许多人并发翻箱）。
@@ -121,7 +121,7 @@ export type ShelfListingContext = {
   itemId?: string;
   displayName?: string;
   quantity: number;
-  // 标价（仅展示，付钱靠 trade/give）。无标价时 priceCenti/priceSilver = 0、priceText 省略。
+  // 标价。无标价时 priceCenti/priceSilver = 0、priceText 省略；钱包虚拟行也无标价。
   priceCenti: number;
   priceSilver: number;
   priceText?: string;
@@ -164,7 +164,7 @@ export type InteractiveSiteContext = {
   // 容器内容：每条带 index（LLM 看到的 [N]，与 itemIndex.containers[containerId] 对齐）+
   // slotIndex（item_instances 真 id，take/put 时走 wire 给 Godot）。quality 仅作展示。
   // container：内容物本身是液体容器（桶/瓶）时带液体量/发酵态，渲染层展示"水 50L / 啤酒 50L 酿造中"。
-  items?: Array<{ index: number; slotIndex: number; itemId: string; quantity: number; quality?: number; container?: { amount: number; content: string | null; fermenting?: boolean; ceiling?: number } }>;
+  items?: Array<{ index: number; slotIndex?: number; itemId: string; quantity: number; quality?: number; container?: { amount: number; content: string | null; fermenting?: boolean; ceiling?: number } }>;
   // 跨角色单占。同 WorkstationContext.currentOperatorName：装配时已剔除自己，仅在被他人占用时填。
   currentOperatorName?: string;
 };
@@ -242,6 +242,7 @@ export type AgentCurrentContext = {
 
 export type AgentMemoryKind = "self_knowledge" | "common_sense" | "skill" | "other";
 export type StoredAgentMemoryKind = AgentMemoryKind | "profile" | "long_term" | "reflection";
+export type AgentMemoryTimeDisplay = "auto" | "none";
 
 export type AgentMemoryRecord = {
   id: string;
@@ -252,11 +253,15 @@ export type AgentMemoryRecord = {
   importance: number;
   createdAt: string;
   lastAccessedAt?: string;
+  createdGameTime?: GameTimeSnapshot;
+  updatedGameTime?: GameTimeSnapshot;
+  timeDisplay?: AgentMemoryTimeDisplay;
   sourceEventIds?: string[];
 };
 
 export type PromptMemoryRecord = Omit<AgentMemoryRecord, "kind"> & {
   kind: AgentMemoryKind;
+  promptIndex: number;
 };
 
 export type PromptMemorySections = {

@@ -5,8 +5,8 @@
 // - 不持久化 session message 历史（agent_sessions 不写）。每次 turn 重建 Agent，
 //   上下文靠 perception manifest + 上一份 working_memory 自带，不需要 LLM 自己记。
 //   这样能避免和 action 轨在 (townId, characterId, agentKind) 唯一键上冲突。
-// - 只暴露 1 个 tool：write_working_memory。LLM 调它就把内容存进 runtime_storage，
-//   tool 自己 return 结束信号；我们读到 store 完成后 abort 当前 turn，省 token。
+// - 只暴露长期记忆 update_memory 和收尾 write_working_memory。LLM 调 write_working_memory
+//   就把内容存进 runtime_storage，tool 自己 return 结束信号；我们读到 store 完成后 abort 当前 turn，省 token。
 // - 并发去重：requestThink 在 running 时只更新 queuedReason；当前 turn finally 检查并起一轮。
 
 import { Agent, type AgentEvent, type AgentMessage, type AgentTool, type AgentToolResult } from "@mariozechner/pi-agent-core";
@@ -228,6 +228,8 @@ export class ThinkingTrackSession {
       this.options.ctx.storage(),
       this.options.townId,
       this.options.characterId,
+      this.latestObservedGameTime,
+      context.memory,
     );
 
     const agent = new Agent({

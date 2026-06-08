@@ -1,0 +1,21 @@
+[gd_resource type="Resource" script_class="Item" format=3 uid="uid://bbs5dna2eawxp"]
+
+[ext_resource type="Script" uid="uid://dqr5snte2lo05" path="res://src/sim/items/item.gd" id="1_item"]
+
+[resource]
+script = ExtResource("1_item")
+id = "valerian_tonic"
+kind = "drink"
+weight = 0.1
+use_duration_seconds = 30.0
+shape_type = "tankard"
+materials = {
+"body": "valerian_tonic"
+}
+tint = Color(0.52, 0.42, 0.68, 1)
+base_effects = {
+"rest": 15,
+"symptom.dizziness": -4,
+"symptom.fatigue": -5,
+"symptom.weakness": -4
+}

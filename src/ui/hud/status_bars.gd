@@ -71,12 +71,16 @@ func _render() -> void:
 		match t:
 			"hungry": labels.append(tr("ui.status.status.hungry"))
 			"sleeping": labels.append(tr("ui.status.status.sleeping"))
+			"medicine_effect": labels.append(tr("ui.status.status.medicine_effect"))
 			_: labels.append(t)
 	var drunk_label := Impairment.drunk_tier_label(_player.drunk)
 	if not drunk_label.is_empty():
 		labels.append(drunk_label)
 	var sick_label := Impairment.sickness_tier_label(_player.sickness)
 	if not sick_label.is_empty():
+		var disease_label := Impairment.disease_label(_player.disease_id)
+		if not disease_label.is_empty():
+			sick_label = "%s·%s" % [disease_label, sick_label]
 		labels.append(sick_label)
 	var encumber_label := Impairment.encumbrance_tier_label(_player.carry_ratio())
 	if not encumber_label.is_empty():

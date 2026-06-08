@@ -144,7 +144,7 @@ function createRespondSchema() {
 }
 
 // ───────────────────────────── 工作台 axis schemas ─────────────────────────────
-// 12 个按 proficiency skill axis 拆分的工具替代旧 use_workstation —— 见 craft-registry.ts +
+// 按 proficiency skill axis 拆分的工具替代旧 use_workstation —— 见 craft-registry.ts +
 // docs/proficiency_system.md。每个 schema 只暴露该 axis 真用得到的字段；workstation 检测仍
 // 由 Godot _find_workstation 兜底（[[feedback_godot_is_authority]]）。
 //
@@ -210,6 +210,13 @@ export function createCookSchema() {
   });
 }
 
+export function createAlchemySchema() {
+  return Type.Object({
+    inputs: Type.Array(createItemRefSchema("alchemy.param.input_item"), { minItems: 1, maxItems: 8, description: td("alchemy.param.inputs_array") }),
+    reason: Type.Optional(Type.String({ description: toolReasonDescription() })),
+  });
+}
+
 export function createMillGrainSchema() {
   return Type.Object({
     inputs: Type.Array(createItemRefSchema("mill_grain.param.input_item"), { minItems: 1, maxItems: 8, description: td("mill_grain.param.inputs_array") }),
@@ -224,7 +231,7 @@ export function createBoilSaltSchema() {
   });
 }
 
-// put 项：从背包放进容器/货架。item.index 指向 # 背包。price_silver 仅货架有意义（标价，仅展示）。
+// put 项：从背包放进容器/货架。item.index 指向 # 背包。price_silver 仅货架有意义（上架标价）。
 function createPutTakeEntrySchema(kind: "put" | "take") {
   if (kind === "put") {
     return Type.Object({
@@ -265,7 +272,7 @@ export function createPutTakeSchema() {
       amount: Type.Number({ minimum: 0.01, description: "数量：item 按个数，liquid 按升" }),
       from: createTransferEndpointSchema(),
       to: createTransferEndpointSchema(),
-      price_silver: Type.Optional(Type.Number({ minimum: 0, multipleOf: 0.01, description: "存货架时的标价（仅展示）" })),
+      price_silver: Type.Optional(Type.Number({ minimum: 0, multipleOf: 0.01, description: "存货架时的标价" })),
     }), { minItems: 1, maxItems: 16, description: "搬运列表" }),
     reason: Type.Optional(Type.String({ description: toolReasonDescription() })),
   });
@@ -291,12 +298,12 @@ function createUpdateMemorySchema() {
     operation: StringEnum(["add", "edit", "remove"], {
       description: td("update_memory.param.operation"),
     }),
-    kind: StringEnum(["self_knowledge", "common_sense", "skill", "other"], {
+    kind: Type.Optional(StringEnum(["self_knowledge", "common_sense", "skill", "other"], {
       description: td("update_memory.param.kind"),
-    }),
-    old_string: Type.Optional(Type.String({
-      minLength: 1,
-      description: td("update_memory.param.old_string"),
+    })),
+    memory_index: Type.Optional(Type.Integer({
+      minimum: 1,
+      description: td("update_memory.param.memory_index"),
     })),
     new_string: Type.Optional(Type.String({
       description: td("update_memory.param.new_string"),
@@ -378,7 +385,7 @@ export type PlanFarmWorkParams = {
   ops: PlanFarmWorkOpParams[];
   reason?: string;
 };
-// 12 个 axis tool 的 Params —— 见 schemas 工厂上方注释。形态严格按 schema 写明，不暴露
+// axis tool 的 Params —— 见 schemas 工厂上方注释。形态严格按 schema 写明，不暴露
 // 内部 axis 实现细节（factory 在 normalize 时按 axis spec 把 workstation/verb/sub_option 填好）。
 export type MineParams = { mine: string; reason?: string };
 export type WoodworkParams = { workstation: string; sub_option?: string; inputs?: ItemRefParam[]; reason?: string };
@@ -387,6 +394,7 @@ export type SmeltParams = { workstation: string; inputs: ItemRefParam[]; reason?
 export type SmithParams = { sub_option: string; inputs: ItemRefParam[]; reason?: string };
 export type AssembleParams = { sub_option: string; inputs: ItemRefParam[]; reason?: string };
 export type CookParams = { verb: string; inputs: ItemRefParam[]; reason?: string };
+export type AlchemyParams = { inputs: ItemRefParam[]; reason?: string };
 export type MillGrainParams = { inputs: ItemRefParam[]; reason?: string };
 export type BoilSaltParams = { inputs: ItemRefParam[]; reason?: string };
 export type PutTakeEntryParam = { item: ItemRefParam; quantity: number; price_silver?: number };
@@ -407,7 +415,7 @@ export type ViewContainerParams = { container: string };
 // 每个 axis Params 在 tool factory 里被 normalize 成 WorkstationActionTarget 形态发给 Godot。
 export type AxisToolParams =
   | MineParams | WoodworkParams | BurnCharcoalParams | SmeltParams | SmithParams
-  | AssembleParams | CookParams | MillGrainParams | BoilSaltParams;
+  | AssembleParams | CookParams | AlchemyParams | MillGrainParams | BoilSaltParams;
 export type SayToParams = {
   character: string;
   text: string;

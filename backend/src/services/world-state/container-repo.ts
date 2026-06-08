@@ -3,10 +3,11 @@ import { getInventoryForContainer } from "./inventory-repo.js";
 import type { ContainerView } from "./types.js";
 
 const SELECT_BY_IDS = `
-  SELECT containerId, lockItemId, ownerGroup, slotCount, interactionRadius,
-         posX, posY, posZ
-  FROM container_states
-  WHERE townId = ? AND containerId IN
+  SELECT c.containerId, c.lockItemId, c.ownerGroup, c.slotCount, c.interactionRadius,
+         c.posX, c.posY, c.posZ, COALESCE(w.silverCentiBalance, 0) AS silverCentiBalance
+  FROM container_states c
+  LEFT JOIN container_wallets w ON w.townId = c.townId AND w.containerId = c.containerId
+  WHERE c.townId = ? AND c.containerId IN
 `;
 
 export function getContainersByIds(db: AppDb, townId: string, containerIds: string[]): ContainerView[] {
@@ -25,6 +26,7 @@ function rowToContainerView(r: Record<string, unknown>): ContainerView {
     containerId: String(r.containerId ?? ""),
     lockItemId: r.lockItemId == null || r.lockItemId === "" ? undefined : String(r.lockItemId),
     ownerGroup: r.ownerGroup == null || r.ownerGroup === "" ? undefined : String(r.ownerGroup),
+    walletCenti: Number(r.silverCentiBalance ?? 0),
     slotCount: Number(r.slotCount ?? 0),
     interactionRadius: Number(r.interactionRadius ?? 0),
     position: {

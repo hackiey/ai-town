@@ -10,7 +10,8 @@
       "materials": "材质：",
       "tags_format": "标签：%s",
       "attributes": "属性：",
-      "effects_format": "功效：%s"
+      "effects_format": "功效：%s",
+      "treat_disease_format": "治疗%s"
     },
     "craft": {
       "failure_default": "失败了",
@@ -31,12 +32,14 @@
       "status": {
         "hungry": "饥饿",
         "sleeping": "睡眠",
+        "medicine_effect": "药效中",
         "burning": "燃烧",
         "dead": "死亡"
       },
       "status_effect": {
         "hungry": "降低体力上限和恢复速度",
         "sleeping": "恢复精力",
+        "medicine_effect": "草药正在缓慢起效",
         "burning": "持续受伤",
         "dead": "无法行动"
       },
@@ -155,6 +158,7 @@
         "ignition": "点燃点",
         "sleeping": "睡眠",
         "burning": "燃烧",
+        "disease": "疾病",
         "statuses": "附加状态",
         "groups": "所属群组"
       },
@@ -248,7 +252,8 @@
       "unit": {
         "liter": "升",
         "gram": "克",
-        "count": "份"
+        "count": "份",
+        "centi": "分"
       },
       "stage_title": "放入工作台：%s",
       "take_title": "取出：%s",
@@ -311,10 +316,14 @@
       "title_default": "货架",
       "label_listings": "货架陈列",
       "label_inventory": "我的背包",
+      "col_item": "物品",
+      "col_unit_price": "单价",
+      "col_quantity": "数量",
       "wallet_format": "钱包：%s",
       "unit_price_format": "单价 %s",
-      "hint_buy": "右键购买／走开关闭（ESC）",
+      "hint_buy": "输入数量后点击购买／走开关闭（ESC）",
       "hint_manage": "管理模式：上架／改价／下架你管理的货架",
+      "btn_buy": "购买",
       "btn_buy_one": "买 1",
       "btn_buy_all": "全买",
       "btn_list": "上架...",
@@ -334,8 +343,14 @@
     },
     "container": {
       "label_default": "储物箱",
+      "prompt_default": "按 E 查看",
       "label_storage": "容器内容",
       "label_backpack": "背包",
+      "wallet_format": "容器钱包：%s",
+      "wallet_put": "存银",
+      "wallet_take": "取银",
+      "wallet_put_title": "存入银钱",
+      "wallet_take_title": "取出银钱",
       "menu": {
         "take_one": "取出 1 个",
         "take_all": "取出整堆",

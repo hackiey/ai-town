@@ -16,7 +16,7 @@ const SOURCE_LOCALE := "zh"
 const SUPPORTED_LOCALES := ["zh", "en"]
 const DOMAINS := [
 	"ui", "items", "materials", "shapes", "verbs", "workstations", "containers", "reactions",
-	"npcs", "locations", "skills", "groups", "attributes",
+	"npcs", "locations", "skills", "groups", "attributes", "symptoms",
 	"tools", "errors", "prompts",
 ]
 

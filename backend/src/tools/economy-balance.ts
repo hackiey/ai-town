@@ -483,6 +483,18 @@ const ECONOMY = {
     wood_ash: 0.1,
     tomato_seed: 0.25,
     flax_seed: 0.25,
+    mint_seed: 0.25,
+    mugwort_seed: 0.25,
+    ginger_seed: 0.5,
+    plantain_seed: 0.25,
+    calendula_seed: 0.5,
+    valerian_seed: 0.5,
+    mint_leaf: 0.4,
+    mugwort_leaf: 0.4,
+    ginger_root: 0.75,
+    plantain_leaf: 0.4,
+    calendula_flower: 0.75,
+    valerian_root: 0.75,
     copper_ore: 2,
     tin_ore: 2,
     wood_bucket: 2,
@@ -499,13 +511,20 @@ const ECONOMY = {
     berry_jam: 1.25,      // 15 hunger
     tomato_fruit: 0.5,    // 10 hunger
     beer: 2.5,            // 麦芽发酵奢侈饮品，5 hunger + 12 stamina
-    herbal_remedy: 3.0,   // 草药茶，治病（sickness -40）；来源/制作链待定
+    herbal_remedy: 2.0,   // 通用草药茶，弱缓解
+    mint_mugwort_tea: 3.5,
+    ginger_plantain_broth: 3.5,
+    calendula_salve: 4.0,
+    valerian_tonic: 4.0,
   } as Dict<number>,
   // 所有锚都 fixed，recipe 推导不覆盖。
   fixedPriceItems: [
     "silver_coin", "gold_coin", "silver_ore", "gold_ore",
     "wheat", "flour", "bread", "wood", "charcoal", "iron_ore", "salt", "flax_bundle",
     "raw_meat", "egg", "berry", "tomato_fruit", "malt", "beer", "herbal_remedy",
+    "mint_seed", "mugwort_seed", "ginger_seed", "plantain_seed", "calendula_seed", "valerian_seed",
+    "mint_leaf", "mugwort_leaf", "ginger_root", "plantain_leaf", "calendula_flower", "valerian_root",
+    "mint_mugwort_tea", "ginger_plantain_broth", "calendula_salve", "valerian_tonic",
     "cooked_meat", "cured_meat", "omelet", "cured_omelet", "veg_stew", "cured_stew", "berry_jam",
   ],
   defaultMargin: 0.18,
@@ -526,7 +545,7 @@ const ECONOMY = {
 //   - 加 forge_yard：第二个铁工铺 (Garr Hollow + Edda Vance)，跟 blacksmith_shop 并列
 //   - 加 general_store：Cora Reed 独立卖绳 + 亚麻束/种 (从 tool_materials 拆出)
 //   - 加 butcher：Hugh Marrow 屠夫转卖 raw_meat (从 livestock 拆出)
-//   - 加 chapel_agriculture：教会种粮 (Greta/Pella/Borin/Aldric/Mirelle 都有 tomato_seed)，免田租
+//   - 加 chapel_agriculture：圣钟草药园种草药，教会地免田租
 //   - lumberyard 只卖 wood / shaft / plank，不再卖 charcoal / rope (charcoal 归铁工，rope 归 general_store)
 //   - blacksmith_shop / forge_yard 都列出 charcoal 作为产品（自烧自卖）
 //   - tavern / saltworks 实际有产
@@ -552,6 +571,8 @@ const SECTORS: SectorConfig[] = [
   { id: "lumberyard", name: "lumberyard", groupId: "lumberyard", workerIds: ["silas_coppice"], productItemIds: ["wood", "wood_shaft", "wood_plank"], taxRate: 0.06, rentPerDay: 1, spoilageRate: 0 },
   // 杂货店 (Cora 独立卖亚麻 + 绳)
   { id: "general_store", name: "general_store", groupId: "general_store", workerIds: ["cora_reed"], productItemIds: ["flax_bundle", "flax_seed", "rope"], taxRate: 0.06, rentPerDay: 1, spoilageRate: 0 },
+  // 圣钟草药园：草药与对症药，教会地免租
+  { id: "herbal_medicine", name: "herbal medicine", groupId: "saint_bell_chapel", workerIds: ["greta_moss", "pella_moss", "borin_ash"], productItemIds: ["mint_leaf", "mugwort_leaf", "ginger_root", "plantain_leaf", "calendula_flower", "valerian_root", "herbal_remedy", "mint_mugwort_tea", "ginger_plantain_broth", "calendula_salve", "valerian_tonic"], taxRate: 0, rentPerDay: 0, spoilageRate: 0.03 },
   // 私铁矿
   { id: "iron_mining", name: "iron mining", groupId: "iron_mine", workerIds: ["merrin_cairn"], productItemIds: ["iron_ore"], taxRate: 0.08, rentPerDay: 1, spoilageRate: 0 },
   // 国营金银矿 (产出按面值归国库)
@@ -602,6 +623,10 @@ const REACTION_SECTORS: Dict<string> = {
   mix_jam: "tavern",
   mix_stew: "tavern",
   mix_stew_salted: "tavern",
+  compound_mint_mugwort_tea: "herbal_medicine",
+  compound_ginger_plantain_broth: "herbal_medicine",
+  compound_calendula_salve: "herbal_medicine",
+  compound_valerian_tonic: "herbal_medicine",
   boil_salt: "saltworks",
   forge_smelt: "blacksmith_shop",
   forge_alloy: "blacksmith_shop",
@@ -619,6 +644,12 @@ const REACTION_SECTORS: Dict<string> = {
   combine_rope: "general_store",
   dry_tomato_seed: "primary_agriculture",
   dry_flax_seed: "general_store",
+  dry_mint_seed: "herbal_medicine",
+  dry_mugwort_seed: "herbal_medicine",
+  dry_plantain_seed: "herbal_medicine",
+  dry_calendula_seed: "herbal_medicine",
+  dry_ginger_seed: "herbal_medicine",
+  dry_valerian_seed: "herbal_medicine",
   dig_gold: "royal_mines",
   dig_silver: "royal_mines",
   // 之前漏的原料 reaction：归属对应部门，capacity check 才看得到 worker/stamina 预算。

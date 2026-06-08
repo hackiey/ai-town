@@ -38,6 +38,14 @@ func hydrate() -> void:
 	_character.recompute_derived_attributes()
 	_character.drunk = float(row.get("drunk", _character.drunk))
 	_character.sickness = float(row.get("sickness", _character.sickness))
+	_character.disease_id = str(row.get("diseaseId", _character.disease_id))
+	var symptoms_v: Variant = row.get("symptoms", _character.symptoms)
+	if symptoms_v is Dictionary:
+		_character.symptoms = Character._clean_number_dict(symptoms_v)
+	if _character.sickness <= 0.0:
+		_character.disease_id = ""
+	_character.seed_symptoms_from_legacy_sickness()
+	_character.recompute_sickness_from_symptoms()
 	_character.sleep_needed_hours = float(row.get("sleepNeededHours", _character.sleep_needed_hours))
 	if _character.sleep_needed_hours <= 0.0:
 		_character.sleep_needed_hours = Character.DEFAULT_SLEEP_NEEDED_HOURS
@@ -101,6 +109,8 @@ func persist() -> void:
 		"constitution": _character.constitution,
 		"drunk": _character.drunk,
 		"sickness": _character.sickness,
+		"diseaseId": _character.disease_id if _character.sickness > 0.0 else "",
+		"symptoms": _character.symptoms,
 		# 派生档位 key 随 raw 一起持久化——阈值只在 Impairment 里判一次，backend 直接读这个 key。
 		"drunkTier": Impairment.drunk_tier_key(_character.drunk),
 		"sicknessTier": Impairment.sickness_tier_key(_character.sickness),

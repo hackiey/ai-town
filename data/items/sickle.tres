@@ -1,21 +1,20 @@
-[gd_resource type="Resource" script_class="Item" format=3]
+[gd_resource type="Resource" script_class="Item" format=3 uid="uid://pmkuinrmbu7b"]
 
-[ext_resource type="Script" path="res://src/sim/items/item.gd" id="1_item"]
+[ext_resource type="Script" uid="uid://dqr5snte2lo05" path="res://src/sim/items/item.gd" id="1_item"]
 
 [resource]
 script = ExtResource("1_item")
 id = "sickle"
-weight = 0.8
 kind = "tool"
 stackable = false
 max_stack = 1
+weight = 0.4
 shape_type = "sickle"
 materials = {
 "blade": "iron",
-"handle": "wood_oak",
+"handle": "wood_oak"
 }
-tags = PackedStringArray("metal", "sharp", "harvest_tool")
 properties = {
-"blade_area": 0.08,
+"blade_area": 0.08
 }
 tint = Color(0.62, 0.63, 0.66, 1)

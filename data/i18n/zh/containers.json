@@ -1,5 +1,17 @@
 {
   "container": {
+    "storage_chest": {
+      "name": "储物箱",
+      "description": "通用储物箱，可作为可打开的储物容器。"
+    },
+    "cabinet": {
+      "name": "柜子",
+      "description": "通用柜子，可作为可打开的储物容器。"
+    },
+    "wardrobe": {
+      "name": "衣柜",
+      "description": "通用衣柜，可作为可打开的储物容器。"
+    },
     "treasury_vault": {
       "name": "领主国库",
       "description": "领主国库的大铁箱。归王室所有，须持「王室钥匙」方可手动开启。矿工挖到的矿、铸出来的金银币按规则自动入库；发饷靠门口的发薪台。"

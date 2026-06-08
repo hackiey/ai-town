@@ -236,6 +236,90 @@ reactions = {
         failure_modes = {{weight = 1.0, consume_inputs = {0, 1, 2, 3}, return_inputs = {}, message = ""}},
     },
 
+    compound_mint_mugwort_tea = {
+        verb = "compound", workstation = "alchemy_table", sub_option = "", trigger = "active",
+        material_strategy = "mix", quality_strategy = "weighted_avg",
+        inputs = {
+            {["materials.body"] = "mint_leaf", quality_weight = 0.4},
+            {["materials.body"] = "mugwort_leaf", quality_weight = 0.4},
+            {["materials.body"] = "water", quality_weight = 0.2},
+        },
+        outputs = {{generate = {
+            item_id = "mint_mugwort_tea",
+            shape_type = "tankard",
+            materials = {body = "mint_mugwort_tea"},
+            tags = {"drink", "medicine", "liquid"},
+            qty = 1,
+        }}},
+        skill_id = "alchemy", difficulty = 25,
+        stamina_cost = 3.0, duration_seconds = 120.0,
+        failure_modes = {{weight = 1.0, consume_inputs = {1, 2}, return_inputs = {0}, message = ""}},
+        primary_input_indices = {0, 1},
+    },
+
+    compound_ginger_plantain_broth = {
+        verb = "compound", workstation = "alchemy_table", sub_option = "", trigger = "active",
+        material_strategy = "mix", quality_strategy = "weighted_avg",
+        inputs = {
+            {["materials.body"] = "ginger_root", quality_weight = 0.45},
+            {["materials.body"] = "plantain_leaf", quality_weight = 0.35},
+            {["materials.body"] = "water", quality_weight = 0.2},
+        },
+        outputs = {{generate = {
+            item_id = "ginger_plantain_broth",
+            shape_type = "bowl",
+            materials = {body = "ginger_plantain_broth"},
+            tags = {"drink", "medicine", "liquid"},
+            qty = 1,
+        }}},
+        skill_id = "alchemy", difficulty = 30,
+        stamina_cost = 3.0, duration_seconds = 140.0,
+        failure_modes = {{weight = 1.0, consume_inputs = {1, 2}, return_inputs = {0}, message = ""}},
+        primary_input_indices = {0, 1},
+    },
+
+    compound_calendula_salve = {
+        verb = "compound", workstation = "alchemy_table", sub_option = "", trigger = "active",
+        material_strategy = "mix", quality_strategy = "weighted_avg",
+        inputs = {
+            {["materials.body"] = "calendula_flower", quality_weight = 0.55},
+            {["materials.body"] = "salt", quality_weight = 0.25},
+            {["materials.body"] = "water", quality_weight = 0.2},
+        },
+        outputs = {{generate = {
+            item_id = "calendula_salve",
+            shape_type = "jar",
+            materials = {body = "calendula_salve"},
+            tags = {"medicine", "salve"},
+            qty = 1,
+        }}},
+        skill_id = "alchemy", difficulty = 35,
+        stamina_cost = 3.0, duration_seconds = 160.0,
+        failure_modes = {{weight = 1.0, consume_inputs = {0, 1, 2}, return_inputs = {}, message = ""}},
+        primary_input_indices = {0},
+    },
+
+    compound_valerian_tonic = {
+        verb = "compound", workstation = "alchemy_table", sub_option = "", trigger = "active",
+        material_strategy = "mix", quality_strategy = "weighted_avg",
+        inputs = {
+            {["materials.body"] = "valerian_root", quality_weight = 0.5},
+            {["materials.body"] = "mint_leaf", quality_weight = 0.3},
+            {["materials.body"] = "water", quality_weight = 0.2},
+        },
+        outputs = {{generate = {
+            item_id = "valerian_tonic",
+            shape_type = "tankard",
+            materials = {body = "valerian_tonic"},
+            tags = {"drink", "medicine", "liquid"},
+            qty = 1,
+        }}},
+        skill_id = "alchemy", difficulty = 30,
+        stamina_cost = 3.0, duration_seconds = 140.0,
+        failure_modes = {{weight = 1.0, consume_inputs = {1, 2}, return_inputs = {0}, message = ""}},
+        primary_input_indices = {0, 1},
+    },
+
     boil_salt = {
         verb = "boil", workstation = "saltworks_pan", sub_option = "", trigger = "active",
         material_strategy = "mix", quality_strategy = "first",
@@ -604,6 +688,71 @@ reactions = {
     -- 由 PassiveSimulator 全局定时器推进（单一写者）；每条自带 tick_seconds。
     -- strategy="ramp_transform"：开始即变身成 output，品质从 0 线性爬到 ceiling，
     -- 到 hours 定格。on_tick(ctx={ceiling,start_hour,now_hour,hours}) → {quality,done}。
+    -- 晾晒：放进 drying 容器自动开始（auto_start），ceiling = 输入品质。
+    dry_tomato_seed = {
+        trigger = "passive", strategy = "ramp_transform",
+        match = { vessel_tag = "drying", input = "tomato_fruit" },
+        auto_start = true,
+        output = "tomato_seed", yield = 2,
+        hours = 24.0, tick_seconds = 1800,
+        on_tick = function(ctx) return ramp_quality(ctx.ceiling, ctx.age, ctx.hours) end,
+    },
+    dry_flax_seed = {
+        trigger = "passive", strategy = "ramp_transform",
+        match = { vessel_tag = "drying", input = "flax_bundle" },
+        auto_start = true,
+        output = "flax_seed", yield = 2,
+        hours = 24.0, tick_seconds = 1800,
+        on_tick = function(ctx) return ramp_quality(ctx.ceiling, ctx.age, ctx.hours) end,
+    },
+    dry_mint_seed = {
+        trigger = "passive", strategy = "ramp_transform",
+        match = { vessel_tag = "drying", input = "mint_leaf" },
+        auto_start = true,
+        output = "mint_seed", yield = 2,
+        hours = 24.0, tick_seconds = 1800,
+        on_tick = function(ctx) return ramp_quality(ctx.ceiling, ctx.age, ctx.hours) end,
+    },
+    dry_mugwort_seed = {
+        trigger = "passive", strategy = "ramp_transform",
+        match = { vessel_tag = "drying", input = "mugwort_leaf" },
+        auto_start = true,
+        output = "mugwort_seed", yield = 2,
+        hours = 24.0, tick_seconds = 1800,
+        on_tick = function(ctx) return ramp_quality(ctx.ceiling, ctx.age, ctx.hours) end,
+    },
+    dry_plantain_seed = {
+        trigger = "passive", strategy = "ramp_transform",
+        match = { vessel_tag = "drying", input = "plantain_leaf" },
+        auto_start = true,
+        output = "plantain_seed", yield = 2,
+        hours = 24.0, tick_seconds = 1800,
+        on_tick = function(ctx) return ramp_quality(ctx.ceiling, ctx.age, ctx.hours) end,
+    },
+    dry_calendula_seed = {
+        trigger = "passive", strategy = "ramp_transform",
+        match = { vessel_tag = "drying", input = "calendula_flower" },
+        auto_start = true,
+        output = "calendula_seed", yield = 2,
+        hours = 24.0, tick_seconds = 1800,
+        on_tick = function(ctx) return ramp_quality(ctx.ceiling, ctx.age, ctx.hours) end,
+    },
+    dry_ginger_seed = {
+        trigger = "passive", strategy = "ramp_transform",
+        match = { vessel_tag = "drying", input = "ginger_root" },
+        auto_start = true,
+        output = "ginger_seed", yield = 1,
+        hours = 36.0, tick_seconds = 1800,
+        on_tick = function(ctx) return ramp_quality(ctx.ceiling, ctx.age, ctx.hours) end,
+    },
+    dry_valerian_seed = {
+        trigger = "passive", strategy = "ramp_transform",
+        match = { vessel_tag = "drying", input = "valerian_root" },
+        auto_start = true,
+        output = "valerian_seed", yield = 1,
+        hours = 36.0, tick_seconds = 1800,
+        on_tick = function(ctx) return ramp_quality(ctx.ceiling, ctx.age, ctx.hours) end,
+    },
     -- 晾晒：小麦放进 drying 容器自动开酿（auto_start），ceiling = 小麦品质。
     dry_malt = {
         trigger = "passive", strategy = "ramp_transform",
@@ -635,7 +784,7 @@ end
 -- 真值表镜像 data/skills/skills.json —— 如果加新 skill，两边一起改。
 -- 漏写 skill_id 的 reaction 早期就崩，不会"涨错轴 / 静默不涨" 后才被发现。
 local KNOWN_SKILLS = {
-    milling=true, cooking=true, mining=true, salt_making=true,
+    milling=true, cooking=true, alchemy=true, mining=true, salt_making=true,
     assembly=true, smithing=true, smelting=true, charcoal_making=true, woodworking=true,
     brewing=true,
 }

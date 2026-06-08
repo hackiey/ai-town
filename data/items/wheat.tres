@@ -6,8 +6,8 @@
 [resource]
 script = ExtResource("1_item")
 id = "wheat"
-weight = 0.05
 kind = "material"
+weight = 0.1
 crop_variety_id = "wheat"
 shape_type = "grain"
 materials = {

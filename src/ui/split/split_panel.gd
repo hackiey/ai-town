@@ -202,6 +202,7 @@ func _unit_name() -> String:
 	match _unit:
 		"liter": return tr("ui.split.unit.liter")
 		"gram": return tr("ui.split.unit.gram")
+		"centi": return tr("ui.split.unit.centi")
 		_: return tr("ui.split.unit.count")
 
 

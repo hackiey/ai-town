@@ -220,7 +220,26 @@ static func _localized_effect_label(name: String) -> String:
 		"hunger": return TranslationServer.translate("attribute.hunger.name")
 		"stamina": return TranslationServer.translate("attribute.stamina.name")
 		"health", "hp": return TranslationServer.translate("attribute.hp.name")
-		_: return name
+		"rest": return TranslationServer.translate("attribute.rest.name")
+		"sickness": return TranslationServer.translate("attribute.sickness.name")
+		_:
+			if name.begins_with("symptom."):
+				return _symptom_label(name.substr("symptom.".length()))
+			if name.begins_with("disease."):
+				return TranslationServer.translate("ui.tooltip.treat_disease_format") % _disease_label(name.substr("disease.".length()))
+			return name
+
+
+static func _disease_label(disease_id: String) -> String:
+	var key := "disease.%s.name" % disease_id
+	var translated := str(TranslationServer.translate(key))
+	return disease_id if translated == key else translated
+
+
+static func _symptom_label(symptom_id: String) -> String:
+	var key := "symptom.%s.name" % symptom_id
+	var translated := str(TranslationServer.translate(key))
+	return symptom_id if translated == key else translated
 
 
 static func _format_amount(value: float) -> String:

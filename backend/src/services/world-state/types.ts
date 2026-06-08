@@ -28,6 +28,10 @@ export type CharacterStateView = {
   // 损伤层：drunk 醉酒 / sickness 生病累计值（0..100）。0 = 清醒健康。
   drunk: number;
   sickness: number;
+  // 当前主病种。首版只追踪一个主病；sickness 归零时 Godot 清空。
+  diseaseId: string;
+  // 当前可感知症状强度（0..100）。prompt 只渲染症状，不泄露 diseaseId。
+  symptoms: Record<string, number>;
   // 档位 key（Godot 单一写者算好持久化）：drunk ""/tipsy/drunk/wasted；sickness ""/mild/moderate/severe。
   // backend 只读这个 key 渲染，不在 TS 里复制阈值。见 docs/architecture/impairment-system.md §2。
   drunkTier: string;
@@ -92,7 +96,7 @@ export type InventoryItemRow = {
   itemDefId: string;
   stackCount: number;
   quality?: number;
-  // 货架陈列标价（centi 银）。仅货架槽位有；普通容器/背包为 undefined。仅展示，付钱靠 trade/give。
+  // 货架陈列标价（centi 银）。仅货架槽位有；普通容器/背包为 undefined。
   listingPriceCenti?: number;
 } & ItemInstanceAspects;
 
@@ -116,6 +120,7 @@ export type ContainerView = {
   containerId: string;
   lockItemId?: string;
   ownerGroup?: string;
+  walletCenti: number;
   slotCount: number;
   interactionRadius: number;
   position: { x: number; y: number; z: number };
@@ -130,6 +135,7 @@ export type ShelfView = {
   shelfId: string;
   ownerGroup?: string;
   locationId?: string;
+  walletCenti: number;
   slotCount: number;
   interactionRadius: number;
   position: { x: number; y: number; z: number };

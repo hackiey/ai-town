@@ -5,11 +5,10 @@
 [resource]
 script = ExtResource("1_item")
 id = "malt"
-weight = 0.05
 kind = "material"
+weight = 0.1
 shape_type = "grain"
 materials = {
 "body": "malt"
 }
-tags = PackedStringArray("grain", "intermediate")
 tint = Color(0.72, 0.52, 0.24, 1)

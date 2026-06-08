@@ -92,7 +92,11 @@ func _update_transfer_labels() -> void:
 	if _action_panel != null and _action_panel.has_method("is_open") and _action_panel.is_open():
 		label = tr("ui.split.menu.stage")
 	elif _container_panel != null and _container_panel.has_method("is_open") and _container_panel.is_open():
-		label = tr("ui.split.menu.store")
+		var can_put := true
+		if _container_panel.has_method("accepts_backpack_put"):
+			can_put = _container_panel.accepts_backpack_put()
+		if can_put:
+			label = tr("ui.split.menu.store")
 	if label == _last_transfer_label:
 		return
 	_last_transfer_label = label
@@ -107,6 +111,8 @@ func _on_slot_transfer(index: int) -> void:
 		_action_panel.begin_stage_split(index)
 	elif _container_panel != null and _container_panel.has_method("is_open") and _container_panel.is_open() \
 			and _container_panel.has_method("begin_put_split"):
+		if _container_panel.has_method("accepts_backpack_put") and not _container_panel.accepts_backpack_put():
+			return
 		_container_panel.begin_put_split(index)
 
 

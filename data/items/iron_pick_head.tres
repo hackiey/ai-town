@@ -1,22 +1,17 @@
-[gd_resource type="Resource" script_class="Item" format=3]
+[gd_resource type="Resource" script_class="Item" format=3 uid="uid://cjyrxlm0hpas3"]
 
-[ext_resource type="Script" path="res://src/sim/items/item.gd" id="1_item"]
+[ext_resource type="Script" uid="uid://dqr5snte2lo05" path="res://src/sim/items/item.gd" id="1_item"]
 
 [resource]
 script = ExtResource("1_item")
 id = "iron_pick_head"
-weight = 1.5
 kind = "part"
-stackable = true
-max_stack = 99
-crop_variety_id = ""
-source = ""
+weight = 0.6
 shape_type = "pick_head"
 materials = {
-"body": "iron",
+"body": "iron"
 }
-tags = PackedStringArray("metal", "tool_part")
 properties = {
-"point_count": 2,
+"point_count": 2
 }
 tint = Color(0.62, 0.63, 0.66, 1)

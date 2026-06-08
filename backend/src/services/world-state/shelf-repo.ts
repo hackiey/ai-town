@@ -7,15 +7,17 @@ import type { ShelfView } from "./types.js";
 // 标价是槽位 listingPriceCenti aspect。所以读货架内容复用 getInventoryForContainer。
 
 const SHELF_SELECT = `
-  SELECT shelfId, ownerGroup, locationId, slotCount, interactionRadius, posX, posY, posZ
-  FROM shelves
+  SELECT s.shelfId, s.ownerGroup, s.locationId, s.slotCount, s.interactionRadius,
+         s.posX, s.posY, s.posZ, COALESCE(w.silverCentiBalance, 0) AS silverCentiBalance
+  FROM shelves s
+  LEFT JOIN container_wallets w ON w.townId = s.townId AND w.containerId = s.shelfId
 `;
 
 // 按 shelfId 查货架（静态镜像 + 内容）。空数组入参 → 空结果。perceived shelfIds 走这条。
 export function getShelvesByIds(db: AppDb, townId: string, shelfIds: string[]): ShelfView[] {
   if (shelfIds.length === 0) return [];
   const placeholders = shelfIds.map(() => "?").join(",");
-  const sql = `${SHELF_SELECT} WHERE townId = ? AND shelfId IN (${placeholders}) ORDER BY shelfId ASC`;
+  const sql = `${SHELF_SELECT} WHERE s.townId = ? AND s.shelfId IN (${placeholders}) ORDER BY s.shelfId ASC`;
   const rows = safeAll(db, sql, [townId, ...shelfIds]);
   return rows.map((r) => {
     const view = rowToShelfView(r as Record<string, unknown>);
@@ -29,6 +31,7 @@ function rowToShelfView(r: Record<string, unknown>): ShelfView {
     shelfId: String(r.shelfId ?? ""),
     ownerGroup: r.ownerGroup == null || r.ownerGroup === "" ? undefined : String(r.ownerGroup),
     locationId: r.locationId == null || r.locationId === "" ? undefined : String(r.locationId),
+    walletCenti: Number(r.silverCentiBalance ?? 0),
     slotCount: Number(r.slotCount ?? 0),
     interactionRadius: Number(r.interactionRadius ?? 0),
     position: {

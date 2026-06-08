@@ -1,6 +1,6 @@
 # Impairment System（醉酒 / 生病 损伤层）
 
-> Status: **landed v1.1**（2026-06-06）。drunk（醉酒）+ sickness（生病）两个 0..100 数值属性，叠成一层"做什么都更差"的损伤效果。
+> Status: **landed v1.3**（2026-06-08）。drunk（醉酒）+ sickness（生病）两个 0..100 数值属性，sickness 由症状 `symptoms` 派生；`diseaseId` 只作为内部主病因，叠成一层"做什么都更差"的损伤效果。
 > 配套 [player-stats.md](./player-stats.md)（基础数值）、[simulation-layer.md](./simulation-layer.md)（tick 衰减）、[scripting-layer.md](./scripting-layer.md)（effects / affect 通路）、[two-track-agent-session.md](./two-track-agent-session.md)（prompt 感知 + roleplay）。
 > 单一口径在 `src/sim/characters/impairment.gd`（`class_name Impairment`）；**所有曲线只在那一个文件定义**，本文是它的设计说明。
 
@@ -13,7 +13,7 @@
 | 属性 | 范围 | 怎么涨 | 怎么落 |
 |---|---|---|---|
 | **drunk**（醉酒） | 0–100 | 喝酒（啤酒 +6/杯） | 自然衰减，**-1 / 10 游戏分钟**（1 杯约 1 游戏小时醒） |
-| **sickness**（生病） | 0–100 | 吃腐烂 / 馊掉的食物（+35/次） | 自然衰减极慢，**-0.25 / 10 游戏分钟**（≈ 66 游戏时归零）；**主要靠吃药**（草药茶 -40） |
+| **sickness**（生病） | 0–100，由 `symptoms` 派生 + 内部 `diseaseId` 主病因 | 低体力/低精力/饥饿风险；吃腐烂 / 馊掉的食物（生成腹泻/恶心/腹痛等症状） | 自然症状衰减极慢；草药挂 4 小时 `medicine_effect` 缓慢改变具体症状，同一时间只保留一剂，重复吃药会刷新为新一剂 |
 
 两者对"干活"的惩罚**取最重**：`impair = max(drunk, sickness)`——不双重暴击，喝醉又生病只按更重那个算。
 
@@ -129,22 +129,22 @@ character-repo.ts (SELECT drunk, drunkTier)
 
 | 环节 | 文件 | 说明 |
 |---|---|---|
-| 内存属性 | `character.gd` | `var drunk: float` / `var sickness: float`；`const MAX_IMPAIRMENT := 100.0` |
-| DB 列 + 迁移 | `db.gd` | `character_states` 加 `drunk`/`sickness` REAL + `drunkTier`/`sicknessTier` TEXT（派生档位 key，Godot 单一写者随 raw 一起 UPSERT，供 backend SELECT）；`_apply_schema_migrations` 走 `_ensure_column`；save SQL 带上四列 |
-| hydrate / persist | `character_state_io.gd` | hydrate 读 drunk/sickness（tier 不回读，Character 现算）；persist payload 带 drunk/sickness + `Impairment.drunk_tier_key/sickness_tier_key` 算出的 tier |
+| 内存属性 | `character.gd` | `var drunk: float` / `var sickness: float` / `var disease_id: String` / `var symptoms: Dictionary`；`const MAX_IMPAIRMENT := 100.0` |
+| DB 列 + 迁移 | `db.gd` | `character_states` 加 `drunk`/`sickness` REAL + `diseaseId` TEXT + `symptoms` JSON TEXT + `drunkTier`/`sicknessTier` TEXT（派生档位 key，Godot 单一写者随 raw 一起 UPSERT，供 backend SELECT）；`_apply_schema_migrations` 走 `_ensure_column`；save SQL 带上这些列 |
+| hydrate / persist | `character_state_io.gd` | hydrate 读 drunk/sickness/diseaseId/symptoms（tier 不回读，Character 现算）；老存档无 symptoms 时按 diseaseId+sickness 生成初始症状；persist payload 带 raw + symptoms + `Impairment.drunk_tier_key/sickness_tier_key` 算出的 tier |
 | snapshot | `character_snapshots.gd` | `attributes()` 和 `ui_profile().vitals` 都给 `{current, max: Character.MAX_IMPAIRMENT}` |
-| 多人同步 | `player.tscn` | SceneReplicationConfig 加 drunk(/28) / sickness(/29) |
-| HUD | `status_bars.gd` | 显示 `Impairment.drunk_tier_label` / `sickness_tier_label` |
-| Backend 读取 | `character-repo.ts` + `types.ts` | SELECT + 解析 `drunk`/`sickness`；`CharacterStateView` 加字段 |
+| 多人同步 | `player.tscn` | SceneReplicationConfig 加 drunk / sickness / disease_id |
+| HUD | `status_bars.gd` | 显示 `Impairment.drunk_tier_label` / `disease_label + sickness_tier_label` |
+| Backend 读取 | `character-repo.ts` + `types.ts` | SELECT + 解析 `drunk`/`sickness`/`diseaseId`/`symptoms`；`CharacterStateView` 加字段 |
 
-**效果通路**（喝酒 +drunk / 吃药 −sickness / 馊食 +sickness 都走这条）：
-- `effects.gd`：`modify_drunk` / `modify_sickness`（照 `modify_rest`，clamp 0..MAX_IMPAIRMENT，persist）
-- `script_api.gd`：lua 侧 `affect.drunk` / `affect.sickness`
-- `item_effects.gd::apply_to_caster`：`base_effects` 里的 `"drunk"` / `"sickness"` key → modify_*（**替换**了原 sickness→add_status 的占位）
+**效果通路**（喝酒 +drunk / 疾病生成症状 / 草药缓解症状都走这条）：
+- `effects.gd`：`modify_drunk` / `modify_sickness` / `modify_disease_sickness`（照 `modify_rest`，clamp 0..MAX_IMPAIRMENT，persist；`diseaseId` 在 sickness 归零时清空）
+- `script_api.gd`：lua 侧 `affect.drunk` / `affect.sickness` / `affect.disease_sickness` / `affect.symptom`
+- `item_effects.gd::apply_to_caster`：`base_effects` 里的 `"drunk"` / `"symptom.<id>"` / `"disease.<id>"` key → modify_*；带 `medicine` tag 的物品由 `item_use.gd` 先把 `symptom.<id>` 转成 4 小时 `medicine_effect`，重复服药替换并刷新当前疗程但不叠加。
 
 **衰减**（`physiology.lua::on_slow_tick`，按 tick 实际时长缩放，基准 10 游戏分钟）：
 - `drunk_decay_per_tick = 1.0` → `affect.drunk(char, -min(dec, drunk))`
-- `sickness_decay_per_tick = 0.25` → `affect.sickness(char, -min(dec, sickness))`
+- `sickness_decay_per_tick = 0.05` → `affect.sickness(char, -min(dec, sickness))`
 - `-min(dec, x)` 保证不会减成负数。
 
 ---
@@ -165,9 +165,10 @@ HUD 文案在 `data/i18n/zh/ui.json` 的 `ui.status.impairment.*`。
 
 ## 6. 生病成因 + 解药（Phase 4）
 
-- **成因 = 吃腐烂 / 馊掉的食物。** `item_use.gd`：`resolve` 解禁了"吃腐食/馊食"（food/drink/trash 即使腐烂也允许入口，其它东西腐了仍不可用）；`execute` 里当 `view.has_tag("spoiled")` 或 `perishable.is_rotten()` 时，往效果追加 `ROTTEN_SICKNESS = 35.0`（与新鲜度乘子无关的固定值）。
-- **解药 = `herbal_remedy`（草药茶）**，`kind=drink`，`base_effects {sickness:-40, stamina:4}`；物品 + 材质 + i18n + economy(basePrice 3.0) 已建。
-- **来源（铺货 / 配方 / 采集）本期不做**——用户拍板"暂不做"，先让物品 + 药效成立，**靠 DM/god 发放**（见 [[project_dm_agent]]）。后续接获取链时再确认。
+- **自然成因**：`physiology.lua` 在低体力/低精力/饥饿风险命中时调用 `affect.disease_sickness`；体力过低偏向 `cold`（感冒），低精力/饥饿偏向 `exhaustion_sickness`（虚劳）。
+- **腐食成因**：`item_use.gd` 在 `view.has_tag("spoiled")` 或 `perishable.is_rotten()` 时追加 `disease.stomach_illness = +35`（与新鲜度乘子无关的固定值）。
+- **治疗**：`herbal_remedy` 是弱通用缓解；`mint_mugwort_tea` 作为感冒主药缓咳嗽/鼻塞/发冷并轻压发热，`ginger_plantain_broth` 作为肠胃主药缓腹泻/恶心/腹痛，`calendula_salve` 作为伤口主药缓伤口疼痛/红肿并轻压发热，`valerian_tonic` 缓乏力/头晕/手脚发软。一场病先按核心症状吃主药，若共享症状（乏力/头晕/发热/发冷）明显，可在疗程结束后换第二味辅药；药效不是即时扣除，而是 4 小时内按 tick 缓慢改变症状；同一时间只有一个 `medicine_effect`，再次服药会消耗药并用新药刷新疗程。
+- **来源**：圣钟草药园两块田种薄荷、艾草、姜、车前草、金盏花、缬草；草药在炼金台 `compound` 成药。草药收获不直接给种子，必须由 NPC 把一部分收获物放进晾晒架留种：叶/花类 24 小时通常 1→2 颗种子，姜根/缬草根 36 小时通常 1→1 颗种子。
 
 ---
 
@@ -179,7 +180,8 @@ HUD 文案在 `data/i18n/zh/ui.json` 的 `ui.status.impairment.*`。
 | 衰减速度（醒酒快慢 / 病好快慢） | `data/mechanics/physiology.lua` 的 `drunk_decay_per_tick` / `sickness_decay_per_tick` |
 | 喝一杯涨多少 drunk | `data/items/beer.tres` `base_effects.drunk` |
 | 吃馊食涨多少 sickness | `src/sim/items/item_use.gd` `ROTTEN_SICKNESS` |
-| 吃药减多少 sickness | `data/items/herbal_remedy.tres` `base_effects.sickness` |
+| 草药缓解哪些症状 | `data/items/*.tres` `base_effects.symptom.<id>` |
+| 对症药效果 | `data/items/*tea.tres` / `*broth.tres` / `*salve.tres` / `*tonic.tres` 的 `base_effects.disease.<id>` |
 | 档位阈值（含听不清门槛 wasted） | **只动 `impairment.gd` 的 `drunk_tier_key()` / `sickness_tier_key()`**——backend 读持久化的 tier key，零阈值复制（见 §2） |
 
 ---
@@ -189,7 +191,7 @@ HUD 文案在 `data/i18n/zh/ui.json` 的 `ui.status.impairment.*`。
 1. **累计/衰减**：连喝 2 杯 → drunk≈12 → HUD"微醺"；`/timewarp` 加速 ~2 游戏时归 0。
 2. **干活变差**：烂醉(>60)烹饪失败率/品质↓；收获产量↓；浇水土壤几乎没涨且桶空了；打水只装半桶；种植/除虫频繁失手且不返还种子/草木灰。
 3. **醉酒专属**：醉酒 NPC 说话冒 `%^$#`；`move_to_location` 途中踉跄停顿；自己烂醉时听别人说话也糊（debug-agent 看 prompt）。
-4. **生病闭环**：吃馊食 → sickness↑、干活变差但**说话不乱码/走路不停顿**；喝草药茶 → sickness↓。
+4. **生病闭环**：低资源或吃馊食 → symptoms↑、sickness 派生↑ 且 diseaseId 设置；干活变差但**说话不乱码/走路不停顿**；通用草药弱缓解，对症状的药缓慢下降对应症状。
 5. **prompt**：debug-agent 看醉/病 NPC 的 system prompt，确认有状态行 + 后果 + "演成醉汉/病人"的 roleplay。
 6. **backend**：`pnpm -C backend tsc --noEmit` 过 character-repo / assemble-from-manifest / say.ts 改动。
 
@@ -197,5 +199,7 @@ HUD 文案在 `data/i18n/zh/ui.json` 的 `ui.status.impairment.*`。
 
 ## 修订记录
 
+- 2026-06-08 (v1.3)：新增症状层 `symptoms`。疾病只负责内部病因和症状生成；病人 prompt 只显示实际症状，不泄露 `diseaseId`；草药 `base_effects.symptom.<id>` 进入 4 小时 `medicine_effect` 慢性疗程，重复服药刷新但不叠加；`sickness` 由症状派生，继续作为干活惩罚输入。
+- 2026-06-08 (v1.2)：新增 `diseaseId` 主病种和 `disease.<id>` 对症药效果；低资源自然生病带感冒/虚劳，腐食带肠胃病；圣钟草药园接入草药作物和对症药配方。
 - 2026-06-06 (v1.1)：**档位阈值收成单一权威**。新增 `impairment.gd::drunk_tier_key/sickness_tier_key`（阈值唯一定义处），`character_states` 加 `drunkTier`/`sicknessTier` 持久化列（Godot 单一写者），backend 删 `assemble-from-manifest.ts` 的 `IMPAIRMENT_TIERS` 与 `say.ts` 的 `HEAR_GARBLE_DRUNK`，全部改读持久化 tier key。消除跨 Godot/backend 进程的阈值复制（原四处）。见 [[feedback_derived_state_persist_single_writer]]。
 - 2026-06-05 (v1)：drunk + sickness 损伤层落地。统一口径 `impairment.gd`；干活惩罚 `max(drunk,sickness)` 在执行时临时算不持久化；醉酒专属双向说话乱码（speaker 侧 Godot + listener 侧 backend）+ 走路踉跄；生病成因=吃馊食、解药=草药茶（来源暂不做）。

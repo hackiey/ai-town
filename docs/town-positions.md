@@ -5,7 +5,7 @@
 > 权威关系：
 > - 场景树真源：`src/levels/town.tscn` 的 `Positions`
 > - 语义真源：`backend/data/town/locations.json`
-> - 中文别名：`src/world/town_world.gd` 的 `LOCATION_ALIASES`
+> - 中文名：`data/i18n/zh/locations.json` 的 `location.<id>.alias`
 
 ## 当前进度
 
@@ -42,7 +42,7 @@
 | `north_wall_wheat_plot` | 北墙麦圃 | production | 3 块田的北侧农区 |
 | `greystone_farmstead` | 灰石农圃 | production | 5 块田的主农区 |
 | `saint_bell_chapel` | 圣钟教堂 / 郊区教堂 | civic | 郊区教堂本体，负责基础医疗、病人照看和教堂事务 |
-| `saint_bell_garden` | 圣钟菜园 | production | 圣钟教堂旁边的两块田与前院，供种菜和种草药 |
+| `saint_bell_garden` | 圣钟草药园 | production | 圣钟教堂旁边的两块田与前院，供种草药 |
 | `fishing_dock` | 渔码头 | production | 水边生产点 |
 | `lumberyard` | 伐木场 | production | 木料堆场 |
 | `saltworks` | 沿海盐场 | production | 熬晒海水成盐，供应酒馆、肉铺和保藏食品链 |
@@ -105,11 +105,11 @@
 - 不再维护“原计划 50 个点位”那套清单。
 - 不再把未落地地点写成“已删除位点”；现在区分为“scene 里已有”和“data-only 未落地”。
 - 农田系统已经从单个 `farm` 演进成三块父地点加十块具体农田的层级结构。
-- 教堂现在分成圣烛教堂 `saint_candle_chapel` 和圣钟教堂 `saint_bell_chapel`；圣钟菜园 `saint_bell_garden` 是与之并列的农务地点。
+- 教堂现在分成圣烛教堂 `saint_candle_chapel` 和圣钟教堂 `saint_bell_chapel`；圣钟草药园 `saint_bell_garden` 是与之并列的农务地点。
 
 ## 维护规则
 
 1. 新增地点时，先写 `backend/data/town/locations.json` 的语义，再决定是否在 `town.tscn` 里补 marker。
 2. 需要层级地点时，父子关系只在 `Positions` 场景树里表达，不在 `locations.json` 单独维护。
-3. 加了中文叫法后，记得同步 `src/world/town_world.gd` 的 `LOCATION_ALIASES`。
+3. 加了中文叫法后，只维护 `data/i18n/zh/locations.json` 的 `location.<id>.alias`。
 4. 如果一个地点只是世界观上的泛称，不一定要落 marker；例如当前的 `farm`。

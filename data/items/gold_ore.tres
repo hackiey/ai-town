@@ -1,19 +1,16 @@
-[gd_resource type="Resource" script_class="Item" format=3]
+[gd_resource type="Resource" script_class="Item" format=3 uid="uid://bgp7g87gmkcbg"]
 
-[ext_resource type="Script" path="res://src/sim/items/item.gd" id="1_item"]
-[ext_resource type="PackedScene" uid="uid://bgi9goldore09" path="res://src/world/ground_item/items/gold_ore.tscn" id="2_ground"]
+[ext_resource type="Script" uid="uid://dqr5snte2lo05" path="res://src/sim/items/item.gd" id="1_item"]
+[ext_resource type="PackedScene" uid="uid://bgjagoldore1a" path="res://src/world/ground_item/items/gold_ore.tscn" id="2_ground"]
 
 [resource]
 script = ExtResource("1_item")
 id = "gold_ore"
-weight = 3.0
 kind = "material"
-stackable = true
-max_stack = 99
+weight = 0.5
 shape_type = "ore_chunk"
 materials = {
-"body": "gold_ore",
+"body": "gold_ore"
 }
-tags = PackedStringArray("ore", "non_ferrous", "precious")
 world_mesh = ExtResource("2_ground")
-tint = Color(0.85, 0.72, 0.30, 1)
+tint = Color(0.85, 0.72, 0.3, 1)

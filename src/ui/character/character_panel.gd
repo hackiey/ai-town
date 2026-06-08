@@ -115,6 +115,7 @@ func _render_attributes(snapshot: Dictionary) -> String:
 	var state_lines := [
 		_field_line("ui.character.field.sleeping", _bool_text(bool(snapshot.get("sleeping", false)))),
 		_field_line("ui.character.field.burning", _bool_text(bool(snapshot.get("burning", false)))),
+		_field_line("ui.character.field.disease", _disease_text(snapshot)),
 		_field_line("ui.character.field.statuses", _list_text(_status_texts(status_ids), "ui.character.value.none")),
 		_field_line("ui.character.field.groups", _list_text(_group_texts(group_ids), "ui.character.value.none")),
 	]
@@ -160,6 +161,26 @@ func _meter_text(value: Variant) -> String:
 
 func _bool_text(value: bool) -> String:
 	return tr("ui.character.value.yes") if value else tr("ui.character.value.no")
+
+
+func _disease_text(snapshot: Dictionary) -> String:
+	var vitals: Dictionary = snapshot.get("vitals", {})
+	var sickness_v: Variant = vitals.get("sickness", {})
+	var current := 0.0
+	var max_value := Character.MAX_IMPAIRMENT
+	if sickness_v is Dictionary:
+		current = float((sickness_v as Dictionary).get("current", 0.0))
+		max_value = float((sickness_v as Dictionary).get("max", Character.MAX_IMPAIRMENT))
+	if current <= 0.0:
+		return tr("ui.character.value.none")
+	var disease_id := str(snapshot.get("diseaseId", ""))
+	var disease_label := Impairment.disease_label(disease_id)
+	if disease_label.is_empty():
+		disease_label = tr("attribute.sickness.name")
+	var tier_label := Impairment.sickness_tier_label(current)
+	if not tier_label.is_empty():
+		disease_label = "%s·%s" % [disease_label, tier_label]
+	return "%s %.0f / %.0f" % [disease_label, current, max_value]
 
 
 func _material_text(snapshot: Dictionary) -> String:

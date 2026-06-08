@@ -107,8 +107,23 @@ static func apply_to_caster(caster, effects: Dictionary) -> Array:
 				# 生病累计值。正 = 致病（吃馊食物），负 = 治疗（吃药）。0..MAX_IMPAIRMENT。
 				effect = {"type": "modify_sickness", "target": caster, "amount": amount}
 			_:
-				push_warning("[ItemEffects] unknown effect key: %s" % key)
-				continue
+				if key.begins_with("symptom."):
+					effect = {
+						"type": "modify_symptom",
+						"target": caster,
+						"symptom_id": key.substr("symptom.".length()),
+						"amount": amount,
+					}
+				elif key.begins_with("disease."):
+					effect = {
+						"type": "modify_disease_sickness",
+						"target": caster,
+						"disease_id": key.substr("disease.".length()),
+						"amount": amount,
+					}
+				else:
+					push_warning("[ItemEffects] unknown effect key: %s" % key)
+					continue
 		var r := Effects.apply(effect)
 		summaries.append(r)
 	return summaries

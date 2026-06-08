@@ -1,12 +1,15 @@
 import type { RuntimeStorage, RuntimeStorageValue } from "../../agent-host/storage.js";
 import { createMessageId } from "../../services/ids.js";
+import type { GameTimeSnapshot } from "../../godot-link/protocol.js";
 import type {
   AgentMemoryKind,
   AgentMemoryRecord,
+  AgentMemoryTimeDisplay,
   PromptMemoryRecord,
   PromptMemorySections,
   StoredAgentMemoryKind,
 } from "../../agent-shared/prompt-context/types.js";
+import { gameTimeSortValue, normalizeGameTime } from "../../agent-shared/prompt-context/time.js";
 
 export type LoadTwoTrackAgentPromptMemoriesOptions = {
   otherLimit?: number;
@@ -14,10 +17,12 @@ export type LoadTwoTrackAgentPromptMemoriesOptions = {
 
 export type UpdateTwoTrackAgentMemoryInput = {
   operation: "add" | "edit" | "remove";
-  kind: AgentMemoryKind;
-  oldString?: string;
+  kind?: AgentMemoryKind;
+  memoryIndex?: number;
+  memoryId?: string;
   newString?: string;
   now?: string;
+  gameTime?: GameTimeSnapshot;
   townId: string;
   characterId: string;
 };
@@ -25,7 +30,8 @@ export type UpdateTwoTrackAgentMemoryInput = {
 export type UpdateTwoTrackAgentMemoryResult = {
   operation: "add" | "edit" | "remove";
   status: "added" | "updated" | "removed" | "not_found" | "unchanged";
-  kind: AgentMemoryKind;
+  kind?: AgentMemoryKind;
+  memoryIndex?: number;
   memoryId?: string;
   text?: string;
   previousText?: string;
@@ -77,13 +83,19 @@ export async function loadTwoTrackAgentPromptMemories(
   }
 
   // common_sense 与 self/skill 一样不受 other 上限约束（全员基础知识，不该被截断）。
-  const limitedOther = other.slice(0, otherLimit);
+  // other 是流动记忆，按更新时间倒序截断，避免新近牵挂被旧 key 顺序挤掉。
+  const limitedOther = [...other].sort(compareMemoryRecencyDesc).slice(0, otherLimit);
+  let promptIndex = 1;
+  const indexedSelfKnowledge = selfKnowledge.map((memory) => ({ ...memory, promptIndex: promptIndex++ }));
+  const indexedCommonSense = commonSense.map((memory) => ({ ...memory, promptIndex: promptIndex++ }));
+  const indexedSkills = skills.map((memory) => ({ ...memory, promptIndex: promptIndex++ }));
+  const indexedOther = limitedOther.map((memory) => ({ ...memory, promptIndex: promptIndex++ }));
   return {
-    selfKnowledge,
-    commonSense,
-    skills,
-    other: limitedOther,
-    all: [...selfKnowledge, ...commonSense, ...skills, ...limitedOther],
+    selfKnowledge: indexedSelfKnowledge,
+    commonSense: indexedCommonSense,
+    skills: indexedSkills,
+    other: indexedOther,
+    all: [...indexedSelfKnowledge, ...indexedCommonSense, ...indexedSkills, ...indexedOther],
   };
 }
 
@@ -92,9 +104,9 @@ export async function updateTwoTrackAgentMemory(
   input: UpdateTwoTrackAgentMemoryInput,
 ): Promise<UpdateTwoTrackAgentMemoryResult> {
   const now = input.now ?? new Date().toISOString();
-  const kind = input.kind;
 
   if (input.operation === "add") {
+    const kind = requireMemoryKind(input.kind);
     const text = requireMemoryString(input.newString);
     const existing = await findMemoryByKindAndText(storage, kind, text);
     if (existing) {
@@ -111,31 +123,34 @@ export async function updateTwoTrackAgentMemory(
       importance: defaultImportance(kind),
       createdAt: now,
       lastAccessedAt: now,
+      createdGameTime: input.gameTime,
+      updatedGameTime: input.gameTime,
+      timeDisplay: "auto",
     }));
 
     return { operation: "add", status: "added", kind, memoryId, text };
   }
 
-  const oldText = requireMemoryString(input.oldString);
-  const target = await findMemoryByKindAndText(storage, kind, oldText);
+  const target = await findMemoryTarget(storage, input);
   if (!target) {
     return {
       operation: input.operation,
       status: "not_found",
-      kind,
-      previousText: oldText,
+      kind: input.kind,
+      memoryIndex: input.memoryIndex,
       text: input.operation === "remove" ? undefined : normalizeOptionalMemoryString(input.newString),
     };
   }
 
   if (input.operation === "remove") {
     await storage.delete(memoryStorageKey(target.id));
-    return { operation: "remove", status: "removed", kind, memoryId: target.id, previousText: target.text };
+    return { operation: "remove", status: "removed", kind: target.kind, memoryIndex: input.memoryIndex, memoryId: target.id, previousText: target.text };
   }
 
+  const kind = input.kind ?? target.kind;
   const newText = requireMemoryString(input.newString);
   if (normalizeMemoryText(target.text) === normalizeMemoryText(newText) && normalizeStoredMemoryKind(target.kind, target.id) === kind) {
-    return { operation: "edit", status: "unchanged", kind, memoryId: target.id, text: target.text, previousText: target.text };
+    return { operation: "edit", status: "unchanged", kind, memoryIndex: input.memoryIndex, memoryId: target.id, text: target.text, previousText: target.text };
   }
 
   await storage.set(memoryStorageKey(target.id), memoryToStorageValue({
@@ -143,9 +158,11 @@ export async function updateTwoTrackAgentMemory(
     kind,
     text: newText,
     lastAccessedAt: now,
+    updatedGameTime: input.gameTime ?? target.updatedGameTime,
+    timeDisplay: kind === "common_sense" || kind === "skill" ? target.timeDisplay : "auto",
   }));
 
-  return { operation: "edit", status: "updated", kind, memoryId: target.id, text: newText, previousText: target.text };
+  return { operation: "edit", status: "updated", kind, memoryIndex: input.memoryIndex, memoryId: target.id, text: newText, previousText: target.text };
 }
 
 function normalizeStoredMemoryKind(kind: string, id?: string): AgentMemoryKind {
@@ -177,6 +194,31 @@ async function findMemoryByKindAndText(
   return undefined;
 }
 
+async function findMemoryTarget(
+  storage: RuntimeStorage,
+  input: UpdateTwoTrackAgentMemoryInput,
+): Promise<PromptMemoryRecord | undefined> {
+  if (input.memoryId) {
+    return findMemoryById(storage, input.memoryId);
+  }
+  if (input.memoryIndex != null) {
+    return findMemoryByPromptIndex(storage, input.memoryIndex);
+  }
+  return undefined;
+}
+
+async function findMemoryById(storage: RuntimeStorage, id: string): Promise<PromptMemoryRecord | undefined> {
+  const value = await storage.get(memoryStorageKey(id));
+  if (value == null) return undefined;
+  const memory = normalizeMemoryRecord(runtimeMemoryFromValue(value));
+  return memory.id ? memory : undefined;
+}
+
+async function findMemoryByPromptIndex(storage: RuntimeStorage, memoryIndex: number): Promise<PromptMemoryRecord | undefined> {
+  const memories = await loadTwoTrackAgentPromptMemories(storage);
+  return memories.all.find((memory) => memory.promptIndex === memoryIndex);
+}
+
 function runtimeMemoryFromValue(value: RuntimeStorageValue): AgentMemoryRecord {
   const row = objectValue(value) ?? {};
   return {
@@ -188,6 +230,9 @@ function runtimeMemoryFromValue(value: RuntimeStorageValue): AgentMemoryRecord {
     importance: typeof row.importance === "number" ? row.importance : Number(row.importance ?? 0),
     createdAt: stringValue(row.createdAt) ?? "",
     lastAccessedAt: stringValue(row.lastAccessedAt),
+    createdGameTime: gameTimeValue(row.createdGameTime),
+    updatedGameTime: gameTimeValue(row.updatedGameTime),
+    timeDisplay: memoryTimeDisplayValue(row.timeDisplay),
     sourceEventIds: stringArray(row.sourceEventIds),
   };
 }
@@ -205,6 +250,15 @@ function memoryToStorageValue(memory: AgentMemoryRecord): RuntimeStorageValue {
   if (memory.lastAccessedAt) {
     out.lastAccessedAt = memory.lastAccessedAt;
   }
+  if (memory.createdGameTime) {
+    out.createdGameTime = memory.createdGameTime as unknown as RuntimeStorageValue;
+  }
+  if (memory.updatedGameTime) {
+    out.updatedGameTime = memory.updatedGameTime as unknown as RuntimeStorageValue;
+  }
+  if (memory.timeDisplay) {
+    out.timeDisplay = memory.timeDisplay;
+  }
   if (memory.sourceEventIds) {
     out.sourceEventIds = memory.sourceEventIds;
   }
@@ -215,7 +269,29 @@ function normalizeMemoryRecord(record: AgentMemoryRecord): PromptMemoryRecord {
   return {
     ...record,
     kind: normalizeStoredMemoryKind(record.kind, record.id),
+    promptIndex: 0,
   };
+}
+
+function compareMemoryRecencyDesc(a: PromptMemoryRecord, b: PromptMemoryRecord): number {
+  const aGame = memoryGameTimeSortValue(a);
+  const bGame = memoryGameTimeSortValue(b);
+  if (aGame != null || bGame != null) {
+    if (aGame == null) return 1;
+    if (bGame == null) return -1;
+    return bGame - aGame;
+  }
+  return memoryRealTimeSortValue(b) - memoryRealTimeSortValue(a);
+}
+
+function memoryGameTimeSortValue(memory: AgentMemoryRecord): number | undefined {
+  const gameTime = normalizeGameTime(memory.updatedGameTime ?? memory.createdGameTime);
+  return gameTime ? gameTimeSortValue(gameTime) : undefined;
+}
+
+function memoryRealTimeSortValue(memory: AgentMemoryRecord): number {
+  const parsed = Date.parse(memory.lastAccessedAt ?? memory.createdAt);
+  return Number.isFinite(parsed) ? parsed : Number.NEGATIVE_INFINITY;
 }
 
 function memoryStorageKey(id: string): string {
@@ -237,6 +313,13 @@ function requireMemoryString(value: string | undefined): string {
   return normalized;
 }
 
+function requireMemoryKind(value: AgentMemoryKind | undefined): AgentMemoryKind {
+  if (!value) {
+    throw new Error("memory kind is required");
+  }
+  return value;
+}
+
 function normalizeOptionalMemoryString(value: string | undefined): string | undefined {
   const normalized = normalizeMemoryText(value ?? "");
   return normalized.length > 0 ? normalized : undefined;
@@ -250,6 +333,15 @@ function objectValue(value: unknown): Record<string, RuntimeStorageValue> | unde
   return value !== null && typeof value === "object" && !Array.isArray(value)
     ? value as Record<string, RuntimeStorageValue>
     : undefined;
+}
+
+function gameTimeValue(value: RuntimeStorageValue | undefined): GameTimeSnapshot | undefined {
+  const record = objectValue(value);
+  return record ? record as unknown as GameTimeSnapshot : undefined;
+}
+
+function memoryTimeDisplayValue(value: RuntimeStorageValue | undefined): AgentMemoryTimeDisplay | undefined {
+  return value === "auto" || value === "none" ? value : undefined;
 }
 
 function stringValue(value: RuntimeStorageValue | undefined): string | undefined {

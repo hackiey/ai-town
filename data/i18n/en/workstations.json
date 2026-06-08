@@ -1,1 +1,9 @@
-{}
+{
+  "workstation": {
+    "alchemy_table": {
+      "name": "Alchemy Table",
+      "prompt": "Press E to compound medicine",
+      "description": "Compounds herbal teas, broths, and salves."
+    }
+  }
+}

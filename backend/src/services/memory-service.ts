@@ -13,8 +13,17 @@ import {
 import type {
   AgentMemoryKind,
   AgentMemoryRecord,
+  AgentMemoryTimeDisplay,
   StoredAgentMemoryKind,
 } from "../agent-shared/prompt-context/types.js";
+import {
+  GAME_DAYS_PER_REIGN_YEAR,
+  GAME_HOURS_PER_DAY,
+  INITIAL_GAME_ABSOLUTE_DAY,
+  initialGameTimeSnapshot,
+} from "../agent-shared/prompt-context/time.js";
+import { stableHash } from "../agent-shared/utils/primitives.js";
+import type { GameTimeSnapshot } from "../godot-link/protocol.js";
 import { getProficiencyForCharacter } from "./world-state/proficiency-repo.js";
 import { getRuntimeCharacter } from "./runtime-character-registry.js";
 
@@ -51,6 +60,8 @@ type SeededMemoryEntry = {
   kind: AgentMemoryKind;
   text: string;
   importance: number;
+  timeDisplay?: AgentMemoryTimeDisplay;
+  gameTime?: GameTimeSnapshot;
 };
 
 const SELF_KNOWLEDGE_IMPORTANCE = 0.95;
@@ -59,6 +70,9 @@ const SKILL_IMPORTANCE = 0.8;
 const SEEDED_OTHER_IMPORTANCE = 0.7;
 const ID_PREFIX = "seed:";
 const MEMORY_KEY_PREFIX = "memory:";
+const SEED_PRICE_LOOKBACK_DAYS = 3;
+const SEED_PRICE_BUY_START_HOUR = 8;
+const SEED_PRICE_BUY_HOUR_COUNT = 10; // 08:00-17:50，避开清晨开服和夜里闭店时间。
 
 // 调用方传入角色 → runtimeName 的解析器。
 // 必须和 agent-runtime 插件起 AgentHost 时用的同一个 AgentRuntimeRouter 保持一致，
@@ -163,6 +177,7 @@ function seedMemoriesForCharacter(
       kind: runtimeMemoryFromRow(row).kind,
       text: runtimeMemoryFromRow(row).text,
       importance: runtimeMemoryFromRow(row).importance,
+      timeDisplay: runtimeMemoryFromRow(row).timeDisplay,
     },
   ]));
 
@@ -178,6 +193,7 @@ function seedMemoriesForCharacter(
       existing.kind !== memory.kind
       || normalizeMemoryText(existing.text) !== normalizeMemoryText(memory.text)
       || existing.importance !== memory.importance
+      || existing.timeDisplay !== memory.timeDisplay
     ) {
       insert.run(runtimeName, townId, characterId, memoryStorageKey(memory.id), JSON.stringify(memoryValue(townId, characterId, memory, now)), now);
       seeded += 1;
@@ -296,7 +312,7 @@ function otherSeedEntries(
     out.push(seedMemory(characterId, "relationships", "other", ensureSentence(relationships), SEEDED_OTHER_IMPORTANCE));
   }
   otherMemories.forEach((value, idx) => {
-    out.push(seedMemory(characterId, `other_${idx}`, "other", ensureSentence(value), SEEDED_OTHER_IMPORTANCE));
+    out.push(seedOtherMemory(characterId, `other_${idx}`, ensureSentence(value)));
   });
   reflectionMemories.forEach((value, idx) => {
     out.push(seedMemory(characterId, `reflection_${idx}`, "other", ensureSentence(value), SEEDED_OTHER_IMPORTANCE));
@@ -344,6 +360,7 @@ function commonSenseSeedEntries(characterId: string, locale: Locale): SeededMemo
     kind: "common_sense",
     text,
     importance: COMMON_SENSE_IMPORTANCE,
+    timeDisplay: "none",
   }));
 }
 
@@ -361,10 +378,43 @@ function skillSeedEntries(
         kind: "skill",
         text,
         importance: SKILL_IMPORTANCE,
+        timeDisplay: "none",
       });
     });
   }
   return out;
+}
+
+function seedOtherMemory(characterId: string, key: string, text: string): SeededMemoryEntry {
+  if (isSeedPriceMemoryText(text)) {
+    return seedMemory(characterId, key, "other", softenSeedPriceMemoryText(text), SEEDED_OTHER_IMPORTANCE, {
+      timeDisplay: "auto",
+      gameTime: seedPriceMemoryGameTime(characterId, key, text),
+    });
+  }
+  return seedMemory(characterId, key, "other", text, SEEDED_OTHER_IMPORTANCE);
+}
+
+function seedPriceMemoryGameTime(characterId: string, key: string, text: string): GameTimeSnapshot {
+  const hash = stableHash(`${characterId}\u0000${key}\u0000${text}`);
+  const dayOffset = 1 + (hash % SEED_PRICE_LOOKBACK_DAYS);
+  const hour = SEED_PRICE_BUY_START_HOUR + (Math.floor(hash / SEED_PRICE_LOOKBACK_DAYS) % SEED_PRICE_BUY_HOUR_COUNT);
+  const minute = (Math.floor(hash / (SEED_PRICE_LOOKBACK_DAYS * SEED_PRICE_BUY_HOUR_COUNT)) % 6) * 10;
+  return gameTimeSnapshotAt(INITIAL_GAME_ABSOLUTE_DAY - dayOffset, hour, minute);
+}
+
+function gameTimeSnapshotAt(absoluteDay: number, hour: number, minute: number): GameTimeSnapshot {
+  const totalGameHours = (absoluteDay * GAME_HOURS_PER_DAY) + hour;
+  return {
+    totalGameMinutes: (totalGameHours * 60) + minute,
+    totalGameHours,
+    day: absoluteDay,
+    hour,
+    minute,
+    year: Math.floor(absoluteDay / GAME_DAYS_PER_REIGN_YEAR) + 1,
+    dayOfYear: (absoluteDay % GAME_DAYS_PER_REIGN_YEAR) + 1,
+    eraName: initialGameTimeSnapshot().eraName,
+  };
 }
 
 function seedMemory(
@@ -373,12 +423,15 @@ function seedMemory(
   kind: AgentMemoryKind,
   text: string,
   importance: number,
+  options: { timeDisplay?: AgentMemoryTimeDisplay; gameTime?: GameTimeSnapshot } = {},
 ): SeededMemoryEntry {
   return {
     id: `${ID_PREFIX}${kind}:${key}_${characterId}`,
     kind,
     text,
     importance,
+    timeDisplay: options.timeDisplay ?? "none",
+    gameTime: options.gameTime,
   };
 }
 
@@ -392,6 +445,9 @@ function rowToAgentMemory(row: Record<string, unknown>): AgentMemoryRecord {
     importance: typeof row.importance === "number" ? row.importance : Number(row.importance ?? 0),
     createdAt: row.createdAt as string,
     lastAccessedAt: typeof row.lastAccessedAt === "string" ? row.lastAccessedAt : undefined,
+    createdGameTime: gameTimeValue(row.createdGameTime),
+    updatedGameTime: gameTimeValue(row.updatedGameTime),
+    timeDisplay: memoryTimeDisplayValue(row.timeDisplay),
     sourceEventIds: parseJsonColumn<string[]>(row.sourceEventIds),
   };
 }
@@ -415,7 +471,36 @@ function memoryValue(townId: string, characterId: string, memory: SeededMemoryEn
     importance: memory.importance,
     createdAt: now,
     lastAccessedAt: now,
+    createdGameTime: memory.gameTime,
+    updatedGameTime: memory.gameTime,
+    timeDisplay: memory.timeDisplay,
   };
+}
+
+function isSeedPriceMemoryText(text: string): boolean {
+  return /小麦镇价\s*\d/.test(text)
+    || /\b(?:wheat|wood|charcoal|flour|bread|iron_ore)\b[^。！？.!?]*\d+(?:\.\d+)?\s*银/.test(text);
+}
+
+function softenSeedPriceMemoryText(text: string): string {
+  let body = text.trim().replace(/[。！？.!?]+$/, "");
+  body = body
+    .replace(/^小麦镇价/, "wheat")
+    .replace(/^做饭烧炭：/, "")
+    .replace(/^自家烤面包用的\s*/, "")
+    .replace(/^收\s+/, "")
+    .replace(/按这个价收/g, "通常参考这个价收");
+  return `最近的价格是：${body}；这只是近期行情，可随缺货、急单、关系、品质和谈判调整。`;
+}
+
+function gameTimeValue(value: unknown): GameTimeSnapshot | undefined {
+  return value !== null && typeof value === "object" && !Array.isArray(value)
+    ? value as GameTimeSnapshot
+    : undefined;
+}
+
+function memoryTimeDisplayValue(value: unknown): AgentMemoryTimeDisplay | undefined {
+  return value === "auto" || value === "none" ? value : undefined;
 }
 
 function readCatalogValue(key: string, locale: Locale): string | undefined {

@@ -52,6 +52,22 @@ static func inject(lua: LuaState, _ctx: Dictionary, collected: Array) -> void:
 			"amount": float(amount),
 		})
 
+	affect_tbl["symptom"] = func(target, symptom_id, amount):
+		collected.append({
+			"type": "modify_symptom",
+			"target": target,
+			"symptom_id": str(symptom_id),
+			"amount": float(amount),
+		})
+
+	affect_tbl["disease_sickness"] = func(target, disease_id, amount):
+		collected.append({
+			"type": "modify_disease_sickness",
+			"target": target,
+			"disease_id": str(disease_id),
+			"amount": float(amount),
+		})
+
 	# 解除某个 status（按 type 移除所有匹配条目）。
 	affect_tbl["remove_status"] = func(target, status_id):
 		collected.append({

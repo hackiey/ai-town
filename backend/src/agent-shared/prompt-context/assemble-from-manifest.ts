@@ -295,6 +295,7 @@ function characterAttributesFromState(state: CharacterStateView | undefined): st
   // 档位 key 由 Godot 算好持久化（state.drunkTier/sicknessTier）；这里只渲染，不复制阈值。
   pushImpairmentLines(lines, "drunk", state.drunkTier, state.drunk, locale);
   pushImpairmentLines(lines, "sick", state.sicknessTier, state.sickness, locale);
+  pushSicknessSymptomLine(lines, state.symptoms, state.sicknessTier, locale);
   // 负重档位（carryTier 非空才渲染）：value 用当前总重 kg。
   pushImpairmentLines(lines, "encumber", state.carryTier, state.carryWeight, locale);
   return lines;
@@ -324,6 +325,34 @@ function pushImpairmentLines(
   lines.push(t(`prompt.context.impairment.${kind}.line`, locale, { level, value: Math.round(value) }));
   lines.push(t(`prompt.context.impairment.${kind}.consequence`, locale));
   lines.push(t(`prompt.context.impairment.${kind}.roleplay`, locale, { level }));
+}
+
+function pushSicknessSymptomLine(lines: string[], symptoms: Record<string, number>, tierKey: string, locale: Locale): void {
+  if (!tierKey) return;
+  const symptomText = formatSymptomList(symptoms, locale);
+  if (!symptomText) return;
+  lines.push(t("prompt.context.impairment.sick.symptoms_line", locale, { symptoms: symptomText }));
+}
+
+function localizeDiseaseName(diseaseId: string, locale: Locale): string {
+  const key = `disease.${diseaseId}.name`;
+  const translated = t(key, locale);
+  return translated === key ? diseaseId : translated;
+}
+
+function localizeSymptomName(symptomId: string, locale: Locale): string {
+  const key = `symptom.${symptomId}.name`;
+  const translated = t(key, locale);
+  return translated === key ? symptomId : translated;
+}
+
+function formatSymptomList(symptoms: Record<string, number>, locale: Locale): string {
+  return Object.entries(symptoms)
+    .filter(([, value]) => Number.isFinite(value) && value > 0.5)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 6)
+    .map(([id, value]) => `${localizeSymptomName(id, locale)} ${Math.round(value)}/100`)
+    .join("、");
 }
 
 // "100/100" 格式；max 缺失（manifest 没带或未连上）退回单值显示，不至于让 LLM 看到孤零零的 "/?"。
@@ -565,10 +594,14 @@ function containerViewToWorkstationContext(c: ContainerView, actorInventoryRows:
   const items: NonNullable<WorkstationContext["items"]> = [];
   const entries: ItemIndexEntry[] = [];
   if (unlocked) {
+    if (c.walletCenti > 0) {
+      items.push({ index: 1, itemId: "silver_coin", quantity: c.walletCenti / 100 });
+      entries.push({ itemDefId: "silver_coin" });
+    }
     c.contents
       .filter((r) => r.itemDefId && r.stackCount > 0)
-      .forEach((r, idx) => {
-        const index = idx + 1;
+      .forEach((r) => {
+        const index = items.length + 1;
         // 内容物若是装着液体的容器（仓库里的酒桶/木桶），带上液体量/发酵态——
         // 否则 NPC 只看到 "酿酒桶×1" 不知道里面有没有水/酒、酿没酿好。
         const liquid = r.container && r.container.amount > 0 && r.container.content
@@ -607,7 +640,24 @@ function buildShelfContexts(
 ): Array<{ context: ShelfContext; entries: ItemIndexEntry[] }> {
   return views.map((view) => {
     const rows = view.contents.filter((r) => r.itemDefId && r.stackCount > 0);
-    const entries: ItemIndexEntry[] = rows.map((r) => ({ itemDefId: r.itemDefId, slotIndex: r.slotIndex }));
+    const entries: ItemIndexEntry[] = [];
+    const listings: ShelfListingContext[] = [];
+    if (view.walletCenti > 0) {
+      entries.push({ itemDefId: "silver_coin" });
+      listings.push({
+        index: 1,
+        itemId: "silver_coin",
+        displayName: names.item("silver_coin"),
+        quantity: view.walletCenti / 100,
+        priceCenti: 0,
+        priceSilver: 0,
+        descriptionParts: [],
+      });
+    }
+    rows.forEach((r) => {
+      entries.push({ itemDefId: r.itemDefId, slotIndex: r.slotIndex });
+      listings.push(shelfRowToListingContext(r, names, listings.length + 1));
+    });
     return {
       context: {
         id: view.shelfId,
@@ -616,7 +666,7 @@ function buildShelfContexts(
         directlyInteractable: bands.get(view.shelfId) === "direct",
         slotCount: view.slotCount,
         interactionRadiusMeters: view.interactionRadius,
-        listings: rows.map((r, idx) => shelfRowToListingContext(r, names, idx + 1)),
+        listings,
       },
       entries,
     };
@@ -846,7 +896,12 @@ function formatEffectsLine(effects: Record<string, number> | null | undefined, _
     if (typeof raw !== "number" || !Number.isFinite(raw)) continue;
     const value = Math.round(raw);
     if (value === 0) continue;
-    const label = characterAttributeName(key) || key;
+    const locale = getActiveLocale();
+    const label = key.startsWith("disease.")
+      ? t("prompt.context.item.treat_disease_format", locale, { disease: localizeDiseaseName(key.slice("disease.".length), locale) })
+      : key.startsWith("symptom.")
+        ? localizeSymptomName(key.slice("symptom.".length), locale)
+        : characterAttributeName(key) || key;
     parts.push(value > 0 ? `${label} +${value}` : `${label} ${value}`);
   }
   return parts.join(", ");

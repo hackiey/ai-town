@@ -4,6 +4,7 @@
     "stamina": { "name": "Stamina" },
     "hunger": { "name": "Hunger" },
     "rest": { "name": "Rest" },
+    "sickness": { "name": "Sickness" },
     "strength": { "name": "Strength" },
     "constitution": { "name": "Constitution" },
     "carry_capacity": { "name": "Carry Capacity" },

@@ -57,7 +57,7 @@ Agent 系统、脚本层、实体模型的活文档。当前在迭代，**未完
 | Godot↔agent protocol | [godot-agent-protocol.md](./godot-agent-protocol.md) | partial | envelope version、typed TS action / perception-manifest / event、Godot agent-host WS、action lifecycle；Godot 侧仍是 Dictionary 校验 |
 | Backend agent host | [backend-agent-host.md](./backend-agent-host.md) | partial | godot-link / agent-host / runtimes / services-world-state 分层、AgentRuntime 抽象、two-track-agent runtime、action_log/action bus、perception-manifest cache |
 | Combat system | [combat-system.md](./combat-system.md) | drafting | 仅设计稿；三层时间线（frame/fast-tick/LLM）+ **三层职责（Spell 投递 / Reaction 物理 / Wand 装备）**：effect/难度/学派复用 reaction-schema，威力四因子，角色无 mana 耗魔杖储能，react.apply 桥 + channel 三段契约 + 投递层物理 API + 行为树 + LLM 战斗边界 + P0→P4 |
-| Impairment system | [impairment-system.md](./impairment-system.md) | landed | drunk + sickness 两个 character_states 数值列；干活惩罚 `max(drunk,sickness)` 执行时临时算不持久化；曲线单一口径 `impairment.gd`；醉酒专属双向说话乱码（speaker Godot + listener backend）+ 走路踉跄；衰减走 physiology.lua；生病=吃馊食、解药=草药茶（来源暂不做）|
+| Impairment system | [impairment-system.md](./impairment-system.md) | landed | drunk + sickness 两个 character_states 数值列，sickness 另带主病种 `diseaseId`；干活惩罚 `max(drunk,sickness)` 执行时临时算不持久化；曲线单一口径 `impairment.gd`；醉酒专属双向说话乱码（speaker Godot + listener backend）+ 走路踉跄；衰减走 physiology.lua；生病有感冒/肠胃病/伤口感染/虚劳，对症药由圣钟草药园草药链生产。|
 | Site / Space / Map | [site-system-refactor-plan.md](./site-system-refactor-plan.md) | landed | 7 阶段全落地 + 落地后收口（见 §0 权威修订）：SiteMarker 统一锚点，**所有字段 town.tscn 显式 authored、无运行时拼装/推导、缺值 fail-loud**；mapRegistration=global/local；机制身份(defId/entityId)留本体、名字按 site_id 查 locations.json、space 由 SpaceVolume 几何包含算（现休眠）；site_meta.json/locations.json 已删 |
 
 ## 跨域待决问题（高优先级）

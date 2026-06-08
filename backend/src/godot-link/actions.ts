@@ -29,6 +29,7 @@ export const ACTION_NAMES = [
   "smith",
   "assemble",
   "cook",
+  "alchemy",
   "mill_grain",
   "boil_salt",
   "plant_seed",
@@ -144,7 +145,7 @@ export type ContainerEndpoint = {
   containerId?: string;   // where=node/well
   slotIndex?: number;     // where=backpack（液体容器 item 槽）/ node（容器内某 item 槽）
   groundItemId?: string;  // where=ground
-  isShelf?: boolean;      // node 是货架（put 离散物时可带 priceCenti）
+  isShelf?: boolean;      // node 是货架（上架可带 priceCenti；取货按标价校验付款）
   priceCenti?: number;
 };
 
@@ -205,6 +206,7 @@ export type ActionTargetByName = {
   smith: WorkstationActionTarget;
   assemble: WorkstationActionTarget;
   cook: WorkstationActionTarget;
+  alchemy: WorkstationActionTarget;
   mill_grain: WorkstationActionTarget;
   boil_salt: WorkstationActionTarget;
   plant_seed: FarmingSubActionTargetUnused;
@@ -274,6 +276,7 @@ export type ActionResultByName = {
   smith: Record<string, unknown>;
   assemble: Record<string, unknown>;
   cook: Record<string, unknown>;
+  alchemy: Record<string, unknown>;
   mill_grain: Record<string, unknown>;
   boil_salt: Record<string, unknown>;
   plant_seed: Record<string, unknown>;

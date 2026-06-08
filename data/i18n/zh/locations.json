@@ -137,17 +137,17 @@
       "access": "公共，可入内求助。"
     },
     "saint_bell_garden": {
-      "alias": "圣钟菜园",
-      "description": "教堂的两块菜园，主种菜蔬与草药，供教堂医护和饮食。",
+      "alias": "圣钟草药园",
+      "description": "教堂的两块草药园，主种本地药草，供教堂医护煎茶、熬汤和制药。",
       "direction": "圣钟教堂旁",
       "access": "教堂的地，耕作需教堂许可或受雇。"
     },
     "saint_bell_field_1": {
-      "alias": "圣钟菜园1号农田",
+      "alias": "圣钟草药园1号农田",
       "description": "可耕种田块，到田边用 plan_farm_work 下工单。"
     },
     "saint_bell_field_2": {
-      "alias": "圣钟菜园2号农田",
+      "alias": "圣钟草药园2号农田",
       "description": "可耕种田块，到田边用 plan_farm_work 下工单。"
     },
     "fishing_dock": {

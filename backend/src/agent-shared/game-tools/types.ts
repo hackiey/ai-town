@@ -68,6 +68,7 @@ export type MoveToLocationToolDetails = CharacterActionToolDetails & {
 
 export type MemoryToolDetails = {
   operation: "add" | "edit" | "remove";
+  memoryIndex?: number;
   memoryId?: string;
 };
 

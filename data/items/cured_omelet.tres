@@ -5,9 +5,9 @@
 [resource]
 script = ExtResource("1_item")
 id = "cured_omelet"
-weight = 0.2
 kind = "food"
 max_stack = 50
+weight = 0.15
 use_duration_seconds = 60.0
 shape_type = "dish"
 materials = {

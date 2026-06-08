@@ -48,11 +48,41 @@
     "malt": {
       "name": "麦芽"
     },
+    "mint_leaf": {
+      "name": "薄荷叶"
+    },
+    "mugwort_leaf": {
+      "name": "艾草叶"
+    },
+    "ginger_root": {
+      "name": "姜根"
+    },
+    "plantain_leaf": {
+      "name": "车前草叶"
+    },
+    "calendula_flower": {
+      "name": "金盏花"
+    },
+    "valerian_root": {
+      "name": "缬草根"
+    },
     "beer": {
       "name": "麦芽酒"
     },
     "herbal_remedy": {
       "name": "草药茶"
+    },
+    "mint_mugwort_tea": {
+      "name": "薄荷艾草茶"
+    },
+    "ginger_plantain_broth": {
+      "name": "姜根车前草汤"
+    },
+    "calendula_salve": {
+      "name": "金盏花药膏"
+    },
+    "valerian_tonic": {
+      "name": "缬草安神茶"
     },
     "hemp": {
       "name": "麻"

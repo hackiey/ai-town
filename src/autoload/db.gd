@@ -31,8 +31,13 @@ const _NPCS_JSON_REL_PATH := "backend/data/town/npcs.json"
 # backend 同一文件读 soul/knowledge_books 给 AI 接管 seed memory（见 memory-service.ts）。
 const _PLAYER_TEMPLATE_REL_PATH := "backend/data/town/player-template.json"
 const GOD_GROUP := "god"
+const _DAYS_PER_REIGN_YEAR := 360
+const _HOURS_PER_GAME_DAY := 24
+const _INITIAL_REIGN_YEAR := 5
+const _INITIAL_DAY_OF_YEAR := 64 # 3月4日（每月30天）
+const _INITIAL_GAME_DAY := ((_INITIAL_REIGN_YEAR - 1) * _DAYS_PER_REIGN_YEAR) + (_INITIAL_DAY_OF_YEAR - 1)
 const _INITIAL_GAME_HOUR := 6
-const _INITIAL_GAME_SECONDS := float(_INITIAL_GAME_HOUR) * 3600.0
+const _INITIAL_GAME_SECONDS := float((_INITIAL_GAME_DAY * _HOURS_PER_GAME_DAY) + _INITIAL_GAME_HOUR) * 3600.0
 const _MORNING_START_GAME_MINUTE := _INITIAL_GAME_HOUR * 60
 const _MIN_SLEEP_NEEDED_HOURS := 8
 const _MAX_SLEEP_NEEDED_HOURS := 10
@@ -114,6 +119,8 @@ const _GAME_WORLD_SCHEMA: Array[String] = [
 		constitution REAL NOT NULL DEFAULT 50.0,
 		drunk REAL NOT NULL DEFAULT 0.0,
 		sickness REAL NOT NULL DEFAULT 0.0,
+		diseaseId TEXT NOT NULL DEFAULT '',
+		symptoms TEXT NOT NULL DEFAULT '{}',
 		drunkTier TEXT NOT NULL DEFAULT '',
 		sicknessTier TEXT NOT NULL DEFAULT '',
 		carryWeight REAL NOT NULL DEFAULT 0.0,
@@ -143,7 +150,7 @@ const _GAME_WORLD_SCHEMA: Array[String] = [
 
 	# item_instances: 背包 / 装备 / 容器（含货架）/ 预留地面物品。ownerKind 用
 	# 'character'（背包）和 'container'（容器+货架统一），ownerKind='world' 列预留给后续地面玩法。
-	# listingPriceCenti: 货架陈列标价（centi 银），null = 普通容器/未定价。仅展示，付钱靠 trade/give。
+	# listingPriceCenti: 货架陈列标价（centi 银），null = 普通容器/未定价。put_take 取货时按标价校验货架钱包付款。
 	#
 	# Schema 三层（见 project_item_state_architecture）：
 	#   reaction 涌现身份（generate 冻结）：shapeType / tags / materials / physicsProps
@@ -278,6 +285,16 @@ const _GAME_WORLD_SCHEMA: Array[String] = [
 		townId TEXT NOT NULL,
 		containerId TEXT NOT NULL,
 		seededAt TEXT NOT NULL,
+		PRIMARY KEY (townId, containerId)
+	)""",
+
+	# container_wallets: 容器/货架的钱包。钱币不再作为 item_instances 槽位存在；
+	# silver_coin/gold_coin 只是工具与显示层的货币单位，真值统一折算到 centi 银。
+	"""CREATE TABLE IF NOT EXISTS container_wallets (
+		townId TEXT NOT NULL,
+		containerId TEXT NOT NULL,
+		silverCentiBalance INTEGER NOT NULL DEFAULT 0,
+		updatedAt TEXT NOT NULL,
 		PRIMARY KEY (townId, containerId)
 	)""",
 
@@ -539,6 +556,8 @@ func _apply_schema_migrations() -> void:
 	# 损伤层：drunk 醉酒 / sickness 生病累计值（0..100）。老行加列后默认 0 = 清醒健康。
 	_ensure_column("character_states", "drunk", "REAL NOT NULL DEFAULT 0.0")
 	_ensure_column("character_states", "sickness", "REAL NOT NULL DEFAULT 0.0")
+	_ensure_column("character_states", "diseaseId", "TEXT NOT NULL DEFAULT ''")
+	_ensure_column("character_states", "symptoms", "TEXT NOT NULL DEFAULT '{}'")
 	# 派生档位 key（Godot 单一写者，随 raw 一起持久化；backend SELECT-only 渲染）。
 	_ensure_column("character_states", "drunkTier", "TEXT NOT NULL DEFAULT ''")
 	_ensure_column("character_states", "sicknessTier", "TEXT NOT NULL DEFAULT ''")
@@ -904,7 +923,7 @@ func _initial_character_state_fields(character_id: String, conf: Dictionary, sle
 		statuses.append({
 			"type": "sleeping",
 			"started_at": Time.get_ticks_msec() / 1000.0,
-			"expires_total_hours": ceili(float(wake_minute) / 60.0),
+			"expires_total_hours": (_INITIAL_GAME_DAY * _HOURS_PER_GAME_DAY) + ceili(float(wake_minute) / 60.0),
 			"source_id": "initial_wake_time",
 		})
 	return {
@@ -1188,7 +1207,8 @@ func save_character_state(character_id: String, fields: Dictionary) -> void:
 		return
 	var now := Time.get_datetime_string_from_system(true)
 	var statuses_json := JSON.stringify(fields.get("activeStatuses", []))
-	var sql := "INSERT INTO character_states (townId, characterId, currentLocationId, posX, posY, posZ, rotY, animState, hp, maxHp, stamina, maxStamina, hunger, maxHunger, rest, maxRest, strength, constitution, drunk, sickness, drunkTier, sicknessTier, carryWeight, maxCarry, carryTier, sleepNeededHours, temperature, burning, alive, equippedRightHand, equippedLeftHand, equippedBody, equippedHead, activeStatuses, silverCentiBalance, updatedAt) VALUES ('%s', '%s', %s, %f, %f, %f, %f, %s, %f, %f, %f, %f, %f, %f, %f, %f, %f, %f, %f, %f, '%s', '%s', %f, %f, '%s', %f, %f, %d, %d, %s, %s, %s, %s, %s, %d, '%s') ON CONFLICT(townId, characterId) DO UPDATE SET currentLocationId = excluded.currentLocationId, posX = excluded.posX, posY = excluded.posY, posZ = excluded.posZ, rotY = excluded.rotY, animState = excluded.animState, hp = excluded.hp, maxHp = excluded.maxHp, stamina = excluded.stamina, maxStamina = excluded.maxStamina, hunger = excluded.hunger, maxHunger = excluded.maxHunger, rest = excluded.rest, maxRest = excluded.maxRest, strength = excluded.strength, constitution = excluded.constitution, drunk = excluded.drunk, sickness = excluded.sickness, drunkTier = excluded.drunkTier, sicknessTier = excluded.sicknessTier, carryWeight = excluded.carryWeight, maxCarry = excluded.maxCarry, carryTier = excluded.carryTier, sleepNeededHours = excluded.sleepNeededHours, temperature = excluded.temperature, burning = excluded.burning, alive = excluded.alive, equippedRightHand = excluded.equippedRightHand, equippedLeftHand = excluded.equippedLeftHand, equippedBody = excluded.equippedBody, equippedHead = excluded.equippedHead, activeStatuses = excluded.activeStatuses, silverCentiBalance = excluded.silverCentiBalance, updatedAt = excluded.updatedAt" % [
+	var symptoms_json := JSON.stringify(fields.get("symptoms", {}))
+	var sql := "INSERT INTO character_states (townId, characterId, currentLocationId, posX, posY, posZ, rotY, animState, hp, maxHp, stamina, maxStamina, hunger, maxHunger, rest, maxRest, strength, constitution, drunk, sickness, diseaseId, symptoms, drunkTier, sicknessTier, carryWeight, maxCarry, carryTier, sleepNeededHours, temperature, burning, alive, equippedRightHand, equippedLeftHand, equippedBody, equippedHead, activeStatuses, silverCentiBalance, updatedAt) VALUES ('%s', '%s', %s, %f, %f, %f, %f, %s, %f, %f, %f, %f, %f, %f, %f, %f, %f, %f, %f, %f, '%s', %s, '%s', '%s', %f, %f, '%s', %f, %f, %d, %d, %s, %s, %s, %s, %s, %d, '%s') ON CONFLICT(townId, characterId) DO UPDATE SET currentLocationId = excluded.currentLocationId, posX = excluded.posX, posY = excluded.posY, posZ = excluded.posZ, rotY = excluded.rotY, animState = excluded.animState, hp = excluded.hp, maxHp = excluded.maxHp, stamina = excluded.stamina, maxStamina = excluded.maxStamina, hunger = excluded.hunger, maxHunger = excluded.maxHunger, rest = excluded.rest, maxRest = excluded.maxRest, strength = excluded.strength, constitution = excluded.constitution, drunk = excluded.drunk, sickness = excluded.sickness, diseaseId = excluded.diseaseId, symptoms = excluded.symptoms, drunkTier = excluded.drunkTier, sicknessTier = excluded.sicknessTier, carryWeight = excluded.carryWeight, maxCarry = excluded.maxCarry, carryTier = excluded.carryTier, sleepNeededHours = excluded.sleepNeededHours, temperature = excluded.temperature, burning = excluded.burning, alive = excluded.alive, equippedRightHand = excluded.equippedRightHand, equippedLeftHand = excluded.equippedLeftHand, equippedBody = excluded.equippedBody, equippedHead = excluded.equippedHead, activeStatuses = excluded.activeStatuses, silverCentiBalance = excluded.silverCentiBalance, updatedAt = excluded.updatedAt" % [
 		_esc(RunMode.town_id), _esc(character_id),
 		_sql_str_or_null(fields.get("currentLocationId", "")),
 		float(fields.get("posX", 0.0)), float(fields.get("posY", 0.0)), float(fields.get("posZ", 0.0)),
@@ -1199,7 +1219,8 @@ func save_character_state(character_id: String, fields: Dictionary) -> void:
 		float(fields.get("hunger", 0.0)), float(fields.get("maxHunger", 100.0)),
 		float(fields.get("rest", 0.0)), float(fields.get("maxRest", 100.0)),
 		float(fields.get("strength", Character.DEFAULT_BASE_ATTRIBUTE)), float(fields.get("constitution", Character.DEFAULT_BASE_ATTRIBUTE)),
-		float(fields.get("drunk", 0.0)), float(fields.get("sickness", 0.0)),
+		float(fields.get("drunk", 0.0)), float(fields.get("sickness", 0.0)), _esc(str(fields.get("diseaseId", ""))),
+		_sql_str_or_null(symptoms_json),
 		_esc(str(fields.get("drunkTier", ""))), _esc(str(fields.get("sicknessTier", ""))),
 		float(fields.get("carryWeight", 0.0)), float(fields.get("maxCarry", 50.0)), _esc(str(fields.get("carryTier", ""))),
 		float(fields.get("sleepNeededHours", 0.0)),
@@ -1289,6 +1310,29 @@ func _delete_inventory_slot(character_id: String, slot_index: int) -> void:
 
 
 # ─── Public API: containers (item_instances ownerKind='container') ────
+
+func get_container_wallet_centi(container_id: String) -> int:
+	if _db == null or container_id.is_empty():
+		return 0
+	var rows: Array = _db.select_rows("container_wallets", "townId = '%s' AND containerId = '%s'" % [_esc(RunMode.town_id), _esc(container_id)], ["silverCentiBalance"])
+	if rows.is_empty():
+		return 0
+	return maxi(0, int((rows[0] as Dictionary).get("silverCentiBalance", 0)))
+
+
+func save_container_wallet(container_id: String, centi: int) -> void:
+	if _db == null or container_id.is_empty():
+		return
+	var now := Time.get_datetime_string_from_system(true)
+	var sql := "INSERT INTO container_wallets (townId, containerId, silverCentiBalance, updatedAt) VALUES ('%s', '%s', %d, '%s') ON CONFLICT(townId, containerId) DO UPDATE SET silverCentiBalance = excluded.silverCentiBalance, updatedAt = excluded.updatedAt" % [
+		_esc(RunMode.town_id),
+		_esc(container_id),
+		maxi(0, centi),
+		now,
+	]
+	if not _db.query(sql):
+		push_warning("[Db] save_container_wallet failed: %s" % _db.error_message)
+
 
 # 取走某容器的全部 slot dict（boot 后由 ContainerNode._ready 拿走）。
 func take_container_inventory(container_id: String) -> Dictionary:
@@ -2032,7 +2076,7 @@ func _hydrate_character_states(town_id: String) -> void:
 	var rows: Array = _db.select_rows("character_states", "townId = '%s'" % _esc(town_id), [
 		"characterId", "currentLocationId", "posX", "posY", "posZ", "rotY", "animState",
 		"hp", "maxHp", "stamina", "maxStamina", "hunger", "maxHunger", "rest", "maxRest",
-		"strength", "constitution", "drunk", "sickness", "sleepNeededHours", "temperature", "burning", "alive",
+		"strength", "constitution", "drunk", "sickness", "diseaseId", "symptoms", "sleepNeededHours", "temperature", "burning", "alive",
 		"equippedRightHand", "equippedLeftHand", "equippedBody", "equippedHead",
 		"activeStatuses", "silverCentiBalance",
 	])
@@ -2050,7 +2094,7 @@ func _select_character_state(character_id: String) -> Dictionary:
 	var rows: Array = _db.select_rows("character_states", "townId = '%s' AND characterId = '%s'" % [_esc(RunMode.town_id), _esc(character_id)], [
 		"characterId", "currentLocationId", "posX", "posY", "posZ", "rotY", "animState",
 		"hp", "maxHp", "stamina", "maxStamina", "hunger", "maxHunger", "rest", "maxRest",
-		"strength", "constitution", "drunk", "sickness", "sleepNeededHours", "temperature", "burning", "alive",
+		"strength", "constitution", "drunk", "sickness", "diseaseId", "symptoms", "sleepNeededHours", "temperature", "burning", "alive",
 		"equippedRightHand", "equippedLeftHand", "equippedBody", "equippedHead",
 		"activeStatuses", "silverCentiBalance",
 	])
@@ -2066,6 +2110,12 @@ func _character_state_row_to_cache(r: Dictionary) -> Dictionary:
 		var parsed: Variant = JSON.parse_string(raw)
 		if parsed is Array:
 			statuses = parsed as Array
+	var symptoms: Dictionary = {}
+	var symptoms_raw := str(r.get("symptoms", ""))
+	if not symptoms_raw.is_empty():
+		var symptoms_parsed: Variant = JSON.parse_string(symptoms_raw)
+		if symptoms_parsed is Dictionary:
+			symptoms = symptoms_parsed as Dictionary
 	return {
 		"currentLocationId": str(r.get("currentLocationId", "")),
 		"posX": float(r.get("posX", 0.0)),
@@ -2085,6 +2135,8 @@ func _character_state_row_to_cache(r: Dictionary) -> Dictionary:
 		"constitution": float(r.get("constitution", Character.DEFAULT_BASE_ATTRIBUTE)),
 		"drunk": float(r.get("drunk", 0.0)),
 		"sickness": float(r.get("sickness", 0.0)),
+		"diseaseId": str(r.get("diseaseId", "")),
+		"symptoms": symptoms,
 		"sleepNeededHours": float(r.get("sleepNeededHours", 0.0)),
 		"temperature": float(r.get("temperature", 36.5)),
 		"burning": int(r.get("burning", 0)) != 0,

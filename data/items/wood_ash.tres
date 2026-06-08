@@ -1,20 +1,13 @@
-[gd_resource type="Resource" script_class="Item" format=3]
+[gd_resource type="Resource" script_class="Item" format=3 uid="uid://skcm6p5bwgkd"]
 
-[ext_resource type="Script" path="res://src/sim/items/item.gd" id="1_item"]
+[ext_resource type="Script" uid="uid://dqr5snte2lo05" path="res://src/sim/items/item.gd" id="1_item"]
 
 [resource]
 script = ExtResource("1_item")
 id = "wood_ash"
-weight = 0.2
-kind = "misc"
-stackable = true
-max_stack = 99
-crop_variety_id = ""
-source = ""
+weight = 0.1
 shape_type = "powder_pile"
 materials = {
-"body": "ash",
+"body": "ash"
 }
-tags = PackedStringArray("pest_remedy", "consumable")
-properties = {}
 tint = Color(0.55, 0.53, 0.5, 1)

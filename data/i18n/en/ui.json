@@ -7,7 +7,8 @@
       "materials": "Materials:",
       "tags_format": "Tags: %s",
       "attributes": "Attributes:",
-      "effects_format": "Effects: %s"
+      "effects_format": "Effects: %s",
+      "treat_disease_format": "Treat %s"
     },
     "status": {
       "meter_format": "%s %.0f / %.0f",
@@ -24,6 +25,17 @@
         "sleeping": "recovers rest",
         "burning": "takes ongoing damage",
         "dead": "cannot act"
+      },
+      "impairment": {
+        "tipsy": "Tipsy",
+        "drunk": "Drunk",
+        "drunk_wasted": "Wasted",
+        "sick_mild": "Mild",
+        "sick_moderate": "Moderate",
+        "sick_severe": "Severe",
+        "encumber_laden": "Laden",
+        "encumber_heavy": "Heavy",
+        "encumber_overloaded": "Overloaded"
       }
     },
     "npc_hover": {
@@ -59,6 +71,7 @@
         "ignition": "Ignition",
         "sleeping": "Sleeping",
         "burning": "Burning",
+        "disease": "Disease",
         "statuses": "Statuses",
         "groups": "Groups"
       },
@@ -75,6 +88,32 @@
         "none": "None",
         "empty": "Empty"
       }
+    },
+    "split": {
+      "confirm": "Confirm",
+      "amount_label": "Amount (%s)",
+      "unit": {
+        "liter": "L",
+        "gram": "g",
+        "count": "items",
+        "centi": "centi-silver"
+      }
+    },
+    "shelf": {
+      "label_listings": "Shelf listings",
+      "col_item": "Item",
+      "col_unit_price": "Unit price",
+      "col_quantity": "Quantity",
+      "hint_buy": "Enter a quantity, then buy / walk away or press ESC to close",
+      "btn_buy": "Buy",
+      "msg_empty": "The shelf is empty"
+    },
+    "container": {
+      "wallet_format": "Container wallet: %s",
+      "wallet_put": "Deposit silver",
+      "wallet_take": "Withdraw silver",
+      "wallet_put_title": "Deposit silver",
+      "wallet_take_title": "Withdraw silver"
     }
   }
 }

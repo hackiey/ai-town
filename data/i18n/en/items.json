@@ -1,1 +1,20 @@
-{}
+{
+  "item": {
+    "mint_seed": { "name": "Mint Seed" },
+    "mint_leaf": { "name": "Mint Leaf" },
+    "mugwort_seed": { "name": "Mugwort Seed" },
+    "mugwort_leaf": { "name": "Mugwort Leaf" },
+    "ginger_seed": { "name": "Ginger Seed" },
+    "ginger_root": { "name": "Ginger Root" },
+    "plantain_seed": { "name": "Plantain Seed" },
+    "plantain_leaf": { "name": "Plantain Leaf" },
+    "calendula_seed": { "name": "Calendula Seed" },
+    "calendula_flower": { "name": "Calendula Flower" },
+    "valerian_seed": { "name": "Valerian Seed" },
+    "valerian_root": { "name": "Valerian Root" },
+    "mint_mugwort_tea": { "name": "Mint-Mugwort Tea" },
+    "ginger_plantain_broth": { "name": "Ginger-Plantain Broth" },
+    "calendula_salve": { "name": "Calendula Salve" },
+    "valerian_tonic": { "name": "Valerian Tonic" }
+  }
+}

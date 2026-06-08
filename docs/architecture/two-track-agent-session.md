@@ -37,9 +37,9 @@ PiAgentRuntime (per town)
 | 类 | `ActionTrackSession`（`action-session/session.ts`） | `ThinkingTrackSession`（`thinking-track.ts`） |
 | 触发 | 事件 / player command / continued action notice | 定时（默认 15 游戏分钟）+ significant 事件 / think-first |
 | 模型 | `npcs.json` `agent_models.action`（建议 thinking="off"）| `npcs.json` `agent_models.thinking`（建议 thinking="low"+）|
-| Tools | 完整 game tool set（`createTwoTrackAgentTools`） | 仅 `write_working_memory` 一个 |
+| Tools | 完整 game tool set（`createTwoTrackAgentTools`），不含 `update_memory` | `update_memory` + `write_working_memory` |
 | 历史持久化 | 走 `agent_sessions` / `agent_session_messages`（agentKind="npc" / "player"） | **不持久化**——每次重建 `Agent` |
-| 输出 | tool call → action_log → Godot | working_memory KV upsert |
+| 输出 | tool call → action_log → Godot | `memory:*` KV 变更 + working_memory KV upsert |
 | 是否中断 | 不可中断（事件入队等下 turn） | 不可中断（同 NPC 串行；fire-and-forget 启动） |
 
 **为什么 thinking 不持久化**：每次 thinking turn 的 system prompt 已经把当前完整 perception manifest + 历史事件 + 上一份 working_memory 都塞进去；不需要再带 message 历史。还能避免和 action session 在 `(townId, characterId, agentKind)` 唯一键上冲突。
@@ -62,6 +62,32 @@ runtime_storage 表（per-character KV）：
 - 缺失时整节省略——首次启动 / 全新角色 working_memory 没写，action 仍能跑（system prompt 不出该节）。
 
 System prompt 自递归避免：thinking 自己不把"上一份 working_memory" 注入自己的 system prompt——而是放到 user message 里显式说"上一份是这样的，请更新"。否则 thinking 看着自己写的东西再写一遍，容易陷入回声。
+
+### 2.2.1 长期 Memory
+
+长期 Memory 同样存在 `runtime_storage`（`key = "memory:<id>"`），由 thinking 轨的 `update_memory` 维护。记录结构包含现实时间和游戏时间：
+
+```
+value = {
+  id: string,
+  townId: string,
+  characterId: string,
+  kind: "self_knowledge" | "common_sense" | "skill" | "other",
+  text: string,
+  importance: number,
+  createdAt: string,
+  lastAccessedAt?: string,
+  createdGameTime?: GameTimeSnapshot,
+  updatedGameTime?: GameTimeSnapshot,
+  timeDisplay?: "auto" | "none",
+}
+```
+
+- Prompt 渲染格式：`[序号] [时间] 正文`，或对稳定身份/常识/技能省略时间为 `[序号] 正文`。
+- 序号只代表当前 prompt 里显示的顺序，不持久化；`edit/remove` 用 `memory_index` 指向它，不再用正文精确匹配。
+- 时间按当前游戏时间降精度：24 小时内精确到分钟；24-72 小时显示清晨/上午/中午/下午/晚上/午夜；72 小时以前只显示日期。
+- 价格类 seed memory 写入初始游戏时间并表述为“最近的价格是...”；这类价格是近期行情，可被后续交易和记忆更新改变。
+- `other` 段按更新时间倒序截断，避免新近记忆被旧 key 顺序挤掉。
 
 ### 2.3 事件触发的三条路径
 
@@ -213,10 +239,10 @@ Thinking 轨 **不入** `agent_sessions`——每次 turn 重建 Agent，无需 
 backend/src/runtimes/two-track-agent/
 ├── index.ts                       # re-export runtime.ts
 ├── runtime.ts                     # PiAgentRuntime + TwoTrackAgentRuntime（AgentRuntime 实现）
-├── thinking-track.ts              # ThinkingTrackSession + write_working_memory tool
-├── game-tools.ts                  # action 轨完整 toolset = shared + 自己的 update_memory
+├── thinking-track.ts              # ThinkingTrackSession + update_memory / write_working_memory tools
+├── game-tools.ts                  # action 轨完整 toolset = shared（不含 update_memory）
 ├── memory-tool.ts                 # createTwoTrackUpdateMemoryTool（per-agent，不在 shared）
-├── memory.ts                      # updateTwoTrackAgentMemory：写 agent_memories 表
+├── memory.ts                      # load/update two-track memory：写 runtime_storage memory:* KV
 ├── semantics/
 │   └── events.ts                  # shouldTriggerActionTurn / isThinkFirstEvent / isSignificantForThinking
 ├── prompt/                        # system / user prompt 模板（per-agent，shared 不管编排）

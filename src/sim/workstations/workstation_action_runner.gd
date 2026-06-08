@@ -111,6 +111,7 @@ func nearby_snapshots(max_distance: float = Containers.INTERACTION_RADIUS) -> Ar
 		# Container 型 workstation 额外暴露当前库存（让 LLM 知道里面有什么）。
 		if mode == "container" and ws_node is ContainerNode:
 			var cnode := ws_node as ContainerNode
+			snap["displayName"] = cnode.effective_display_name()
 			# 容器的身份键回退到纯 effective_container_id（≠ workstation_logical_id 复合 id）。
 			# container_states 主键、Containers.system_deposit、铸币/挖矿自动入库、item ownerId
 			# 全用这个纯 id；backend assemble 拿 manifest id 去 join container_states，复合 id 会

@@ -89,11 +89,29 @@ static func _append_effects_line(lines: Array, item: Item) -> void:
 # 设计：跟 Phase 3 backend item-display 处理后的口径独立 —— Godot UI tooltip 用自己
 # 的 helper 不依赖 backend 渲染。
 static func _localized_effect_label(name: String) -> String:
+	if name.begins_with("disease."):
+		return TranslationServer.translate("ui.tooltip.treat_disease_format") % _disease_label(name.substr("disease.".length()))
+	if name.begins_with("symptom."):
+		return _symptom_label(name.substr("symptom.".length()))
 	match name:
 		"hunger": return TranslationServer.translate("attribute.hunger.name")
 		"stamina": return TranslationServer.translate("attribute.stamina.name")
 		"health", "hp": return TranslationServer.translate("attribute.hp.name")
+		"rest": return TranslationServer.translate("attribute.rest.name")
+		"sickness": return TranslationServer.translate("attribute.sickness.name")
 		_: return name
+
+
+static func _disease_label(disease_id: String) -> String:
+	var key := "disease.%s.name" % disease_id
+	var translated := str(TranslationServer.translate(key))
+	return disease_id if translated == key else translated
+
+
+static func _symptom_label(symptom_id: String) -> String:
+	var key := "symptom.%s.name" % symptom_id
+	var translated := str(TranslationServer.translate(key))
+	return symptom_id if translated == key else translated
 
 
 static func _format_amount(value: float) -> String:

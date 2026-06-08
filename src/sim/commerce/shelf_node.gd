@@ -4,7 +4,7 @@ extends ContainerNode
 # 货架 = 无锁的容器。继承 ContainerNode 的 proximity / approach / slot 库存 / 注册到 Containers。
 # 货架与容器的唯一区别：
 #   1. 永不上锁（lock_item_id 留空）→ 人人可存取。
-#   2. 槽位可带 listing_price_centi 标价（仅展示，付钱靠 trade/give + 反应层涌现，无硬性扣钱）。
+#   2. 槽位可带 listing_price_centi 标价；put_take 直接取带标价商品时会校验货架钱包付款。
 #   3. 显示名走 location.<id>.name（铺面名），而非 container.<id>.name。
 #
 # 迁移期：shelf_id / shelf_name / location_id 是兼容旧 .tscn 字段的 setter shim，

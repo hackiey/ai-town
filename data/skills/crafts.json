@@ -51,6 +51,12 @@
         {"workstation": "stove", "verb": "mix"}
       ]
     },
+    "alchemy": {
+      "skillId": "alchemy",
+      "operations": [
+        {"workstation": "alchemy_table", "verb": "compound"}
+      ]
+    },
     "mill_grain": {
       "skillId": "milling",
       "operations": [
@@ -65,4 +71,3 @@
     }
   }
 }
-

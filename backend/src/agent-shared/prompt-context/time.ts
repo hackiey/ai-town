@@ -10,7 +10,12 @@ import { numberValue, objectValue, pickString } from "../utils/primitives.js";
 
 export const GAME_HOURS_PER_DAY = 24;
 export const GAME_DAYS_PER_REIGN_YEAR = 360;
-const GAME_WEEKDAY_OFFSET = 1; // day 0 是周二（游戏起点），而 weekday_0 是周一
+export const INITIAL_GAME_YEAR = 5;
+export const INITIAL_GAME_DAY_OF_YEAR = 64;
+export const INITIAL_GAME_ABSOLUTE_DAY = ((INITIAL_GAME_YEAR - 1) * GAME_DAYS_PER_REIGN_YEAR) + (INITIAL_GAME_DAY_OF_YEAR - 1);
+export const INITIAL_GAME_HOUR = 6;
+export const INITIAL_GAME_MINUTE = 0;
+const GAME_WEEKDAY_OFFSET = 3; // 统治五年3月4日（absolute day 1503）是周二，而 weekday_0 是周一
 
 export type NormalizedGameTime = {
   eraName: string;
@@ -77,7 +82,34 @@ export function gameTimeSortValue(gameTime: NormalizedGameTime): number {
 }
 
 function formatEraYear(year: number): string {
-  return year === 1 ? t("prompt.context.time.era_year_one", getActiveLocale()) : String(year);
+  if (year === 1) return t("prompt.context.time.era_year_one", getActiveLocale());
+  return CHINESE_ERA_YEAR_NAMES[year] ?? String(year);
+}
+
+const CHINESE_ERA_YEAR_NAMES: Record<number, string> = {
+  2: "二",
+  3: "三",
+  4: "四",
+  5: "五",
+  6: "六",
+  7: "七",
+  8: "八",
+  9: "九",
+  10: "十",
+};
+
+export function initialGameTimeSnapshot(): GameTimeSnapshot {
+  const totalGameHours = (INITIAL_GAME_ABSOLUTE_DAY * GAME_HOURS_PER_DAY) + INITIAL_GAME_HOUR;
+  return {
+    totalGameMinutes: (totalGameHours * 60) + INITIAL_GAME_MINUTE,
+    totalGameHours,
+    day: INITIAL_GAME_ABSOLUTE_DAY,
+    hour: INITIAL_GAME_HOUR,
+    minute: INITIAL_GAME_MINUTE,
+    year: INITIAL_GAME_YEAR,
+    dayOfYear: INITIAL_GAME_DAY_OF_YEAR,
+    eraName: getDefaultReignEraName(),
+  };
 }
 
 export function pad2(value: number): string {

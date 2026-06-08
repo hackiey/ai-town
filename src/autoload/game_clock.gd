@@ -50,13 +50,16 @@ const TEN_MINUTE_GAME_SECONDS := 10.0 * SECONDS_PER_GAME_MINUTE
 const HOURS_PER_GAME_DAY := 24
 const SECONDS_PER_GAME_DAY := float(HOURS_PER_GAME_DAY) * SECONDS_PER_GAME_HOUR
 const DAYS_PER_REIGN_YEAR := 360
+const INITIAL_REIGN_YEAR := 5
+const INITIAL_DAY_OF_YEAR := 64 # 3月4日（每月30天）
+const INITIAL_ABSOLUTE_DAY := ((INITIAL_REIGN_YEAR - 1) * DAYS_PER_REIGN_YEAR) + (INITIAL_DAY_OF_YEAR - 1)
 const INITIAL_GAME_HOUR := 6
-const INITIAL_GAME_SECONDS := float(INITIAL_GAME_HOUR) * SECONDS_PER_GAME_HOUR
+const INITIAL_GAME_SECONDS := (float(INITIAL_ABSOLUTE_DAY) * SECONDS_PER_GAME_DAY) + (float(INITIAL_GAME_HOUR) * SECONDS_PER_GAME_HOUR)
 
 @export var time_scale: float = 10.0  # 1 real-sec = 10 game-sec
 @export var persist_interval_sec: float = 5.0
 
-var game_seconds: float = INITIAL_GAME_SECONDS  # 累计 game-time, 单位秒；默认从 06:00 开服
+var game_seconds: float = INITIAL_GAME_SECONDS  # 累计 game-time, 单位秒；默认从统治五年3月4日 06:00 开服
 var _last_emitted_hour: int = -1
 var _last_emitted_ten_minute: int = -1
 var _persist_timer: float = 0.0
@@ -273,7 +276,7 @@ func _tick_persistence(delta: float) -> void:
 func _load_persisted_clock() -> void:
 	var saved := Db.get_town_clock_seconds()
 	if saved < 0.0:
-		# 无记录：保持默认 06:00 开服
+		# 无记录：保持默认初始日期 06:00 开服
 		return
 	if not restore_game_time_snapshot({"totalGameSeconds": saved}):
 		push_warning("[GameClock] failed to restore from db: total=%f" % saved)

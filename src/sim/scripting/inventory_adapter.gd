@@ -145,6 +145,16 @@ class _CharacterAdapter extends InventoryAdapter:
 		var stacks: Array = []
 		if remaining <= 0:
 			return { "taken_qty": 0, "stacks": stacks }
+		var query_item := str(query.get("item_id", ""))
+		var coin_centi := CharacterInventory.currency_item_centi(query_item)
+		if coin_centi > 0:
+			var centi := remaining * coin_centi
+			if not _ch.wallet_spend(centi):
+				return { "taken_qty": 0, "stacks": stacks }
+			var stack := InventorySlotData.from_template(query_item, 100)
+			stack["quantity"] = remaining
+			stacks.append(stack)
+			return { "taken_qty": remaining, "stacks": stacks }
 		# 重复 find / extract 直到拿够。extract_stack 会从 slot 扣量并返回独立 dict。
 		while remaining > 0:
 			var matches_list := find(query)
@@ -165,17 +175,28 @@ class _CharacterAdapter extends InventoryAdapter:
 
 	func place(stacks: Array) -> Dictionary:
 		var typed: Array[Dictionary] = []
+		var currency_qty := 0
 		for s_v in stacks:
 			if typeof(s_v) == TYPE_DICTIONARY:
-				typed.append(s_v as Dictionary)
+				var stack := s_v as Dictionary
+				var item_id := str(stack.get("item_id", ""))
+				var qty := int(stack.get("quantity", 0))
+				var coin_centi := CharacterInventory.currency_item_centi(item_id)
+				if coin_centi > 0:
+					_ch.wallet_add(qty * coin_centi)
+					currency_qty += qty
+				else:
+					typed.append(stack)
+		if typed.is_empty():
+			return { "placed_qty": currency_qty, "leftover": [] }
 		var receipt := _ch.inventory_ops().receive_stacks(typed)
 		if bool(receipt.get("ok", false)):
 			var placed_qty := 0
 			for s in typed:
 				placed_qty += int(s.get("quantity", 0))
-			return { "placed_qty": placed_qty, "leftover": [] }
-		# 装不下：receive_inventory_stacks 已自己 rollback；leftover = 全部
-		return { "placed_qty": 0, "leftover": typed }
+			return { "placed_qty": placed_qty + currency_qty, "leftover": [] }
+		# 装不下：receive_inventory_stacks 已自己 rollback；货币已进钱包，非货币全 leftover。
+		return { "placed_qty": currency_qty, "leftover": typed }
 
 	func set_slot(slot_index: int, fields: Dictionary) -> bool:
 		if slot_index < 0 or slot_index >= _ch.inventory.size():
@@ -193,6 +214,16 @@ class _CharacterAdapter extends InventoryAdapter:
 		_ch.inventory = inv
 		_ch.inventory_ops().persist_slot(slot_index)
 		return true
+
+	func find(query: Dictionary) -> Array:
+		var item_id := str(query.get("item_id", ""))
+		var coin_centi := CharacterInventory.currency_item_centi(item_id)
+		if coin_centi > 0:
+			var count := _ch.wallet_balance_centi() / coin_centi
+			if count <= 0:
+				return []
+			return [{"slot_index": -1, "item_id": item_id, "qty": count, "quality": 100, "container_content": ""}]
+		return super.find(query)
 
 
 # ─── Container adapter ────────────────────────────────────────────
@@ -220,3 +251,13 @@ class _ContainerAdapter extends InventoryAdapter:
 
 	func set_slot(slot_index: int, fields: Dictionary) -> bool:
 		return Containers.adapter_set_slot(_node, slot_index, fields)
+
+	func find(query: Dictionary) -> Array:
+		var item_id := str(query.get("item_id", ""))
+		var coin_centi := CharacterInventory.currency_item_centi(item_id)
+		if coin_centi > 0:
+			var count := Containers.wallet_balance_centi(_node.effective_container_id()) / coin_centi
+			if count <= 0:
+				return []
+			return [{"slot_index": -1, "item_id": item_id, "qty": count, "quality": 100, "container_content": ""}]
+		return super.find(query)

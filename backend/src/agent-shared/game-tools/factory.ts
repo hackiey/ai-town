@@ -6,6 +6,7 @@ import type { AgentTool } from "@mariozechner/pi-agent-core";
 import { listProficiencyCrafts, skillIdForCraft, type CraftSlug } from "./craft-registry.js";
 import {
   createAssembleTool,
+  createAlchemyTool,
   createBoilSaltTool,
   createBurnCharcoalTool,
   createCookTool,
@@ -50,6 +51,7 @@ const AXIS_TOOL_FACTORIES: Record<CraftSlug, AxisToolFactory> = {
   smith: createSmithTool,
   assemble: createAssembleTool,
   cook: createCookTool,
+  alchemy: createAlchemyTool,
   mill_grain: createMillGrainTool,
   boil_salt: createBoilSaltTool,
 };

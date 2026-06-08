@@ -1,0 +1,16 @@
+{
+  "symptom": {
+    "cough": { "name": "咳嗽" },
+    "nasal_congestion": { "name": "鼻塞" },
+    "chill": { "name": "发冷" },
+    "fever": { "name": "发热" },
+    "diarrhea": { "name": "腹泻" },
+    "nausea": { "name": "恶心" },
+    "abdominal_pain": { "name": "腹痛" },
+    "fatigue": { "name": "乏力" },
+    "dizziness": { "name": "头晕" },
+    "weakness": { "name": "手脚发软" },
+    "wound_pain": { "name": "伤口疼痛" },
+    "swelling": { "name": "红肿" }
+  }
+}

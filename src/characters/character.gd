@@ -76,14 +76,19 @@ var stamina: float
 var hunger: float
 var rest: float
 # 损伤层（impairment）：drunk 醉酒 / sickness 生病，都是 0..MAX_IMPAIRMENT 的累计数值。
+# disease_id 是当前主病种；首版只追踪一个主病，sickness 到 0 时清空。
 # 0 = 完全清醒/健康。喝酒加 drunk、吃馊食物加 sickness、吃药减 sickness。
 # 衰减 + 对动作的影响规则见 data/mechanics/physiology.lua 与 src/sim/characters/impairment.gd。
 const MAX_IMPAIRMENT := 100.0
+const MEDICINE_EFFECT_STATUS := "medicine_effect"
+const MEDICINE_EFFECT_DURATION_MINUTES := 4 * 60
 var drunk: float = 0.0
 var sickness: float = 0.0
+var disease_id: String = ""
+var symptoms: Dictionary = {}
 # 钱包。silver_coin / gold_coin 不再以 inventory item 形式存在，统一走 wallet 余额。
 # 单位是 centi（1 silver = 100 centi），int 避免浮点误差。显示层除 100 即 silver。
-# 拾取物理 silver_coin/gold_coin → 自动入账（见 character_inventory.gd）。
+# silver_coin/gold_coin 是货币单位 id；角色侧统一折算进钱包（见 character_inventory.gd）。
 var wallet_centi: int = 0
 # 真值翻转通过 affect.set_alive；setter 触发 _on_alive_changed 让子类做物理善后。
 var alive: bool = true:
@@ -95,7 +100,8 @@ var alive: bool = true:
 
 # Smallville-style 状态流（文本/标签，不是数字 buff）
 # 每条: { type: String, started_at: float, expires_total_hours: int, source_id: String }
-# expires_total_hours = -1 表示永久（hungry / sleeping 走显式清理，不到这步）
+# expires_total_hours = -1 表示永久（hungry / sleeping 走显式清理，不到这步）。
+# medicine_effect 额外带 expires_total_minutes / remaining_deltas 等字段，按 10 分钟 tick 缓慢结算症状变化。
 var active_statuses: Array[Dictionary] = []
 
 # 社交 / 装备 ────────────────────────────────────────
@@ -376,6 +382,7 @@ func apply_ten_minute_tick(total_minute: int) -> void:
 		"is_sleeping": sleep_controller().is_sleeping(),
 		"has_hungry": has_status("hungry"),
 	})
+	_apply_medicine_effect_tick(total_minute)
 	_expire_timed_statuses()
 	head_status().sync_to_clients()
 	if GameClock.minute_of_hour_for_minute(total_minute) == 0:
@@ -388,8 +395,14 @@ func apply_ten_minute_tick(total_minute: int) -> void:
 # 其余比对 GameClock.total_game_hours()。每次 slow_tick 末尾跑一次。
 func _expire_timed_statuses() -> void:
 	var now_total: int = GameClock.total_game_hours()
+	var now_total_minutes: int = GameClock.total_game_minutes()
 	for i in range(active_statuses.size() - 1, -1, -1):
 		var c: Dictionary = active_statuses[i]
+		if c.has("expires_total_minutes"):
+			var exp_min: int = int(c.get("expires_total_minutes", -1))
+			if exp_min >= 0 and now_total_minutes >= exp_min:
+				active_statuses.remove_at(i)
+				continue
 		var exp: int = int(c.get("expires_total_hours", -1))
 		if exp >= 0 and now_total >= exp:
 			active_statuses.remove_at(i)
@@ -403,6 +416,167 @@ func has_status(type: String) -> bool:
 		if str(c.get("type", "")) == type:
 			return true
 	return false
+
+
+func set_medicine_effect(source_id: String, symptom_deltas: Dictionary) -> bool:
+	var clean_deltas := _clean_number_dict(symptom_deltas)
+	if clean_deltas.is_empty():
+		return false
+	var changed := _apply_medicine_effect_tick(GameClock.total_game_minutes())
+	remove_status_type(MEDICINE_EFFECT_STATUS)
+	var now_minute := GameClock.total_game_minutes()
+	var rates := {}
+	for symptom_id in clean_deltas.keys():
+		rates[symptom_id] = float(clean_deltas[symptom_id]) / float(MEDICINE_EFFECT_DURATION_MINUTES)
+	active_statuses.append({
+		"type": MEDICINE_EFFECT_STATUS,
+		"started_at": Time.get_ticks_msec() / 1000.0,
+		"started_total_minutes": now_minute,
+		"last_applied_total_minutes": now_minute,
+		"expires_total_minutes": now_minute + MEDICINE_EFFECT_DURATION_MINUTES,
+		"expires_total_hours": -1,
+		"source_id": source_id,
+		"duration_minutes": MEDICINE_EFFECT_DURATION_MINUTES,
+		"total_deltas": clean_deltas.duplicate(true),
+		"remaining_deltas": clean_deltas.duplicate(true),
+		"rate_per_minute": rates,
+	})
+	head_status().sync_to_clients()
+	state_io().persist()
+	return true
+
+
+func _apply_medicine_effect_tick(total_minute: int) -> bool:
+	var changed := false
+	for i in range(active_statuses.size() - 1, -1, -1):
+		var status: Dictionary = active_statuses[i]
+		if str(status.get("type", "")) != MEDICINE_EFFECT_STATUS:
+			continue
+		if sickness <= 0.0:
+			active_statuses.remove_at(i)
+			changed = true
+			continue
+		var expires_minute := int(status.get("expires_total_minutes", total_minute))
+		var last_minute := int(status.get("last_applied_total_minutes", status.get("started_total_minutes", total_minute)))
+		var until_minute := mini(total_minute, expires_minute)
+		var elapsed_minutes := maxi(0, until_minute - last_minute)
+		var remaining := _clean_number_dict(status.get("remaining_deltas", {}))
+		if elapsed_minutes > 0 and not remaining.is_empty():
+			changed = true
+			var rates: Dictionary = status.get("rate_per_minute", {}) if status.get("rate_per_minute", {}) is Dictionary else {}
+			var duration := maxf(1.0, float(status.get("duration_minutes", MEDICINE_EFFECT_DURATION_MINUTES)))
+			for symptom_id in remaining.keys():
+				var left := float(remaining[symptom_id])
+				var rate := float(rates.get(symptom_id, left / duration))
+				var step := rate * float(elapsed_minutes)
+				if left > 0.0:
+					step = minf(left, maxf(0.0, step))
+				else:
+					step = maxf(left, minf(0.0, step))
+				if absf(step) > 0.0001:
+					modify_symptom(str(symptom_id), step, false)
+					left -= step
+				if absf(left) <= 0.01:
+					remaining.erase(symptom_id)
+				else:
+					remaining[symptom_id] = left
+			recompute_sickness_from_symptoms()
+			status["remaining_deltas"] = remaining
+			status["last_applied_total_minutes"] = until_minute
+			active_statuses[i] = status
+		if remaining.is_empty() or total_minute >= expires_minute:
+			active_statuses.remove_at(i)
+			changed = true
+	return changed
+
+
+func modify_symptom(symptom_id: String, amount: float, recompute: bool = true) -> void:
+	if symptom_id.is_empty() or amount == 0.0:
+		return
+	var before := float(symptoms.get(symptom_id, 0.0))
+	var after := clampf(before + amount, 0.0, MAX_IMPAIRMENT)
+	if after <= 0.01:
+		symptoms.erase(symptom_id)
+	else:
+		symptoms[symptom_id] = after
+	if recompute:
+		recompute_sickness_from_symptoms()
+
+
+func apply_disease_symptoms(source_disease_id: String, amount: float) -> void:
+	if source_disease_id.is_empty() or amount == 0.0:
+		return
+	var profile := disease_symptom_profile(source_disease_id)
+	if profile.is_empty():
+		modify_symptom("fatigue", amount)
+		return
+	for symptom_id in profile.keys():
+		modify_symptom(str(symptom_id), amount * float(profile[symptom_id]), false)
+	recompute_sickness_from_symptoms()
+
+
+func reduce_all_symptoms(amount: float) -> void:
+	if amount <= 0.0:
+		return
+	for symptom_id in symptoms.keys():
+		modify_symptom(str(symptom_id), -amount, false)
+	recompute_sickness_from_symptoms()
+
+
+func recompute_sickness_from_symptoms() -> void:
+	symptoms = _clean_number_dict(symptoms)
+	if symptoms.is_empty():
+		sickness = 0.0
+		disease_id = ""
+		return
+	var values: Array[float] = []
+	for value in symptoms.values():
+		values.append(float(value))
+	values.sort()
+	values.reverse()
+	var max_symptom := values[0]
+	var top_count := mini(3, values.size())
+	var top_sum := 0.0
+	for i in range(top_count):
+		top_sum += values[i]
+	var top_avg := top_sum / float(top_count)
+	sickness = clampf((max_symptom * 0.7) + (top_avg * 0.3), 0.0, MAX_IMPAIRMENT)
+	if sickness <= 0.0:
+		disease_id = ""
+
+
+func seed_symptoms_from_legacy_sickness() -> void:
+	if not symptoms.is_empty() or sickness <= 0.0:
+		return
+	if disease_id.is_empty():
+		modify_symptom("fatigue", sickness)
+	else:
+		apply_disease_symptoms(disease_id, sickness)
+
+
+static func disease_symptom_profile(source_disease_id: String) -> Dictionary:
+	match source_disease_id:
+		"cold":
+			return {"cough": 1.0, "nasal_congestion": 0.8, "chill": 0.6, "fatigue": 0.45, "fever": 0.25}
+		"stomach_illness":
+			return {"diarrhea": 1.0, "nausea": 0.9, "abdominal_pain": 0.75, "weakness": 0.4, "fatigue": 0.25}
+		"wound_infection":
+			return {"wound_pain": 1.0, "swelling": 0.85, "fever": 0.65, "fatigue": 0.35}
+		"exhaustion_sickness":
+			return {"fatigue": 1.0, "dizziness": 0.85, "weakness": 0.8, "nausea": 0.25}
+		_:
+			return {}
+
+
+static func _clean_number_dict(value: Variant) -> Dictionary:
+	var out := {}
+	if not value is Dictionary:
+		return out
+	for k in (value as Dictionary).keys():
+		var n := clampf(float((value as Dictionary)[k]), -MAX_IMPAIRMENT, MAX_IMPAIRMENT)
+		if absf(n) > 0.01:
+			out[str(k)] = n
+	return out
 
 
 func remove_status_type(type: String) -> void:
@@ -446,7 +620,7 @@ func refresh_statuses() -> void:
 # ─── Wallet (silver/gold currency) ────────────────────────────────────
 # 价格 / 余额都用 centi 整数；1 silver = 100 centi。
 # 显示层用 Money.format_silver_from_centi。LLM 看到的接口仍是 silver float。
-# 拾取 silver_coin / gold_coin item 自动进 wallet（见 character_inventory.gd）。
+# silver_coin / gold_coin item id 自动折算进 wallet（见 character_inventory.gd）。
 
 func wallet_balance_centi() -> int:
 	return wallet_centi

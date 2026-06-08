@@ -1,12 +1,11 @@
-[gd_resource type="Resource" script_class="Item" format=3]
+[gd_resource type="Resource" script_class="Item" format=3 uid="uid://bi0gs85sgjfis"]
 
-[ext_resource type="Script" path="res://src/sim/items/item.gd" id="1_item"]
+[ext_resource type="Script" uid="uid://dqr5snte2lo05" path="res://src/sim/items/item.gd" id="1_item"]
 
 [resource]
 script = ExtResource("1_item")
 id = "flax_seed"
-weight = 0.02
 kind = "seed"
+weight = 0.01
 crop_variety_id = "flax"
-tags = PackedStringArray("seed")
-tint = Color(0.68, 0.55, 0.30, 1)
+tint = Color(0.68, 0.55, 0.3, 1)

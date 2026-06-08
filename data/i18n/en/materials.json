@@ -1,1 +1,14 @@
-{}
+{
+  "material": {
+    "mint_leaf": { "name": "Mint Leaf" },
+    "mugwort_leaf": { "name": "Mugwort Leaf" },
+    "ginger_root": { "name": "Ginger Root" },
+    "plantain_leaf": { "name": "Plantain Leaf" },
+    "calendula_flower": { "name": "Calendula Flower" },
+    "valerian_root": { "name": "Valerian Root" },
+    "mint_mugwort_tea": { "name": "Mint-Mugwort Tea" },
+    "ginger_plantain_broth": { "name": "Ginger-Plantain Broth" },
+    "calendula_salve": { "name": "Calendula Salve" },
+    "valerian_tonic": { "name": "Valerian Tonic" }
+  }
+}

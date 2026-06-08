@@ -23,10 +23,9 @@ hunger_decay_sleep_per_hour = 1.25
 
 -- 损伤层衰减（每 10-min slow_tick 一次）。
 -- drunk：醒酒快——每 tick -1，一杯啤酒(+6) 约 60 game-min 醒透。
--- sickness：自愈很慢——每 tick -0.25（≈ -1.5/game-hour，100→0 约 66 game-hour），
---   主要靠吃药（药品 base_effects sickness 为负）才好得快。
+-- sickness：自愈极慢——每 tick -0.05（≈ -0.3/game-hour），主要靠按疗程吃药才好得快。
 drunk_decay_per_tick    = 1.0
-sickness_decay_per_tick = 0.25
+sickness_decay_per_tick = 0.05
 
 -- 生病触发风险（每 10-min slow_tick）。体质只控制"低体力/低饱食/低精力时有多容易病"；
 -- 身体资源健康时 chance=0。每个低于阈值的资源都是一份风险暴露，多项低值叠加。
@@ -129,6 +128,15 @@ function sickness_chance(stamina, max_stamina, hunger, max_hunger, rest, max_res
     return _clamp(sickness_risk_chance_per_low_resource * low_resources * vulnerability, 0.0, 0.5)
 end
 
+function sickness_risk_disease_id(stamina, max_stamina, hunger, max_hunger, rest, max_rest)
+    local hunger_pct = _hunger_percent(hunger, max_hunger)
+    local rest_pct = _percent(rest, max_rest)
+    if rest_pct < sickness_rest_risk_threshold or hunger_pct < sickness_hunger_risk_threshold then
+        return "exhaustion_sickness"
+    end
+    return "cold"
+end
+
 -- ============== hooks ==============
 
 -- ctx: { character, hp, max_hp, stamina, max_stamina, hunger, max_hunger, rest, max_rest, is_sleeping, has_hungry }
@@ -208,7 +216,8 @@ function on_slow_tick(ctx)
     local chance = sickness_chance(new_stamina, max_stamina, new_hunger, max_hunger, new_rest, max_rest, ctx.constitution)
     local roll = ctx.sickness_roll or 1.0
     if chance > 0.0 and roll < chance then
-        affect.sickness(ctx.character, sickness_onset_per_tick)
+        local disease_id = sickness_risk_disease_id(new_stamina, max_stamina, new_hunger, max_hunger, new_rest, max_rest)
+        affect.disease_sickness(ctx.character, disease_id, sickness_onset_per_tick)
     end
 end
 

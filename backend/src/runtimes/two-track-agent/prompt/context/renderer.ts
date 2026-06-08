@@ -169,32 +169,40 @@ function renderMemorySection(context: GameAgentContext, locale: Locale): string 
     t("prompt.context.memory.description", locale),
     "",
     `## ${t("prompt.context.memory.self_knowledge", locale)}`,
-    renderPromptMemories(context.memory.selfKnowledge, locale),
+    renderPromptMemories(context.memory.selfKnowledge, context.current.gameTime, locale),
     "",
     `## ${t("prompt.context.memory.common_sense", locale)}`,
-    renderPromptMemories(context.memory.commonSense, locale),
+    renderPromptMemories(context.memory.commonSense, context.current.gameTime, locale),
     "",
     `## ${t("prompt.context.memory.skill", locale)}`,
-    renderSkillMemoriesByAxis(context.memory.skills, locale),
+    renderSkillMemoriesByAxis(context.memory.skills, context.current.gameTime, locale),
     "",
     `## ${t("prompt.context.memory.other", locale)}`,
-    renderPromptMemories(context.memory.other, locale),
+    renderPromptMemories(context.memory.other, context.current.gameTime, locale),
   ].join("\n");
 }
 
-function renderPromptMemories(memories: GameAgentContext["memory"]["all"], locale: Locale): string {
+function renderPromptMemories(
+  memories: GameAgentContext["memory"]["all"],
+  currentGameTime: AgentCurrentContext["gameTime"],
+  locale: Locale,
+): string {
   if (memories.length === 0) {
-    return `- ${t("prompt.context.distance_band_none", locale)}`;
+    return t("prompt.context.distance_band_none", locale);
   }
-  return memories.map((memory) => `- ${memory.text}`).join("\n");
+  return memories.map((memory) => renderPromptMemoryLine(memory, currentGameTime, locale)).join("\n");
 }
 
 // 把 skill 段按 skill_id 分组渲染。seed 来的 skill memory 通过 id pattern
 // (seed:skill:<bookId>:...) 反查 bookId，再通过 skill-catalog.getSkillForBook
 // 拿对应 skill_id。玩家/LLM 后期手写的 skill memory 没这套 id → 落"其他"组兜底。
-function renderSkillMemoriesByAxis(skills: PromptMemoryRecord[], locale: Locale): string {
+function renderSkillMemoriesByAxis(
+  skills: PromptMemoryRecord[],
+  currentGameTime: AgentCurrentContext["gameTime"],
+  locale: Locale,
+): string {
   if (skills.length === 0) {
-    return `- ${t("prompt.context.distance_band_none", locale)}`;
+    return t("prompt.context.distance_band_none", locale);
   }
   const bySkill = new Map<string, PromptMemoryRecord[]>();
   const orphan: PromptMemoryRecord[] = [];
@@ -213,13 +221,60 @@ function renderSkillMemoriesByAxis(skills: PromptMemoryRecord[], locale: Locale)
   for (const [skillId, list] of bySkill) {
     const label = t(`prompt.context.proficiency.skill.${skillId}`, locale);
     parts.push(`### ${label}`);
-    parts.push(list.map((m) => `- ${m.text}`).join("\n"));
+    parts.push(list.map((m) => renderPromptMemoryLine(m, currentGameTime, locale)).join("\n"));
   }
   if (orphan.length > 0) {
     parts.push(`### ${t("prompt.context.memory.skill_other_group", locale)}`);
-    parts.push(orphan.map((m) => `- ${m.text}`).join("\n"));
+    parts.push(orphan.map((m) => renderPromptMemoryLine(m, currentGameTime, locale)).join("\n"));
   }
   return parts.join("\n");
+}
+
+function renderPromptMemoryLine(
+  memory: PromptMemoryRecord,
+  currentGameTime: AgentCurrentContext["gameTime"],
+  locale: Locale,
+): string {
+  if (memory.timeDisplay === "none") {
+    return `[${memory.promptIndex}] ${memory.text}`;
+  }
+  return `[${memory.promptIndex}] [${formatPromptMemoryTime(memory, currentGameTime, locale)}] ${memory.text}`;
+}
+
+function formatPromptMemoryTime(
+  memory: PromptMemoryRecord,
+  currentGameTime: AgentCurrentContext["gameTime"],
+  locale: Locale,
+): string {
+  const memoryGameTime = normalizeGameTime(memory.updatedGameTime ?? memory.createdGameTime);
+  if (!memoryGameTime) {
+    return t("prompt.context.time.game_time_unknown", locale);
+  }
+  const current = normalizeGameTime(currentGameTime);
+  if (!current) {
+    return formatPromptMemoryExactTime(memoryGameTime);
+  }
+  const ageGameMinutes = gameTimeSortValue(current) - gameTimeSortValue(memoryGameTime);
+  if (ageGameMinutes < 0 || ageGameMinutes < 24 * 60) {
+    return formatPromptMemoryExactTime(memoryGameTime);
+  }
+  if (ageGameMinutes < 72 * 60) {
+    return `${formatGameDate(memoryGameTime)} ${formatPromptMemoryDayPeriod(memoryGameTime.hour, locale)}`;
+  }
+  return formatGameDate(memoryGameTime);
+}
+
+function formatPromptMemoryExactTime(gameTime: NormalizedGameTime): string {
+  return `${formatGameDate(gameTime)} ${gameTime.hour}:${pad2(gameTime.minute)}`;
+}
+
+function formatPromptMemoryDayPeriod(hour: number, locale: Locale): string {
+  if (hour >= 23 || hour < 5) return t("prompt.context.time.period_midnight", locale);
+  if (hour < 8) return t("prompt.context.time.period_dawn", locale);
+  if (hour < 11) return t("prompt.context.time.period_morning", locale);
+  if (hour < 13) return t("prompt.context.time.period_noon", locale);
+  if (hour < 18) return t("prompt.context.time.period_afternoon", locale);
+  return t("prompt.context.time.period_evening", locale);
 }
 
 const SKILL_SEED_ID_RE = /^seed:skill:([^:]+):/;

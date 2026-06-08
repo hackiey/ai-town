@@ -19,7 +19,7 @@
       {
         "item_id": "bread",
         "quantity": 12,
-        "price_silver": 0.5
+        "price_silver": 1.5
       }
     ]
   },
@@ -43,6 +43,7 @@
     ]
   },
   "treasury_vault": {
+    "starting_wallet_silver": 3000,
     "starting_inventory": [
       {
         "item_id": "iron_pick",
@@ -55,14 +56,6 @@
       {
         "item_id": "wood_bucket",
         "quantity": 16
-      },
-      {
-        "item_id": "silver_coin",
-        "quantity": 2000
-      },
-      {
-        "item_id": "gold_coin",
-        "quantity": 100
       },
       {
         "item_id": "silver_ore",

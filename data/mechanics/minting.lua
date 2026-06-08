@@ -22,6 +22,7 @@ function on_slow_tick(ctx)
                 local taken = affect.take_item(ctx.vault, { item_id = ore_id }, to_mint)
                 if taken > 0 then
                     local coin_qty = taken * spec.qty
+                    -- coin item ids are currency units; GDScript stores them in the vault wallet.
                     local placed = affect.spawn_item(ctx.vault, spec.coin, coin_qty, 100)
                     if placed < coin_qty then
                         -- 装不下 → 退回 ore，下个 tick 再试

@@ -11,64 +11,6 @@ extends Node3D
 # 不会进入 backend agent context（位置 / nearest / visible 都不会暴露）。
 @export var waypoints_root: Node3D
 
-const LOCATION_ALIASES := {
-	"铁匠铺": "blacksmith_shop",
-	"酒馆": "tavern",
-	"饭馆": "tavern",
-	"小酒馆": "tavern",
-	"水井": "well",
-	"集市": "market_square",
-	"圣烛教堂": "saint_candle_chapel",
-	"教堂": "saint_candle_chapel",
-	"市区教堂": "saint_candle_chapel",
-	"客栈": "inn",
-	"旅店": "inn",
-	"商队客栈": "inn",
-	"马厩": "livestock",
-	"畜牧场": "livestock",
-	"鸡舍": "livestock",
-	"杂货店": "general_store",
-	"面包店": "hale_bakery",
-	"告示板": "notice_board",
-	"训练场": "training_ground",
-	"城门": "town_gate",
-	"大门": "town_gate",
-	"监狱": "jail",
-	"墓地": "graveyard",
-	"农场": "farm",
-	"北墙麦圃": "north_wall_wheat_plot",
-	"北墙麦圃1号农田": "north_wall_field_1",
-	"北墙麦圃2号农田": "north_wall_field_2",
-	"北墙麦圃3号农田": "north_wall_field_3",
-	"灰石农圃": "greystone_farmstead",
-	"灰石农圃1号农田": "greystone_field_1",
-	"灰石农圃2号农田": "greystone_field_2",
-	"灰石农圃3号农田": "greystone_field_3",
-	"灰石农圃4号农田": "greystone_field_4",
-	"灰石农圃5号农田": "greystone_field_5",
-	"圣钟教堂": "saint_bell_chapel",
-	"圣钟菜园": "saint_bell_garden",
-	"郊区教堂": "saint_bell_chapel",
-	"圣钟菜园1号农田": "saint_bell_field_1",
-	"圣钟菜园2号农田": "saint_bell_field_2",
-	"米尔沃德磨坊": "millward_mill",
-	"米尔沃德磨坊1号农田": "millward_field_1",
-	"米尔沃德磨坊2号农田": "millward_field_2",
-	"渔码头": "fishing_dock",
-	"伐木场": "lumberyard",
-	"牧场": "pasture",
-	"沿海盐场": "saltworks",
-	"粮仓": "granary",
-	"锻造场": "forge_yard",
-	"肉铺": "butcher",
-	"裁缝": "tailor",
-	"草药铺": "herbalist",
-	"珠宝店": "jeweler",
-	"书店": "bookstore",
-	"理发店": "barber",
-	"药房": "apothecary",
-}
-
 # logical_id -> Array[Node3D]。Positions 下每个 Marker3D 都是一个 logical location；
 # 父子关系来自场景树，用于裁剪 agent context：默认只暴露顶层地点，抵达某个
 # 顶层地点附近后才暴露它的子地点。
@@ -281,8 +223,8 @@ func _seed_farm_static_to_db() -> void:
 		Db.seed_farm_static(fid, farm.effective_location_id(), farm.slots().size())
 
 
-# 三户农圃的 boot 初始种植：value 是 variety_id → 权重；权重和不必为 1，random pick
-# 按归一化概率选。米尔沃德两块田纯小麦；灰石/北墙小麦为主、番茄为辅。
+# boot 初始种植：value 是 variety_id → 权重；权重和不必为 1，random pick
+# 按归一化概率选。米尔沃德纯小麦；灰石/北墙小麦为主；圣钟草药园混种药草。
 const _INITIAL_FARM_PLANTINGS := {
 	"north_wall_field_1": {"wheat": 0.7, "tomato": 0.3},
 	"north_wall_field_2": {"wheat": 0.7, "tomato": 0.3},
@@ -292,13 +234,15 @@ const _INITIAL_FARM_PLANTINGS := {
 	"greystone_field_3": {"wheat": 0.7, "tomato": 0.3},
 	"millward_field_1": {"wheat": 1.0},
 	"millward_field_2": {"wheat": 1.0},
+	"saint_bell_field_1": {"mint": 0.30, "mugwort": 0.25, "plantain": 0.25, "ginger": 0.20},
+	"saint_bell_field_2": {"calendula": 0.35, "valerian": 0.25, "mint": 0.20, "mugwort": 0.20},
 }
 
 # 每 plot 已生长 game-hour 的候选档（用户规约：24h / 48h 随机）。
 const _INITIAL_CROP_ELAPSED_HOURS := [24, 48]
 
 
-# Boot 时给上面 8 块田写入初始作物。一次性：farm_states.cropsSeeded=1 后不再 seed，
+# Boot 时给上面这些田写入初始作物。一次性：farm_states.cropsSeeded=1 后不再 seed，
 # 玩家收完也不会被刷回去。Variety per-plot 随机（按 _INITIAL_FARM_PLANTINGS 权重混种），
 # elapsed hours 整块田统一一次抽取（24 / 48），让同田作物处于相同成熟度。
 # spawned_at = now - elapsed，stage 由 Varieties.compute_stage 推算后落盘。
@@ -1018,15 +962,12 @@ func resolve_location_id(location_name: String) -> String:
 	var normalized := raw.to_lower().replace("-", "_").replace(" ", "_")
 	if has_position(normalized) or has_region(normalized):
 		return normalized
-	var alias_key := raw.to_lower()
-	if LOCATION_ALIASES.has(raw):
-		return str(LOCATION_ALIASES[raw])
-	if LOCATION_ALIASES.has(alias_key):
-		return str(LOCATION_ALIASES[alias_key])
-	# 工作台 display_name 反查：允许 NPC 用中文名（"村东磨坊"）指向公用工作台 location。
-	for ws_id in _workstation_aliases:
-		if str(_workstation_aliases[ws_id]) == raw:
-			return str(ws_id)
+	# 只用已注册 site 的现有显示名反查；不再维护 Godot 端硬编码别名表。
+	for location_id in _logical_ids:
+		var alias := location_alias(location_id)
+		var alias_normalized := alias.strip_edges().to_lower().replace("-", "_").replace(" ", "_")
+		if not alias.is_empty() and alias_normalized == normalized:
+			return location_id
 	return raw
 
 
@@ -1046,9 +987,6 @@ func location_alias(location_id: String) -> String:
 	var translated := tr(key)
 	if translated != key and not translated.is_empty():
 		return translated
-	for alias in LOCATION_ALIASES.keys():
-		if str(LOCATION_ALIASES[alias]) == location_id:
-			return str(alias)
 	return ""
 
 
@@ -1116,35 +1054,68 @@ func is_position_near(position_name: String, from: Vector3, max_distance: float)
 	return from.distance_to(get_nearest_position_world(resolved, from)) <= max_distance
 
 
-# 地点可见性 = 纯物理感知。任何 location 都按 far_radius 过滤——
+# 地点可见性 = 纯物理感知，按每个 SiteMarker 自己的 visible_*_radius 过滤。
+# fallback far_radius 只给缺 SiteMarker 的旧锚点兜底；正常地点/工作台/农田/货架都吃 prefab 上的范围。
 # 不再有"顶层永远可见"bypass：曾经的 bypass 把 FarmGroup / WorkstationNode 全部纳入"地标"，
 # 导致 NPC 隔半张地图也能"看到"私人麦圃。NPC 知道哪些地点存在（用于 move_to_location enum）
 # 走 known_position_ids() 另一条路径，与感知解耦。
 func perceived_position_names_for(self_pos: Vector3, far_radius: float = 50.0) -> PackedStringArray:
 	var out := PackedStringArray()
-	var far_sq := far_radius * far_radius
 	for location_id in _logical_ids:
-		var target := get_nearest_position_world(location_id, self_pos)
-		if self_pos.distance_squared_to(target) <= far_sq:
+		var ref := _perceived_position_ref_for(String(location_id), self_pos, 0.0, far_radius)
+		if not ref.is_empty():
 			out.append(location_id)
 	return out
 
 
 # Manifest 专用：返回 [{id, band}]，band ∈ {"near", "far"}。
-# 超出 far_radius 不进列表；near_radius 内归 near 否则归 far。
-# location_use_radius 提供 per-location near radius 覆盖（默认 near_radius）。
+# 超出该 site 的 visible_far_radius 不进列表；visible_near_radius 内归 near 否则归 far。
+# near_radius / far_radius 只给缺 SiteMarker 的旧锚点兜底。
 func perceived_position_refs_for(self_pos: Vector3, near_radius: float, far_radius: float) -> Array:
 	var out := []
-	var far_sq := far_radius * far_radius
 	for location_id in _logical_ids:
-		var target := get_nearest_position_world(location_id, self_pos)
-		var d_sq := self_pos.distance_squared_to(target)
-		if d_sq > far_sq:
-			continue
-		var near_r := location_use_radius(location_id, near_radius)
-		var band := "near" if d_sq <= near_r * near_r else "far"
-		out.append({"id": location_id, "band": band})
+		var ref := _perceived_position_ref_for(String(location_id), self_pos, near_radius, far_radius)
+		if not ref.is_empty():
+			out.append(ref)
 	return out
+
+
+func _perceived_position_ref_for(location_id: String, self_pos: Vector3, fallback_near_radius: float, fallback_far_radius: float) -> Dictionary:
+	if not _anchors_by_id.has(location_id):
+		return {}
+	var best_band := ""
+	var best_distance_sq := INF
+	for anchor_v in _anchors_by_id[location_id]:
+		var anchor := anchor_v as Node3D
+		if anchor == null:
+			continue
+		var marker := anchor as SiteMarker
+		var target := marker.global_position if marker != null else anchor.global_position
+		var far_r := marker.eff_visible_far_radius() if marker != null else fallback_far_radius
+		if far_r <= 0.0:
+			far_r = fallback_far_radius
+		if far_r <= 0.0:
+			continue
+		var d_sq := self_pos.distance_squared_to(target)
+		if d_sq > far_r * far_r:
+			continue
+		var near_r := marker.eff_visible_near_radius() if marker != null else location_use_radius(location_id, fallback_near_radius)
+		if near_r <= 0.0:
+			near_r = location_use_radius(location_id, fallback_near_radius)
+		var direct_r := marker.eff_direct_interaction_radius() if marker != null else 0.0
+		if direct_r > near_r:
+			near_r = direct_r
+		var band := "near" if near_r > 0.0 and d_sq <= near_r * near_r else "far"
+		if band == "near":
+			if best_band != "near" or d_sq < best_distance_sq:
+				best_band = band
+				best_distance_sq = d_sq
+		elif best_band.is_empty() or (best_band == "far" and d_sq < best_distance_sq):
+			best_band = band
+			best_distance_sq = d_sq
+	if best_band.is_empty():
+		return {}
+	return {"id": location_id, "band": best_band}
 
 
 # "NPC 知道哪些地点存在"——全部 top-level location id（含 LocationMarker 顶层、

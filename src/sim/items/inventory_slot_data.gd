@@ -11,7 +11,7 @@ extends RefCounted
 #   freshness_tier, freshness_age_hours,                # null = 不腐
 #   durability,                                         # null = 无耐久概念
 #   base_effects, displayed_effects,                    # null = 无 use 效果
-#   listing_price_centi,                                # null = 无标价（货架陈列时才有，仅展示）
+#   listing_price_centi,                                # null = 无标价（货架陈列时才有）
 # }
 #
 # 原 `properties` sub-dict **完全消失**——aspect 字段平铺到 slot 顶层。
@@ -238,7 +238,7 @@ func durability() -> Variant:
 func base_effects() -> Variant:
 	return slot.get("base_effects", null)
 
-# 货架标价（centi 银）。null = 无标价（普通容器或未定价）。仅展示，付钱靠 trade/give。
+# 货架标价（centi 银）。null = 无标价（普通容器或未定价）。put_take 取货时按它校验付款。
 func listing_price_centi() -> Variant:
 	return slot.get("listing_price_centi", null)
 

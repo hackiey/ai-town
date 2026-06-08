@@ -9,6 +9,8 @@ class_name Effects
 #   "modify_rest":      { target: Character, amount: float }
 #   "modify_hp":        { target: Character, amount: float }
 #   "remove_status": { target: Character, status_id: String }
+#   "modify_symptom": { target: Character, symptom_id: String, amount: float }
+#   "modify_disease_sickness": { target: Character, disease_id: String, amount: float }
 #   "set_alive":        { target: Character, alive: bool } —— 翻转 alive；Character setter 做善后
 #   "broadcast_speech": { speaker: Character, text, volume, target_id, affected_ids: Array }
 #   "crop_state":       { crop: Crop, fields: Dictionary }
@@ -90,17 +92,11 @@ static func apply(effect: Dictionary) -> Dictionary:
 				"summary": "%s.drunk %+.1f → %.1f" % [target.name, target.drunk - before, target.drunk],
 			}
 		"modify_sickness":
-			var target := effect.get("target") as Character
-			var amount := float(effect.get("amount", 0.0))
-			if target == null:
-				return { "ok": false, "error": "modify_sickness: target is null" }
-			var before := target.sickness
-			target.sickness = clampf(target.sickness + amount, 0.0, Character.MAX_IMPAIRMENT)
-			target.state_io().persist()
-			return {
-				"ok": true,
-				"summary": "%s.sickness %+.1f → %.1f" % [target.name, target.sickness - before, target.sickness],
-			}
+			return _apply_modify_sickness(effect, false)
+		"modify_symptom":
+			return _apply_modify_symptom(effect)
+		"modify_disease_sickness":
+			return _apply_modify_sickness(effect, true)
 		"remove_status":
 			return _apply_remove_status(effect)
 		"set_alive":
@@ -121,6 +117,54 @@ static func apply(effect: Dictionary) -> Dictionary:
 			return _apply_world_event(effect)
 		_:
 			return { "ok": false, "error": "unknown effect type: %s" % type }
+
+
+static func _apply_modify_sickness(effect: Dictionary, disease_specific: bool) -> Dictionary:
+	var target := effect.get("target") as Character
+	var amount := float(effect.get("amount", 0.0))
+	if target == null:
+		return { "ok": false, "error": "modify_sickness: target is null" }
+	var disease_id := str(effect.get("disease_id", ""))
+	if disease_specific and disease_id.is_empty():
+		return { "ok": false, "error": "modify_disease_sickness: disease_id empty" }
+	if disease_specific and amount < 0.0 and target.disease_id != disease_id:
+		return {
+			"ok": true,
+			"summary": "%s.disease %s no match for %s" % [target.name, target.disease_id, disease_id],
+		}
+	var before := target.sickness
+	if disease_specific:
+		if amount > 0.0 and (target.disease_id.is_empty() or target.sickness <= 0.0):
+			target.disease_id = disease_id
+		target.apply_disease_symptoms(disease_id, amount)
+	elif amount < 0.0:
+		target.reduce_all_symptoms(-amount)
+	else:
+		target.modify_symptom("fatigue", amount)
+	target.state_io().persist()
+	var label := "sickness" if target.disease_id.is_empty() else "sickness/%s" % target.disease_id
+	return {
+		"ok": true,
+		"summary": "%s.%s %+.1f → %.1f" % [target.name, label, target.sickness - before, target.sickness],
+	}
+
+
+static func _apply_modify_symptom(effect: Dictionary) -> Dictionary:
+	var target := effect.get("target") as Character
+	var amount := float(effect.get("amount", 0.0))
+	var symptom_id := str(effect.get("symptom_id", ""))
+	if target == null:
+		return { "ok": false, "error": "modify_symptom: target is null" }
+	if symptom_id.is_empty():
+		return { "ok": false, "error": "modify_symptom: symptom_id empty" }
+	var before := float(target.symptoms.get(symptom_id, 0.0))
+	target.modify_symptom(symptom_id, amount)
+	target.state_io().persist()
+	var after := float(target.symptoms.get(symptom_id, 0.0))
+	return {
+		"ok": true,
+		"summary": "%s.symptom/%s %+.1f → %.1f" % [target.name, symptom_id, after - before, after],
+	}
 
 
 # Speech 广播：RPC 给所有 client 显示气泡 + 上行 backend world event。

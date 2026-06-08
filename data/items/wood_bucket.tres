@@ -5,12 +5,11 @@
 [resource]
 script = ExtResource("1_item")
 id = "wood_bucket"
-weight = 1.5
 kind = "container"
 stackable = false
 max_stack = 1
+weight = 0.8
 shape_type = "bucket"
-tags = PackedStringArray("liquid_container")
 materials = {
 "body": "wood"
 }

@@ -143,14 +143,11 @@ Continued action（detached 长 body action）的队列管理 + 给 LLM 的 noti
 
 **Per-agent 怎么用**：
 ```ts
-// runtimes/two-track-agent/game-tools.ts
-export function createTwoTrackAgentTools(options) {
-  const tools = createSharedGameAgentTools(options);
-  if (options.agentKind === "god" || !options.characterId) return tools;
-  return [
-    ...tools,
-    createTwoTrackUpdateMemoryTool(options.memoryStorage, options.townId, options.characterId),
-  ];
+// runtimes/<agent>/memory-tool.ts
+export function createRuntimeUpdateMemoryTool(storage, townId, characterId) {
+  return createToolFromSharedSchema(updateMemorySchema, async (args) => {
+    // Per-agent strategy decides how memory_index/new_string are interpreted and stored.
+  });
 }
 ```
 

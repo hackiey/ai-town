@@ -157,7 +157,7 @@ LLM 或玩家发一个 verb → GDScript 收 → 翻译成 affect。每个 verb 
 
 **sub-step 顺序（按风险递增）**：
 1. **容器 deposit/withdraw/inspect** — 最小、最纯的"两个 actor 间转移物品"，验证 inventory 套件 + MechanicVerb wrapper 真好用
-2. **工资 claim_wages** — 钱币就是 `item_id="silver_coin"` 的普通 item，`transfer_item(vault, actor, ...)` 即可，无新 affect
+2. **工资 claim_wages** — 钱币使用 `item_id="silver_coin"` / `gold_coin` 作为货币单位，但真值进钱包；`transfer_item(vault, actor, {item_id="silver_coin"}, ...)` 由 InventoryAdapter 折算为容器钱包到角色钱包转账。
 3. **货架 update/buy_from** — 复用容器 + 钱，第一次跨多个 mechanic 协作
 4. **睡眠 start/commit** — `add_status("sleeping", -1)` + 唤醒时 `remove_status` + `modify_hp`；不需要 `set_sleeping` 专用 affect
 5. **上贡 submit_royal_consumption** — 单独的 royal_history 表写入（用 `affect.world_event` 触发，GDScript handler 落 SQLite）
@@ -237,7 +237,7 @@ Crafting 不合并（两阶段 lifecycle 形状不同），保持独立。
 | 4 | ✅ `hp`, `remove_status`, `set_alive` | 低 |
 | 5 | `set_node_field`（mining/minting cooldown 戳）；item 替换待定（见 §8） | 中 |
 | 6.1 | （inventory 套件已够，需 ContainerNode 实现 `_get_inventory`） | 低 |
-| 6.2 | （钱币 = 普通 item，走 `transfer_item` + `find_items`，无新 affect） | 低 |
+| 6.2 | （钱币 = 钱包单位 id，走 `transfer_item` + `find_items`，InventoryAdapter 负责钱包折算） | 低 |
 | 6.3 | shelf listings 复用 inventory 套件 + `world.shelf_listings(node)` | 中 |
 | 6.4 | `set_sleeping` 用 `add_status("sleeping", -1)` 已够；hp 回复用 `modify_hp` | 低 |
 | 6.5 | `world_event("royal_consumption", ...)` + 历史落 SQLite 走现有 GDScript handler | 低 |

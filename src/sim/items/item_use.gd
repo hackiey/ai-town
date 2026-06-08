@@ -63,11 +63,45 @@ static func execute(character: Character, view: InventorySlotData, resolved: Dic
 	var perish := view.as_perishable()
 	if view.has_tag("spoiled") or (perish != null and perish.is_rotten()):
 		effects = effects.duplicate()
-		effects["sickness"] = float(effects.get("sickness", 0.0)) + ROTTEN_SICKNESS
+		effects["disease.stomach_illness"] = float(effects.get("disease.stomach_illness", 0.0)) + ROTTEN_SICKNESS
 	if effects.is_empty():
 		return {"ok": true, "effects": [], "applied": {}}
+	var medicine := _extract_medicine_effect(character, view, effects)
+	var immediate_v: Variant = medicine.get("immediate", {})
+	effects = immediate_v as Dictionary if immediate_v is Dictionary else {}
 	var summaries := ItemEffects.apply_to_caster(character, effects)
-	return {"ok": true, "effects": summaries, "applied": effects}
+	var symptom_deltas_v: Variant = medicine.get("symptom_deltas", {})
+	var symptom_deltas: Dictionary = symptom_deltas_v if symptom_deltas_v is Dictionary else {}
+	if not symptom_deltas.is_empty():
+		var applied := character.set_medicine_effect(str(medicine.get("source_id", view.id())), symptom_deltas)
+		summaries.append({
+			"ok": true,
+			"summary": "%s medicine_effect %s %d symptoms/4h" % [character.name, "refreshed" if applied else "not_applied", symptom_deltas.size()],
+		})
+	var applied_effects := effects.duplicate()
+	if not symptom_deltas.is_empty():
+		applied_effects["medicine_effect"] = symptom_deltas
+	return {"ok": true, "effects": summaries, "applied": applied_effects}
+
+
+static func _extract_medicine_effect(character: Character, view: InventorySlotData, effects: Dictionary) -> Dictionary:
+	if not view.has_tag("medicine"):
+		return {"immediate": effects, "symptom_deltas": {}, "source_id": view.id()}
+	var immediate := {}
+	var symptom_deltas := {}
+	for k in effects.keys():
+		var key := str(k)
+		var amount := float(effects[k])
+		if key.begins_with("symptom."):
+			var symptom_id := key.substr("symptom.".length())
+			symptom_deltas[symptom_id] = float(symptom_deltas.get(symptom_id, 0.0)) + amount
+			continue
+		immediate[key] = amount
+	return {
+		"immediate": immediate,
+		"symptom_deltas": symptom_deltas,
+		"source_id": view.id(),
+	}
 
 
 static func completion_message(item: Item, character: Character) -> String:

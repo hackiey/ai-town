@@ -5,6 +5,11 @@
       "prompt": "按 E 打造",
       "description": "把金属锭打成部件、工具。需锻造手艺。"
     },
+    "alchemy_table": {
+      "name": "炼金台",
+      "prompt": "按 E 制药",
+      "description": "调制草药茶、药汤和药膏。需草药炼金手艺。"
+    },
     "forge": {
       "name": "熔炉",
       "prompt": "按 E 锻造",
@@ -38,6 +43,33 @@
     "well": {
       "name": "水井",
       "prompt": "按 E 打水"
+    },
+    "storage_chest": {
+      "name": "储物箱",
+      "prompt": "按 E 查看"
+    },
+    "cabinet": {
+      "name": "柜子",
+      "prompt": "按 E 查看"
+    },
+    "wardrobe": {
+      "name": "衣柜",
+      "prompt": "按 E 查看"
+    },
+    "general_store_shelf": {
+      "name": "杂货店货架",
+      "prompt": "按 E 查看",
+      "description": "杂货店用来陈列和出售商品的货架。"
+    },
+    "bakery_bread_shelf": {
+      "name": "面包店货架",
+      "prompt": "按 E 查看",
+      "description": "面包店用来陈列和出售面包的货架。"
+    },
+    "tavern_bar_shelf": {
+      "name": "酒馆柜台",
+      "prompt": "按 E 查看",
+      "description": "酒馆柜台上的售卖货架。"
     },
     "workbench": {
       "name": "工作台",
