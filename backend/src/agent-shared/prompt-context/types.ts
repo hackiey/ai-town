@@ -235,6 +235,7 @@ export type AgentCurrentContext = {
   interactiveSites: InteractiveSiteContext[];
   inventory: string[];
   backpack: string[];
+  backpackCarryText?: string;
   itemIndex: AgentItemIndexMaps;
   walletCenti: number;
   lastUpdatedAt?: string;

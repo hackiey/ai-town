@@ -62,15 +62,16 @@ export function renderAgentSystemContext(context: GameAgentContext): string {
   return sections.join("\n\n");
 }
 
-// 长期 Memory（self_knowledge / skill / other）——抽到 system 之外，作为消息序列里
+// 身份 + 长期 Memory（self_knowledge / skill / other）——抽到 system 之外，作为消息序列里
 // 一条固定 pinned user message。update_memory 改它只会让 messages 段 cache 失效，
-// 不连累 system/tools 段的 cache。空时返回 undefined（不送空块）。
+// 不连累 system/tools 段的 cache。
 export function renderAgentMemoryPinnedUserMessage(context: GameAgentContext): string | undefined {
   const locale = getActiveLocale();
+  const identity = t("prompt.context.label.playing_role_format", locale, { name: renderCharacterIdentity(context.characterId) });
   const body = renderMemorySection(context, locale);
-  if (!body.trim()) return undefined;
   const label = t("prompt.context.label.memory", locale);
-  return `# ${label}\n${body}`;
+  if (!body.trim()) return identity;
+  return `${identity}\n\n# ${label}\n${body}`;
 }
 
 // 给 user message 端用：把 working_memory 整成一段独立块，每 turn 重新拼。
@@ -119,13 +120,11 @@ export function renderAgentEventsContext(context: GameAgentContext): string {
   return sections.join("\n\n");
 }
 
-// 现状块：playing role + 位置 / 属性 / 手艺 / 周围 / 背包 / 当前时间。
+// 现状块：位置 / 属性 / 手艺 / 周围 / 背包 / 当前时间。
 // 不含事件段——事件段由 renderAgentEventsContext 单独渲染。
 export function renderAgentTurnContext(context: GameAgentContext): string {
   const sections: string[] = [];
   const locale = getActiveLocale();
-
-  sections.push(t("prompt.context.label.playing_role_format", locale, { name: renderCharacterIdentity(context.characterId) }));
 
   appendSection(sections, t("prompt.context.label.current_location_with_colon", locale), renderCurrentLocationText(context.current));
 
@@ -150,7 +149,7 @@ export function renderAgentTurnContext(context: GameAgentContext): string {
     appendSection(sections, t("prompt.context.label.current_holding", locale), renderMemoryLines(context.current.inventory));
   }
 
-  appendSection(sections, t("prompt.context.label.backpack", locale), renderMemoryLines(context.current.backpack));
+  appendSection(sections, renderBackpackSectionTitle(context.current, locale), renderMemoryLines(context.current.backpack));
 
   appendSection(sections, t("prompt.context.label.current_time", locale), formatGameTime(context.current.gameTime) ?? t("error.default_unknown_age", locale));
 
@@ -449,6 +448,11 @@ function renderCurrentLocationText(current: AgentCurrentContext): string {
     locationDescription(current.currentLocation),
   ].filter((part): part is string => Boolean(part));
   return parts.join("；");
+}
+
+function renderBackpackSectionTitle(current: AgentCurrentContext, locale: Locale): string {
+  if (!current.backpackCarryText) return t("prompt.context.label.backpack", locale);
+  return t("prompt.context.label.backpack_carry_format", locale, { carry: current.backpackCarryText });
 }
 
 function renderCharacterIdentity(characterId: string): string {

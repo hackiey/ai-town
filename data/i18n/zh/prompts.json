@@ -51,6 +51,7 @@
         "owned_shelves": "我的货架",
         "current_holding": "当前持有物品",
         "backpack": "背包",
+        "backpack_carry_format": "背包（负重：{carry}）",
         "recent_events_format": "近期事件（近 {hours} 游戏小时）",
         "historical_events_format": "历史事件（{startHours} 至 {endHours} 游戏小时前）",
         "current_time": "当前时间",

@@ -203,7 +203,7 @@ function renderAssistantBody(container, message, toolsSnapshot, llmMessages, llm
       "messages at LLM call",
       buildLlmCallDetails(llmMessages, llmSystemPrompt),
       '<span class="pill">' + (hasLlmMessages ? llmMessages.length : 0) + " messages</span>",
-      { collapsible: true },
+      { collapsible: true, defaultOpen: true },
     ));
   }
 
@@ -272,6 +272,7 @@ function buildLlmCallDetails(messages, systemPrompt) {
   if (systemPrompt) {
     const details = document.createElement("details");
     details.className = "llm-message-card";
+    details.open = true;
     details.innerHTML = '<summary><span class="role">system</span></summary>';
     const pre = document.createElement("pre");
     pre.textContent = systemPrompt;
@@ -280,12 +281,16 @@ function buildLlmCallDetails(messages, systemPrompt) {
   }
 
   const list = Array.isArray(messages) ? messages : [];
+  let openedFirstUser = false;
   for (let index = 0; index < list.length; index += 1) {
     const message = list[index] || {};
     const role = message.role || "unknown";
     const preview = extractText(message.content) || message.errorMessage || "";
+    const defaultOpen = role === "system" || (role === "user" && !openedFirstUser);
+    if (role === "user" && !openedFirstUser) openedFirstUser = true;
     const details = document.createElement("details");
     details.className = "llm-message-card";
+    if (defaultOpen) details.open = true;
     details.innerHTML = ""
       + "<summary>"
       + '<span class="role">' + escapeHtml(role) + "</span>"

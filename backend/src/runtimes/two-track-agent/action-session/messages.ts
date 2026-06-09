@@ -85,15 +85,24 @@ export function trimHistoricalUserMessages(messages: AgentMessage[], fullUserMes
   return out;
 }
 
-// pinned prefix user message：当前只有 pinned memory。预留 helper 形式，
+// pinned prefix user message：当前是身份行 + pinned memory。预留 helper 形式，
 // 未来想再加固定置顶段直接在这里 || 一下。
 function isPinnedPrefixUserMessage(message: Extract<AgentMessage, { role: "user" }>): boolean {
   return isSessionMemoryPinnedUserMessage(message);
 }
 
 export function isSessionMemoryPinnedUserMessage(message: Extract<AgentMessage, { role: "user" }>): boolean {
-  const prefix = `# ${t("prompt.context.label.memory", getActiveLocale())}`;
-  return (userMessageContentText(message) ?? "").startsWith(prefix);
+  const locale = getActiveLocale();
+  const text = userMessageContentText(message) ?? "";
+  const memoryPrefix = `# ${t("prompt.context.label.memory", locale)}`;
+  if (text.startsWith(memoryPrefix)) return true;
+
+  const identityPrefix = t("prompt.context.label.playing_role_format", locale, { name: "" });
+  if (!text.startsWith(identityPrefix)) return false;
+
+  const nextSectionIndex = text.indexOf("\n\n");
+  if (nextSectionIndex < 0) return true;
+  return text.slice(nextSectionIndex + 2).startsWith(memoryPrefix);
 }
 
 export const SESSION_RECENT_MESSAGE_LIMIT_CEILING = DEFAULT_AGENT_RECENT_MESSAGE_LIMIT;

@@ -239,7 +239,7 @@ function buildLlmCallCard(index, record, selectedTurn) {
   const body = document.createElement("div");
   body.className = "body";
   if (record.llmSystemPrompt) {
-    body.appendChild(buildLlmRequestMessageDetails("system", 0, record.llmSystemPrompt, record.llmSystemPrompt));
+    body.appendChild(buildLlmRequestMessageDetails("system", 0, record.llmSystemPrompt, record.llmSystemPrompt, true));
   }
 
   if (messages.length === 0) {
@@ -248,13 +248,18 @@ function buildLlmCallCard(index, record, selectedTurn) {
     empty.textContent = "没有保存这次 LLM call 的 request messages（通常是旧数据）";
     body.appendChild(empty);
   } else {
+    let openedFirstUser = false;
     for (let messageIndex = 0; messageIndex < messages.length; messageIndex += 1) {
       const message = messages[messageIndex] || {};
+      const role = message.role || "unknown";
+      const defaultOpen = role === "system" || (role === "user" && !openedFirstUser);
+      if (role === "user" && !openedFirstUser) openedFirstUser = true;
       body.appendChild(buildLlmRequestMessageDetails(
-        message.role || "unknown",
+        role,
         messageIndex + 1,
         llmMessagePreview(message),
         prettyJson(message),
+        defaultOpen,
       ));
     }
   }
@@ -263,9 +268,10 @@ function buildLlmCallCard(index, record, selectedTurn) {
   return details;
 }
 
-function buildLlmRequestMessageDetails(role, index, preview, fullText) {
+function buildLlmRequestMessageDetails(role, index, preview, fullText, defaultOpen) {
   const details = document.createElement("details");
   details.className = "llm-request-message";
+  if (defaultOpen) details.open = true;
   details.innerHTML = ""
     + "<summary>"
     + '<span class="role">' + escapeHtml(role) + "</span>"

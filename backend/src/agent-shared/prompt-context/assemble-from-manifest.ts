@@ -243,6 +243,7 @@ export function assembleAgentContextFromManifest(
     interactiveSites: buildInteractiveSites(nearbyFarms, nearbyWorkstations, nearbyShelves, names),
     inventory: inventoryRender.lines,
     backpack: backpackRender.lines,
+    backpackCarryText: selfState ? `${formatCurrentOverMax(selfState.carryWeight, selfState.maxCarry)} kg` : undefined,
     itemIndex: {
       equipment: inventoryRender.entries,
       backpack: backpackRender.entries,
@@ -274,10 +275,7 @@ function characterAttributesFromState(state: CharacterStateView | undefined): st
     `${characterAttributeName("rest")}: ${formatSicknessRiskMeter(state.rest, state.maxRest, 40, locale)}`,
     `${characterAttributeName("strength")}: ${formatNumber(state.strength)}`,
     `${characterAttributeName("constitution")}: ${formatNumber(state.constitution)}`,
-    `${characterAttributeName("purse")}: ${(state.walletCenti / 100).toFixed(2)} 银`,
-    `负重: ${formatCurrentOverMax(state.carryWeight, state.maxCarry)} kg`,
   ];
-  lines.push(...bodyCommonSenseLines(locale));
   if (state.burning) lines.push("burning");
   if (state.activeStatuses.length > 0) {
     const tags = state.activeStatuses
@@ -299,14 +297,6 @@ function characterAttributesFromState(state: CharacterStateView | undefined): st
   // 负重档位（carryTier 非空才渲染）：value 用当前总重 kg。
   pushImpairmentLines(lines, "encumber", state.carryTier, state.carryWeight, locale);
   return lines;
-}
-
-function bodyCommonSenseLines(locale: Locale): string[] {
-  return [
-    t("prompt.context.body_common_sense.strength", locale),
-    t("prompt.context.body_common_sense.constitution", locale),
-    t("prompt.context.body_common_sense.sickness_risk_rule", locale),
-  ];
 }
 
 // 醉酒 / 生病：超阈值才向自我感知里塞三行——状态档位、可能后果、roleplay 指令。
