@@ -28,7 +28,7 @@
 |---|---|
 | 直接食用 | berry、bread、cooked_meat、cured_meat、omelet、cured_omelet、veg_stew、cured_stew、tomato_fruit |
 | 长保鲜 | berry_jam、cured_stew、cured_omelet、bread |
-| 酒 | beer |
+| 酒 | beer（1 份麦芽酒，当前由 0.5L 桶装 beer 液体取成） |
 
 ## 工具和容器
 
@@ -36,4 +36,4 @@
 |---|---|
 | 工具 | iron_knife、sickle、iron_shovel、iron_pick、iron_axe |
 | 部件 | iron_blade、iron_pick_head、iron_axe_head、rope、wood_shaft |
-| 容器 | wood_bucket、brewing_barrel、cup |
+| 容器 | wood_bucket、brewing_barrel |

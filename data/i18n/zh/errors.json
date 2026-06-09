@@ -6,7 +6,6 @@
     "do_nothing_loop_stopped": "do_nothing 已结束当前 agent loop，跳过剩余工具调用",
     "interrupt_response_loop_stopped": "对突发事件的回应已完成，当前 agent loop 已停止；如有未完成的后台工作（如种田、移动），完成时会自然进入下一回合",
     "location_unknown": "未知地点",
-    "compressed_history_marker": "已压缩历史",
     "default_unknown": "未定义",
     "default_unknown_age": "未知",
     "no_action_taken": "本轮没有执行行动",
@@ -31,7 +30,7 @@
     "unknown_shelf": "无法识别货架：{shelf}。请使用当前上下文中的货架名称或 id。",
     "unknown_shelf_listing": "无法识别货架 listing：{listing}。请使用当前货架中列出的 listing_id。",
     "unknown_target": "无法识别目标：{target}。请使用当前上下文中的角色、地点、工作台或物品名称。",
-    "tool_failure_reflecting": "工具调用失败，当前 agent loop 已停止；正在交给慢思考反思这次失败，随后会带着新的判断继续",
+    "tool_failure_self_correcting": "工具调用失败；这条回复里的剩余工具调用已跳过，下一轮会根据失败原因自行修正",
     "put_take": {
       "invalid_target": "put_take target 必须是 object",
       "empty_transfers": "put_take 没有指定 transfers",

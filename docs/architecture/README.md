@@ -20,7 +20,7 @@ Agent 系统、脚本层、实体模型的活文档。当前在迭代，**未完
 2. [runtime-layers.md](./runtime-layers.md) — 脑(agent runtime) / 身(Godot) 分层、战斗 cadence、headless server per town
 3. [game-mechanics.md](./game-mechanics.md) — 玩家机制百科：按当前实装规则整理小镇、数值、制作、农场与互动系统
 4. Agent runtime 两件套（一起读）：
-   - [two-track-agent-session.md](./two-track-agent-session.md) — **当前唯一 LLM runtime**；action 轨 + thinking 轨双 session 并发，working_memory KV 单向传递，无打断机
+   - [two-track-agent-session.md](./two-track-agent-session.md) — **当前唯一 LLM runtime**；action 轨 + thinking 轨双 session 并发，working_memory KV 单向传递，action 轨按事件 release/abort 后重装 fresh context
    - [agent-shared.md](./agent-shared.md) — runtime 之间共享的非策略代码模块（name-resolver / event-descriptions / game-tools / prompt-context 等）+ per-agent 边界
 5. [scripting-layer.md](./scripting-layer.md) — Lua VM + ScriptExecutor 公共契约 + spec.ts 设计原则
 6. [entity-model.md](./entity-model.md) — Substance + Character + Wand + active_statuses

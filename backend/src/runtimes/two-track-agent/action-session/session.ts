@@ -1,12 +1,12 @@
 // Two-track action 轨 session：快速反应、关闭 thinking、消费 working_memory。
 //
 // 关键约束：
-// - 没有打断机制。事件到来时若已经有 turn 在跑，仅 append 到 pendingEvents，
-//   等当前 turn 自然结束后 outer loop 看队列起新 turn。
+// - 新事件会先进入 pendingEvents；若 turn 在跑，轻量 interrupt/release 让下一次 LLM call
+//   使用 fresh context，慢工具本体继续由 Godot 执行。
 // - 没有 idle 思考——15 分钟一次的"想一下"由 ThinkingTrackSession 跑出
-//   working_memory，本 session 每个 turn 入口读取它注入 system prompt。
-// - turn 内 LLM 一旦交付完一条 assistant message（含其全部 tool）就停 loop，
-//   不再 continue。因为 thinking 已经离线做了，action 不需要多轮自反思。
+//   working_memory，本 session 每个 LLM call 入口读取它注入 user prompt。
+// - 每条 assistant message 的 tool 都跑完后强制断开 pi-agent-core 续航，回到本层重装
+//   working_memory / 感知 / 工具，再决定是否继续下一次 LLM call。
 //
 // 设计假设：action 轨延迟很低（无 extended thinking），事件到来时即便排队
 // 也只多等几秒就会被消费，可接受。
@@ -36,6 +36,7 @@ import {
   isAssistantMessage,
 } from "../../../agent-shared/utils/agent-message.js";
 import {
+  extractToolCalls,
   formatContentText,
   snapshotAgentTools,
 } from "../../../agent-shared/utils/log-format.js";
@@ -46,6 +47,7 @@ import { objectValue } from "../../../agent-shared/utils/primitives.js";
 import type {
   AgentCurrentContext,
   GameAgentContext,
+  TimelineCursor,
   WorkingMemorySnapshot,
 } from "../../../agent-shared/prompt-context/types.js";
 import type { RuntimeStorage } from "../../../agent-host/storage.js";
@@ -54,11 +56,13 @@ import {
   buildTwoTrackAgentBaseSystemPrompt,
   buildTwoTrackAgentMemoryPinnedUserMessage,
   buildTwoTrackAgentTurnSystemPrompt,
+  countUncompactedTimelineEntries,
   isEventRelevantToCharacter,
   renderTwoTrackAgentActionNoticeUserMessage,
   renderTwoTrackAgentTurnUserMessage,
   resolveCharacterIdByName,
   TwoTrackAgentContextBuilder,
+  UNSUMMARIZED_TIMELINE_TRIGGER_COUNT,
 } from "../prompt/index.js";
 import { getActiveLocale, t } from "../../../i18n/index.js";
 import {
@@ -78,7 +82,6 @@ import {
 import { TurnReleaseController } from "../../../agent-shared/game-tools/release-controller.js";
 import {
   assembleMessagesForModel,
-  trimHistoricalUserMessages,
 } from "./messages.js";
 import { SessionPersistence, type PersistAgentMessageSnapshot } from "./persistence.js";
 
@@ -96,7 +99,19 @@ export async function readWorkingMemoryFromStorage(storage: RuntimeStorage): Pro
   const updatedAt = typeof rec.updatedAt === "string" ? rec.updatedAt : new Date().toISOString();
   const triggerReason = typeof rec.triggerReason === "string" ? rec.triggerReason : undefined;
   const gameTime = objectValue(rec.gameTime) as GameTimeSnapshot | undefined;
-  return { content, updatedAt, triggerReason, gameTime };
+  const compactedThrough = parseTimelineCursor(rec.compactedThrough);
+  return { content, updatedAt, triggerReason, gameTime, compactedThrough };
+}
+
+function parseTimelineCursor(value: unknown): TimelineCursor | undefined {
+  const rec = objectValue(value);
+  if (!rec) return undefined;
+  const kind = rec.kind === "event" || rec.kind === "action" ? rec.kind : undefined;
+  const id = typeof rec.id === "string" && rec.id.length > 0 ? rec.id : undefined;
+  const createdAt = typeof rec.createdAt === "string" && rec.createdAt.length > 0 ? rec.createdAt : undefined;
+  if (!kind || !id || !createdAt) return undefined;
+  const gameMinutes = typeof rec.gameMinutes === "number" && Number.isFinite(rec.gameMinutes) ? rec.gameMinutes : undefined;
+  return gameMinutes == null ? { kind, id, createdAt } : { kind, id, createdAt, gameMinutes };
 }
 
 export type ActionTrackSessionOptions = {
@@ -110,9 +125,7 @@ export type ActionTrackSessionOptions = {
   characterId: string;
   agentKind: AgentKind;
   logger?: PiAgentRuntimeLogger;
-  // tool 执行失败时，action 轨同步等 thinking 轨反思这次失败（写新 working_memory）再续上。
-  // 由 runtime 注入 → thinkingSession.runThinkBlocking。player session 不注入（无 thinking 轨）。
-  requestBlockingReflection?: (reason: string) => Promise<void>;
+  requestTimelineBacklogThink?: () => void;
 };
 
 export class ActionTrackSession {
@@ -127,8 +140,6 @@ export class ActionTrackSession {
   private readonly agent: Agent;
 
   private turnInFlight = false;
-  // tool 失败后置位：暂停消费任何 reason，直到 thinking 反思写完（enqueueReflectionTurn 解除）。
-  private pausedForReflection = false;
   private currentThinkReason?: string;
   private latestObservedGameMinute?: number;
   private latestObservedGameTime?: GameTimeSnapshot;
@@ -150,6 +161,7 @@ export class ActionTrackSession {
   private stopFurtherToolsThisTurn = false;
   private stopAgentLoopThisTurn = false;
   private stopFurtherToolsReason?: string;
+  private blockRemainingToolCallsThisMessage = false;
   // 单次 LLM call 内是否有 tool 真的跑了——决定 runCurrentTurn 要不要再起一轮。
   // 不用 state.messages 判断，因为 pi-agent-core abort 路径会塞一条 fake aborted assistant 在末尾。
   private toolExecutedThisLlmCall = false;
@@ -165,9 +177,11 @@ export class ActionTrackSession {
   private releaseController?: TurnReleaseController;
   private activeToolExecutions = 0;
   private readonly interruptWindow = new InterruptWindow();
-  // tool_execution_end 不带原始入参（只有 toolName/result），但预提交失败补记 action_failed 时
+  // tool_execution_end 不带原始入参（只有 toolName/result），但预提交失败补记 failed action_log 时
   // 需要 target（对谁说、说了什么）。在 _start 按 toolCallId 暂存 args，_end 取回后清掉。
   private readonly pendingToolArgs = new Map<string, unknown>();
+  private readonly completedToolCallIds = new Set<string>();
+  private readonly recordedFailedToolCallIds = new Set<string>();
 
   constructor(private readonly options: ActionTrackSessionOptions) {
     this.continuedActions = new ContinuedActionManager({
@@ -220,6 +234,9 @@ export class ActionTrackSession {
       transformContext: (messages, signal) => this.transformContextForModel(messages, signal),
       toolExecution: "sequential",
       beforeToolCall: async ({ toolCall }) => {
+        if (this.blockRemainingToolCallsThisMessage) {
+          return { block: true, reason: t("error.tool_failure_self_correcting", getActiveLocale()) };
+        }
         if (this.stopFurtherToolsThisTurn) {
           return { block: true, reason: this.stopFurtherToolsReason ?? t("error.interrupted_by_event", getActiveLocale()) };
         }
@@ -370,51 +387,30 @@ export class ActionTrackSession {
     if (gameTime) this.observeGameTime(gameTime);
   }
 
-  // Thinking 轨写完 working_memory 后由 runtime 调用，确保空闲也能被周期唤醒。
+  // Thinking 轨写完 working_memory 后由 runtime 调用，确保空闲也能被周期总结唤醒。
   // 不打断当前 turn——若有 turn 在跑就排队等 turn_end 后 loop 自然消费。
-  // reflection 是最低优先级的兜底：入队不去重，但 runTurnLoop 消费时，若队列里还排着任何
-  // 非 reflection 的 reason，这一轮 reflection 会被直接丢弃（见 runTurnLoop）。所以排队的
-  // reflection 被即时事件（sensory/interrupt/...）超越时不会占用一次 LLM turn。
-  enqueueReflectionTurn(): void {
+  // working_memory 是最低优先级的兜底：入队不去重，但 runTurnLoop 消费时，若队列里还排着任何
+  // 非 working_memory 的 reason，这一轮唤醒会被直接丢弃（见 runTurnLoop）。所以排队的
+  // working_memory 被即时事件（sensory/interrupt/...）超越时不会占用一次 LLM turn。
+  enqueueWorkingMemoryTurn(): void {
     if (this.options.agentKind !== "npc") return;
-    // thinking 反思写完 working_memory 是"恢复"信号：解除 tool 失败导致的暂停，让 action 续上。
-    this.pausedForReflection = false;
-    this.enqueueReason("reflection");
+    this.enqueueReason("working_memory");
     void this.runTurnLoop();
   }
 
-  // tool 失败后同步等 thinking 反思。reflection 写完 working_memory 时 thinking 会回调
-  // onReflectionWritten → enqueueReflectionTurn，那里解除 pausedForReflection 并续轮。
-  // finally 是兜底：万一这次 thinking 没写 working_memory（没回调），也要解除暂停 + 续一轮，
-  // 否则 action 会永久停在 pausedForReflection。
-  private async runFailureReflection(reason: string): Promise<void> {
-    try {
-      await this.options.requestBlockingReflection?.(reason);
-    } catch (error) {
-      this.options.logger?.warn({
-        error,
-        townId: this.options.townId,
-        characterId: this.options.characterId,
-        agentKind: this.options.agentKind,
-        reason,
-      }, "blocking reflection after tool failure failed");
-    } finally {
-      // 若 onReflectionWritten 已经续过轮（pausedForReflection 被清），这里就什么都不做，避免重复起轮。
-      if (this.pausedForReflection) {
-        this.enqueueReflectionTurn();
-      }
-    }
-  }
-
   // 预提交校验失败（工具在 submitToolAction 之前就 throw，如 resolveCraftWorkstation 翻不出 slug）
-  // 不会建 action_log 行，于是失败动作在 debug 时间轴上找不到、失败反思成了孤儿 trigger。
-  // 这里补记一条 failed action_log（不发 Godot），让失败动作有完整锚点。
+  // 不会建 action_log 行，于是失败动作在 debug 时间轴和下一轮 prompt 里找不到。
+  // 这里补记一条 failed action_log（不发 Godot、不写 world_events），让失败动作有内部锚点。
   // 判据：error result（createErrorToolResult）的 details 里没有 actionId；Godot 提交后失败的
-  // result 带 actionId，已有行，不重复记。
-  private recordPreSubmitToolFailure(toolName: string, result: unknown, args: unknown): void {
+  // result 带 actionId，已有行，不重复记。返回 true 表示本次确实补记了内部失败 action。
+  private recordPreSubmitToolFailure(toolName: string, result: unknown, args: unknown, toolCallId?: string): boolean {
+    if (toolCallId) {
+      if (this.recordedFailedToolCallIds.has(toolCallId)) return false;
+      this.recordedFailedToolCallIds.add(toolCallId);
+    }
     const details = objectValue(objectValue(result)?.details);
     if (details && typeof details.actionId === "string" && details.actionId) {
-      return; // Godot 已落行
+      return false; // Godot 已落行
     }
     const error = formatContentText(objectValue(result)?.content) ?? `${toolName} failed`;
     try {
@@ -422,8 +418,10 @@ export class ActionTrackSession {
         characterId: this.options.characterId,
         action: toolName as CharacterAction,
         target: buildPreSubmitFailureTarget(toolName, args),
+        reason: buildPreSubmitFailureReason(args),
         gameTime: this.latestObservedGameTime,
       }, error);
+      return true;
     } catch (error) {
       this.options.logger?.warn({
         error,
@@ -432,7 +430,26 @@ export class ActionTrackSession {
         agentKind: this.options.agentKind,
         toolName,
       }, "failed to record pre-submit tool failure");
+      return false;
     }
+  }
+
+  // 有些失败发生在 tool execute 前（参数 JSON/schema 解析失败等），不会出现
+  // tool_execution_start/end。尽力从 assistant error message 里抽 tool_call，补成内部
+  // failed action_log；下一轮 action prompt 会在同一事件时间线里看到这条反馈。
+  private recordAssistantToolParseFailures(message: AgentMessage): boolean {
+    const messageObject = objectValue(message) ?? {};
+    const error = typeof messageObject.errorMessage === "string" && messageObject.errorMessage.trim()
+      ? messageObject.errorMessage.trim()
+      : "tool call failed before execution";
+    let recorded = false;
+    for (const toolCall of extractToolCalls(messageObject)) {
+      if (!toolCall.name) continue;
+      if (toolCall.id && this.completedToolCallIds.has(toolCall.id)) continue;
+      const result = { content: [{ type: "text", text: error }] };
+      recorded = this.recordPreSubmitToolFailure(toolCall.name, result, toolCall.args, toolCall.id) || recorded;
+    }
+    return recorded;
   }
 
   // --- Turn 调度 ---
@@ -446,17 +463,14 @@ export class ActionTrackSession {
     this.turnInFlight = true;
     try {
       while (true) {
-        // tool 失败后暂停：不消费任何 reason（事件照常入队），等 thinking 反思写完由
-        // enqueueReflectionTurn 解除暂停并续轮。避免失败后还没反思就抢着起新 action turn。
-        if (this.pausedForReflection) return;
         // 优先按 push 顺序消费 reasons；空了就退出（不做 idle）。
         const reason = this.pendingReasons.shift();
         if (!reason) return;
-        // reflection 是最低优先级的兜底（防止 NPC 长时间不动），只在实在没别的事可做时才跑。
-        // 队列里只要还排着任何非 reflection 的 reason（sensory/interrupt/player_command/
-        // action_notice），就丢弃这一轮 reflection：让即时事件以「回应」语义优先跑，也省掉一次
+        // working_memory 是最低优先级的兜底（防止 NPC 长时间不动），只在实在没别的事可做时才跑。
+        // 队列里只要还排着任何非 working_memory 的 reason（sensory/interrupt/player_command/
+        // action_notice），就丢弃这一轮唤醒：让即时事件以「回应」语义优先跑，也省掉一次
         // 无谓的 LLM 调用（感知事件本身由每个 turn 随到随显随清，不依赖这条丢弃逻辑兜底）。
-        if (reason === "reflection" && this.pendingReasons.some((pending) => pending !== "reflection")) {
+        if (reason === "working_memory" && this.pendingReasons.some((pending) => pending !== "working_memory")) {
           continue;
         }
         await this.runTurn(reason);
@@ -474,12 +488,15 @@ export class ActionTrackSession {
     this.stopFurtherToolsThisTurn = false;
     this.stopAgentLoopThisTurn = false;
     this.stopFurtherToolsReason = undefined;
+    this.blockRemainingToolCallsThisMessage = false;
     // 每 turn 独立的 release 控制器——前一 turn 的 waiters 已经 release 过或随 abort 失效。
     // 不复用 session 级实例，避免跨 turn 的旧 waiter 被新 release 误伤
     // （参 release-controller.ts 类头注释里的"一次性广播"约束）。
     this.releaseController = new TurnReleaseController();
     this.activeToolExecutions = 0;
     this.interruptWindow.reset();
+    this.completedToolCallIds.clear();
+    this.recordedFailedToolCallIds.clear();
 
     try {
       await this.persistence.ensureSession();
@@ -507,6 +524,9 @@ export class ActionTrackSession {
       this.releaseController = undefined;
       this.activeToolExecutions = 0;
       this.interruptWindow.reset();
+      this.blockRemainingToolCallsThisMessage = false;
+      this.completedToolCallIds.clear();
+      this.recordedFailedToolCallIds.clear();
     }
   }
 
@@ -514,7 +534,7 @@ export class ActionTrackSession {
   // 渲染新 user message 后调 agent.prompt()。afterToolCall 强制 abort pi-agent-core 的内部
   // 续航，控制权回到这里 → 下一轮拿到的就是 thinking 写完之后最新的 working_memory。
   // 不再回喂历史 transcript：assembleMessagesForModel 只返回置顶 Memory pin，过去做过什么
-  // 由本轮 user message 的历史/近期事件段承担（transcript 仍持久化，只是不进 LLM 消息序列）。
+  // 由本轮 user message 的近期事件时间线承担（transcript 仍持久化，只是不进 LLM 消息序列）。
   //
   // pendingEvents（感知缓冲）随每个迭代「随到随显随清」：迭代顶部抓当前 live 快照渲染，user
   // message 持久化后立即从缓冲移除。这样 turn 进行中（如连烤数炉、跨数游戏分钟）陆续到达的
@@ -552,6 +572,10 @@ export class ActionTrackSession {
       });
       this.observeGameTime(context.current.gameTime);
       this.alignContextGameTime(context);
+      if (this.options.agentKind === "npc"
+        && countUncompactedTimelineEntries(context) > UNSUMMARIZED_TIMELINE_TRIGGER_COUNT) {
+        this.options.requestTimelineBacklogThink?.();
+      }
 
       await this.persistence.drain();
       this.agent.state.tools = createTwoTrackAgentTools({
@@ -568,8 +592,6 @@ export class ActionTrackSession {
       this.currentMemoryPin = buildTwoTrackAgentMemoryPinnedUserMessage(context);
       this.agent.state.messages = await assembleMessagesForModel({
         persistence: this.persistence,
-        sessionRecentMessageLimit: this.options.config.sessionRecentMessageLimit,
-        sessionFullUserMessageLimit: this.options.config.sessionFullUserMessageLimit,
         renderMemoryPin: () => this.currentMemoryPin,
       });
       this.agent.clearAllQueues();
@@ -581,6 +603,7 @@ export class ActionTrackSession {
       };
       const userPrompt = await this.renderTurnPrompt(reason, iterationEvents, context);
       this.toolExecutedThisLlmCall = false;
+      this.blockRemainingToolCallsThisMessage = false;
       await this.agent.prompt(userPrompt);
       await this.persistence.drain();
 
@@ -624,12 +647,8 @@ export class ActionTrackSession {
     }
     try {
       await this.persistence.drain();
-      // 历史压缩已删 —— thinking-track 持续写 working_memory / 长期 memory，
-      // 不再需要 LLM 自压缩的"已压缩历史"前缀。窗口裁剪由 assemble 时的
-      // sessionRecentMessageLimit + sessionFullUserMessageLimit 兜底。
-      const trimmed = trimHistoricalUserMessages(messages, this.options.config.sessionFullUserMessageLimit);
-      this.captureLlmCallMessages(trimmed);
-      return trimmed;
+      this.captureLlmCallMessages(messages);
+      return messages;
     } catch (error) {
       this.options.logger?.error({
         error,
@@ -713,23 +732,14 @@ export class ActionTrackSession {
       this.activeToolExecutions = Math.max(0, this.activeToolExecutions - 1);
       const toolArgs = this.pendingToolArgs.get(event.toolCallId);
       this.pendingToolArgs.delete(event.toolCallId);
+      this.completedToolCallIds.add(event.toolCallId);
       this.toolExecutedThisLlmCall = true;
       void this.continuedActions.markToolResult(event.toolName, event.result);
-      // tool 真失败（pi-agent-core 标 isError）→ 立刻停下本 turn，交给 thinking 轨同步反思这次失败，
-      // 反思写完 working_memory 后由 onReflectionWritten → enqueueReflectionTurn 带新 brief 续上。
-      // 仅 npc（有 requestBlockingReflection 注入）走这条；同 turn 只触发一次（pausedForReflection 闸）。
-      if (event.isError && this.options.requestBlockingReflection && !this.pausedForReflection) {
-        // 进慢思考前，先确保这次失败有完整 action 落在时间轴上（用户要求：先有 tool_response/
-        // 完整 action 再 thinking）。预提交校验失败（如工具名翻不出 slug）的 error result 里没有
-        // actionId，说明没建过 action_log 行——这里补记一条 failed action，反思才有锚点。
-        this.recordPreSubmitToolFailure(event.toolName, event.result, toolArgs);
-        this.pausedForReflection = true;
-        this.stopFurtherToolsThisTurn = true;
-        this.stopAgentLoopThisTurn = true;
-        this.stopFurtherToolsReason = t("error.tool_failure_reflecting", getActiveLocale());
-        queueMicrotask(() => this.abortAgentWithReason("tool_failure_reflect"));
-        void this.runFailureReflection(`action_tool_failure:${event.toolName}`);
-      } else if (event.toolName === "do_nothing" && !event.isError && isDoNothingToolResult(event.result)) {
+      if (event.isError) {
+        this.recordPreSubmitToolFailure(event.toolName, event.result, toolArgs, event.toolCallId);
+        this.blockRemainingToolCallsThisMessage = true;
+      }
+      if (event.toolName === "do_nothing" && !event.isError && isDoNothingToolResult(event.result)) {
         this.stopFurtherToolsThisTurn = true;
         this.stopAgentLoopThisTurn = true;
         this.stopFurtherToolsReason = t("error.do_nothing_loop_stopped", getActiveLocale());
@@ -740,6 +750,7 @@ export class ActionTrackSession {
       void this.setPublicThinkingStatus(false);
       // 中途 abort 的 tool 可能只有 _start 没 _end，残留 args 在此清掉，避免 map 缓慢泄漏。
       this.pendingToolArgs.clear();
+      this.blockRemainingToolCallsThisMessage = false;
     }
     if (event.type === "turn_end" && this.toolExecutedThisLlmCall) {
       // 整条 assistant message 的 tool 都跑完了，断开 pi-agent-core 续航，把控制权交还 runCurrentTurn
@@ -748,6 +759,9 @@ export class ActionTrackSession {
       queueMicrotask(() => this.abortAgentWithReason("after_turn_force_break"));
     }
     if (event.type === "turn_end" && event.message.role === "assistant" && event.message.stopReason === "error") {
+      if (this.recordAssistantToolParseFailures(event.message)) {
+        this.toolExecutedThisLlmCall = true;
+      }
       this.options.logger?.warn({
         townId: this.options.townId,
         characterId: this.options.characterId,
@@ -815,7 +829,7 @@ export class ActionTrackSession {
     this.appendPendingEvent(event);
   }
 
-  // --- 公共状态发布 / sleep summary ---
+  // --- 公共状态发布 ---
 
   private setPublicThinkingStatus(active: boolean, reason = this.currentThinkReason ?? ""): Promise<void> {
     if (this.publicThinkingActive === active) return this.publicThinkingStatusQueue;
@@ -840,7 +854,7 @@ export class ActionTrackSession {
   }
 }
 
-type TurnReason = "interrupt" | "sensory" | "player_command" | "action_notice" | "reflection";
+type TurnReason = "interrupt" | "sensory" | "player_command" | "action_notice" | "working_memory";
 
 function reasonForClassification(classification: EventClassification): TurnReason {
   return reasonForClassifications([classification]);
@@ -857,17 +871,36 @@ function isDoNothingToolResult(value: unknown): boolean {
   return details?.didNothing === true;
 }
 
-// 预提交失败补记 action_failed 时，从原始工具入参还原 target，避免 say_to 失败行退化成
+// 预提交失败补记 failed action_log 时，从原始工具入参还原 target，避免 say_to 失败行退化成
 // "你想开口说「」"。args 是 LLM 原始入参（slug 还没解析——解析失败往往正是失败原因），
 // 故 character 此处仍是人类名字；渲染器 characterDisplayName 对非 slug 原样返回，显示无碍。
 // 其他工具的失败行走通用模板（"你尝试{动作}没成"），不需要 target，返回空对象即可。
 function buildPreSubmitFailureTarget(toolName: string, args: unknown): Record<string, unknown> {
   if (toolName !== SAY_TO_ACTION) return {};
-  const a = objectValue(args) ?? {};
+  const a = preSubmitArgsObject(args);
   const target: Record<string, unknown> = {};
   if (typeof a.character === "string" && a.character) target.targetCharacterId = a.character;
   if (typeof a.text === "string" && a.text) target.text = a.text;
   return target;
+}
+
+function buildPreSubmitFailureReason(args: unknown): string | undefined {
+  const reason = preSubmitArgsObject(args).reason;
+  if (typeof reason !== "string" || !reason.trim()) return undefined;
+  return t("tool.common.agent_tool_reason_format", getActiveLocale(), { reason: reason.trim() });
+}
+
+function preSubmitArgsObject(args: unknown): Record<string, unknown> {
+  return objectValue(args) ?? parseJsonObject(args) ?? {};
+}
+
+function parseJsonObject(value: unknown): Record<string, unknown> | undefined {
+  if (typeof value !== "string") return undefined;
+  try {
+    return objectValue(JSON.parse(value));
+  } catch {
+    return undefined;
+  }
 }
 
 function isGlobalAmbientEvent(event: WorldEventRecord): boolean {
@@ -880,4 +913,3 @@ function removeConsumedPendingEvents(pendingEvents: WorldEventRecord[], consumed
     if (consumedIds.has(pendingEvents[index].id)) pendingEvents.splice(index, 1);
   }
 }
-

@@ -20,25 +20,21 @@ export type AgentContextBuilderOptions = {
   worldLore?: string[];
   otherMemoryLimit?: number;
   relevantEventLimit?: number;
-  recentEventWindowGameMinutes?: number;
   relevantEventWindowGameHours?: number;
 };
 
-const DEFAULT_RECENT_EVENT_WINDOW_GAME_MINUTES = 60;
 const DEFAULT_RELEVANT_EVENT_WINDOW_GAME_HOURS = 8;
 
 export class AgentContextBuilder {
   private readonly worldLore: string[];
   private readonly otherMemoryLimit: number;
   private readonly relevantEventLimit: number;
-  private readonly recentEventWindowGameMinutes: number;
   private readonly relevantEventWindowGameHours: number;
 
   constructor(options: AgentContextBuilderOptions = {}) {
     this.worldLore = options.worldLore ?? getDefaultWorldLore();
     this.otherMemoryLimit = options.otherMemoryLimit ?? 20;
     this.relevantEventLimit = options.relevantEventLimit ?? 50;
-    this.recentEventWindowGameMinutes = options.recentEventWindowGameMinutes ?? DEFAULT_RECENT_EVENT_WINDOW_GAME_MINUTES;
     this.relevantEventWindowGameHours = options.relevantEventWindowGameHours ?? DEFAULT_RELEVANT_EVENT_WINDOW_GAME_HOURS;
   }
 
@@ -64,17 +60,17 @@ export class AgentContextBuilder {
     const current = input.current;
     const currentGameTime = normalizeGameTime(current.gameTime);
     const currentGameMinutes = currentGameTime ? gameTimeSortValue(currentGameTime) : undefined;
-    const historicalCutoffGameMinutes = currentGameMinutes != null
+    const eventCutoffGameMinutes = currentGameMinutes != null
       ? currentGameMinutes - this.relevantEventWindowGameHours * 60
       : undefined;
 
     const relevantEvents = rawRelevantEvents
       .filter((event) => !isCharacterContextEvent(event) && isEventRelevantToCharacter(event, ctx.characterId))
       .filter((event) => {
-        if (historicalCutoffGameMinutes == null) return true;
+        if (eventCutoffGameMinutes == null) return true;
         const eventGameTime = normalizeGameTime(event.gameTime ?? gameTimeFromRecord(event.data));
         if (!eventGameTime) return true; // 没 gameTime 的事件按可见保留
-        return gameTimeSortValue(eventGameTime) >= historicalCutoffGameMinutes;
+        return gameTimeSortValue(eventGameTime) >= eventCutoffGameMinutes;
       })
       .slice(0, this.relevantEventLimit);
 
@@ -82,7 +78,6 @@ export class AgentContextBuilder {
       townId: ctx.townId,
       characterId: ctx.characterId,
       assembledAt: now.toISOString(),
-      recentEventWindowMinutes: this.recentEventWindowGameMinutes,
       relevantEventWindowHours: this.relevantEventWindowGameHours,
       worldLore: this.worldLore,
       current,

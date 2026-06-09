@@ -7,7 +7,6 @@ import type { GameTimeSnapshot } from "../../../godot-link/protocol.js";
 import type {
   AgentInventorySnapshot,
   AgentKind,
-  AgentSessionMessageRecord,
   AgentSessionRecord,
   AgentToolSnapshot,
 } from "../../../agents/types.js";
@@ -16,7 +15,6 @@ import {
   agentMessageRole,
   assistantUsage,
   isAssistantMessage,
-  persistedMessageKey,
   usageCostUsd,
   usageTokenCount,
 } from "../../../agent-shared/utils/agent-message.js";
@@ -30,11 +28,6 @@ export type PersistAgentMessageSnapshot = {
   llmMessages?: AgentMessage[];
   llmSystemPrompt?: string;
   inventorySnapshot?: AgentInventorySnapshot;
-};
-
-type PersistedMessageRef = {
-  id: string;
-  seq: number;
 };
 
 export type SessionPersistenceOptions = {
@@ -52,15 +45,10 @@ export type SessionPersistenceOptions = {
 export class SessionPersistence {
   private session?: AgentSessionRecord;
   private persistQueue: Promise<void> = Promise.resolve();
-  private readonly persistedMessageRefs = new Map<string, PersistedMessageRef>();
 
   constructor(private readonly options: SessionPersistenceOptions) {}
 
-  get currentSession(): AgentSessionRecord | undefined {
-    return this.session;
-  }
-
-  sessionId(): string {
+  private sessionId(): string {
     return `${AGENT_SESSION_ID_PREFIX}:${this.options.agentKind}:${this.options.townId}:${this.options.characterId}`;
   }
 
@@ -97,15 +85,6 @@ export class SessionPersistence {
       });
   }
 
-  async listMessagesAfter(cutoff: number, options?: { limit?: number; order?: "asc" | "desc" }): Promise<AgentSessionMessageRecord[]> {
-    const session = await this.ensureSession();
-    return this.options.ctx.sessions().listMessages(session.id, {
-      afterSeq: cutoff,
-      limit: options?.limit,
-      order: options?.order ?? "asc",
-    });
-  }
-
   private async persistMessage(message: AgentMessage, snapshot: PersistAgentMessageSnapshot): Promise<void> {
     const session = await this.ensureSession();
     const id = createMessageId("agent_msg");
@@ -124,11 +103,6 @@ export class SessionPersistence {
       llmSystemPrompt: snapshot.llmSystemPrompt,
       inventorySnapshot: snapshot.inventorySnapshot,
     });
-    const seq = updated.messageSeq;
-    const key = persistedMessageKey(message);
-    if (key) {
-      this.persistedMessageRefs.set(key, { id, seq });
-    }
     const usage = assistantUsage(message);
     if (usage) {
       this.session = await this.options.ctx.sessions().updateUsage({

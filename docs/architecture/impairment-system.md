@@ -108,7 +108,7 @@
 ```
 character-repo.ts (SELECT drunk, drunkTier)
   → AgentCurrentContext.selfDrunk / selfDrunkTier   (assemble-from-manifest.ts)
-  → renderer.ts renderEventTimeline(viewerDrunk, viewerDrunkTier)
+  → renderer.ts renderAgentTimelineEntries(viewerDrunk, viewerDrunkTier)
   → event-descriptions/index.ts renderEventLine(viewerDrunk, viewerDrunkTier)
   → say.ts renderSayToEventLine(viewerDrunk, viewerDrunkTier) → garbleHeard()
 ```

@@ -29,13 +29,18 @@ import {
 import { createTwoTrackUpdateMemoryTool } from "./memory-tool.js";
 import { AgentContextBuilder } from "./prompt/context/builder.js";
 import {
+  buildAgentTimelineEntries,
+  filterTimelineEntriesAfterCursor,
+  latestTimelineCursor,
+  RAW_TIMELINE_TAIL_KEEP,
   renderAgentMemoryPinnedUserMessage,
   renderAgentSystemContext,
+  renderAgentTimelineEntries,
   renderAgentTurnContext,
-  renderEventTimeline,
-  splitEventsAtCutoff,
+  UNSUMMARIZED_TIMELINE_TRIGGER_COUNT,
+  type AgentTimelineEntry,
 } from "./prompt/context/renderer.js";
-import { formatGameTime, gameTimeSortValue, normalizeGameTime } from "../../agent-shared/prompt-context/time.js";
+import { formatGameTime } from "../../agent-shared/prompt-context/time.js";
 import { getActiveLocale, t } from "../../i18n/index.js";
 import type { WorkingMemorySnapshot } from "../../agent-shared/prompt-context/types.js";
 import type { PiAgentRuntimeLogger } from "./runtime.js";
@@ -57,7 +62,7 @@ export type ThinkingTrackSessionOptions = {
   logger?: PiAgentRuntimeLogger;
   // 写完 working_memory 后通知 action 轨"该看一眼世界"，让 NPC 在没有事件
   // 的情况下也能被周期性唤醒（否则 action 只在事件到来时才 fire）。
-  onReflectionWritten?: () => void;
+  onWorkingMemoryWritten?: () => void;
 };
 
 type WriteWorkingMemoryParams = Static<ReturnType<typeof createWriteWorkingMemorySchema>>;
@@ -125,6 +130,26 @@ export class ThinkingTrackSession {
     await this.runWithLock(reason);
   }
 
+  async requestThinkIfTimelineBacklog(): Promise<void> {
+    if (this.running) return;
+    const current = await this.options.ctx.getCurrentContext();
+    if (!current) return;
+    this.observeGameTime(current.gameTime);
+    const previousMemory = await readWorkingMemoryFromStorage(this.options.ctx.storage());
+    const context = await this.contextBuilder.build({
+      ctx: this.options.ctx,
+      current,
+      workingMemory: undefined,
+    });
+    const uncompactedCount = filterTimelineEntriesAfterCursor(
+      buildAgentTimelineEntries(context),
+      previousMemory?.compactedThrough,
+    ).length;
+    if (uncompactedCount > UNSUMMARIZED_TIMELINE_TRIGGER_COUNT) {
+      await this.requestThink("timeline_backlog");
+    }
+  }
+
   // "先想再行动"路径用：阻塞调用方直到本次思考真的写完 working_memory。
   // 若另一轮正在跑，先等它完（不抢占），再起自己这一轮。
   async runThinkBlocking(reason: string): Promise<void> {
@@ -189,8 +214,13 @@ export class ThinkingTrackSession {
       workingMemory: undefined,
     });
 
+    const timelineEntries = buildAgentTimelineEntries(context);
+    const uncompactedEntries = filterTimelineEntriesAfterCursor(timelineEntries, previousMemory?.compactedThrough);
+    const compactionPlan = splitTimelineForCompaction(uncompactedEntries);
+    const nextCompactedThrough = latestTimelineCursor(compactionPlan.toCompact) ?? previousMemory?.compactedThrough;
+
     const systemPrompt = renderThinkingSystemPrompt(context);
-    const userPrompt = renderThinkingUserPrompt(reason, previousMemory, context);
+    const userPrompt = renderThinkingUserPrompt(reason, previousMemory, context, compactionPlan);
     // 长期 Memory 抽到 system 之外，作为消息序列里第一条 pinned user message。
     // 与 action 轨同样的理由：update_memory 改它只让 messages 段 cache 失效，
     // 不连累 system/tools。空时跳过这条预置。
@@ -298,6 +328,9 @@ export class ThinkingTrackSession {
       if (this.latestObservedGameTime) {
         snapshot.gameTime = this.latestObservedGameTime as unknown as Record<string, unknown>;
       }
+      if (nextCompactedThrough) {
+        snapshot.compactedThrough = nextCompactedThrough as unknown as Record<string, unknown>;
+      }
       await this.options.ctx.storage().set(WORKING_MEMORY_STORAGE_KEY, snapshot as never);
       this.options.logger?.info({
         tag: "thinking-track",
@@ -310,13 +343,13 @@ export class ThinkingTrackSession {
       // 通知 action 轨：脑子里刚理过一遍，去看看眼前世界有没有事可做。
       // try/catch 兜底，避免回调里的异常把 thinking 主流程带挂。
       try {
-        this.options.onReflectionWritten?.();
+        this.options.onWorkingMemoryWritten?.();
       } catch (callbackError) {
         this.options.logger?.warn({
           error: callbackError,
           townId: this.options.townId,
           characterId: this.options.characterId,
-        }, "onReflectionWritten callback threw");
+        }, "onWorkingMemoryWritten callback threw");
       }
     } else {
       this.options.logger?.warn({
@@ -373,27 +406,30 @@ function errorMessage(error: unknown): string {
   return String(error);
 }
 
-// System prompt：把模型角色从"行动者"切到"反思者"。
+// System prompt：把模型角色从"行动者"切到"慢思考 / working-memory 维护者"。
 // 这里只放完全静态的背景（世界设定、常识、事实边界）。
 // 长期 Memory → 已抽到一条 pinned user message（见 runOnce 里的 memoryPin），
 // 角色感知 / 周围环境 / 属性 / 背包 / 当前时间 / 事件 → 全部在 turn user prompt 里，
 // 这样 system prompt 跨 turn 可以稳定走 prompt cache（update_memory 也不污染）。
 function renderThinkingSystemPrompt(context: ReturnType<AgentContextBuilder["build"]> extends Promise<infer T> ? T : never): string {
-  const header = t("prompt.agent.thinking_track.system", getActiveLocale());
-  return `${header}\n\n${renderAgentSystemContext(context)}`;
+  const locale = getActiveLocale();
+  const header = t("prompt.agent.thinking_track.system", locale);
+  const compaction = t("prompt.agent.thinking_track.compaction_system", locale, { count: RAW_TIMELINE_TAIL_KEEP });
+  return `${header}\n\n${compaction}\n\n${renderAgentSystemContext(context)}`;
 }
 
 function renderThinkingUserPrompt(
   reason: string,
   previous: WorkingMemorySnapshot | undefined,
   context: ReturnType<AgentContextBuilder["build"]> extends Promise<infer T> ? T : never,
+  compactionPlan: TimelineCompactionPlan,
 ): string {
   const parts: string[] = [];
 
   // 角色感知（位置 / 属性 / 周围 / 背包 / 当前时间）放进 user message——
   // 跨 turn 会变，不适合进 system prompt 的 cache 段；同时跟 action 轨布局一致。
   // renderAgentTurnContext 已经不渲染事件（事件由 renderAgentEventsContext 单独负责），
-  // 这里只用现状块即可；事件由下面按"上次思考以来"自己切段。
+  // 这里只用现状块即可；未总结时间线由下面按 compactedThrough 游标切分。
   const locale = getActiveLocale();
 
   parts.push(renderAgentTurnContext(context));
@@ -407,31 +443,33 @@ function renderThinkingUserPrompt(
     parts.push(t("prompt.agent.thinking_track.user.previous_memory_empty", locale));
   }
 
-  const cutoffMinutes = previousMemoryCutoffMinutes(previous);
-  const { since, before } = splitEventsAtCutoff(context.relevantEvents, cutoffMinutes);
+  const toCompactBody = compactionPlan.toCompact.length > 0
+    ? renderAgentTimelineEntries(compactionPlan.toCompact, context, locale)
+    : t("prompt.agent.thinking_track.user.events_to_compact_empty", locale);
+  parts.push(`${t("prompt.agent.thinking_track.user.events_to_compact_header", locale)}\n${toCompactBody}`);
 
-  const viewerId = context.characterId;
-  const selfActions = context.selfActionResults;
-  if (cutoffMinutes != null) {
-    const sinceBody = since.length > 0 ? renderEventTimeline(since, viewerId, locale, selfActions) : t("prompt.agent.thinking_track.user.events_since_empty", locale);
-    parts.push(`${t("prompt.agent.thinking_track.user.events_since_header", locale)}\n${sinceBody}`);
-    if (before.length > 0) {
-      parts.push(`${t("prompt.agent.thinking_track.user.events_before_header", locale)}\n${renderEventTimeline(before, viewerId, locale, selfActions)}`);
-    }
-  } else {
-    const allBody = since.length > 0 ? renderEventTimeline(since, viewerId, locale, selfActions) : t("prompt.agent.thinking_track.user.events_none", locale);
-    parts.push(`${t("prompt.agent.thinking_track.user.events_all_header", locale)}\n${allBody}`);
-  }
+  const rawTailBody = compactionPlan.rawTail.length > 0
+    ? renderAgentTimelineEntries(compactionPlan.rawTail, context, locale)
+    : t("prompt.agent.thinking_track.user.events_raw_tail_empty", locale);
+  parts.push(`${t("prompt.agent.thinking_track.user.events_raw_tail_header", locale, { count: RAW_TIMELINE_TAIL_KEEP })}\n${rawTailBody}`);
 
   parts.push(t("prompt.agent.thinking_track.user.closing_instruction", locale));
   return parts.join("\n\n");
 }
 
-function previousMemoryCutoffMinutes(previous: WorkingMemorySnapshot | undefined): number | undefined {
-  if (!previous) return undefined;
-  const normalized = normalizeGameTime(previous.gameTime);
-  if (!normalized) return undefined;
-  return gameTimeSortValue(normalized);
+type TimelineCompactionPlan = {
+  toCompact: AgentTimelineEntry[];
+  rawTail: AgentTimelineEntry[];
+};
+
+function splitTimelineForCompaction(entries: AgentTimelineEntry[]): TimelineCompactionPlan {
+  if (entries.length <= RAW_TIMELINE_TAIL_KEEP) {
+    return { toCompact: [], rawTail: entries };
+  }
+  return {
+    toCompact: entries.slice(0, entries.length - RAW_TIMELINE_TAIL_KEEP),
+    rawTail: entries.slice(-RAW_TIMELINE_TAIL_KEEP),
+  };
 }
 
 // stableHash 错峰 1~interval-1，避免所有 NPC 在同一游戏分钟集中跑 thinking turn。

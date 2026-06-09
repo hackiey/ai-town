@@ -102,7 +102,7 @@ test("requestCancelAction marks pushed actions as cancelling and publishes cance
   }
 });
 
-test("recordFailedAction writes a failed action and self action_failed event", () => {
+test("recordFailedAction writes only backend-owned failed action", () => {
   const db = createTestDb();
   try {
     const record = recordFailedAction(db, {
@@ -116,11 +116,8 @@ test("recordFailedAction writes a failed action and self action_failed event", (
     assert.equal(saved.status, "failed");
     assert.equal(saved.error, "target is asleep");
 
-    const row = db.prepare("SELECT * FROM world_events WHERE type = 'action_failed'").get() as Record<string, unknown>;
-    assert.ok(row);
-    assert.equal(row.actorId, "mira_blacksmith");
-    assert.equal(row.spokenText, "not now");
-    assert.equal(JSON.parse(String(row.data)).actionId, record.id);
+    const row = db.prepare("SELECT * FROM world_events WHERE type = 'action_failed'").get() as Record<string, unknown> | undefined;
+    assert.equal(row, undefined);
   } finally {
     db.close();
   }

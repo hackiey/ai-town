@@ -510,7 +510,7 @@ const ECONOMY = {
     cured_stew: 2.0,      // 28 hunger
     berry_jam: 1.25,      // 15 hunger
     tomato_fruit: 0.5,    // 10 hunger
-    beer: 2.5,            // 麦芽发酵奢侈饮品，5 hunger + 12 stamina
+    beer: 1.0,            // 麦芽酒按杯零售：1 麦芽≈2 份 beer，单份不高于 1 银
     herbal_remedy: 2.0,   // 通用草药茶，弱缓解
     mint_mugwort_tea: 3.5,
     ginger_plantain_broth: 3.5,

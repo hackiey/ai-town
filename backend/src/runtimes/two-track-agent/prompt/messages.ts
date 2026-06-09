@@ -48,8 +48,8 @@ export function renderTwoTrackAgentTurnUserMessage(
   const locale = getActiveLocale();
   const trimmedContext = contextWithoutPlayerCommands(context);
   const sections: (string | undefined)[] = [];
-  // user message 顺序：历史事件 → 近期事件 → working_memory → 现状（位置/属性/...）。
-  // 时间轴语义：最远的过去先铺背景，然后近期事件，再 NPC 自己消化后的工作记忆，最后是当前世界快照。
+  // user message 顺序：近期事件时间线 → working_memory → 现状（位置/属性/...）。
+  // 时间轴语义：先铺最近一段时间发生的事，再放 NPC 自己消化后的工作记忆，最后是当前世界快照。
   // 事件段拆出来单独渲染，方便夹住 working_memory；working_memory 由 thinking 轨每 15 game-min 刷一次，
   // 仍只挂在 user message（不放 system），避免污染 prompt cache。
   sections.push(renderAgentEventsContext(trimmedContext));
@@ -103,7 +103,7 @@ function renderTwoTrackAgentTurnInstruction(
   }
 
   // 任何 reason 都先呈现「上次 LLM 调用之后新感知的事」（合并单段，不拆触发/背景）；空则整块省略。
-  // 随后接 reason 专属指令。这样 action_notice / reflection turn 也能看到忙碌期间周围发生的事。
+  // 随后接 reason 专属指令。这样 action_notice / working_memory turn 也能看到忙碌期间周围发生的事。
   const perceivedBlock = renderPerceivedEventsBlock(triggeringEvents, viewerId);
   const instruction = renderReasonInstruction(reason, locale, perceivedBlock !== "");
   return [perceivedBlock, instruction].filter(Boolean).join("\n");
@@ -139,11 +139,8 @@ function renderReasonInstruction(
       ? t("prompt.agent.two_track.tick.interrupt_response_prompt", locale)
       : t("prompt.agent.two_track.tick.continuation_prompt", locale);
   }
-  if (reason === "idle") {
-    return t("prompt.agent.two_track.tick.idle_prompt", locale);
-  }
-  if (reason === "reflection") {
-    return t("prompt.agent.two_track.tick.reflection_prompt", locale);
+  if (reason === "working_memory") {
+    return t("prompt.agent.two_track.tick.working_memory_prompt", locale);
   }
   if (reason === "action_notice") {
     return t("prompt.agent.two_track.tick.action_notice_prompt", locale);

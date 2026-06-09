@@ -1,9 +1,7 @@
 // Debug log 用：把 AgentMessage / 工具调用 / 任意值序列化成可读文本，
 // 并自动屏蔽 API key 之类的敏感字段。所有 agent runtime 共用。
 
-import type { AgentMessage } from "@mariozechner/pi-agent-core";
 import { arrayValue, objectValue, stringValue } from "./primitives.js";
-import { agentMessageRole } from "./agent-message.js";
 
 const SENSITIVE_LOG_KEYS = new Set([
   "apiKey", "api_key",
@@ -209,27 +207,4 @@ export function snapshotAgentTools(
     description: tool.description,
     parameters: tool.parameters,
   }));
-}
-
-// 用于 session 持久化的"压缩历史"摘要里把每条 message 序列化成一行。
-export function serializeSessionMessage(seq: number, message: AgentMessage): string {
-  const object = message as unknown as Record<string, unknown>;
-  if (!object) {
-    return `## ${seq} unknown\n${String(message)}`;
-  }
-  const role = agentMessageRole(message);
-  const lines = [`## ${seq} ${role}`];
-  if (role === "toolResult") {
-    lines.push(`tool: ${stringValue(object.toolName) ?? "unknown"}`);
-    lines.push(`isError: ${String(object.isError ?? false)}`);
-  }
-  const content = formatContentText(object.content);
-  if (content) {
-    lines.push(content);
-  }
-  const toolCalls = extractToolCalls(message as unknown as Record<string, unknown>);
-  if (toolCalls.length > 0) {
-    lines.push(`tool_calls: ${toolCalls.map((toolCall) => toolCall.name ?? "unknown").join(", ")}`);
-  }
-  return lines.join("\n");
 }

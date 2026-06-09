@@ -71,40 +71,10 @@ export async function submitAction(
   return record;
 }
 
-// 把预提交失败渲染进时间线：Godot-side 的 reject 由 Godot 发 action_failed 事件，但预提交失败
-// 不经 Godot，所以 backend 必须自己补一条 action_failed world_event（actor-only）。直接写 world_events
-// 表、**不** publish 给 bus —— 失败的即时反馈本就由 tool 同步返回值给到 agent，这条只供历史时间线，
-// 不该触发新 turn。data.actionId 与 action_log.actionId 一致，渲染层据此精确 join。
-function insertSelfActionFailedEvent(db: AppDb, record: ActionLogRecord, error: string): void {
-  const now = new Date().toISOString();
-  const target = (record.target ?? {}) as Record<string, unknown>;
-  const spokenText = typeof target.text === "string" ? target.text : null;
-  const data: Record<string, unknown> = {
-    actorId: record.characterId,
-    affectedCharacterIds: [record.characterId],
-    actionId: record.id,
-    action: record.action,
-    target,
-    error,
-  };
-  db.prepare(
-    `INSERT INTO world_events (id, townId, type, actorId, spokenText, data, occurredAt, createdAt, gameTime)
-     VALUES (?, ?, 'action_failed', ?, ?, ?, ?, ?, ?)`,
-  ).run(
-    createMessageId("event"),
-    record.townId,
-    record.characterId,
-    spokenText,
-    toJsonColumn(data),
-    now,
-    now,
-    toJsonColumn(record.gameTime),
-  );
-}
-
 // 记录一条"未提交到 Godot 就失败"的动作（backend 预提交校验失败，如工具名翻译不出 slug）。
 // 直接落一行 status=failed 的 action_log，**不** publish 给 Godot（动作非法，不该执行）。
-// 目的：让失败动作也有完整时间轴锚点（debug timeline 读 action_log），失败反思才有对应 action。
+// 目的：让失败动作也有 backend 内部时间轴锚点；prompt 渲染会把这类 actor-private
+// 失败按时间合并进事件时间线，但不会污染 world_events。
 export function recordFailedAction(db: AppDb, input: SubmitActionInput, error: string): ActionLogRecord {
   const now = new Date().toISOString();
   const characterId = normalizeCharacterId(input.characterId);
@@ -143,7 +113,6 @@ export function recordFailedAction(db: AppDb, input: SubmitActionInput, error: s
     toJsonColumn(record.gameTime),
     error,
   );
-  insertSelfActionFailedEvent(db, record, error);
   return record;
 }
 

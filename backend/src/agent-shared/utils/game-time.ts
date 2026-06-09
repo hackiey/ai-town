@@ -36,22 +36,3 @@ export function gameTimeFromEventData(data: Record<string, unknown> | undefined)
   const value = objectValue(data?.gameTime);
   return value as GameTimeSnapshot | undefined;
 }
-
-// 用于 sleep summary / idle tick 等"按游戏天分桶"的场景。
-export function gameDayKey(gameTime: GameTimeSnapshot | undefined): string | undefined {
-  if (!gameTime) {
-    return undefined;
-  }
-  const year = finiteNumber(gameTime.year) ? gameTime.year : 0;
-  if (finiteNumber(gameTime.dayOfYear)) {
-    return `${year}:dayOfYear:${gameTime.dayOfYear}`;
-  }
-  if (finiteNumber(gameTime.day)) {
-    return `${year}:day:${gameTime.day}`;
-  }
-  const totalMinutes = gameTimeTotalMinutes(gameTime);
-  if (totalMinutes != null) {
-    return `${year}:totalDay:${Math.floor(totalMinutes / 1440)}`;
-  }
-  return undefined;
-}

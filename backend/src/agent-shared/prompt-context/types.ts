@@ -242,7 +242,7 @@ export type AgentCurrentContext = {
 };
 
 export type AgentMemoryKind = "self_knowledge" | "common_sense" | "skill" | "other";
-export type StoredAgentMemoryKind = AgentMemoryKind | "profile" | "long_term" | "reflection";
+export type StoredAgentMemoryKind = AgentMemoryKind | "profile" | "long_term";
 export type AgentMemoryTimeDisplay = "auto" | "none";
 
 export type AgentMemoryRecord = {
@@ -281,14 +281,21 @@ export type WorkingMemorySnapshot = {
   updatedAt: string;
   gameTime?: GameTimeSnapshot;
   triggerReason?: string;
+  compactedThrough?: TimelineCursor;
+};
+
+export type TimelineCursor = {
+  kind: "event" | "action";
+  id: string;
+  gameMinutes?: number;
+  createdAt: string;
 };
 
 export type GameAgentContext = {
   townId: string;
   characterId: string;
   assembledAt: string;
-  // 游戏时间单位，不是 wall-clock。分桶按事件 gameTime 与当前 current.gameTime 比较。
-  recentEventWindowMinutes: number;
+  // 游戏时间单位，不是 wall-clock。Action prompt 统一渲染这个窗口内的近期事件。
   relevantEventWindowHours: number;
   worldLore: string[];
   current: AgentCurrentContext;
@@ -297,7 +304,7 @@ export type GameAgentContext = {
   pendingEvents: WorldEventRecord[];
   workingMemory?: WorkingMemorySnapshot;
   // 本角色近期 action_log（含 result.character_changes/产出/消耗/失败原因）。删 transcript 后
-  // 自身动作的效果只剩在 action_log.result（world_event.data 不带），渲染时按类型+gameTime 合并进
-  // 自身事件行，让 LLM 看得到"吃了面包→饱食+30"。见 renderer.renderEventTimeline。
+  // 自身动作的效果只剩在 action_log.result（world_event.data 不带），渲染时按 actionId 合并进
+  // 自身事件行；没有对应 world event 的 backend 内部失败也从这里合入时间线。
   selfActionResults?: ActionLogRecord[];
 };

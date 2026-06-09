@@ -7,7 +7,7 @@ AI Town is a **playable AI town** built with Godot + TypeScript: a hand-built me
 ## Features
 
 - **A town that runs itself.** The ~25 NPCs are autonomous LLM agents that farm, gather, craft, and trade on the exact same systems the player uses. Prices, shortages, and rivalries emerge from real supply and demand rather than scripted spawn tables, and the world keeps living whether or not you're online.
-- **Two-track NPC minds.** Each NPC runs a fast reactive track that acts within seconds and a slow strategic track that reflects, plans, and recovers from failures — staying responsive *and* goal-directed at a fraction of the cost of reasoning on every step. (More below.)
+- **Two-track NPC minds.** Each NPC runs a fast reactive track that acts within seconds and a slow strategic track that summarizes experience, plans, and maintains working memory — staying responsive *and* goal-directed at a fraction of the cost of reasoning on every step. (More below.)
 - **Mechanics you can mod, in Lua.** Recipes, item effects, and world rules live in data and sandboxed Lua instead of engine code, so a new ingredient or a whole new behavior is a script away — no recompile. The sandbox safely runs untrusted, even AI-generated, scripts, which is exactly what makes player-authored magic possible.
 - **Crafting with real stakes.** A 0–100 proficiency per trade and each recipe's difficulty decide whether a craft succeeds and how good it turns out, and that quality travels with the item. Proficiency grows with practice and spreads through skillbooks — so specializing, hiring a master, and trading all genuinely pay off.
 - **Items that keep their meaning.** Every object is a typed instance with a structured identity — a base template, the identity its crafting reaction stamped on it, and mutable per-instance state — so quality, stacking, containers, shelves, and trade stay consistent across the whole world.
@@ -17,7 +17,7 @@ AI Town is a **playable AI town** built with Godot + TypeScript: a hand-built me
 Reacting fast and reasoning deeply pull in opposite directions: an LLM call on every step is accurate but slow and expensive, while pure reaction drifts, repeats failures, and recovers poorly. So each NPC runs **two independent LLM sessions at once**:
 
 - a **reactive track** — low latency, no extended thinking, full game toolset — that wakes on events and turns them straight into in-world actions, and
-- a **strategic track** — extended reasoning — that periodically reflects on the situation, plans, and writes a short working-memory brief (memory / reflection / planning in the spirit of the Generative Agents "Smallville" paper).
+- a **strategic track** — extended reasoning — that periodically summarizes unsummarized events, plans, and writes a short working-memory brief.
 
 The reactive track reads that brief and carries the plan forward cheaply, re-invoking the strategic track only at meaningful events or after enough time passes. The result is an NPC that acts within seconds yet still thinks deeply in the background — without the abort-and-restart machinery a single combined session would need on every event.
 

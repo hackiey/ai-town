@@ -4,7 +4,7 @@
 >
 > **Scope**：本文档描述 `two-track-agent` runtime 的双 session 模型。agent host 通用层见 [backend-agent-host.md](./backend-agent-host.md)，host 共享代码见 [agent-shared.md](./agent-shared.md)。
 
-每个 NPC 有两条独立的 LLM session 并发跑：**Action 轨**做快速反应（关 thinking），**Thinking 轨**做慢思考（开 extended reasoning），通过 `runtime_storage.working_memory` 这一份 KV 单向传递 brief。无打断机制，事件到达时若 turn 在跑就排队。
+每个 NPC 有两条独立的 LLM session 并发跑：**Action 轨**做快速反应，**Thinking 轨**做慢思考（通常开 extended reasoning），通过 `runtime_storage.working_memory` 这一份 KV 单向传递 brief。Action 轨每次 LLM call 前重读 perception + working_memory；新事件到达时可 release 慢工具等待或 abort 当前流式输出，让下一次 LLM call 使用 fresh context。
 
 ## 1. Context
 
@@ -13,9 +13,9 @@
 `two-track-agent` 把两件事拆开：
 
 - **想"做什么"**：thinking 轨定时（默认每 15 游戏分钟）+ 关键事件触发，跑一次带 reasoning 的 LLM call，输出一段中文 working memory
-- **执行**：action 轨关 thinking，每个 turn 入口读最新 working memory 注入 system prompt，立刻产出 tool call
+- **执行**：action 轨通常关 thinking，每次 LLM call 入口读最新 working memory 注入 user prompt，立刻产出 tool call
 
-两条 session 完全独立，没有 cross-track 锁。Action 没有 interrupt：事件到来时若当前 turn 还没结束，仅入队等下个 turn——前提是 action 模型本身延迟低（无 extended reasoning），等几秒可接受。
+两条 session 完全独立，没有 cross-track 锁。Action 轨只做轻量调度：事件先进入 pendingEvents；若当前正在等慢工具，release backend 等待但不取消 Godot 本体动作；若正在流式输出，abort 当前 call，下一轮重装 context。
 
 ## 2. Design
 
@@ -40,9 +40,9 @@ PiAgentRuntime (per town)
 | Tools | 完整 game tool set（`createTwoTrackAgentTools`），不含 `update_memory` | `update_memory` + `write_working_memory` |
 | 历史持久化 | 走 `agent_sessions` / `agent_session_messages`（agentKind="npc" / "player"） | **不持久化**——每次重建 `Agent` |
 | 输出 | tool call → action_log → Godot | `memory:*` KV 变更 + working_memory KV upsert |
-| 是否中断 | 不可中断（事件入队等下 turn） | 不可中断（同 NPC 串行；fire-and-forget 启动） |
+| 是否中断 | 可 release 慢工具等待 / abort 当前 LLM call；事件进入下一次 fresh context | 不可中断（同 NPC 串行；fire-and-forget 启动） |
 
-**为什么 thinking 不持久化**：每次 thinking turn 的 system prompt 已经把当前完整 perception manifest + 历史事件 + 上一份 working_memory 都塞进去；不需要再带 message 历史。还能避免和 action session 在 `(townId, characterId, agentKind)` 唯一键上冲突。
+**为什么 thinking 不持久化**：每次 thinking turn 都从当前 perception manifest、长期 Memory、上一份 working_memory、未总结 timeline 重新构造 prompt；不需要再带 message 历史。还能避免和 action session 在 `(townId, characterId, agentKind)` 唯一键上冲突。
 
 ### 2.2 Working memory 传递
 
@@ -54,12 +54,13 @@ runtime_storage 表（per-character KV）：
     updatedAt: string,      // ISO 时间
     triggerReason?: string, // "scheduled" / "event:say_to:..." / "event:woke_up:think-first"
     gameTime?: GameTimeSnapshot,
+    compactedThrough?: TimelineCursor, // thinking 已压缩到哪条 timeline entry
   }
 ```
 
 - 写：`ThinkingTrackSession` 的 `write_working_memory` tool 执行时 upsert。`storage.set()` 同步 sqlite 事务，单次 JSON value。
-- 读：`ActionTrackSession.runTurn` 入口调 `readWorkingMemoryFromStorage()`，注入 `GameAgentContext.workingMemory`，渲染到 system prompt `# 工作记忆` section（在 `fact_boundary` 和 `memory` 之间）。
-- 缺失时整节省略——首次启动 / 全新角色 working_memory 没写，action 仍能跑（system prompt 不出该节）。
+- 读：`ActionTrackSession.runCurrentTurn` 每次 LLM call 入口调 `readWorkingMemoryFromStorage()`，注入 `GameAgentContext.workingMemory`，渲染到 turn user prompt 的 `# 工作记忆` section（夹在近期事件时间线和现状块之间）。
+- 缺失时整节省略——首次启动 / 全新角色 working_memory 没写，action 仍能跑。
 
 System prompt 自递归避免：thinking 自己不把"上一份 working_memory" 注入自己的 system prompt——而是放到 user message 里显式说"上一份是这样的，请更新"。否则 thinking 看着自己写的东西再写一遍，容易陷入回声。
 
@@ -99,14 +100,14 @@ event 到达
 isPlayerCommandEvent → session("player").onPlayerCommand → 入 reason 队列 "player_command"，启动 runTurnLoop
   ↓ 否则
 isThinkFirstEvent(event) → 路径 A："先想再行动"
-  ├─ await session(npc).appendEventToHistoryOnly(event)  // 把事件 stash 进历史，不触发 turn
+  ├─ await session(npc).appendEventToHistoryOnly(event)  // 把事件先放进 pendingEvents，不触发 turn
   ├─ await thinkingSession.runThinkBlocking(...)         // 同步等 thinking 写完
   └─ await session(npc).onEvent(event)                   // 此时 turn 入口读到的是最新 working_memory
   ↓ 否则
 session(npc).onEvent(event)
   ↓
   classifyEventForCharacter → kind ∈ {hard_interrupt, sensory, ignored}
-  ├─ ignored → 仅 stash 进 pendingEvents（历史），不触发 turn
+  ├─ ignored → 不进 pendingEvents，不触发 turn
   ├─ ambient_sensory → 仅 stash（同上）
   └─ direct_speech / hard_interrupt → push reason，启动 runTurnLoop
   ↓
@@ -117,13 +118,13 @@ session(npc).onEvent(event)
 
 **路径 B（significant for thinking）**：`spoken_to_directly` / 交易提议事件 / player 喊话 / always-interrupting 事件——异步触发 thinking 提前重写 working_memory；action 不等它，按自己节奏跑。下次 action turn 入口才会用上更新后的 brief。
 
-**路径 C（普通）**：仅入历史 / 触发 action turn，thinking 不动。
+**路径 C（普通）**：仅入 pendingEvents / 触发 action turn；若不是 significant event，则只在未总结 timeline 超过阈值时触发 thinking backlog 压缩。
 
 ### 2.4 Action 轨的 turn 调度
 
 ```
 ActionTrackSession 内部状态：
-  pendingEvents: WorldEventRecord[]  // 所有 relevant + globalAmbient 事件，turn 入口 snapshot，turn 后按 id trim
+  pendingEvents: WorldEventRecord[]  // relevant + globalAmbient 事件，每次 LLM call 入口 snapshot，落库后按 id trim
   pendingReasons: TurnReason[]       // 触发新 turn 的理由队列
   turnInFlight: boolean              // serialize flag
 
@@ -133,39 +134,35 @@ runTurnLoop():
   while reason = pendingReasons.shift():
     await runTurn(reason)              // ← 单 turn 完整流程
   turnInFlight = false
-  void runPendingSleepSummary()
 ```
 
-事件 mid-turn 到达：仅入 `pendingEvents` + 可能 push 到 `pendingReasons`。当前 turn 不 abort、不打断。turn 自然结束时循环看 `pendingReasons` 还有没有，有就接着跑。
+事件 mid-turn 到达：先入 `pendingEvents` + 可能 push 到 `pendingReasons`。若当前 turn 正在等慢工具，release backend 等待，让 tool result 以 `runtime_pending` 收口；若正在 LLM streaming，则 abort 当前 call。下一次 `runCurrentTurn` 会拿到完整 fresh context。
 
-`runTurn(reason)` 单 turn 流程：
+`runCurrentTurn(reason)` 每次 LLM call 流程：
 1. reset 一堆 per-turn flag
-2. `pendingSnapshot = [...pendingEvents]`
-3. `ensureSession + persistence.drain + continuedActions.restore`
-4. `currentContext = await ctx.getCurrentContext()` （perception manifest + SELECT sqlite）
-5. `workingMemory = await readWorkingMemoryFromStorage()`
-6. `context = contextBuilder.build({ ctx, current, pendingEvents: snapshot, workingMemory })`
+2. `iterationEvents = [...pendingEvents]`
+3. `currentContext = await ctx.getCurrentContext()` （perception manifest + SELECT sqlite）
+4. `workingMemory = await readWorkingMemoryFromStorage()`
+5. `context = contextBuilder.build({ ctx, current, pendingEvents: iterationEvents, workingMemory })`
+6. 若未总结 timeline 超过 30 条，fire-and-forget 请求 thinking backlog 压缩
 7. 重建 tools（按当前 currentContext 动态生成）
-8. messages = `assembleMessagesForModel(...)`（summary + continuity prefix + 历史 trim）
+8. messages = `assembleMessagesForModel(...)`（只含 pinned Memory user message；历史 transcript 不回喂）
 9. systemPrompt = `buildTwoTrackAgentTurnSystemPrompt(context)`
-10. 渲染 user prompt：`renderTwoTrackAgentTurnUserMessage` + 可能拼一段 action notice
-11. `runCurrentTurn(prompt)` ：LLM `prompt → continue ...` 直到 `stopAgentLoopThisTurn` 或队列空
-12. `removeConsumedPendingEvents(pendingEvents, snapshot)` 按 id trim
+10. 渲染 user prompt：近期事件（尚未总结）→ 工作记忆 → 现状 → 当前触发
+11. `agent.prompt(userPrompt)`；若本次执行了 tool，turn_end 后 abort pi-agent-core 续航，回到本层重新装配下一次 LLM call
+12. user message 落库后 `removeConsumedPendingEvents(pendingEvents, iterationEvents)` 按 id trim
 
-### 2.5 一次性回应停 loop（保留的 stopArmed 机制）
+### 2.5 Tool 后强制 fresh context
 
-没有 interrupt 机器，但保留一个 turn 终止策略：**sensory / player_command 触发的 turn，LLM 交付完一条 assistant message 即停 loop，不让继续 continue**。设计意图是 action 没有"自反思"——做完一件事就停下，避免 LLM 自言自语刷 tool。
+Action 轨不让 pi-agent-core 在同一上下文里无限 `continue`。一条 assistant message 的全部 tool calls 执行完后，`turn_end` 处 abort agent loop，把控制权交还 `runCurrentTurn`：下一次 LLM call 会重读 working_memory、pendingEvents、currentContext 和工具定义。
 
 实现（`onAgentEvent`）：
-- `stopArmedForResponse = reason === "player_command" || reason === "sensory"`
-- 收到 `message_end` 且是 assistant：
-  - 含 tool calls：`responseMessagePendingTools = toolCalls.length`，`responseMessageBound = true`，等本 message 的所有 tool 跑完后 stop
-  - 纯说话 message：直接 stop loop
 - 收到 `tool_execution_end`：
-  - `responseMessageBound` → 倒数 pending，归零 → stop loop + `agent.abort()`
-  - `do_nothing` 成功 → 直接 stop loop（防 do_nothing 循环）
+  - 记录 completed tool call；失败时补 backend-owned failed `action_log`，阻断同一 assistant message 剩余 tool calls，让下一轮 action 自纠错
+  - `do_nothing` 成功 → stop loop + `agent.abort()`（防 do_nothing 循环）
+- 收到 `turn_end` 且本次 LLM call 执行过 tool → queueMicrotask abort，下一轮重装 context
 
-`interrupt` / `action_notice` reason 走完整 loop（hard interrupt 不走单次回应；action_notice 是后台动作完成提醒，让 LLM 自由决定下一步）。
+backend 预提交/解析失败只写 actor-private failed `action_log`，不写 `world_events`，并会在下一轮「近期事件（尚未总结）」时间线中显示。
 
 ### 2.6 模型配置：per-NPC 强制
 
@@ -190,14 +187,13 @@ runTurnLoop():
 
 **Qwen-style API 的二元 thinking**：dashscope 走 qwen `enable_thinking: true/false`，level 字段对它无效——`/low` 和 `/high` 都是 `enable_thinking: true`。`/off` 不发该参数，思考真正关闭。详见 `model-registry.ts` `inferOpenAICompletionsCompat` 把 dashscope baseUrl 识别成 qwen format 的路径。
 
-### 2.7 Session 持久化与压缩
+### 2.7 Session 持久化
 
 Action 轨用 `agent_sessions` / `agent_session_messages` 表（agentKind 列区分 "npc" / "player"），通过 `SessionPersistence` 串 append queue：
 
-- `action-session/persistence.ts` —— ensureSession / append queue / updateSummary / markUsageCompressionChecked
-- `action-session/messages.ts` —— `assembleMessagesForModel`：summary prefix + continuity prefix + recent N trim
-- `action-session/continuity.ts` —— `renderSessionContinuity`：active intent / player commands / open threads / recent outcomes 拼一段 user message
-- `action-session/compaction.ts` —— `SessionCompactor`：sleep summary（每游戏天最多压一次）+ token-emergency 压缩（超 `compressionTokenThreshold` 就压老消息）
+- `action-session/persistence.ts` —— ensureSession / append queue / usage 累计 / debug snapshot 持久化
+- `action-session/messages.ts` —— `assembleMessagesForModel`：只返回 pinned Memory user message；历史 transcript 不回喂 LLM
+- timeline 压缩由 Thinking 轨通过 `working_memory.compactedThrough` 处理：Action prompt 只显示尚未总结的 timeline entries，Thinking 保留最近 10 条原文并压缩更早部分。
 
 Thinking 轨 **不入** `agent_sessions`——每次 turn 重建 Agent，无需 message 历史。
 
@@ -225,7 +221,7 @@ Thinking 轨 **不入** `agent_sessions`——每次 turn 重建 Agent，无需 
                   runTurnLoop (serial)
                           │
                           ▼
-        runTurn → read working_memory → LLM → tool_calls → action_log → Godot
+        runCurrentTurn → read working_memory → LLM → tool_calls → action_log → Godot
 
        并行：significant 事件 → void thinkingSession.requestThink()
               定时（15 游戏分钟）→ thinkingSession.onGameTime() → write working_memory
@@ -251,26 +247,25 @@ backend/src/runtimes/two-track-agent/
 │   ├── i18n.ts                    # 本 agent 的 locale getter
 │   ├── context/
 │   │   ├── builder.ts             # TwoTrackAgentContextBuilder（call assemble-from-manifest）
-│   │   └── renderer.ts            # renderAgentSystemContext（含 working_memory 那节）
+│   │   └── renderer.ts            # context sections + unified timeline renderers
 │   └── locales/{zh,en}/prompts.json
 └── action-session/
     ├── index.ts                   # barrel
     ├── session.ts                 # ActionTrackSession 主类（~600 行）
     ├── persistence.ts             # SessionPersistence
-    ├── messages.ts                # assembleMessagesForModel / trim
-    ├── continuity.ts              # renderSessionContinuity
-    └── compaction.ts              # SessionCompactor
+    └── messages.ts                # assembleMessagesForModel（pinned Memory only）
 ```
 
 **Action 轨 turn 进入点**（`session.ts`）：
 - `onEvent(event)` — 普通事件
 - `onPlayerCommand(event)` — 玩家命令直触发 turn
-- `appendEventToHistoryOnly(event)` — think-first 用：仅 stash 进 pendingEvents（按 id dedup 防重入）
+- `appendEventToHistoryOnly(event)` — think-first 用：仅放进 pendingEvents（按 id dedup 防重入）
 - `thinkIfGameTimeDue(_, gameTime)` — game time tick：仅 `observeGameTime`，不做 idle 思考
 - `onContinuedActionNoticeQueued()` — 后台 detached action terminal → push action_notice reason
 
 **Thinking 轨 entry**（`thinking-track.ts`）：
 - `requestThink(reason)` — fire-and-forget；已在跑就只更 `queuedReason`
+- `requestThinkIfTimelineBacklog()` — 未总结 timeline entries 超过阈值时触发 backlog 压缩
 - `runThinkBlocking(reason)` — think-first 用：等当前 in-flight 跑完，再串行跑自己这一轮（绝不抢占）
 - `onGameTime(gameMinute, gameTime)` — `nextThinkGameMinute` 到了 → `requestThink("scheduled")`
 

@@ -62,7 +62,7 @@ export function recentWorldEventRecords(
   const since = opts.sinceMs == null ? undefined : new Date(Date.now() - opts.sinceMs).toISOString();
 
   // 历史 bug：原来按"全局最新 N 条"取，再 JS 按角色过滤。全镇几十个 NPC 事件率高，
-  // N=160 只覆盖 ~25 game-min，导致 action 轨"历史事件（1–8小时前）"段饿死。
+  // N=160 只覆盖 ~25 game-min，导致 action 轨近 8 游戏小时事件时间线饿死。
   // 给了 characterId 就在 SQL 层先按角色相关过滤，再 LIMIT，这样 LIMIT 条都是本角色相关的，
   // 足够覆盖整个游戏时间窗。相关判定与 isEventRelevantToCharacter（events.ts）口径一致的超集：
   //   actor 自己 ∪ 事件 data 里出现该角色 id（affected/target/visible…）∪ 全局事件。
@@ -118,7 +118,7 @@ async function emitWorldEvent(
   const now = new Date().toISOString();
   const eventId = createMessageId("event");
   db.prepare(
-    `INSERT INTO world_events (id, townId, type, actorId, text, data, occurredAt, createdAt, gameTime)
+    `INSERT INTO world_events (id, townId, type, actorId, spokenText, data, occurredAt, createdAt, gameTime)
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
   ).run(
     eventId,

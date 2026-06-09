@@ -1574,7 +1574,7 @@ func request_container_put(container_id: String, player_slot_index: int, qty: in
 		# 容器装不下 → 退回背包
 		inventory_ops().receive_stacks(leftover)
 		if int(place.get("placed_qty", 0)) <= 0:
-		_fail_owner(str(place.get("message", tr("error.container.full"))))
+			_fail_owner(str(place.get("message", tr("error.container.full"))))
 
 
 @rpc("any_peer", "call_remote", "reliable")

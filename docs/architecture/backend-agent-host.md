@@ -161,7 +161,7 @@ interface AgentRuntime {
   onEvent(event: WorldEvent, ctx: AgentRuntimeContext): Promise<void>;
   detach(ctx: AgentRuntimeContext): Promise<void>;
   // 可选：游戏时间 tick。当前 agent-runtime 插件直接对每个 runtime 调（不走 AgentHost），
-  // 用于 thinking-track 定时 fire / sleep summary 等周期任务。
+  // 用于 thinking-track 定时 fire 等周期任务。
   // 本接口未来想统一到 AgentRuntime 上但 v1 还没收口。
   onGameTime?(townId: string, gameTime: GameTimeSnapshot, enabledCharacterIds?: Set<string> | null): Promise<void>;
 }

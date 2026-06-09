@@ -55,11 +55,7 @@ export type AgentConfig = {
   availableModels: AgentModelReference[];
   defaultModel: AgentModelReference;
   modelOverrides: AgentModelOverride[];
-  idleTickGameMinutes: number;
   maxToolCallsPerTurn: number;
-  sessionRecentMessageLimit: number;
-  sessionFullUserMessageLimit: number;
-  compressionTokenThreshold: number;
 };
 
 const LOG_LEVELS = new Set<LogLevel>([
@@ -155,11 +151,7 @@ function parseAgentConfig(env: NodeJS.ProcessEnv): AgentConfig {
     availableModels,
     defaultModel,
     modelOverrides,
-    idleTickGameMinutes: parsePositiveInteger(env.AGENT_IDLE_TICK_GAME_MINUTES ?? "14", "AGENT_IDLE_TICK_GAME_MINUTES"),
     maxToolCallsPerTurn: parsePositiveInteger(env.AGENT_MAX_TOOL_CALLS_PER_TURN ?? "2", "AGENT_MAX_TOOL_CALLS_PER_TURN"),
-    sessionRecentMessageLimit: parsePositiveInteger(env.AGENT_SESSION_RECENT_MESSAGE_LIMIT ?? "80", "AGENT_SESSION_RECENT_MESSAGE_LIMIT"),
-    sessionFullUserMessageLimit: parsePositiveInteger(env.AGENT_SESSION_FULL_USER_MESSAGE_LIMIT ?? "5", "AGENT_SESSION_FULL_USER_MESSAGE_LIMIT"),
-    compressionTokenThreshold: parsePositiveInteger(env.AGENT_COMPRESSION_TOKEN_THRESHOLD ?? "150000", "AGENT_COMPRESSION_TOKEN_THRESHOLD"),
   };
 }
 

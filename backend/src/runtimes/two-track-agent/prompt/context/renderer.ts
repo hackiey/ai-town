@@ -1,11 +1,13 @@
-import { getActiveLocale, type Locale, t } from "../../../../i18n/index.js";
+import { getActiveLocale, has, type Locale, t } from "../../../../i18n/index.js";
 import type { ActionLogRecord, WorldEventRecord } from "../../../../godot-link/protocol.js";
+import { SAY_TO_ACTION } from "../../../../godot-link/actions.js";
 import { renderActionResultCharacterChangeLines } from "../../../../agent-shared/game-tools/character-changes.js";
 import { isCharacterContextEvent } from "../../../../agent-shared/prompt-context/events.js";
 import { renderEventLine } from "../../../../agent-shared/event-descriptions/index.js";
 import type {
   AgentCurrentContext,
   GameAgentContext,
+  TimelineCursor,
   WorkingMemorySnapshot,
 } from "../../../../agent-shared/prompt-context/types.js";
 import {
@@ -15,7 +17,7 @@ import {
   renderProficiencySection,
   renderTownMap,
 } from "../../../../agent-shared/prompt-context/sections.js";
-import { characterName, localizeText, locationDescription } from "../../../../agent-shared/name-resolver/index.js";
+import { characterDisplayName, characterName, localizeText, locationDescription } from "../../../../agent-shared/name-resolver/index.js";
 import { getFactBoundaryRules } from "../../../../agent-shared/entity-descriptions/lore.js";
 import { getSkillForBook } from "../../../../agent-shared/entity-descriptions/skill-catalog.js";
 import type { PromptMemoryRecord } from "../../../../agent-shared/prompt-context/types.js";
@@ -28,6 +30,9 @@ import {
   pad2,
   type NormalizedGameTime,
 } from "../../../../agent-shared/prompt-context/time.js";
+
+export const RAW_TIMELINE_TAIL_KEEP = 10;
+export const UNSUMMARIZED_TIMELINE_TRIGGER_COUNT = 30;
 
 export function renderAgentContext(context: GameAgentContext): string {
   return [
@@ -96,26 +101,20 @@ function renderWorkingMemory(memory: WorkingMemorySnapshot, locale: Locale): str
   return `${meta}\n\n${body}`;
 }
 
-// 事件段：历史在前、近期在后（时间正序）。从 renderAgentTurnContext 拆出，方便
-// messages.ts 在事件块和「现状」块之间插入 working_memory（user message 顺序：
-// 历史事件 → 近期事件 → working_memory → 现状）。两段都空则返回 ""。
+// 事件段：world event + backend 内部失败 action 按时间合并成一条 actor-private 时间线。
+// 从 renderAgentTurnContext 拆出，方便 messages.ts 在事件块和「现状」块之间插入
+// working_memory（user message 顺序：近期事件 → working_memory → 现状）。
 export function renderAgentEventsContext(context: GameAgentContext): string {
   const sections: string[] = [];
   const locale = getActiveLocale();
-  const { recentEvents, historicalEvents } = splitContextEvents(context);
-  const recentHours = context.recentEventWindowMinutes / 60;
-  appendSection(
-    sections,
-    t("prompt.context.label.historical_events_format", locale, {
-      startHours: formatHours(recentHours),
-      endHours: formatHours(context.relevantEventWindowHours),
-    }),
-    renderEventTimeline(historicalEvents, context.characterId, locale, context.selfActionResults, context.current.selfDrunk, context.current.selfDrunkTier),
+  const entries = filterTimelineEntriesAfterCursor(
+    buildAgentTimelineEntries(context),
+    context.workingMemory?.compactedThrough,
   );
   appendSection(
     sections,
-    t("prompt.context.label.recent_events_format", locale, { hours: formatHours(recentHours) }),
-    renderEventTimeline(recentEvents, context.characterId, locale, context.selfActionResults, context.current.selfDrunk, context.current.selfDrunkTier),
+    t("prompt.context.label.recent_events_format", locale, { hours: formatHours(context.relevantEventWindowHours) }),
+    renderAgentTimelineEntries(entries, context, locale),
   );
   return sections.join("\n\n");
 }
@@ -282,51 +281,14 @@ function parseSkillSeedBookId(memoryId: string): string | undefined {
   return m ? m[1] : undefined;
 }
 
-function renderEventTimeline(
-  events: WorldEventRecord[],
-  viewerId: string,
-  locale: Locale,
-  selfActionResults: ActionLogRecord[] = [],
-  viewerDrunk: number = 0,
-  viewerDrunkTier: string = "",
-): string {
-  if (events.length === 0) {
-    return t("prompt.context.distance_band_none", locale);
-  }
-
-  // item-3：删 transcript 后自身动作的效果（饱食/产出/消耗）只剩在 action_log.result，
-  // world_event.data 不带。这里把本角色 action_log 按 actionId 建索引，渲染自身事件行时按
-  // event.data.actionId 精确 join 取对应记录，把效果作为缩进子行附在事件下。
-  // 历史上用过"类型+gameTime 邻近"的模糊配对，会在 say_to 扎堆时把失败原因贴错到别人的对话上
-  // （[[project_event_vs_actionlog_data]]）；现在 Godot 给每条动作事件盖了来源 actionId，改成精确键。
-  // 失败动作不再走这里——它们由 Godot 发成独立的 action_failed 事件，作为主行渲染。
-  const matcher = new SelfActionResultMatcher(selfActionResults, viewerId);
-
-  const grouped = new Map<string, string[]>();
-  for (const event of [...events].sort((a, b) => eventSortValue(a) - eventSortValue(b))) {
-    const gameTime = eventGameTime(event);
-    const date = gameTime ? formatGameDate(gameTime) : t("prompt.context.time.game_time_unknown", locale);
-    const time = gameTime ? `${gameTime.hour}:${pad2(gameTime.minute)}` : t("prompt.context.time.unknown", locale);
-    const lines = grouped.get(date) ?? [];
-    lines.push(`${time} ${renderEventLine(event, viewerId, locale, viewerDrunk, viewerDrunkTier)}`);
-    for (const sub of matcher.effectSubLinesFor(event)) {
-      lines.push(`  → ${sub}`);
-    }
-    grouped.set(date, lines);
-  }
-
-  return [...grouped.entries()]
-    .map(([date, lines]) => `${date}：\n${lines.join("\n")}`)
-    .join("\n\n");
-}
-
 // 把本角色 action_log（带 result）按 actionId 建索引，按 event.data.actionId 精确 join 到
 // 自身授权的事件行上，产出成功效果子行（属性变动/背包变动）。匹配不到 → 不附（优雅降级）。
-// 失败不在此处理：失败动作由 Godot/backend 发成 action_failed 事件，作为独立主行渲染。
+// 失败主行不在此处理：Godot 失败由 action_failed world_event 渲染，backend 内部失败
+// 由 renderAgentTimelineEntries 作为 actor-private action_log 条目渲染。
 class SelfActionResultMatcher {
   private readonly byActionId = new Map<string, ActionLogRecord>();
 
-  constructor(results: ActionLogRecord[], private readonly viewerId: string) {
+  constructor(results: ActionLogRecord[], private readonly viewerId: string, private readonly locale: Locale) {
     for (const rec of results) {
       // action_log 主键是 actionId（rec.id），全局唯一 → 直接覆盖式建表。
       if (rec.id) this.byActionId.set(rec.id, rec);
@@ -340,43 +302,88 @@ class SelfActionResultMatcher {
     if (!actionId) return [];
     const rec = this.byActionId.get(actionId);
     if (!rec) return [];
-    return renderActionResultCharacterChangeLines(rec.result);
+    return [
+      renderActionReasonLine(rec.reason, this.locale),
+      ...renderActionResultCharacterChangeLines(rec.result),
+    ].filter((line): line is string => Boolean(line));
   }
 }
 
-function splitContextEvents(context: GameAgentContext): {
-  recentEvents: WorldEventRecord[];
-  historicalEvents: WorldEventRecord[];
-} {
+export type AgentTimelineEntry =
+  | { kind: "event"; event: WorldEventRecord; cursor: TimelineCursor }
+  | { kind: "failed_action"; action: ActionLogRecord; cursor: TimelineCursor };
+
+export function buildAgentTimelineEntries(context: GameAgentContext): AgentTimelineEntry[] {
   const pendingEvents = context.pendingEvents.filter((event) => !isCharacterContextEvent(event));
   const mergedEvents = mergeDistinctEvents(context.relevantEvents, pendingEvents);
+  const eventActionIds = new Set(mergedEvents
+    .map((event) => typeof event.data?.actionId === "string" ? event.data.actionId : undefined)
+    .filter((id): id is string => Boolean(id)));
+  return [
+    ...mergedEvents.map((event) => ({ kind: "event" as const, event, cursor: eventCursor(event) })),
+    ...failedActionsForTimeline(context, eventActionIds).map((action) => ({ kind: "failed_action" as const, action, cursor: actionCursor(action) })),
+  ].sort((a, b) => compareTimelineCursors(a.cursor, b.cursor));
+}
+
+export function filterTimelineEntriesAfterCursor(entries: AgentTimelineEntry[], cursor: TimelineCursor | undefined): AgentTimelineEntry[] {
+  if (!cursor) return entries;
+  return entries.filter((entry) => compareTimelineCursors(entry.cursor, cursor) > 0);
+}
+
+export function countUncompactedTimelineEntries(context: GameAgentContext): number {
+  return filterTimelineEntriesAfterCursor(buildAgentTimelineEntries(context), context.workingMemory?.compactedThrough).length;
+}
+
+export function latestTimelineCursor(entries: AgentTimelineEntry[]): TimelineCursor | undefined {
+  return entries.length > 0 ? entries[entries.length - 1].cursor : undefined;
+}
+
+export function renderAgentTimelineEntries(entries: AgentTimelineEntry[], context: GameAgentContext, locale: Locale): string {
+  if (entries.length === 0) {
+    return t("prompt.context.distance_band_none", locale);
+  }
+
+  const matcher = new SelfActionResultMatcher(context.selfActionResults ?? [], context.characterId, locale);
+  const grouped = new Map<string, string[]>();
+  for (const entry of [...entries].sort((a, b) => compareTimelineCursors(a.cursor, b.cursor))) {
+    const gameTime = timelineGameTime(entry);
+    const date = gameTime ? formatGameDate(gameTime) : t("prompt.context.time.game_time_unknown", locale);
+    const time = gameTime ? `${gameTime.hour}:${pad2(gameTime.minute)}` : t("prompt.context.time.unknown", locale);
+    const lines = grouped.get(date) ?? [];
+    if (entry.kind === "event") {
+      lines.push(`${time} ${renderEventLine(entry.event, context.characterId, locale, context.current.selfDrunk, context.current.selfDrunkTier)}`);
+      for (const sub of matcher.effectSubLinesFor(entry.event)) {
+        lines.push(`  → ${sub}`);
+      }
+    } else {
+      lines.push(`${time} ${renderFailedActionLine(entry.action, context.characterId, locale)}`);
+      const reasonLine = renderActionReasonLine(entry.action.reason, locale);
+      if (reasonLine) lines.push(`  → ${reasonLine}`);
+    }
+    grouped.set(date, lines);
+  }
+
+  return [...grouped.entries()]
+    .map(([date, lines]) => `${date}：\n${lines.join("\n")}`)
+    .join("\n\n");
+}
+
+function failedActionsForTimeline(context: GameAgentContext, eventActionIds: Set<string>): ActionLogRecord[] {
+  const actions = context.selfActionResults ?? [];
   const currentGameTime = normalizeGameTime(context.current.gameTime);
   const currentGameMinutes = currentGameTime ? gameTimeSortValue(currentGameTime) : undefined;
-  const recentThresholdGameMinutes = currentGameMinutes != null
-    ? currentGameMinutes - context.recentEventWindowMinutes
+  const cutoffGameMinutes = currentGameMinutes != null
+    ? currentGameMinutes - context.relevantEventWindowHours * 60
     : undefined;
-
-  const recentEvents: WorldEventRecord[] = [];
-  const historicalEvents: WorldEventRecord[] = [];
-  for (const event of mergedEvents) {
-    if (recentThresholdGameMinutes == null) {
-      // 没有游戏时间锚点（极少见），全归近期段，避免空段误导
-      recentEvents.push(event);
-      continue;
-    }
-    const gameTime = eventGameTime(event);
-    if (!gameTime) {
-      // 事件缺 gameTime，按历史段处理（保守：不冒充近期）
-      historicalEvents.push(event);
-      continue;
-    }
-    if (gameTimeSortValue(gameTime) >= recentThresholdGameMinutes) {
-      recentEvents.push(event);
-    } else {
-      historicalEvents.push(event);
-    }
-  }
-  return { recentEvents, historicalEvents };
+  return actions.filter((action) => {
+    if (action.characterId !== context.characterId) return false;
+    if (action.status !== "failed") return false;
+    if (eventActionIds.has(action.id)) return false;
+    if (cutoffGameMinutes == null) return true;
+    const gameTime = actionGameTime(action);
+    if (!gameTime) return true;
+    return gameTimeSortValue(gameTime) >= cutoffGameMinutes;
+  });
 }
 
 function mergeDistinctEvents(...eventGroups: WorldEventRecord[][]): WorldEventRecord[] {
@@ -393,12 +400,107 @@ function eventGameTime(event: WorldEventRecord): NormalizedGameTime | undefined 
   return normalizeGameTime(event.gameTime ?? gameTimeFromRecord(event.data));
 }
 
-function eventSortValue(event: WorldEventRecord): number {
-  const gameTime = eventGameTime(event);
-  if (gameTime) {
-    return gameTimeSortValue(gameTime);
+function actionGameTime(action: ActionLogRecord): NormalizedGameTime | undefined {
+  return normalizeGameTime(action.gameTime);
+}
+
+function timelineGameTime(entry: AgentTimelineEntry): NormalizedGameTime | undefined {
+  return entry.kind === "event" ? eventGameTime(entry.event) : actionGameTime(entry.action);
+}
+
+function eventCursor(event: WorldEventRecord): TimelineCursor {
+  const gameMinutes = eventGameTimeMinutes(event);
+  return gameMinutes == null
+    ? { kind: "event", id: event.id, createdAt: event.createdAt || event.occurredAt }
+    : { kind: "event", id: event.id, createdAt: event.createdAt || event.occurredAt, gameMinutes };
+}
+
+function actionCursor(action: ActionLogRecord): TimelineCursor {
+  const gameTime = actionGameTime(action);
+  const gameMinutes = gameTime ? gameTimeSortValue(gameTime) : undefined;
+  return gameMinutes == null
+    ? { kind: "action", id: action.id, createdAt: action.createdAt }
+    : { kind: "action", id: action.id, createdAt: action.createdAt, gameMinutes };
+}
+
+function compareTimelineCursors(a: TimelineCursor, b: TimelineCursor): number {
+  const time = cursorSortTime(a) - cursorSortTime(b);
+  if (time !== 0) return time;
+  const created = a.createdAt.localeCompare(b.createdAt);
+  if (created !== 0) return created;
+  const kind = cursorKindOrder(a.kind) - cursorKindOrder(b.kind);
+  if (kind !== 0) return kind;
+  return a.id.localeCompare(b.id);
+}
+
+function cursorSortTime(cursor: TimelineCursor): number {
+  if (cursor.gameMinutes != null) return cursor.gameMinutes;
+  return Date.parse(cursor.createdAt) || 0;
+}
+
+function cursorKindOrder(kind: TimelineCursor["kind"]): number {
+  return kind === "event" ? 0 : 1;
+}
+
+function renderFailedActionLine(action: ActionLogRecord, viewerId: string, locale: Locale): string {
+  const target = action.target && typeof action.target === "object" && !Array.isArray(action.target)
+    ? action.target as Record<string, unknown>
+    : {};
+  const reason = humanizeFailureReason(action.error ?? "", locale);
+  if (action.action === SAY_TO_ACTION) {
+    const text = localizeText(stringField(target, "text") ?? "");
+    const targetId = stringField(target, "targetCharacterId");
+    if (targetId) {
+      const targetLabel = targetId === viewerId
+        ? t("prompt.context.event.self_pronoun", locale)
+        : characterDisplayName(targetId, locale);
+      return t("prompt.context.event.action_failed.say_to_format", locale, { target: targetLabel, text, reason });
+    }
+    return t("prompt.context.event.action_failed.say_to_no_target_format", locale, { text, reason });
   }
-  return Date.parse(event.occurredAt || event.createdAt) || 0;
+  return t("prompt.context.event.action_failed.generic_format", locale, {
+    action: actionLabel(action.action, locale),
+    reason,
+  });
+}
+
+function renderActionReasonLine(reason: string | undefined, locale: Locale): string | undefined {
+  const cleaned = stripAgentToolReasonPrefix(reason, locale);
+  if (!cleaned) return undefined;
+  return t("prompt.context.event.action_reason_format", locale, { reason: cleaned });
+}
+
+function stripAgentToolReasonPrefix(reason: string | undefined, locale: Locale): string | undefined {
+  const raw = reason?.trim();
+  if (!raw) return undefined;
+  const prefix = t("tool.common.agent_tool_reason_format", locale, { reason: "" }).trim();
+  if (prefix && raw.startsWith(prefix)) {
+    const stripped = raw.slice(prefix.length).trim();
+    return stripped || undefined;
+  }
+  return raw;
+}
+
+function actionLabel(action: string, locale: Locale): string {
+  const promptKey = `prompt.context.action_label.${action}`;
+  if (has(promptKey, locale)) return t(promptKey, locale);
+  const toolKey = `tool.action.name.${action}`;
+  if (has(toolKey, locale)) return t(toolKey, locale);
+  return action;
+}
+
+function humanizeFailureReason(reason: string, locale: Locale): string {
+  const trimmed = reason.trim();
+  if (!trimmed) return t("prompt.context.event.action_failed.reason_unknown", locale);
+  const match = trimmed.match(/^(.*:\s*)([a-z0-9_]+)$/i);
+  if (!match) return trimmed;
+  const name = characterDisplayName(match[2], locale);
+  return name && name !== match[2] ? `${match[1]}${name}` : trimmed;
+}
+
+function stringField(record: Record<string, unknown>, key: string): string | undefined {
+  const value = record[key];
+  return typeof value === "string" && value.length > 0 ? value : undefined;
 }
 
 // 渲染单条事件成 prompt 行。每个 event type 的具体 prose 在
@@ -408,36 +510,11 @@ export function renderEventSummary(event: WorldEventRecord, viewerId: string): s
   return renderEventLine(event, viewerId, getActiveLocale());
 }
 
-// 把 event.gameTime 转成"分钟"单位，便于按 cutoff 切分。无 gameTime 返回 undefined。
+// 把 event.gameTime 转成时间线排序用的游戏分钟值。无 gameTime 返回 undefined。
 export function eventGameTimeMinutes(event: WorldEventRecord): number | undefined {
   const gameTime = eventGameTime(event);
   return gameTime ? gameTimeSortValue(gameTime) : undefined;
 }
-
-// 给 thinking 轨用：按 cutoff 把事件分成"自上次思考以来"和"更早"两段（都按时间正序）。
-// 无 gameTime 的事件归到"自上次思考以来"段（保守：宁可让模型多看到也不漏看新事件）。
-export function splitEventsAtCutoff(
-  events: WorldEventRecord[],
-  cutoffGameMinutes: number | undefined,
-): { since: WorldEventRecord[]; before: WorldEventRecord[] } {
-  const sorted = [...events].sort((a, b) => eventSortValue(a) - eventSortValue(b));
-  if (cutoffGameMinutes == null) {
-    return { since: sorted, before: [] };
-  }
-  const since: WorldEventRecord[] = [];
-  const before: WorldEventRecord[] = [];
-  for (const event of sorted) {
-    const minutes = eventGameTimeMinutes(event);
-    if (minutes == null || minutes >= cutoffGameMinutes) {
-      since.push(event);
-    } else {
-      before.push(event);
-    }
-  }
-  return { since, before };
-}
-
-export { renderEventTimeline };
 
 // Re-export from shared so call sites keep one import surface.
 export { renderEventGameTimeLabel } from "../../../../agent-shared/event-descriptions/index.js";

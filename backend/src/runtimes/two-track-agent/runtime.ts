@@ -2,8 +2,8 @@
 // 共享同一个 working_memory KV（runtime_storage.key="working_memory"）。
 //
 // 关键约束：
-// - Action 轨 thinking_level 永远 "off"，不做 idle 思考（交给 thinking 轨）
-// - 没有打断机制：事件到来若已经在跑 turn，仅入队等当前 turn 结束后顺序消费
+// - Action 轨不做 idle 思考；周期总结和长期记忆维护交给 thinking 轨
+// - Action 轨每次 LLM call 前重读 perception + working_memory，新事件可 release/abort 当前 call
 
 import type { AgentRuntime, AgentRuntimeContext } from "../../agent-host/runtime.js";
 import type { NpcRuntimeConfig } from "../../agent-host/router.js";
@@ -17,10 +17,7 @@ import {
 } from "../../agents/model-registry.js";
 import { gameTimeTotalMinutes } from "../../agent-shared/utils/game-time.js";
 import type { AgentKind } from "../../agents/types.js";
-import {
-  ActionTrackSession,
-  initialIdleTickOffsetGameMinutes,
-} from "./action-session/index.js";
+import { ActionTrackSession } from "./action-session/index.js";
 import { TwoTrackAgentContextBuilder, resolveCharacterIdByName } from "./prompt/index.js";
 import { ThinkingTrackSession } from "./thinking-track.js";
 import { isSignificantForThinking, isThinkFirstEvent } from "./semantics/events.js";
@@ -83,7 +80,7 @@ export class PiAgentRuntime {
     return resolved;
   }
 
-  // 被接管玩家按 "npc" 对待，解锁 thinking 轨 / reflection tick / significant / think-first。
+  // 被接管玩家按 "npc" 对待，解锁 thinking 轨 / working-memory wakeup / significant / think-first。
   private resolveAgentKind(characterId: string): AgentKind {
     if (this.takeovers.has(characterId)) return "npc";
     return characterId.startsWith("player_") ? "player" : "npc";
@@ -109,7 +106,7 @@ export class PiAgentRuntime {
   }
 
   start(): void {
-    this.logger?.info({ idleTickGameMinutes: this.config.idleTickGameMinutes }, "two-track agent runtime started");
+    this.logger?.info({}, "two-track agent runtime started");
   }
 
   stop(): void {
@@ -125,7 +122,7 @@ export class PiAgentRuntime {
     if (event.type === AI_TAKEOVER_EVENT_TYPE) {
       this.registerTakeover(characterId, takeoverModelsFromEvent(event), takeoverAgentTypeFromEvent(event));
       // 登记后 resolveAgentKind 已返回 "npc"：建 action+thinking session 并踢一轮初始 turn 起步。
-      this.session(ctx, "npc").enqueueReflectionTurn();
+      this.session(ctx, "npc").enqueueWorkingMemoryTurn();
       return;
     }
     if (event.type === AI_RELEASE_EVENT_TYPE) {
@@ -142,7 +139,7 @@ export class PiAgentRuntime {
 
     const kind = this.resolveAgentKind(characterId);
 
-    // "先想再行动"路径：把事件 stash 进 action 历史（不触发 turn），await thinking 写完
+    // "先想再行动"路径：把事件先放进 pendingEvents（不触发 turn），await thinking 写完
     // working_memory，再走正常 onEvent —— 那次 turn 入口就能读到刚写的 brief。
     // 此后两条轨道恢复各自节奏（thinking 的 15-min tick / action 的事件触发）。
     if (kind === "npc" && isThinkFirstEvent(event)) {
@@ -156,8 +153,13 @@ export class PiAgentRuntime {
 
     // 把 significant 事件提前递给 thinking 轨，让它马上重写 working_memory，
     // 这样下次 action turn 能用上最新 brief。fire-and-forget，不阻 action。
-    if (kind === "npc" && isSignificantForThinking(event, characterId)) {
-      void this.thinkingSession(ctx).requestThink(`event:${event.type}`);
+    if (kind === "npc") {
+      const thinking = this.thinkingSession(ctx);
+      if (isSignificantForThinking(event, characterId)) {
+        void thinking.requestThink(`event:${event.type}`);
+      } else {
+        void thinking.requestThinkIfTimelineBacklog();
+      }
     }
   }
 
@@ -190,8 +192,8 @@ export class PiAgentRuntime {
       logger: this.logger,
       // Thinking 写完 working_memory → 踢一脚 action，让没事件时也能被周期唤醒。
       // Lazy lookup：action session 可能此刻还没建，就放过（NPC 还没 attach 就没必要 fire）。
-      onReflectionWritten: () => {
-        this.sessions.get(`npc:${ctx.townId}:${ctx.characterId}`)?.enqueueReflectionTurn();
+      onWorkingMemoryWritten: () => {
+        this.sessions.get(`npc:${ctx.townId}:${ctx.characterId}`)?.enqueueWorkingMemoryTurn();
       },
     });
     const latest = this.latestGameTimeByTown.get(ctx.townId);
@@ -227,9 +229,8 @@ export class PiAgentRuntime {
       characterId: ctx.characterId,
       agentKind,
       logger: this.logger,
-      // 仅 npc：tool 失败时 action 同步等 thinking 反思这次失败再续上（player 无 thinking 轨）。
-      requestBlockingReflection: agentKind === "npc"
-        ? (reason: string) => this.thinkingSession(ctx).runThinkBlocking(reason)
+      requestTimelineBacklogThink: agentKind === "npc"
+        ? () => { void this.thinkingSession(ctx).requestThinkIfTimelineBacklog(); }
         : undefined,
     });
     this.sessions.set(key, session);
@@ -281,7 +282,6 @@ export function createTwoTrackAgentRuntime(options: CreateTwoTrackAgentRuntimeOp
 }
 
 export { readWorkingMemoryFromStorage, WORKING_MEMORY_STORAGE_KEY } from "./action-session/index.js";
-export { initialIdleTickOffsetGameMinutes };
 
 function worldEventToRecord(townId: string, event: WorldEvent): WorldEventRecord {
   return {

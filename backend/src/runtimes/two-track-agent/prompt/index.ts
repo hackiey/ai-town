@@ -44,10 +44,18 @@ export {
 export { renderEventGameTimeLabel } from "../../../agent-shared/event-descriptions/index.js";
 export { renderEventSummary } from "./context/renderer.js";
 export {
+  buildAgentTimelineEntries,
+  countUncompactedTimelineEntries,
+  filterTimelineEntriesAfterCursor,
+  latestTimelineCursor,
+  RAW_TIMELINE_TAIL_KEEP,
   renderAgentContext,
   renderAgentEventsContext,
+  renderAgentTimelineEntries,
   renderAgentSystemContext,
   renderAgentTurnContext,
+  UNSUMMARIZED_TIMELINE_TRIGGER_COUNT,
+  type AgentTimelineEntry,
 } from "./context/renderer.js";
 export {
   formatGameDate,
