@@ -1,7 +1,11 @@
 [gd_scene format=3 uid="uid://b2e17e6a22c82"]
 
 [ext_resource type="Script" uid="uid://mhnkxhoheim8" path="res://src/world/site_marker.gd" id="1_locm"]
-[ext_resource type="Script" path="res://src/world/world_object_identity.gd" id="world_identity_script"]
+[ext_resource type="Script" uid="uid://7688s6yo4bii" path="res://src/world/world_object_identity.gd" id="world_identity_script"]
+
+[sub_resource type="StandardMaterial3D" id="StdMat_loc"]
+shading_mode = 0
+albedo_color = Color(0.4, 0.9, 1, 1)
 
 [sub_resource type="SphereMesh" id="SphereMesh_loc"]
 radius = 0.2
@@ -9,37 +13,29 @@ height = 0.4
 radial_segments = 16
 rings = 8
 
-[sub_resource type="StandardMaterial3D" id="StdMat_loc"]
-shading_mode = 0
-albedo_color = Color(0.4, 0.9, 1, 1)
-emission_enabled = true
-emission = Color(0.4, 0.9, 1, 1)
-emission_energy_multiplier = 0.6
-
-[node name="SiteMarker" type="Marker3D"]
+[node name="SiteMarker" type="Marker3D" unique_id=1857865028]
 script = ExtResource("1_locm")
-show_visual_at_runtime = true
+arrival_radius = 0.6
 visible_near_radius = 10.0
 visible_far_radius = 50.0
-direct_interaction_radius = 0.0
-arrival_radius = 3.0
+show_visual_at_runtime = true
 
-[node name="WorldObjectIdentity" type="Node" parent="."]
+[node name="WorldObjectIdentity" type="Node" parent="." unique_id=103112661]
 script = ExtResource("world_identity_script")
-kind = "location"
 map_registration = "global"
 capabilities = PackedStringArray("move")
+group_gated_capabilities = PackedStringArray()
 
-[node name="EditorVisual" type="MeshInstance3D" parent="."]
+[node name="EditorVisual" type="MeshInstance3D" parent="." unique_id=703818797]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.5, 0)
-mesh = SubResource("SphereMesh_loc")
 material_override = SubResource("StdMat_loc")
+mesh = SubResource("SphereMesh_loc")
 
-[node name="EditorLabel" type="Label3D" parent="."]
-position = Vector3(0, 0.6, 0)
+[node name="EditorLabel" type="Label3D" parent="." unique_id=314413426]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.6, 0)
 billboard = 1
 no_depth_test = true
 modulate = Color(0.4, 0.9, 1, 1)
-outline_size = 8
+text = "SiteMarker"
 font_size = 48
-text = "location"
+outline_size = 8
