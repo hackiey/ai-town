@@ -166,12 +166,12 @@ func unlockable_snapshots_for(character: Character) -> Array[Dictionary]:
 # 系统级 deposit — 跳过靠近 / 钥匙检查。Mines / Mints / Wages 等 autoload 用。
 func system_deposit(container_id: String, item_id: String, qty: int, quality: int = 100) -> Dictionary:
 	if qty <= 0 or item_id.is_empty():
-		return {"ok": false, "message": "system_deposit 参数错误"}
+		return {"ok": false, "message": _msg("error.container.system_deposit_invalid")}
 	var node := find_container_node(container_id)
 	if node == null:
-		return {"ok": false, "message": "找不到容器：%s" % container_id}
+		return {"ok": false, "message": _fmt("error.container.not_found_format", [container_id])}
 	if not Items.has_id(item_id):
-		return {"ok": false, "message": "未知物品：%s" % item_id}
+		return {"ok": false, "message": _fmt("error.item.unknown_format", [item_id])}
 	var coin_centi := CharacterInventory.currency_item_centi(item_id)
 	if coin_centi > 0:
 		wallet_add_centi(container_id, qty * coin_centi)
@@ -184,15 +184,15 @@ func system_deposit(container_id: String, item_id: String, qty: int, quality: in
 # 系统级 withdraw — 跳过靠近 / 钥匙检查。返回 stacks 让 caller 自行使用。
 func system_withdraw(container_id: String, item_id: String, qty: int) -> Dictionary:
 	if qty <= 0 or item_id.is_empty():
-		return {"ok": false, "message": "system_withdraw 参数错误"}
+		return {"ok": false, "message": _msg("error.container.system_withdraw_invalid")}
 	var node := find_container_node(container_id)
 	if node == null:
-		return {"ok": false, "message": "找不到容器：%s" % container_id}
+		return {"ok": false, "message": _fmt("error.container.not_found_format", [container_id])}
 	var coin_centi := CharacterInventory.currency_item_centi(item_id)
 	if coin_centi > 0:
 		var centi := qty * coin_centi
 		if not wallet_spend_centi(container_id, centi):
-			return {"ok": false, "message": "容器钱包余额不足"}
+			return {"ok": false, "message": _msg("error.container.wallet_not_enough")}
 		var stack := InventorySlotData.from_template(item_id, 100)
 		stack["quantity"] = qty
 		return {"ok": true, "stacks": [stack]}
@@ -257,10 +257,10 @@ func wallet_spend_centi(container_id: String, centi: int) -> bool:
 # 返回: { ok: bool, node: ContainerNode?, message: String, container_id: String, container_name: String }
 func resolve_for_actor(actor: Character, name_or_id: String) -> Dictionary:
 	if actor == null:
-		return { "ok": false, "node": null, "message": "缺少操作角色", "container_id": "", "container_name": name_or_id }
+		return { "ok": false, "node": null, "message": _msg("error.container.actor_missing"), "container_id": "", "container_name": name_or_id }
 	var node := find_container_by_name(name_or_id)
 	if node == null:
-		return { "ok": false, "node": null, "message": "找不到容器：%s" % name_or_id, "container_id": "", "container_name": name_or_id }
+		return { "ok": false, "node": null, "message": _fmt("error.container.not_found_format", [name_or_id]), "container_id": "", "container_name": name_or_id }
 	# 多锚点（水井）：按名查到的是首个，换成离 actor 最近的同 id 节点，否则 _check_access 距离判误杀。
 	node = find_container_node_near(node.effective_container_id(), actor.global_position)
 	var access := _check_access(actor, node)
@@ -429,15 +429,15 @@ func set_price_for_item(node: ContainerNode, item_id: String, price_centi: int) 
 
 func _check_access(character: Character, node: ContainerNode) -> Dictionary:
 	if not node.can_be_used_by(character):
-		return {"ok": false, "message": "「%s」不归你管，无权打开" % node.effective_display_name()}
+		return {"ok": false, "message": _fmt("error.container.access_denied_format", [node.effective_display_name()])}
 	if not _is_character_near(character, node):
-		return {"ok": false, "message": "离「%s」太远，先走过去再操作" % node.effective_display_name()}
+		return {"ok": false, "message": _fmt("error.container.too_far_format", [node.effective_display_name()])}
 	if not node.is_unlocked_by(character):
 		var key_id := node.world_object_lock_item_id()
 		var key_label := tr("item.%s.name" % key_id)
 		if key_label == "item.%s.name" % key_id:
 			key_label = key_id
-		return {"ok": false, "message": "「%s」需要钥匙「%s」才能打开" % [node.effective_display_name(), key_label]}
+		return {"ok": false, "message": _fmt("error.container.key_required_format", [node.effective_display_name(), key_label])}
 	return {"ok": true}
 
 
@@ -538,7 +538,7 @@ func _extract_from_container(node: ContainerNode, item_name: String, quantity: i
 	_ensure_hydrated(node)
 	var slots: Array[Dictionary] = node.contents
 	if slots.is_empty():
-		return {"ok": false, "message": "「%s」是空的" % node.effective_display_name()}
+		return {"ok": false, "message": _fmt("error.container.empty_format", [node.effective_display_name()])}
 	var remaining := maxi(quantity, 0)
 	var extracted: Array = []
 	if remaining <= 0:
@@ -579,7 +579,7 @@ func _extract_from_container(node: ContainerNode, item_name: String, quantity: i
 				else:
 					slots[put_idx]["quantity"] = int(slots[put_idx].get("quantity", 0)) + qty
 				Db.save_container_slot(cid, put_idx, slots[put_idx])
-		return {"ok": false, "message": "「%s」里没有足够的「%s」" % [node.effective_display_name(), item_name]}
+		return {"ok": false, "message": _fmt("error.container.not_enough_item_format", [node.effective_display_name(), item_name])}
 	_set_contents(node, slots)
 	return {"ok": true, "stacks": extracted}
 
@@ -628,7 +628,7 @@ func _place_stacks_into_container(node: ContainerNode, stacks: Array) -> Diction
 			if idx < 0:
 				stack["quantity"] = remaining
 				_set_contents(node, slots)
-				return {"ok": false, "message": "「%s」装不下了" % node.effective_display_name()}
+				return {"ok": false, "message": _fmt("error.container.full_format", [node.effective_display_name()])}
 			var chunk := mini(remaining, stack_max)
 			var placed := stack.duplicate(true)
 			placed["quantity"] = chunk
@@ -769,3 +769,12 @@ func _load_containers_config() -> void:
 	var parsed: Variant = JSON.parse_string(raw)
 	if parsed is Dictionary:
 		_config_cache = parsed
+
+
+func _msg(key: String) -> String:
+	var translated := str(TranslationServer.translate(key))
+	return translated if not translated.is_empty() and translated != key else key
+
+
+func _fmt(key: String, args: Array) -> String:
+	return _msg(key) % args

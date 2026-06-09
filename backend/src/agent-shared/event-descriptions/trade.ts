@@ -19,11 +19,11 @@ export function renderTradeOfferEventLine(
   const data = (event.data ?? {}) as Partial<TradeOfferEventData>;
   const buyer = participantLabel(data.buyerCharacterId, viewerId, locale);
   const seller = participantLabel(data.sellerCharacterId, viewerId, locale);
-  const offerPart = renderTradeLineList(data.offer) || "（无）";
-  const requestPart = renderTradeLineList(data.request) || "（无）";
+  const offerPart = renderTradeLineList(data.offer, locale) || t("prompt.context.event.trade.none", locale);
+  const requestPart = renderTradeLineList(data.request, locale) || t("prompt.context.event.trade.none", locale);
   const main = buyer && seller
-    ? `${buyer} 向 ${seller} 提出交易：付 ${offerPart}，换 ${requestPart}`
-    : `交易：付 ${offerPart}，换 ${requestPart}`;
+    ? t("prompt.context.event.trade.offer_format", locale, { buyer, seller, offer: offerPart, request: requestPart })
+    : t("prompt.context.event.trade.offer_no_participants_format", locale, { offer: offerPart, request: requestPart });
   return composeEventLine(event, viewerId, locale, main);
 }
 
@@ -36,18 +36,23 @@ export function renderTradeResponseEventLine(
   const seller = participantLabel(data.sellerCharacterId, viewerId, locale);
   const buyer = participantLabel(data.buyerCharacterId, viewerId, locale);
   const verb = data.response === "accept"
-    ? "接受"
+    ? t("prompt.context.event.trade.response_accept", locale)
     : data.response === "reject"
-      ? "拒绝"
+      ? t("prompt.context.event.trade.response_reject", locale)
       : data.response === "cancelled"
-        ? "取消"
-        : "回应";
-  const offer = renderTradeLineList(data.offer);
-  const request = renderTradeLineList(data.request);
-  const detail = offer || request ? `：付 ${offer || "（无）"}，换 ${request || "（无）"}` : "";
+        ? t("prompt.context.event.trade.response_cancelled", locale)
+        : t("prompt.context.event.trade.response_default", locale);
+  const offer = renderTradeLineList(data.offer, locale);
+  const request = renderTradeLineList(data.request, locale);
+  const detail = offer || request
+    ? t("prompt.context.event.trade.response_detail_format", locale, {
+        offer: offer || t("prompt.context.event.trade.none", locale),
+        request: request || t("prompt.context.event.trade.none", locale),
+      })
+    : "";
   const main = seller && buyer
-    ? `${seller} ${verb}了 ${buyer} 的交易${detail}`
-    : `${verb}交易${detail}`;
+    ? t("prompt.context.event.trade.response_format", locale, { seller, verb, buyer, detail })
+    : t("prompt.context.event.trade.response_no_participants_format", locale, { verb, detail });
   return composeEventLine(event, viewerId, locale, main);
 }
 
@@ -57,7 +62,7 @@ function participantLabel(id: string | undefined, viewerId: string, locale: Loca
   return localizeStringValue(id) ?? id;
 }
 
-function renderTradeLineList(value: unknown): string {
+function renderTradeLineList(value: unknown, locale: Locale): string {
   if (!Array.isArray(value)) return "";
   const parts: string[] = [];
   for (const entry of value) {
@@ -69,5 +74,5 @@ function renderTradeLineList(value: unknown): string {
     const label = localizeStringValue(item) ?? item;
     parts.push(`${label}×${count}`);
   }
-  return parts.join("、");
+  return parts.join(t("prompt.context.event.list_separator", locale));
 }

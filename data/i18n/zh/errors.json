@@ -34,7 +34,219 @@
     "tool_failure_reflecting": "工具调用失败，当前 agent loop 已停止；正在交给慢思考反思这次失败，随后会带着新的判断继续",
     "put_take": {
       "invalid_target": "put_take target 必须是 object",
-      "empty_transfers": "put_take 没有指定 transfers"
+      "empty_transfers": "put_take 没有指定 transfers",
+      "no_moves": "没有可搬运的内容",
+      "unsupported_transfer_format": "不支持的搬运：%s→%s"
+    },
+    "endpoint": {
+      "missing": "endpoint 缺失",
+      "unknown_format": "未知 endpoint: %s"
+    },
+    "shelf": {
+      "payment_not_enough": "你给的钱不够",
+      "invalid_slot": "货架槽无效"
+    },
+    "view_container": {
+      "missing_container_id": "view_container 缺少 containerId",
+      "unavailable": "容器不在手边、看不见，或打不开"
+    },
+    "container": {
+      "invalid_target": "目标容器无效",
+      "invalid_source": "源容器无效",
+      "not_nearby": "容器不在手边",
+      "not_nearby_format": "「%s」不在手边",
+      "invalid_slot": "容器槽无效",
+      "ground_missing": "地上没有这个容器",
+      "full": "容器装不下",
+      "system_deposit_invalid": "system_deposit 参数错误",
+      "system_withdraw_invalid": "system_withdraw 参数错误",
+      "not_found_format": "找不到容器：%s",
+      "wallet_not_enough": "容器钱包余额不足",
+      "actor_missing": "缺少操作角色",
+      "access_denied_format": "「%s」不归你管，无权打开",
+      "too_far_format": "离「%s」太远，先走过去再操作",
+      "key_required_format": "「%s」需要钥匙「%s」才能打开",
+      "empty_format": "「%s」是空的",
+      "full_format": "「%s」装不下了",
+      "missing_item_format": "「%s」里没有「%s」",
+      "not_enough_item_format": "「%s」里没有足够的「%s」",
+      "cannot_fit_item_format": "「%s」装不下「%s」",
+      "wallet_not_enough_format": "「%s」的钱包里没有足够的「%s」"
+    },
+    "item": {
+      "unknown_format": "未知物品：%s"
+    },
+    "item_use": {
+      "empty_slot": "物品槽位为空",
+      "not_food_format": "/eat %s 不是食物（kind=%s）",
+      "rotten_unusable_format": "%s 已经腐烂，不能使用",
+      "food_no_effects_format": "/eat %s 没有效果数据（base_effects 空）",
+      "unusable_format": "%s 无法直接使用"
+    },
+    "use_item": {
+      "missing_item_id": "use_item 缺少 itemId",
+      "self_only": "物品暂时只能自己使用",
+      "slot_changed": "物品已不在原槽位",
+      "script_error_format": "使用脚本错误：%s"
+    },
+    "drop_item": {
+      "missing_item_id": "drop_item 缺少 itemId",
+      "failed_format": "无法丢弃 %s"
+    },
+    "pick_up_item": {
+      "missing_item_id": "pick_up_item 缺少 itemId",
+      "nearby_missing_format": "附近没有 %s"
+    },
+    "write": {
+      "missing_fields": "write 需要 itemName + title + content 三个非空字段",
+      "royal_payroll_failed": "写入王室薪水记录失败",
+      "no_writable_format": "你身上和附近都没有可书写的「%s」（也不是你能动的虚拟账册）"
+    },
+    "read": {
+      "missing_title": "read 缺少 title",
+      "no_readable_format": "你身上和附近都没有名为「%s」的可阅读物品（也不是你能动的虚拟账册）"
+    },
+    "brew": {
+      "barrel_missing": "找不到酿酒桶",
+      "recipe_missing": "没有这种酒的配方",
+      "not_vessel": "这不是酿酒桶",
+      "no_base_liquid": "酿酒桶里没有水，先打水",
+      "already_fermenting": "这桶正在酿，别打断",
+      "ingredient_not_enough_format": "%s 不够（需 %d 份，背包只有 %d 份）",
+      "extract_failed": "取原料失败",
+      "failed": "酿不了"
+    },
+    "well": {
+      "invalid": "水井无效",
+      "not_nearby": "水井不在手边"
+    },
+    "liquid": {
+      "not_container": "不是液体容器",
+      "transfer_failed": "倒不动",
+      "incompatible_content": "目标容器装着别的液体",
+      "no_room_or_source": "倒不动了（目标满或源空）",
+      "container_full": "容器满了",
+      "cannot_take_from_well": "水井里的液体不能直接取成物品",
+      "fermenting": "这桶还在发酵，先等成酒",
+      "source_empty": "源容器是空的",
+      "no_serving_item_format": "「%s」不能直接按份取出",
+      "no_serving_liters_format": "「%s」没有每份容量配置",
+      "insufficient_serving_format": "至少要取 %.2f 升才能得到 1 份「%s」",
+      "unsupported_destination": "不支持把液体取到这里"
+    },
+    "inventory": {
+      "invalid_slot": "背包槽无效",
+      "full": "背包装不下",
+      "missing_plain_format": "背包里没有%s",
+      "not_enough_plain_format": "背包里没有足够的 %s",
+      "slot_not_item_format": "槽位 %d 不是%s",
+      "cannot_fit_item_format": "背包装不下「%s」",
+      "cannot_fit_stack_format": "背包装不下 %s x%d",
+      "missing_item_format": "你身上没有「%s」",
+      "not_enough_item_format": "你身上没有足够的「%s」",
+      "invalid_extract_request": "无效的物品提取请求",
+      "no_water_bucket": "背包里没有水桶",
+      "water_bucket_other_liquid": "水桶里装的不是水",
+      "water_not_enough_format": "水不够（需要 %d 点，当前只有 %d 点）",
+      "water_bucket_empty": "水桶是空的，先去打水"
+    },
+    "money": {
+      "not_enough": "钱不够",
+      "negative_amount": "货币金额不能为负数",
+      "wallet_not_enough_format": "钱包余额不足（需要 %s，有 %s）"
+    },
+    "stamina": {
+      "not_enough_format": "体力不足：%s 需要 %.0f，当前 %.1f"
+    },
+    "workstation": {
+      "input_resolution_failed": "无法解析工作台材料",
+      "no_matching_reaction": "无可用反应",
+      "stamina_not_enough": "体力不足",
+      "consume_inputs_failed": "材料消耗失败",
+      "input_missing_format": "背包里找不到可用于工作台的材料：%s",
+      "consume_index_oob_format": "工作台消耗索引越界：%d",
+      "backpack_slot_missing_format": "背包槽位不存在：%d",
+      "input_changed_format": "材料已变化，无法消耗：%s",
+      "consume_failed_format": "消耗材料失败：%s",
+      "container_content_changed_format": "容器内容已变化，无法倒出：%s",
+      "unknown_consume_type_format": "未知材料消耗类型：%s"
+    },
+    "mechanic": {
+      "verb_unregistered_format": "verb '%s' 未注册到 MechanicHost"
+    },
+    "trade": {
+      "offer_parse_failed": "offer 解析失败",
+      "request_parse_failed": "request 解析失败",
+      "create_missing_id": "trade_create 未返回 trade_id",
+      "missing_target": "缺少交易对象",
+      "self": "不能和自己交易",
+      "target_not_found_format": "找不到交易对象 %s",
+      "target_sleeping_format": "%s 正在睡觉，无法发起交易",
+      "too_far_format": "距离不够，需要走到 %s 旁边（%.0f 米内）才能发起交易",
+      "pending_exists": "已经有一笔待回应的交易，请等对方处理",
+      "create_failed": "创建交易报价失败",
+      "missing_trade_id": "缺少 trade_id",
+      "unknown_format": "未知交易：%s",
+      "not_pending": "该交易已经不是 pending 状态了",
+      "only_seller_respond": "只有收到了报价的一方才能回应这笔交易",
+      "buyer_missing": "买家当前不在场景中",
+      "empty_transfer": "这笔交易没有可转移的内容",
+      "seller_receive_failed": "你现在收不下对方给的东西",
+      "buyer_receive_failed": "对方现在装不下这些东西"
+    },
+    "respond": {
+      "missing_kind": "respond 缺少 kind 字段",
+      "unsupported_kind_format": "respond 不支持 kind '%s'，当前仅支持 'trade'",
+      "response_invalid": "response 必须为 accept 或 reject",
+      "missing_buyer": "respond(kind=trade) 缺少 buyerCharacterId",
+      "pending_not_found_format": "找不到来自 %s 的待回应交易",
+      "pending_missing_trade_id": "pending 交易缺少 trade_id"
+    },
+    "give": {
+      "missing_recipient": "offer 缺少接收角色",
+      "self": "不能把东西递给自己",
+      "recipient_not_found_format": "找不到 %s",
+      "recipient_sleeping_format": "%s 正在睡觉，没法接你递的东西",
+      "too_far_format": "距离不够，需要走到 %s 旁边（%.0f 米内）才能递交",
+      "recipient_full_format": "%s 装不下任何递交的物品"
+    },
+    "trade_line": {
+      "must_be_array": "交易条目必须为数组",
+      "must_be_object": "交易条目必须为 {item, count} 对象",
+      "missing_item": "交易条目缺少 item",
+      "invalid_currency_count_format": "%s 的 count 必须 ≥ 0.01",
+      "invalid_count_format": "%s 的 count 必须为正整数",
+      "invalid_line_format": "无效交易条目：%s",
+      "not_enough_inventory_or_shelf_format": "背包和当前附近自家货架里都没有足够的 %s（需要 %d）"
+    },
+    "farm": {
+      "slot_missing": "目标 slot 不存在",
+      "slot_occupied_format": "%s 已被占用",
+      "backpack_missing_format": "背包里没有 %s",
+      "not_seed_format": "%s 不是可种植作物",
+      "crop_spawner_missing": "找不到 CropSpawner",
+      "variety_missing": "作物对应的 variety 不存在",
+      "plant_fumbled": "一个趔趄，种子撒了一地，全废了",
+      "crop_missing": "目标作物不存在",
+      "crop_not_in_watering_farm": "这株作物不在可浇水的农田里",
+      "farm_missing": "目标农场不存在",
+      "already_full_water": "这片农田已经是满水了",
+      "no_water": "没水可浇",
+      "slot_crop_missing": "目标 slot 上没有作物",
+      "no_pest_format": "%s 没有虫",
+      "no_wood_ash": "背包里没有草木灰，无法除虫",
+      "consume_wood_ash_failed": "扣除草木灰失败",
+      "pest_fumbled_format": "草木灰撒得到处都是，虫没除掉（%s）",
+      "not_ripe_format": "%s 还没成熟",
+      "no_iron_shovel": "背包里没有铁铲，无法铲除作物",
+      "empty_yield": "收成是空的",
+      "front_empty_slot_missing": "前方没有空农田",
+      "front_crop_missing": "前方没有作物",
+      "front_pest_crop_missing": "前方没有需要除虫的作物",
+      "front_ripe_crop_missing": "前方没有成熟的作物",
+      "target_node_invalid": "目标节点已失效",
+      "access_denied_format": "%s 不属于你能动土的农田（归属 %s）",
+      "action_failed": "农事行动失败"
     },
     "water_draw": {
       "amount_positive": "打水数量必须大于 0",

@@ -170,11 +170,11 @@ func start_from_action(action_request: Dictionary) -> String:
 		return _fail_before_start(ws_def.id, verb, sub_option, "too_many_inputs", "too many inputs for %s: %d > %d" % [ws_def.id, input_names.size(), ws_def.slot_count])
 	var collected: Dictionary = _collect_inventory_inputs(input_names)
 	if not bool(collected.get("ok", false)):
-		return _fail_before_start(ws_def.id, verb, sub_option, "input_resolution_failed", str(collected.get("message", "无法解析工作台材料")))
+		return _fail_before_start(ws_def.id, verb, sub_option, "input_resolution_failed", str(collected.get("message", _msg("error.workstation.input_resolution_failed"))))
 	var instances: Array = collected.get("instances", [])
 	var result: Dictionary = Crafting.resolve(verb, ws_def.id, sub_option, instances, character.get_proficiency_table(), Impairment.work_impair(character))
 	if str(result.get("outcome", "no_match")) == "no_match":
-		return _fail_before_start(ws_def.id, verb, sub_option, "no_matching_reaction", str(result.get("message", "无可用反应")))
+		return _fail_before_start(ws_def.id, verb, sub_option, "no_matching_reaction", str(result.get("message", _msg("error.workstation.no_matching_reaction"))))
 	var duration: float = float(result.get("duration_seconds", 0.0))
 	var label: String = craft_label(verb, ws_def.id, sub_option)
 	var mining_cost: Dictionary = Mines.attempt_cost() if is_mining else {}
@@ -277,7 +277,7 @@ func _report_progress() -> void:
 		"duration": float(_active.get("duration", 0.0)),
 		"remaining_game_seconds": maxf(0.0, deadline - GameClock.game_seconds),
 		"label": str(_active.get("label", "")),
-		"message": "%s 进行中" % str(_active.get("label", "使用工作台")),
+		"message": _fmt("tool.tool_result.workstation.in_progress_format", [str(_active.get("label", _msg("tool.tool_result.workstation.default_label")))]),
 	}
 	if bool(_active.get("mining", false)):
 		var mining_totals: Dictionary = _active.get("mining_totals", {})
@@ -589,7 +589,7 @@ func _commit_active() -> void:
 			"verb": str(active.get("verb", "")),
 			"sub_option": str(active.get("sub_option", "")),
 			"reason": "stamina_depleted",
-			"message": str(spend.get("message", "体力不足")),
+			"message": str(spend.get("message", _msg("error.workstation.stamina_not_enough"))),
 			"stamina_cost": float(spend.get("stamina_cost", 0.0)),
 			"stamina_before": float(spend.get("stamina_before", character.stamina)),
 			"stamina_after": float(spend.get("stamina_after", character.stamina)),
@@ -606,7 +606,7 @@ func _commit_active() -> void:
 			"workstation_id": str(active.get("workstation_id", "")),
 			"verb": str(active.get("verb", "")),
 			"sub_option": str(active.get("sub_option", "")),
-			"message": str(consume.get("message", "材料消耗失败")),
+			"message": str(consume.get("message", _msg("error.workstation.consume_inputs_failed"))),
 		}
 		character._on_workstation_action_completed(failed_summary)
 		return
@@ -634,7 +634,7 @@ func _commit_active() -> void:
 			var label := "%s x%d" % [str(d.get("item_id", "")), int(d.get("quantity", 0))]
 			divert_parts.append(label)
 			divert_outputs.append(label)
-		summary["message"] = "挖到 %s，已自动入国库" % "、".join(divert_parts)
+		summary["message"] = _fmt("tool.tool_result.workstation.mining_diverted_format", [_msg("tool.tool_result.list_separator").join(divert_parts)])
 		summary["outputs"] = divert_outputs
 		summary["mining_diverted"] = mining_diverted
 	if not broken_tools.is_empty():
@@ -687,11 +687,11 @@ static func apply_outputs_to_character(owner, result: Dictionary, base_summary: 
 				leftovers.append("%s x%d" % [name, leftover])
 	var message: String = ""
 	if outcome == "success":
-		message = "制造成功：" + ", ".join(outputs) if not outputs.is_empty() else "制造成功"
+		message = _fmt("tool.tool_result.workstation.success_outputs_format", [", ".join(outputs)]) if not outputs.is_empty() else _msg("tool.tool_result.workstation.success")
 	else:
-		var fname: String = str(result.get("fail_mode_name", "失败"))
+		var fname: String = str(result.get("fail_mode_name", _msg("tool.tool_result.workstation.failure")))
 		var msg: String = str(result.get("message", ""))
-		message = "制造失败 [%s]：%s" % [fname, msg]
+		message = _fmt("tool.tool_result.workstation.failure_format", [fname, msg])
 	var summary: Dictionary = base_summary.duplicate(true)
 	summary.merge({
 		"actionCompleted": true,
@@ -905,14 +905,14 @@ func _resolve_inventory_input_unit(input_name: String, selected_ops: Array) -> D
 			"instance": poured_content_instance(slot, container.content_id()),
 			"op": {"type": "pour", "slot_index": i, "content_id": container.content_id()},
 		}
-	return {"ok": false, "message": "背包里找不到可用于工作台的材料：%s" % input_name}
+	return {"ok": false, "message": _fmt("error.workstation.input_missing_format", [input_name])}
 
 
 func _consume_inventory_inputs(consumed_input_indices: Array, input_ops: Array) -> Dictionary:
 	for idx_v in consumed_input_indices:
 		var idx: int = int(idx_v)
 		if idx < 0 or idx >= input_ops.size():
-			return {"ok": false, "message": "工作台消耗索引越界：%d" % idx}
+			return {"ok": false, "message": _fmt("error.workstation.consume_index_oob_format", [idx])}
 		var op: Dictionary = input_ops[idx]
 		var applied: Dictionary = _apply_inventory_input_op(op)
 		if not bool(applied.get("ok", false)):
@@ -923,22 +923,22 @@ func _consume_inventory_inputs(consumed_input_indices: Array, input_ops: Array) 
 func _apply_inventory_input_op(op: Dictionary) -> Dictionary:
 	var slot_index: int = int(op.get("slot_index", -1))
 	if slot_index < 0 or slot_index >= character.inventory.size():
-		return {"ok": false, "message": "背包槽位不存在：%d" % slot_index}
+		return {"ok": false, "message": _fmt("error.workstation.backpack_slot_missing_format", [slot_index])}
 	var op_type: String = str(op.get("type", ""))
 	if op_type == "remove":
 		var expected: String = str(op.get("item_id", ""))
 		var slot: Dictionary = character.inventory[slot_index]
 		if str(slot.get("item_id", "")) != expected or int(slot.get("quantity", 0)) <= 0:
-			return {"ok": false, "message": "材料已变化，无法消耗：%s" % expected}
+			return {"ok": false, "message": _fmt("error.workstation.input_changed_format", [expected])}
 		if character.inventory_ops().remove_item(slot_index, 1) <= 0:
-			return {"ok": false, "message": "消耗材料失败：%s" % expected}
+			return {"ok": false, "message": _fmt("error.workstation.consume_failed_format", [expected])}
 		return {"ok": true}
 	if op_type == "pour":
 		var content_id: String = str(op.get("content_id", ""))
 		var bucket: Dictionary = character.inventory[slot_index]
 		var container: ContainerAspect = InventorySlotData.of(bucket).as_container()
 		if container == null or container.content_id() != content_id or container.amount() < 1.0:
-			return {"ok": false, "message": "容器内容已变化，无法倒出：%s" % content_id}
+			return {"ok": false, "message": _fmt("error.workstation.container_content_changed_format", [content_id])}
 		var fields := container.with_consumed(1.0)
 		bucket["container_amount"] = fields["container_amount"]
 		bucket["container_content"] = fields["container_content"]
@@ -946,7 +946,7 @@ func _apply_inventory_input_op(op: Dictionary) -> Dictionary:
 		character.inventory = character.inventory
 		character.inventory_ops().persist_slot(slot_index)
 		return {"ok": true}
-	return {"ok": false, "message": "未知材料消耗类型：%s" % op_type}
+	return {"ok": false, "message": _fmt("error.workstation.unknown_consume_type_format", [op_type])}
 
 
 func _slot_matches_input(view: InventorySlotData, input_name: String) -> bool:
@@ -1096,3 +1096,12 @@ func _send_world_event(summary: Dictionary) -> void:
 		String(summary.get("verb", "")),
 	)
 	backend.call("send_world_event", event_name, data)
+
+
+static func _msg(key: String) -> String:
+	var translated := str(TranslationServer.translate(key))
+	return translated if not translated.is_empty() and translated != key else key
+
+
+static func _fmt(key: String, args: Array) -> String:
+	return _msg(key) % args

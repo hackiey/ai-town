@@ -38,7 +38,7 @@ static func run_put_take_now(character: Character, action_request: Dictionary) -
 		return {"ok": false, "message": "Containers autoload is unavailable"}
 	var prepared := _prepare_shelf_payments(character, transfers_v as Array)
 	if not bool(prepared.get("ok", false)):
-		return {"ok": false, "message": str(prepared.get("message", "你给的钱不够"))}
+		return {"ok": false, "message": str(prepared.get("message", _msg("error.shelf.payment_not_enough")))}
 	var transfers: Array = prepared.get("transfers", [])
 	var change_centi := int(prepared.get("change_centi", 0))
 
@@ -58,9 +58,9 @@ static func run_put_take_now(character: Character, action_request: Dictionary) -
 			moves.append(res)
 
 	if moves.is_empty():
-		return {"ok": false, "message": "；".join(lines) if not lines.is_empty() else "没有可搬运的内容"}
+		return {"ok": false, "message": _msg("tool.tool_result.separator").join(lines) if not lines.is_empty() else _msg("error.put_take.no_moves")}
 	if change_centi > 0:
-		lines.append("找零 %s" % Money.format_silver_from_centi(change_centi))
+		lines.append(_fmt("tool.tool_result.put_take.change_format", [Money.format_silver_from_centi(change_centi)]))
 
 	character.emit_world_event("container_put_take", {
 		"actorId": character.backend_character_id(),
@@ -83,20 +83,22 @@ static func run_view_container(character: Character, action_request: Dictionary)
 	var cid := str(t.get("containerId", ""))
 	var is_shelf := bool(t.get("isShelf", false))
 	if cid.is_empty():
-		_emit_view_event(character, cid, is_shelf, "failure", [], "view_container 缺少 containerId")
-		return {"ok": false, "message": "view_container 缺少 containerId"}
+		var err_missing := _msg("error.view_container.missing_container_id")
+		_emit_view_event(character, cid, is_shelf, "failure", [], err_missing)
+		return {"ok": false, "message": err_missing}
 	var node := _near_node(character, cid)
 	if node == null:
-		_emit_view_event(character, cid, is_shelf, "failure", [], "容器不在手边、看不见，或打不开")
-		return {"ok": false, "message": "容器不在手边、看不见，或打不开"}
+		var err_unavailable := _msg("error.view_container.unavailable")
+		_emit_view_event(character, cid, is_shelf, "failure", [], err_unavailable)
+		return {"ok": false, "message": err_unavailable}
 	var items := _view_container_items(node, is_shelf)
 	var label := node.effective_display_name()
 	var lines: Array[String] = []
 	for item_v in items:
 		var item: Dictionary = item_v as Dictionary
 		lines.append(str(item.get("line", "")))
-	var body := "；".join(lines) if not lines.is_empty() else "（空的）"
-	var message := "%s 里：\n%s" % [label, body]
+	var body := _msg("tool.tool_result.separator").join(lines) if not lines.is_empty() else _msg("tool.tool_result.view_container.empty")
+	var message := _fmt("tool.tool_result.view_container.message_format", [label, body])
 	_emit_view_event(character, cid, is_shelf, "success", items, "")
 	return {
 		"ok": true,
@@ -134,7 +136,7 @@ static func _view_container_items(node: ContainerNode, is_shelf: bool) -> Array:
 			"quantity": 1,
 			"content": str(node.infinite_content),
 			"amount": -1,
-			"line": "%s（无限）" % str(node.infinite_content),
+			"line": _fmt("tool.tool_result.view_container.infinite_format", [str(node.infinite_content)]),
 		})
 		return out
 	var index := 1
@@ -158,7 +160,7 @@ static func _view_container_items(node: ContainerNode, is_shelf: bool) -> Array:
 			var centi := int(slot.get("listing_price_centi", 0))
 			if centi > 0:
 				row["priceSilver"] = float(centi) / 100.0
-				line += " @ %.2f银" % (float(centi) / 100.0)
+				line += _fmt("tool.tool_result.view_container.price_silver_format", [float(centi) / 100.0])
 		row["line"] = line
 		out.append(row)
 		index += 1
@@ -190,16 +192,16 @@ static func _prepare_shelf_payments(character: Character, raw_transfers: Array) 
 			var cid_req := str(from_req.get("containerId", ""))
 			var node_req := _near_node(character, cid_req)
 			if node_req == null:
-				return {"ok": false, "message": "「%s」不在手边" % cid_req}
+				return {"ok": false, "message": _fmt("error.container.not_nearby_format", [cid_req])}
 			var qty_req := int(round(float(tr_req.get("amount", 0.0))))
 			if qty_req <= 0:
 				continue
 			var slot_index_req := int(from_req.get("slotIndex", -1))
 			if slot_index_req < 0 or slot_index_req >= node_req.contents.size():
-				return {"ok": false, "message": "货架槽无效"}
+				return {"ok": false, "message": _msg("error.shelf.invalid_slot")}
 			var slot_req: Dictionary = node_req.contents[slot_index_req]
 			if str(slot_req.get("item_id", "")) != item_id_req or int(slot_req.get("quantity", 0)) < qty_req:
-				return {"ok": false, "message": "「%s」里没有足够的「%s」" % [node_req.effective_display_name(), character.localize_item_name(item_id_req)]}
+				return {"ok": false, "message": _fmt("error.container.not_enough_item_format", [node_req.effective_display_name(), character.localize_item_name(item_id_req)])}
 			var price_centi_req := int(slot_req.get("listing_price_centi", 0)) if slot_req.get("listing_price_centi", null) != null else 0
 			if price_centi_req > 0:
 				required_by_cid[cid_req] = int(required_by_cid.get(cid_req, 0)) + price_centi_req * qty_req
@@ -209,12 +211,12 @@ static func _prepare_shelf_payments(character: Character, raw_transfers: Array) 
 
 	for cid_check in required_by_cid.keys():
 		if int(paid_by_cid.get(cid_check, 0)) < int(required_by_cid[cid_check]):
-			return {"ok": false, "message": "你给的钱不够"}
+			return {"ok": false, "message": _msg("error.shelf.payment_not_enough")}
 	var total_required := 0
 	for cid_total in required_by_cid.keys():
 		total_required += int(required_by_cid[cid_total])
 	if total_required > character.wallet_balance_centi():
-		return {"ok": false, "message": "你给的钱不够"}
+		return {"ok": false, "message": _msg("error.shelf.payment_not_enough")}
 
 	var kept_by_cid := {}
 	var change_centi := 0
@@ -257,7 +259,7 @@ static func _prepare_shelf_payments(character: Character, raw_transfers: Array) 
 			if str(from_out.get("where", "")) == "backpack":
 				total_outgoing_centi += _currency_transfer_centi(item_id_out, float(tr_out.get("amount", 0.0)))
 		if total_outgoing_centi > character.wallet_balance_centi():
-			return {"ok": false, "message": "你给的钱不够"}
+			return {"ok": false, "message": _msg("error.shelf.payment_not_enough")}
 
 		var normal_transfers: Array = []
 		var purchase_payments: Array = []
@@ -307,7 +309,7 @@ static func _do_liquid(character: Character, tr: Dictionary, lines: Array) -> Di
 		return _do_liquid_to_item(character, tr, amount, to_raw, lines)
 	var to_ep := _resolve_liquid_endpoint(character, to_raw)
 	if not bool(to_ep.get("ok", false)):
-		lines.append(str(to_ep.get("message", "目标容器无效")))
+		lines.append(str(to_ep.get("message", _msg("error.container.invalid_target"))))
 		return {}
 	var from_raw: Dictionary = tr.get("from", {}) if typeof(tr.get("from", {})) == TYPE_DICTIONARY else {}
 	var dst_slot: Dictionary = to_ep["slot"]
@@ -316,7 +318,7 @@ static func _do_liquid(character: Character, tr: Dictionary, lines: Array) -> Di
 	if str(from_raw.get("where", "")) == "well":
 		var well := _resolve_well(character, from_raw)
 		if not bool(well.get("ok", false)):
-			lines.append(str(well.get("message", "水井无效")))
+			lines.append(str(well.get("message", _msg("error.well.invalid"))))
 			return {}
 		result = character.water_draw_actions().draw_into_slot_now(dst_slot, well["node"], amount)
 		if bool(result.get("ok", false)):
@@ -324,7 +326,7 @@ static func _do_liquid(character: Character, tr: Dictionary, lines: Array) -> Di
 	else:
 		var from_ep := _resolve_liquid_endpoint(character, from_raw)
 		if not bool(from_ep.get("ok", false)):
-			lines.append(str(from_ep.get("message", "源容器无效")))
+			lines.append(str(from_ep.get("message", _msg("error.container.invalid_source"))))
 			return {}
 		var src_slot: Dictionary = from_ep["slot"]
 		result = LiquidOps.transfer_between_slots(src_slot, dst_slot, amount)
@@ -333,12 +335,12 @@ static func _do_liquid(character: Character, tr: Dictionary, lines: Array) -> Di
 			(to_ep["commit"] as Callable).call()
 
 	if not bool(result.get("ok", false)):
-		lines.append(str(result.get("message", "倒不动")))
+		lines.append(str(result.get("message", _msg("error.liquid.transfer_failed"))))
 		return {}
 	var moved := float(result.get("moved", 0.0))
 	var content := str(dst_slot.get("container_content", ""))
-	var content_name := character.localize_item_name(content) if content != "" else "液体"
-	lines.append("倒了 %.0f 升「%s」进「%s」" % [moved, content_name, str(to_ep.get("label", "容器"))])
+	var content_name := character.localize_item_name(content) if content != "" else _msg("tool.tool_result.liquid_fallback")
+	lines.append(_fmt("tool.tool_result.put_take.poured_format", [moved, content_name, str(to_ep.get("label", _msg("tool.tool_result.container_fallback")))]))
 	return {"ok": true, "kind": "liquid", "content": content, "amount": moved}
 
 
@@ -352,34 +354,34 @@ static func _is_liquid_to_item_target(to_raw: Dictionary) -> bool:
 static func _do_liquid_to_item(character: Character, tr: Dictionary, amount: float, to_raw: Dictionary, lines: Array) -> Dictionary:
 	var from_raw: Dictionary = tr.get("from", {}) if typeof(tr.get("from", {})) == TYPE_DICTIONARY else {}
 	if str(from_raw.get("where", "")) == "well":
-		lines.append("水井里的液体不能直接取成物品")
+		lines.append(_msg("error.liquid.cannot_take_from_well"))
 		return {}
 	var from_ep := _resolve_liquid_endpoint(character, from_raw)
 	if not bool(from_ep.get("ok", false)):
-		lines.append(str(from_ep.get("message", "源容器无效")))
+		lines.append(str(from_ep.get("message", _msg("error.container.invalid_source"))))
 		return {}
 	var src_slot: Dictionary = from_ep["slot"]
 	if src_slot.get("ferment_ceiling", null) != null or src_slot.get("transform_age", null) != null:
-		lines.append("这桶还在发酵，先等成酒")
+		lines.append(_msg("error.liquid.fermenting"))
 		return {}
 	var src := InventorySlotData.of(src_slot).as_container()
 	if src == null or src.is_empty():
-		lines.append("源容器是空的")
+		lines.append(_msg("error.liquid.source_empty"))
 		return {}
 	var content := src.content_id()
 	var serving_item_id := _serving_item_for_liquid(content)
 	if serving_item_id.is_empty():
-		lines.append("「%s」不能直接按份取出" % character.localize_item_name(content))
+		lines.append(_fmt("error.liquid.no_serving_item_format", [character.localize_item_name(content)]))
 		return {}
 	var serving_item: Item = Items.by_id(serving_item_id)
 	var serving_liters := float(serving_item.properties.get("serving_liters", 0.0))
 	if serving_liters <= 0.0:
-		lines.append("「%s」没有每份容量配置" % character.localize_item_name(serving_item_id))
+		lines.append(_fmt("error.liquid.no_serving_liters_format", [character.localize_item_name(serving_item_id)]))
 		return {}
 	var available := minf(amount, src.amount())
 	var servings := int(floor(available / serving_liters + 0.0001))
 	if servings <= 0:
-		lines.append("至少要取 %.2f 升才能得到 1 份「%s」" % [serving_liters, character.localize_item_name(serving_item_id)])
+		lines.append(_fmt("error.liquid.insufficient_serving_format", [serving_liters, character.localize_item_name(serving_item_id)]))
 		return {}
 	var liters := float(servings) * serving_liters
 	var quality := int(round(src.quality()))
@@ -391,32 +393,32 @@ static func _do_liquid_to_item(character: Character, tr: Dictionary, amount: flo
 	if where == "backpack":
 		var recv := character.inventory_ops().receive_stacks([stack])
 		if not bool(recv.get("ok", false)):
-			lines.append(str(recv.get("message", "背包装不下")))
+			lines.append(str(recv.get("message", _msg("error.inventory.full"))))
 			return {}
 		placed_ok = true
 	elif where == "node":
 		var cid := str(to_raw.get("containerId", ""))
 		var node := _near_node(character, cid)
 		if node == null:
-			lines.append("「%s」不在手边" % cid)
+			lines.append(_fmt("error.container.not_nearby_format", [cid]))
 			return {}
 		if not _node_can_place_stack(node, stack, servings):
-			lines.append("「%s」装不下「%s」" % [node.effective_display_name(), character.localize_item_name(serving_item_id)])
+			lines.append(_fmt("error.container.cannot_fit_item_format", [node.effective_display_name(), character.localize_item_name(serving_item_id)]))
 			return {}
 		var placed := Containers.adapter_place(node, [stack])
 		if not bool(placed.get("ok", false)):
-			lines.append(str(placed.get("message", "容器装不下")))
+			lines.append(str(placed.get("message", _msg("error.container.full"))))
 			return {}
 		if bool(to_raw.get("isShelf", false)) and int(to_raw.get("priceCenti", -1)) >= 0:
 			Containers.set_price_for_item(node, serving_item_id, int(to_raw.get("priceCenti", -1)))
 		placed_ok = true
 	if not placed_ok:
-		lines.append("不支持把液体取到这里")
+		lines.append(_msg("error.liquid.unsupported_destination"))
 		return {}
 
 	_consume_liquid_from_slot(src_slot, liters)
 	(from_ep["commit"] as Callable).call()
-	lines.append("取出 %d 份「%s」（消耗 %.1f 升）" % [servings, character.localize_item_name(serving_item_id), liters])
+	lines.append(_fmt("tool.tool_result.put_take.servings_taken_format", [servings, character.localize_item_name(serving_item_id), liters]))
 	return {"ok": true, "kind": "item", "itemId": serving_item_id, "amount": servings}
 
 
@@ -488,14 +490,14 @@ static func _do_item(character: Character, tr: Dictionary, lines: Array) -> Dict
 	if from_where == "backpack" and to_where == "node":
 		var to_d := tr["to"] as Dictionary
 		return _put_to_node(character, str(to_d.get("containerId", "")), item_id, amount, item_name, bool(to_d.get("isShelf", false)), int(to_d.get("priceCenti", -1)), lines)
-	lines.append("不支持的搬运：%s→%s" % [from_where, to_where])
+	lines.append(_fmt("error.put_take.unsupported_transfer_format", [from_where, to_where]))
 	return {}
 
 
 static func _take_from_node(character: Character, cid: String, item_id: String, amount: float, item_name: String, slot_index: int, is_shelf: bool, lines: Array) -> Dictionary:
 	var node := _near_node(character, cid)
 	if node == null:
-		lines.append("「%s」不在手边" % cid)
+		lines.append(_fmt("error.container.not_nearby_format", [cid]))
 		return {}
 	var unit_centi := CharacterInventory.currency_item_centi(item_id)
 	if unit_centi > 0:
@@ -503,11 +505,11 @@ static func _take_from_node(character: Character, cid: String, item_id: String, 
 		if centi <= 0:
 			return {}
 		if not Containers.wallet_spend_centi(cid, centi):
-			lines.append("「%s」的钱包里没有足够的「%s」" % [node.effective_display_name(), item_name])
+			lines.append(_fmt("error.container.wallet_not_enough_format", [node.effective_display_name(), item_name]))
 			return {}
 		character.wallet_add(centi)
 		var moved_amount := float(centi) / float(unit_centi)
-		lines.append("取出 %s 份「%s」" % [_format_amount(moved_amount), item_name])
+		lines.append(_fmt("tool.tool_result.put_take.take_amount_format", [_format_amount(moved_amount), item_name]))
 		return {"ok": true, "kind": "item", "itemId": item_id, "amount": moved_amount}
 	var qty := int(round(amount))
 	if qty <= 0:
@@ -515,23 +517,23 @@ static func _take_from_node(character: Character, cid: String, item_id: String, 
 	var res: Dictionary
 	if slot_index >= 0:
 		if slot_index >= node.contents.size():
-			lines.append("容器槽无效")
+			lines.append(_msg("error.container.invalid_slot"))
 			return {}
 		var slot: Dictionary = node.contents[slot_index]
 		if str(slot.get("item_id", "")) != item_id or int(slot.get("quantity", 0)) < qty:
-			lines.append("「%s」里没有足够的「%s」" % [node.effective_display_name(), item_name])
+			lines.append(_fmt("error.container.not_enough_item_format", [node.effective_display_name(), item_name]))
 			return {}
 		res = Containers.adapter_take(node, {"slot_index": slot_index, "item_id": item_id}, qty)
 		res["ok"] = int(res.get("taken_qty", 0)) == qty
 	else:
 		res = Containers.system_withdraw(cid, item_id, qty)
 	if not bool(res.get("ok", false)):
-		lines.append("「%s」里没有「%s」" % [node.effective_display_name(), item_name])
+		lines.append(_fmt("error.container.missing_item_format", [node.effective_display_name(), item_name]))
 		return {}
 	var stacks := _as_dict_array(res.get("stacks", []))
 	var moved := _sum_qty(stacks)
 	if moved <= 0:
-		lines.append("「%s」里没有「%s」" % [node.effective_display_name(), item_name])
+		lines.append(_fmt("error.container.missing_item_format", [node.effective_display_name(), item_name]))
 		return {}
 	var rollback_stacks: Array[Dictionary] = []
 	if is_shelf:
@@ -543,16 +545,16 @@ static func _take_from_node(character: Character, cid: String, item_id: String, 
 	var recv := character.inventory_ops().receive_stacks(stacks)
 	if not bool(recv.get("ok", false)):
 		Containers.adapter_place(node, rollback_stacks)
-		lines.append("背包装不下「%s」" % item_name)
+		lines.append(_fmt("error.inventory.cannot_fit_item_format", [item_name]))
 		return {}
-	lines.append("取出 %d 份「%s」" % [moved, item_name])
+	lines.append(_fmt("tool.tool_result.put_take.take_count_format", [moved, item_name]))
 	return {"ok": true, "kind": "item", "itemId": item_id, "amount": moved}
 
 
 static func _put_to_node(character: Character, cid: String, item_id: String, amount: float, item_name: String, is_shelf: bool, price_centi: int, lines: Array) -> Dictionary:
 	var node := _near_node(character, cid)
 	if node == null:
-		lines.append("「%s」不在手边" % cid)
+		lines.append(_fmt("error.container.not_nearby_format", [cid]))
 		return {}
 	var unit_centi := CharacterInventory.currency_item_centi(item_id)
 	if unit_centi > 0:
@@ -561,11 +563,11 @@ static func _put_to_node(character: Character, cid: String, item_id: String, amo
 			return {}
 		var pay := character.inventory_ops().pay_centi(centi)
 		if not bool(pay.get("ok", false)):
-			lines.append(str(pay.get("message", "钱不够")))
+			lines.append(str(pay.get("message", _msg("error.money.not_enough"))))
 			return {}
 		Containers.wallet_add_centi(cid, centi)
 		var moved_amount := float(centi) / float(unit_centi)
-		lines.append("存入 %s 份「%s」" % [_format_amount(moved_amount), item_name])
+		lines.append(_fmt("tool.tool_result.put_take.put_amount_format", [_format_amount(moved_amount), item_name]))
 		return {"ok": true, "kind": "item", "itemId": item_id, "amount": moved_amount}
 	var qty := int(round(amount))
 	if qty <= 0:
@@ -574,11 +576,11 @@ static func _put_to_node(character: Character, cid: String, item_id: String, amo
 	var available := character.inventory_ops().count_item(item_id)
 	var take := mini(qty, available)
 	if take <= 0:
-		lines.append("你身上没有「%s」" % item_name)
+		lines.append(_fmt("error.inventory.missing_item_format", [item_name]))
 		return {}
 	var ext := character.inventory_ops().extract_item_id_across_stacks(item_id, take)
 	if not bool(ext.get("ok", false)):
-		lines.append("你身上没有足够的「%s」" % item_name)
+		lines.append(_fmt("error.inventory.not_enough_item_format", [item_name]))
 		return {}
 	var stacks := _as_dict_array(ext.get("stacks", []))
 	var placed := Containers.adapter_place(node, stacks)
@@ -587,11 +589,11 @@ static func _put_to_node(character: Character, cid: String, item_id: String, amo
 	if not leftover.is_empty():
 		character.inventory_ops().restore_extracted_stacks(leftover)
 	if moved <= 0:
-		lines.append("「%s」装不下「%s」" % [node.effective_display_name(), item_name])
+		lines.append(_fmt("error.container.cannot_fit_item_format", [node.effective_display_name(), item_name]))
 		return {}
 	if is_shelf and price_centi >= 0:
 		Containers.set_price_for_item(node, item_id, price_centi)
-	lines.append("存入 %d 份「%s」" % [moved, item_name])
+	lines.append(_fmt("tool.tool_result.put_take.put_count_format", [moved, item_name]))
 	return {"ok": true, "kind": "item", "itemId": item_id, "amount": moved}
 
 
@@ -600,14 +602,14 @@ static func _put_to_node(character: Character, cid: String, item_id: String, amo
 # 液体 endpoint → {ok, slot:Dictionary(ref), commit:Callable, label}
 static func _resolve_liquid_endpoint(character: Character, ep_v: Variant) -> Dictionary:
 	if typeof(ep_v) != TYPE_DICTIONARY:
-		return {"ok": false, "message": "endpoint 缺失"}
+		return {"ok": false, "message": _msg("error.endpoint.missing")}
 	var ep := ep_v as Dictionary
 	var where := str(ep.get("where", ""))
 	match where:
 		"backpack":
 			var idx := int(ep.get("slotIndex", -1))
 			if idx < 0 or idx >= character.inventory.size():
-				return {"ok": false, "message": "背包槽无效"}
+				return {"ok": false, "message": _msg("error.inventory.invalid_slot")}
 			var slot: Dictionary = character.inventory[idx]
 			var label := InventorySlotData.of(slot).display_name()
 			var commit := func() -> void:
@@ -619,10 +621,10 @@ static func _resolve_liquid_endpoint(character: Character, ep_v: Variant) -> Dic
 			var cid := str(ep.get("containerId", ""))
 			var node := _near_node(character, cid)
 			if node == null:
-				return {"ok": false, "message": "容器不在手边"}
+				return {"ok": false, "message": _msg("error.container.not_nearby")}
 			var nidx := int(ep.get("slotIndex", -1))
 			if nidx < 0 or nidx >= node.contents.size():
-				return {"ok": false, "message": "容器槽无效"}
+				return {"ok": false, "message": _msg("error.container.invalid_slot")}
 			var nslot: Dictionary = node.contents[nidx]
 			var ncommit := func() -> void:
 				node.contents[nidx] = nslot
@@ -633,20 +635,20 @@ static func _resolve_liquid_endpoint(character: Character, ep_v: Variant) -> Dic
 			var gid := str(ep.get("groundItemId", ""))
 			var gi := _find_ground_item(character, gid)
 			if gi == null:
-				return {"ok": false, "message": "地上没有这个容器"}
+				return {"ok": false, "message": _msg("error.container.ground_missing")}
 			var gslot: Dictionary = gi.slot_data
 			var gcommit := func() -> void:
 				gi.slot_data = gslot
 				Db.save_ground_item(gi.db_id, gi.item_id, gi.global_position, gslot)
 			return {"ok": true, "slot": gslot, "commit": gcommit, "label": gi.display_name()}
-	return {"ok": false, "message": "未知 endpoint: %s" % where}
+	return {"ok": false, "message": _fmt("error.endpoint.unknown_format", [where])}
 
 
 static func _resolve_well(character: Character, ep: Dictionary) -> Dictionary:
 	var cid := str(ep.get("containerId", "well"))
 	var node := _near_node(character, cid)
 	if node == null or not node.is_infinite_source():
-		return {"ok": false, "message": "水井不在手边"}
+		return {"ok": false, "message": _msg("error.well.not_nearby")}
 	return {"ok": true, "node": node, "content": node.infinite_content, "quality": float(node.infinite_quality)}
 
 
@@ -700,3 +702,7 @@ static func _as_dict_array(value: Variant) -> Array[Dictionary]:
 static func _msg(key: String) -> String:
 	var translated := str(TranslationServer.translate(key))
 	return translated if not translated.is_empty() and translated != key else key
+
+
+static func _fmt(key: String, args: Array) -> String:
+	return _msg(key) % args

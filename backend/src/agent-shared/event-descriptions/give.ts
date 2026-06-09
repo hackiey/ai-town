@@ -17,7 +17,7 @@ export function renderGiveEventLine(
   locale: Locale,
 ): string {
   const data = (event.data ?? {}) as Partial<GiveEventData>;
-  const itemsText = renderGiveItemList(data.items);
+  const itemsText = renderGiveItemList(data.items, locale);
   const recipientId = data.recipientCharacterId;
   const isGiver = isSelfActor(event.actorId, viewerId);
   const isRecipient = Boolean(recipientId) && recipientId === viewerId;
@@ -25,14 +25,14 @@ export function renderGiveEventLine(
   let main: string;
   if (isGiver) {
     const recipientLabel = participantLabel(recipientId, viewerId, locale);
-    main = `你 把 ${itemsText} 递给 ${recipientLabel}`;
+    main = t("prompt.context.event.give.self_format", locale, { items: itemsText, recipient: recipientLabel });
   } else if (isRecipient) {
     const giverLabel = renderActorLabel(event.actorId, viewerId, locale);
-    main = `${giverLabel} 把 ${itemsText} 递给了你`;
+    main = t("prompt.context.event.give.recipient_format", locale, { giver: giverLabel, items: itemsText });
   } else {
     const giverLabel = renderActorLabel(event.actorId, viewerId, locale);
     const recipientLabel = participantLabel(recipientId, viewerId, locale);
-    main = `${giverLabel} 把 ${itemsText} 递给 ${recipientLabel}`;
+    main = t("prompt.context.event.give.other_format", locale, { giver: giverLabel, items: itemsText, recipient: recipientLabel });
   }
   return composeEventLine(event, viewerId, locale, main);
 }
@@ -43,8 +43,8 @@ function participantLabel(id: string | undefined, viewerId: string, locale: Loca
   return localizeStringValue(id) ?? id;
 }
 
-function renderGiveItemList(value: unknown): string {
-  if (!Array.isArray(value) || value.length === 0) return "（无）";
+function renderGiveItemList(value: unknown, locale: Locale): string {
+  if (!Array.isArray(value) || value.length === 0) return t("prompt.context.event.give.none", locale);
   const parts: string[] = [];
   for (const entry of value) {
     if (!entry || typeof entry !== "object") continue;
@@ -55,5 +55,5 @@ function renderGiveItemList(value: unknown): string {
     const label = localizeStringValue(itemId) ?? itemId;
     parts.push(`${label}×${quantity}`);
   }
-  return parts.length > 0 ? parts.join("、") : "（无）";
+  return parts.length > 0 ? parts.join(t("prompt.context.event.list_separator", locale)) : t("prompt.context.event.give.none", locale);
 }

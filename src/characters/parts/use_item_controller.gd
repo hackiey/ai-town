@@ -97,14 +97,14 @@ func _use_slot(slot_index: int, food_only: bool = false, expected_item_id: Strin
 	var slot := _character.inventory_ops().get_slot(slot_index)
 	var view := InventorySlotData.of(slot)
 	if not expected_item_id.is_empty() and view.id() != expected_item_id:
-		return {"ok": false, "message": "物品已不在原槽位"}
+		return {"ok": false, "message": _msg("error.use_item.slot_changed")}
 	var use := ItemUse.resolve(view, food_only)
 	if not bool(use.get("ok", false)):
 		return {"ok": false, "message": str(use.get("message", "use_item failed"))}
 
 	var result := ItemUse.execute(_character, view, use)
 	if not bool(result.get("ok", false)):
-		return {"ok": false, "message": "使用脚本错误：%s" % str(result.get("error", ""))}
+		return {"ok": false, "message": _fmt("error.use_item.script_error_format", [str(result.get("error", ""))])}
 
 	_character.inventory_ops().remove_item(slot_index, 1)
 	var item := use.get("item") as Item
@@ -118,3 +118,12 @@ func _use_slot(slot_index: int, food_only: bool = false, expected_item_id: Strin
 		"targetId": actor_id,
 	})
 	return {"ok": true, "result": {"itemId": view.id(), "quantity": 1}}
+
+
+func _msg(key: String) -> String:
+	var translated := str(TranslationServer.translate(key))
+	return translated if not translated.is_empty() and translated != key else key
+
+
+func _fmt(key: String, args: Array) -> String:
+	return _msg(key) % args

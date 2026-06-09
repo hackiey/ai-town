@@ -337,7 +337,7 @@ func consume_water_amount(amount: float = 1.0, consume: bool = true) -> Dictiona
 			"amount": amount_available,
 		})
 	if not saw_container:
-		return {"ok": false, "reason": "no_container", "message": "背包里没有水桶"}
+		return {"ok": false, "reason": "no_container", "message": _msg("error.inventory.no_water_bucket")}
 	if total_water >= required:
 		if not consume:
 			return {"ok": true, "consumed": required}
@@ -369,17 +369,17 @@ func consume_water_amount(amount: float = 1.0, consume: bool = true) -> Dictiona
 		_recompute_carry()  # 桶里水量变化 → 负重变化
 		return {"ok": true, "consumed": required}
 	if saw_other:
-		return {"ok": false, "reason": "other_liquid", "message": "水桶里装的不是水"}
+		return {"ok": false, "reason": "other_liquid", "message": _msg("error.inventory.water_bucket_other_liquid")}
 	if total_water > 0.0:
 		return {
 			"ok": false,
 			"reason": "insufficient",
-			"message": "水不够（需要 %d 点，当前只有 %d 点）" % [
+			"message": _fmt("error.inventory.water_not_enough_format", [
 				int(round(required)),
 				int(round(total_water)),
-			],
+			]),
 		}
-	return {"ok": false, "reason": "empty", "message": "水桶是空的，先去打水"}
+	return {"ok": false, "reason": "empty", "message": _msg("error.inventory.water_bucket_empty")}
 
 
 func consume_water_unit() -> Dictionary:
@@ -530,13 +530,13 @@ func extract_named_item_from_single_stack(item_name: String, quantity: int) -> D
 		}
 	return {
 		"ok": false,
-		"message": "背包里没有足够的 %s" % item_name,
+		"message": _fmt("error.inventory.not_enough_plain_format", [item_name]),
 	}
 
 
 func extract_item_id_across_stacks(item_id: String, quantity: int) -> Dictionary:
 	if item_id.is_empty() or quantity <= 0:
-		return {"ok": false, "message": "无效的物品提取请求"}
+		return {"ok": false, "message": _msg("error.inventory.invalid_extract_request")}
 	var remaining := quantity
 	var extracted: Array[Dictionary] = []
 	for i in character.inventory.size():
@@ -558,22 +558,22 @@ func extract_item_id_across_stacks(item_id: String, quantity: int) -> Dictionary
 	restore_extracted_stacks(extracted)
 	return {
 		"ok": false,
-		"message": "背包里没有足够的 %s" % item_id,
+		"message": _fmt("error.inventory.not_enough_plain_format", [item_id]),
 	}
 
 
 func pay_centi(centi: int) -> Dictionary:
 	if centi < 0:
-		return {"ok": false, "message": "货币金额不能为负数"}
+		return {"ok": false, "message": _msg("error.money.negative_amount")}
 	if centi == 0:
 		return {"ok": true, "centi": 0}
 	if not character.wallet_spend(centi):
 		return {
 			"ok": false,
-			"message": "钱包余额不足（需要 %s，有 %s）" % [
+			"message": _fmt("error.money.wallet_not_enough_format", [
 				Money.format_silver_from_centi(centi),
 				Money.format_silver_from_centi(character.wallet_centi),
-			],
+			]),
 		}
 	return {"ok": true, "centi": centi}
 
@@ -618,10 +618,10 @@ func receive_stacks(stacks: Array[Dictionary]) -> Dictionary:
 			rollback_received_stacks(added)
 			return {
 				"ok": false,
-				"message": "背包装不下 %s x%d" % [
+				"message": _fmt("error.inventory.cannot_fit_stack_format", [
 					InventorySlotData.of(inst).display_name(),
 					qty,
-				],
+				]),
 			}
 		added.append(inst)
 	return {
@@ -682,3 +682,12 @@ func backpack_items() -> Array[Dictionary]:
 			continue
 		items.append(view.to_backend_dict())
 	return items
+
+
+func _msg(key: String) -> String:
+	var translated := str(TranslationServer.translate(key))
+	return translated if not translated.is_empty() and translated != key else key
+
+
+func _fmt(key: String, args: Array) -> String:
+	return _msg(key) % args

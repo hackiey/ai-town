@@ -43,7 +43,7 @@ func _init(owner: Character) -> void:
 func try_plant_seed_at(slot: FarmSlot, item_id: String, slot_index: int = -1) -> Dictionary:
 	assert(RunMode.is_runtime(), "try_plant_seed_at must run on server")
 	if slot == null or not is_instance_valid(slot):
-		return {"ok": false, "message": "目标 slot 不存在"}
+		return {"ok": false, "message": _msg("error.farm.slot_missing")}
 	var access := _check_field_access_for_slot(slot)
 	if not bool(access.get("ok", true)):
 		return access
@@ -63,44 +63,44 @@ func try_plant_seed_at(slot: FarmSlot, item_id: String, slot_index: int = -1) ->
 			"ok": false,
 			"code": "slot_occupied",
 			"slot_index": occupied_slot_index,
-			"message": "%s 已被占用" % slot_label,
+			"message": _fmt("error.farm.slot_occupied_format", [slot_label]),
 		}
 	if character.inventory_ops().count_item(item_id) <= 0:
-		return {"ok": false, "message": "背包里没有 %s" % item_id}
+		return {"ok": false, "message": _fmt("error.farm.backpack_missing_format", [item_id])}
 	var item := Items.by_id(item_id)
 	if item == null or not item.tags.has("seed") or item.crop_variety_id.is_empty():
-		return {"ok": false, "message": "%s 不是可种植作物" % item_id}
+		return {"ok": false, "message": _fmt("error.farm.not_seed_format", [item_id])}
 	var spawner := character.get_tree().current_scene.get_node_or_null("CropSpawner") as MultiplayerSpawner
 	if spawner == null:
-		return {"ok": false, "message": "找不到 CropSpawner"}
+		return {"ok": false, "message": _msg("error.farm.crop_spawner_missing")}
 	if not Varieties.has_id(item.crop_variety_id):
-		return {"ok": false, "message": "作物对应的 variety 不存在"}
+		return {"ok": false, "message": _msg("error.farm.variety_missing")}
 	var stamina_spend := _spend_for("plant")
 	if not bool(stamina_spend.get("ok", false)):
 		return stamina_spend
 	# 醉酒/生病：手抖种砸了——种子照样废掉（不返还），不长作物。
 	if randf() < Impairment.fail_chance(Impairment.work_impair(character)):
 		character.inventory_ops().consume_one(item_id)
-		return _annotate({"ok": false, "code": "plant_fumbled", "message": "一个趔趄，种子撒了一地，全废了"}, stamina_spend)
+		return _annotate({"ok": false, "code": "plant_fumbled", "message": _msg("error.farm.plant_fumbled")}, stamina_spend)
 	var crop := Crop.spawn(spawner, item.crop_variety_id, slot.global_position)
 	if crop == null:
-		return {"ok": false, "message": "作物对应的 variety 不存在"}
+		return {"ok": false, "message": _msg("error.farm.variety_missing")}
 	# 扣 1 颗（找第一个非空 stack）
 	for i in character.inventory.size():
 		var s: Dictionary = character.inventory[i]
 		if s["item_id"] == item_id and int(s["quantity"]) > 0:
 			character.inventory_ops().remove_item(i, 1)
 			break
-	return _annotate({"ok": true, "message": "种下了 %s" % item.display_name}, stamina_spend)
+	return _annotate({"ok": true, "message": _fmt("tool.tool_result.farm.planted_format", [item.display_name])}, stamina_spend)
 
 
 func try_water_at(crop: Crop) -> Dictionary:
 	assert(RunMode.is_runtime(), "try_water_at must run on server")
 	if crop == null or not is_instance_valid(crop):
-		return {"ok": false, "message": "目标作物不存在"}
+		return {"ok": false, "message": _msg("error.farm.crop_missing")}
 	var farm := crop.owning_farm()
 	if farm == null:
-		return {"ok": false, "message": "这株作物不在可浇水的农田里"}
+		return {"ok": false, "message": _msg("error.farm.crop_not_in_watering_farm")}
 	return try_water_farm_at(farm)
 
 
@@ -109,21 +109,21 @@ func try_water_at(crop: Crop) -> Dictionary:
 func try_water_farm_at(farm: FarmGroup) -> Dictionary:
 	assert(RunMode.is_runtime(), "try_water_farm_at must run on server")
 	if farm == null or not is_instance_valid(farm):
-		return {"ok": false, "message": "目标农场不存在"}
+		return {"ok": false, "message": _msg("error.farm.farm_missing")}
 	var access := _check_field_access_for_farm(farm)
 	if not bool(access.get("ok", true)):
 		return access
 	if farm.moisture >= 0.999:
-		return {"ok": false, "message": "这片农田已经是满水了"}
+		return {"ok": false, "message": _msg("error.farm.already_full_water")}
 	var water_check := character.inventory_ops().consume_water_amount(FarmGroup.WATERING_WATER_COST, false)
 	if not bool(water_check.get("ok", false)):
-		return {"ok": false, "message": str(water_check.get("message", "没水可浇"))}
+		return {"ok": false, "message": str(water_check.get("message", _msg("error.farm.no_water")))}
 	var stamina_spend := _spend_for("water")
 	if not bool(stamina_spend.get("ok", false)):
 		return stamina_spend
 	var draw := character.inventory_ops().consume_water_amount(FarmGroup.WATERING_WATER_COST)
 	if not bool(draw.get("ok", false)):
-		return {"ok": false, "message": str(draw.get("message", "没水可浇"))}
+		return {"ok": false, "message": str(draw.get("message", _msg("error.farm.no_water")))}
 	# 醉酒/生病：水照样从桶里全扣，但大半洒在地上——入土湿度按 water_mult 打折。
 	var impair := Impairment.work_impair(character)
 	var moisture_delta := FarmGroup.WATERING_MOISTURE_DELTA * Impairment.water_mult(impair)
@@ -132,16 +132,16 @@ func try_water_farm_at(farm: FarmGroup) -> Dictionary:
 	var after_pct := int(round(float(r.get("after", farm.moisture)) * 100.0))
 	var occupied := int(r.get("occupied_crops", 0))
 	var too_wet := int(r.get("too_wet_crops", 0))
-	var msg := "给整片农田浇了水（水分 %d%%→%d%%" % [before_pct, after_pct]
+	var msg := _fmt("tool.tool_result.farm.watered_prefix_format", [before_pct, after_pct])
 	if impair >= Impairment.DRUNK_TIPSY:
-		msg += "，手一抖洒了大半"
+		msg += _msg("tool.tool_result.farm.water_shaky_suffix")
 	if occupied > 0:
-		msg += "，影响 %d 株" % occupied
+		msg += _fmt("tool.tool_result.farm.water_affected_format", [occupied])
 	else:
-		msg += "，当前无作物"
-	msg += "）"
+		msg += _msg("tool.tool_result.farm.water_no_crop_suffix")
+	msg += _msg("tool.tool_result.farm.close_paren")
 	if too_wet > 0:
-		msg += "；其中 %d 株进入过湿区，成熟度会下降" % too_wet
+		msg += _fmt("tool.tool_result.farm.water_too_wet_suffix_format", [too_wet])
 	return _annotate({"ok": true, "message": msg}, stamina_spend)
 
 
@@ -152,21 +152,21 @@ func try_remove_pest_at(slot: FarmSlot) -> Dictionary:
 		return access
 	var crop := _crop_on_slot(slot)
 	if crop == null:
-		return {"ok": false, "message": "目标 slot 上没有作物"}
+		return {"ok": false, "message": _msg("error.farm.slot_crop_missing")}
 	if not crop.has_pest:
-		return {"ok": false, "message": "%s 没有虫" % crop.variety.display_name}
+		return {"ok": false, "message": _fmt("error.farm.no_pest_format", [crop.variety.display_name])}
 	if character.inventory_ops().count_item("wood_ash") <= 0:
-		return {"ok": false, "message": "背包里没有草木灰，无法除虫"}
+		return {"ok": false, "message": _msg("error.farm.no_wood_ash")}
 	var stamina_spend := _spend_for("pest")
 	if not bool(stamina_spend.get("ok", false)):
 		return stamina_spend
 	if not character.inventory_ops().consume_one("wood_ash"):
-		return {"ok": false, "message": "扣除草木灰失败"}
+		return {"ok": false, "message": _msg("error.farm.consume_wood_ash_failed")}
 	# 醉酒/生病：撒歪了——草木灰照样废掉（不返还），虫没除掉。
 	if randf() < Impairment.fail_chance(Impairment.work_impair(character)):
-		return _annotate({"ok": false, "code": "pest_fumbled", "message": "草木灰撒得到处都是，虫没除掉（%s）" % crop.variety.display_name}, stamina_spend)
+		return _annotate({"ok": false, "code": "pest_fumbled", "message": _fmt("error.farm.pest_fumbled_format", [crop.variety.display_name])}, stamina_spend)
 	crop.remove_pest()
-	return _annotate({"ok": true, "message": "撒了草木灰除虫（%s）" % crop.variety.display_name}, stamina_spend)
+	return _annotate({"ok": true, "message": _fmt("tool.tool_result.farm.pest_removed_format", [crop.variety.display_name])}, stamina_spend)
 
 
 func try_harvest_at(slot: FarmSlot) -> Dictionary:
@@ -176,9 +176,9 @@ func try_harvest_at(slot: FarmSlot) -> Dictionary:
 		return access
 	var crop := _crop_on_slot(slot)
 	if crop == null:
-		return {"ok": false, "message": "目标 slot 上没有作物"}
+		return {"ok": false, "message": _msg("error.farm.slot_crop_missing")}
 	if crop.variety == null or crop.stage != crop.variety.stages.back():
-		return {"ok": false, "message": "%s 还没成熟" % crop.variety.display_name}
+		return {"ok": false, "message": _fmt("error.farm.not_ripe_format", [crop.variety.display_name])}
 	return _do_harvest_crop(crop)
 
 
@@ -191,19 +191,19 @@ func try_uproot_at(slot: FarmSlot) -> Dictionary:
 		return access
 	var crop := _crop_on_slot(slot)
 	if crop == null:
-		return {"ok": false, "message": "目标 slot 上没有作物"}
+		return {"ok": false, "message": _msg("error.farm.slot_crop_missing")}
 	if character.inventory_ops().count_item("iron_shovel") <= 0:
-		return {"ok": false, "message": "背包里没有铁铲，无法铲除作物"}
+		return {"ok": false, "message": _msg("error.farm.no_iron_shovel")}
 	var stamina_spend := _spend_for("uproot")
 	if not bool(stamina_spend.get("ok", false)):
 		return stamina_spend
-	var name_cn: String = crop.variety.display_name if crop.variety != null else "作物"
+	var name_cn: String = crop.variety.display_name if crop.variety != null else _msg("tool.tool_result.farm.crop_fallback")
 	crop.clear_from_db()
 	crop.queue_free()
 	var wear: Dictionary = character.inventory_ops().decrement_tool_durability_by_id("iron_shovel", 1)
-	var msg: String = "用铁铲铲除 %s" % name_cn
+	var msg: String = _fmt("tool.tool_result.farm.uprooted_format", [name_cn])
 	if bool(wear.get("broke", false)):
-		msg += "；铁铲用坏了"
+		msg += _msg("tool.tool_result.farm.shovel_broke_suffix")
 	return _annotate({"ok": true, "message": msg}, stamina_spend)
 
 
@@ -220,7 +220,7 @@ func _do_harvest_crop(crop: Crop) -> Dictionary:
 	if yields.is_empty() and not str(yield_dict.get("item_id", "")).is_empty():
 		yields = [yield_dict]
 	if yields.is_empty():
-		return {"ok": false, "message": "收成是空的"}
+		return {"ok": false, "message": _msg("error.farm.empty_yield")}
 	var parts: Array[String] = []
 	var normalized_yields: Array[Dictionary] = []
 	var total_leftover := 0
@@ -247,7 +247,7 @@ func _do_harvest_crop(crop: Crop) -> Dictionary:
 			"leftover": leftover,
 		})
 	if normalized_yields.is_empty():
-		return {"ok": false, "message": "收成是空的"}
+		return {"ok": false, "message": _msg("error.farm.empty_yield")}
 	var yield_q := int(first_yield.get("quality", Character.ITEM_DEFAULT_QUALITY))
 	var first_id := str(first_yield.get("item_id", ""))
 	var first_qty := int(first_yield.get("granted", first_yield.get("quantity", 0)))
@@ -255,7 +255,7 @@ func _do_harvest_crop(crop: Crop) -> Dictionary:
 	# 实际操作无 skill check）。需要差异化产出请走作物本身的 quality/freshness 链。
 	return _annotate({
 		"ok": true,
-		"message": "收割 %s（%s 品质 %d）" % ["、".join(parts), QualityTier.display_name(yield_q), yield_q],
+		"message": _fmt("tool.tool_result.farm.harvested_format", [_msg("tool.tool_result.list_separator").join(parts), QualityTier.display_name(yield_q), yield_q]),
 		"yields": normalized_yields,
 		"yield_id": first_id,
 		"yield_qty": first_qty,
@@ -271,11 +271,11 @@ func try_plant_seed_facing(item_id: String) -> Dictionary:
 	assert(RunMode.is_runtime(), "try_plant_seed_facing must run on server")
 	# 早 return 一个友好提示：背包没可种植物时不需要面对 slot 也能反馈
 	if character.inventory_ops().count_item(item_id) <= 0:
-		return {"ok": false, "message": "背包里没有 %s" % item_id}
+		return {"ok": false, "message": _fmt("error.farm.backpack_missing_format", [item_id])}
 	var slot_node := _find_facing_node("farm_slots", FACING_PLANT_RANGE, 0.3,
 		func(n: Node3D) -> bool: return n is FarmSlot and not (n as FarmSlot).is_occupied())
 	if slot_node == null:
-		return {"ok": false, "message": "前方没有空农田"}
+		return {"ok": false, "message": _msg("error.farm.front_empty_slot_missing")}
 	return try_plant_seed_at(slot_node as FarmSlot, item_id)
 
 
@@ -283,7 +283,7 @@ func try_water_facing() -> Dictionary:
 	assert(RunMode.is_runtime(), "try_water_facing must run on server")
 	var crop := _find_facing_node("crops", FACING_INTERACT_RANGE) as Crop
 	if crop == null:
-		return {"ok": false, "message": "前方没有作物"}
+		return {"ok": false, "message": _msg("error.farm.front_crop_missing")}
 	# 桶水校验在 try_water_at 内统一做（slash facing 入口不重复校验，错误文案同源）
 	return try_water_at(crop)
 
@@ -291,11 +291,11 @@ func try_water_facing() -> Dictionary:
 func try_remove_pest_facing() -> Dictionary:
 	assert(RunMode.is_runtime(), "try_remove_pest_facing must run on server")
 	if character.inventory_ops().count_item("wood_ash") <= 0:
-		return {"ok": false, "message": "背包里没有草木灰，无法除虫"}
+		return {"ok": false, "message": _msg("error.farm.no_wood_ash")}
 	var crop := _find_facing_node("crops", FACING_INTERACT_RANGE, 0.3,
 		func(n: Node3D) -> bool: return n is Crop and (n as Crop).has_pest) as Crop
 	if crop == null:
-		return {"ok": false, "message": "前方没有需要除虫的作物"}
+		return {"ok": false, "message": _msg("error.farm.front_pest_crop_missing")}
 	var access := _check_field_access_for_crop(crop)
 	if not bool(access.get("ok", true)):
 		return access
@@ -303,12 +303,12 @@ func try_remove_pest_facing() -> Dictionary:
 	if not bool(stamina_spend.get("ok", false)):
 		return stamina_spend
 	if not character.inventory_ops().consume_one("wood_ash"):
-		return {"ok": false, "message": "扣除草木灰失败"}
+		return {"ok": false, "message": _msg("error.farm.consume_wood_ash_failed")}
 	# 醉酒/生病：撒歪了——草木灰照样废掉（不返还），虫没除掉。
 	if randf() < Impairment.fail_chance(Impairment.work_impair(character)):
-		return _annotate({"ok": false, "code": "pest_fumbled", "message": "草木灰撒得到处都是，虫没除掉（%s）" % crop.variety.display_name}, stamina_spend)
+		return _annotate({"ok": false, "code": "pest_fumbled", "message": _fmt("error.farm.pest_fumbled_format", [crop.variety.display_name])}, stamina_spend)
 	crop.remove_pest()
-	return _annotate({"ok": true, "message": "撒了草木灰除虫（%s）" % crop.variety.display_name}, stamina_spend)
+	return _annotate({"ok": true, "message": _fmt("tool.tool_result.farm.pest_removed_format", [crop.variety.display_name])}, stamina_spend)
 
 
 func try_harvest_facing() -> Dictionary:
@@ -319,7 +319,7 @@ func try_harvest_facing() -> Dictionary:
 			return c != null and c.variety != null and c.stage == c.variety.stages.back()
 	) as Crop
 	if crop == null:
-		return {"ok": false, "message": "前方没有成熟的作物"}
+		return {"ok": false, "message": _msg("error.farm.front_ripe_crop_missing")}
 	var access := _check_field_access_for_crop(crop)
 	if not bool(access.get("ok", true)):
 		return access
@@ -394,7 +394,7 @@ func _begin_next() -> void:
 		var target_pos: Variant = _action_target_pos(op)
 		if typeof(target_pos) != TYPE_VECTOR3:
 			# 目标节点不在了 → 标记 failed，立刻试下一个，不浪费 tick
-			_record_completed(op, {"ok": false, "message": "目标节点已失效"})
+			_record_completed(op, {"ok": false, "message": _msg("error.farm.target_node_invalid")})
 			continue
 		_active = {
 			"op": op,
@@ -627,7 +627,7 @@ func _check_field_access_for_farm(farm: FarmGroup) -> Dictionary:
 		return {"ok": true}
 	if farm.can_be_used_by(character):
 		return {"ok": true}
-	return {"ok": false, "message": "%s 不属于你能动土的农田（归属 %s）" % [farm.effective_display_name(), farm.owner_group]}
+	return {"ok": false, "message": _fmt("error.farm.access_denied_format", [farm.effective_display_name(), farm.owner_group])}
 
 
 func _check_field_access_for_slot(slot: FarmSlot) -> Dictionary:
@@ -689,3 +689,12 @@ func _crop_on_slot(slot: FarmSlot) -> Crop:
 		if c.global_position.distance_to(slot.global_position) <= FarmSlot.OCCUPIED_RADIUS:
 			return c
 	return null
+
+
+func _msg(key: String) -> String:
+	var translated := str(TranslationServer.translate(key))
+	return translated if not translated.is_empty() and translated != key else key
+
+
+func _fmt(key: String, args: Array) -> String:
+	return _msg(key) % args

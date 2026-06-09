@@ -34,10 +34,10 @@ func run_offer(action_request: Dictionary, completion: Callable) -> Dictionary:
 	var recipient_id := str(t.get("characterId", "")).strip_edges()
 	var offer := _trade_lines_from_value(t.get("offer", []))
 	if not bool(offer.get("ok", false)):
-		return {"ok": false, "message": str(offer.get("message", "offer 解析失败"))}
+		return {"ok": false, "message": str(offer.get("message", _msg("error.trade.offer_parse_failed")))}
 	var request := _trade_lines_from_value(t.get("request", []))
 	if not bool(request.get("ok", false)):
-		return {"ok": false, "message": str(request.get("message", "request 解析失败"))}
+		return {"ok": false, "message": str(request.get("message", _msg("error.trade.request_parse_failed")))}
 	var offer_lines: Array = offer.get("lines", []) as Array
 	var request_lines: Array = request.get("lines", []) as Array
 	# request:[] 短路到 _run_give —— 单向赠送不写 trade_offers / 不阻塞 / 不需要对方 respond。
@@ -56,7 +56,7 @@ func run_offer(action_request: Dictionary, completion: Callable) -> Dictionary:
 	var result_d: Dictionary = result_v as Dictionary if typeof(result_v) == TYPE_DICTIONARY else {}
 	var trade_id := str(result_d.get("trade_id", ""))
 	if trade_id.is_empty():
-		return {"ok": false, "message": "trade_create 未返回 trade_id"}
+		return {"ok": false, "message": _msg("error.trade.create_missing_id")}
 	# Pending：买家 action 保持 active 等卖家 respond。resolve_pending 撮合后 fire completion → runner.finish。
 	_pending = {"trade_id": trade_id, "completion": completion}
 	return {"ok": true, "pending": true}
@@ -72,12 +72,12 @@ func run_respond(action_request: Dictionary) -> Dictionary:
 	var t: Dictionary = target as Dictionary
 	var kind := str(t.get("kind", "")).strip_edges()
 	if kind.is_empty():
-		return {"ok": false, "message": "respond 缺少 kind 字段"}
+		return {"ok": false, "message": _msg("error.respond.missing_kind")}
 	match kind:
 		"trade":
 			return _run_respond_trade(t)
 		_:
-			return {"ok": false, "message": "respond 不支持 kind '%s'，当前仅支持 'trade'" % kind}
+			return {"ok": false, "message": _fmt("error.respond.unsupported_kind_format", [kind])}
 
 
 # Lua affect.trade_op 调入口。create = 仅创 Db row + refresh contexts；
@@ -86,31 +86,31 @@ func run_respond(action_request: Dictionary) -> Dictionary:
 func trade_create(seller_id: String, offer: Array, request: Array) -> Dictionary:
 	var buyer_id := _character.backend_character_id()
 	if seller_id.is_empty():
-		return {"ok": false, "message": "缺少交易对象"}
+		return {"ok": false, "message": _msg("error.trade.missing_target")}
 	if seller_id == buyer_id:
-		return {"ok": false, "message": "不能和自己交易"}
+		return {"ok": false, "message": _msg("error.trade.self")}
 	var seller_node := _character.find_other_character(seller_id)
 	if seller_node == null:
-		return {"ok": false, "message": "找不到交易对象 %s" % seller_id}
+		return {"ok": false, "message": _fmt("error.trade.target_not_found_format", [seller_id])}
 	# 状态门槛：睡觉时不接受交易请求。在 Godot 层拒绝，event 根本不会发出去。
 	if seller_node.sleep_controller().is_sleeping():
-		return {"ok": false, "message": "%s 正在睡觉，无法发起交易" % seller_id}
+		return {"ok": false, "message": _fmt("error.trade.target_sleeping_format", [seller_id])}
 	# 距离门槛：面对面交易，复用 CharacterPerception 的 "near" 阈值。
 	var radius := CharacterPerception.CHARACTER_NEAR_RADIUS
 	var dist_sq := _character.global_position.distance_squared_to(seller_node.global_position)
 	if dist_sq > radius * radius:
 		return {
 			"ok": false,
-			"message": "距离不够，需要走到 %s 旁边（%.0f 米内）才能发起交易" % [seller_id, radius],
+			"message": _fmt("error.trade.too_far_format", [seller_id, radius]),
 		}
 	var existing := Db.find_pending_trade_for_pair(buyer_id, seller_id)
 	if not existing.is_empty():
-		return {"ok": false, "message": "已经有一笔待回应的交易，请等对方处理"}
+		return {"ok": false, "message": _msg("error.trade.pending_exists")}
 	var offer_lines := _normalize_trade_lines(offer)
 	var request_lines := _normalize_trade_lines(request)
 	var trade := Db.create_trade_offer(buyer_id, seller_id, offer_lines, request_lines)
 	if trade.is_empty():
-		return {"ok": false, "message": "创建交易报价失败"}
+		return {"ok": false, "message": _msg("error.trade.create_failed")}
 	_refresh_trade_contexts(trade)
 	# 选择性打断：若卖家正在 move_to_location，让对方腿停下来正面交易请求；其他身体动作
 	# （农事/工作台/睡觉/idle）不动，由对方 LLM 自决。
@@ -128,18 +128,18 @@ func trade_create(seller_id: String, offer: Array, request: Array) -> Dictionary
 
 func trade_respond(trade_id: String, response: String) -> Dictionary:
 	if trade_id.is_empty():
-		return {"ok": false, "message": "缺少 trade_id"}
+		return {"ok": false, "message": _msg("error.trade.missing_trade_id")}
 	if response != "accept" and response != "reject":
 		return {"ok": false, "message": "response must be accept/reject"}
 	var trade := Db.find_trade_offer(trade_id)
 	if trade.is_empty():
-		return {"ok": false, "message": "未知交易：%s" % trade_id}
+		return {"ok": false, "message": _fmt("error.trade.unknown_format", [trade_id])}
 	if str(trade.get("status", "")) != "pending":
-		return {"ok": false, "message": "该交易已经不是 pending 状态了"}
+		return {"ok": false, "message": _msg("error.trade.not_pending")}
 	var seller_id := str(trade.get("to_character_id", ""))
 	var buyer_id := str(trade.get("from_character_id", ""))
 	if _character.backend_character_id() != seller_id:
-		return {"ok": false, "message": "只有收到了报价的一方才能回应这笔交易"}
+		return {"ok": false, "message": _msg("error.trade.only_seller_respond")}
 	if response == "reject":
 		Db.update_trade_offer_status(trade_id, "rejected")
 		var rejected := Db.find_trade_offer(trade_id)
@@ -158,7 +158,7 @@ func trade_respond(trade_id: String, response: String) -> Dictionary:
 
 	var buyer := _character.find_other_character(buyer_id)
 	if buyer == null:
-		return {"ok": false, "message": "买家当前不在场景中"}
+		return {"ok": false, "message": _msg("error.trade.buyer_missing")}
 	var offer_lines := _normalize_trade_lines(trade.get("offer", []))
 	var request_lines := _normalize_trade_lines(trade.get("request", []))
 	# 买家(发起方)的 offer 货：先背包后自家附近货架——货架主可以主动把货架上的货 offer 出去。
@@ -182,7 +182,7 @@ func trade_respond(trade_id: String, response: String) -> Dictionary:
 	var requested_shelf_entries: Array = requested_extract.get("shelf_entries", [])
 	var seller_centi_taken := int(requested_extract.get("centi_taken", 0))
 	if offered_delivery_stacks.is_empty() and delivery_stacks.is_empty() and buyer_centi_taken == 0 and seller_centi_taken == 0:
-		return {"ok": false, "message": "这笔交易没有可转移的内容"}
+		return {"ok": false, "message": _msg("error.trade.empty_transfer")}
 	var seller_receive := _character.inventory_ops().receive_stacks(offered_delivery_stacks)
 	if not bool(seller_receive.get("ok", false)):
 		if not extracted_seller_stacks.is_empty():
@@ -192,7 +192,7 @@ func trade_respond(trade_id: String, response: String) -> Dictionary:
 		_character.inventory_ops().refund_centi(seller_centi_taken)
 		return {
 			"ok": false,
-			"message": str(seller_receive.get("message", "你现在收不下对方给的东西")),
+			"message": str(seller_receive.get("message", _msg("error.trade.seller_receive_failed"))),
 		}
 	var buyer_receive := buyer.inventory_ops().receive_stacks(delivery_stacks)
 	if not bool(buyer_receive.get("ok", false)):
@@ -204,7 +204,7 @@ func trade_respond(trade_id: String, response: String) -> Dictionary:
 		_character.inventory_ops().refund_centi(seller_centi_taken)
 		return {
 			"ok": false,
-			"message": str(buyer_receive.get("message", "对方现在装不下这些东西")),
+			"message": str(buyer_receive.get("message", _msg("error.trade.buyer_receive_failed"))),
 		}
 	# wallet 转账（已从 owner 扣完 → 这里只补给 receiver；金额 0 是 no-op）
 	_character.wallet_add(buyer_centi_taken)
@@ -315,19 +315,19 @@ func resolve_pending(trade_id: String, payload: Dictionary) -> void:
 func _run_respond_trade(t: Dictionary) -> Dictionary:
 	var response := str(t.get("response", "")).strip_edges()
 	if response != "accept" and response != "reject":
-		return {"ok": false, "message": "response 必须为 accept 或 reject"}
+		return {"ok": false, "message": _msg("error.respond.response_invalid")}
 	var buyer_id := str(t.get("buyerCharacterId", "")).strip_edges()
 	if buyer_id.is_empty():
-		return {"ok": false, "message": "respond(kind=trade) 缺少 buyerCharacterId"}
+		return {"ok": false, "message": _msg("error.respond.missing_buyer")}
 	var seller_id := _character.backend_character_id()
 	var pending := Db.list_pending_trades_for_pair(buyer_id, seller_id)
 	if pending.is_empty():
-		return {"ok": false, "message": "找不到来自 %s 的待回应交易" % buyer_id}
+		return {"ok": false, "message": _fmt("error.respond.pending_not_found_format", [buyer_id])}
 	if pending.size() > 1:
 		push_warning("[trade] pair %s→%s 存在 %d 条 pending，按最新一条处理" % [buyer_id, seller_id, pending.size()])
 	var trade_id := str((pending[0] as Dictionary).get("trade_id", ""))
 	if trade_id.is_empty():
-		return {"ok": false, "message": "pending 交易缺少 trade_id"}
+		return {"ok": false, "message": _msg("error.respond.pending_missing_trade_id")}
 	return MechanicVerb.resolve("trade", {
 		"actor": _character,
 		"actor_id": seller_id,
@@ -342,21 +342,21 @@ func _run_respond_trade(t: Dictionary) -> Dictionary:
 # offer_lines 由 _trade_lines_from_value 已归一为 [{item: itemId, count, slot_index?}, ...]。
 func _run_give(recipient_id: String, offer_lines: Array) -> Dictionary:
 	if recipient_id.is_empty():
-		return {"ok": false, "message": "offer 缺少接收角色"}
+		return {"ok": false, "message": _msg("error.give.missing_recipient")}
 	var giver_id := _character.backend_character_id()
 	if recipient_id == giver_id:
-		return {"ok": false, "message": "不能把东西递给自己"}
+		return {"ok": false, "message": _msg("error.give.self")}
 	var recipient: Character = _character.find_other_character(recipient_id)
 	if recipient == null:
-		return {"ok": false, "message": "找不到 %s" % recipient_id}
+		return {"ok": false, "message": _fmt("error.give.recipient_not_found_format", [recipient_id])}
 	if recipient.sleep_controller().is_sleeping():
-		return {"ok": false, "message": "%s 正在睡觉，没法接你递的东西" % _character_display_name(recipient_id)}
+		return {"ok": false, "message": _fmt("error.give.recipient_sleeping_format", [_character_display_name(recipient_id)])}
 	var radius := CharacterPerception.CHARACTER_NEAR_RADIUS
 	var dist_sq := _character.global_position.distance_squared_to(recipient.global_position)
 	if dist_sq > radius * radius:
 		return {
 			"ok": false,
-			"message": "距离不够，需要走到 %s 旁边（%.0f 米内）才能递交" % [_character_display_name(recipient_id), radius],
+			"message": _fmt("error.give.too_far_format", [_character_display_name(recipient_id), radius]),
 		}
 
 	# 逐项 best-effort：货币走 wallet（count 是小数 silver），其他走 add_instance/remove_item（count 是整数）。
@@ -385,7 +385,7 @@ func _run_give(recipient_id: String, offer_lines: Array) -> Dictionary:
 			any_transferred = true
 			break
 	if not any_transferred:
-		return {"ok": false, "message": "%s 装不下任何递交的物品" % _character_display_name(recipient_id)}
+		return {"ok": false, "message": _fmt("error.give.recipient_full_format", [_character_display_name(recipient_id)])}
 
 	# 货架被白送扣减过的感知：靠下面的 give world_event（affectedCharacterIds 含旁观者）传达，
 	# 不再单独 push 货架 context。consumed_shelf_entries 仅用于内部记账。
@@ -534,15 +534,15 @@ func _interrupt_seller_walk_for_offer(seller_id: String, buyer_id: String) -> vo
 # 返回 {ok, message?, lines}。
 func _trade_lines_from_value(value: Variant) -> Dictionary:
 	if typeof(value) != TYPE_ARRAY:
-		return {"ok": false, "message": "交易条目必须为数组"}
+		return {"ok": false, "message": _msg("error.trade_line.must_be_array")}
 	var out: Array = []
 	for entry_v in (value as Array):
 		if typeof(entry_v) != TYPE_DICTIONARY:
-			return {"ok": false, "message": "交易条目必须为 {item, count} 对象"}
+			return {"ok": false, "message": _msg("error.trade_line.must_be_object")}
 		var entry: Dictionary = entry_v as Dictionary
 		var item := str(entry.get("item", "")).strip_edges()
 		if item.is_empty():
-			return {"ok": false, "message": "交易条目缺少 item"}
+			return {"ok": false, "message": _msg("error.trade_line.missing_item")}
 		var count_raw: float = float(entry.get("count", 0.0))
 		var is_currency := CharacterInventory.currency_item_centi(item) > 0
 		# slotIndex 是 backend 反查 LLM {name,index} 时透传的真实背包槽位 id；
@@ -552,12 +552,12 @@ func _trade_lines_from_value(value: Variant) -> Dictionary:
 			line_out["slot_index"] = int(entry.get("slotIndex", -1))
 		if is_currency:
 			if count_raw < 0.01 - 0.000001:
-				return {"ok": false, "message": "%s 的 count 必须 ≥ 0.01" % item}
+				return {"ok": false, "message": _fmt("error.trade_line.invalid_currency_count_format", [item])}
 			line_out["count"] = _round_currency_count(count_raw)
 		else:
 			var count_int := int(round(count_raw))
 			if absf(count_raw - float(count_int)) > 0.000001 or count_int <= 0:
-				return {"ok": false, "message": "%s 的 count 必须为正整数" % item}
+				return {"ok": false, "message": _fmt("error.trade_line.invalid_count_format", [item])}
 			line_out["count"] = count_int
 		out.append(line_out)
 	return {"ok": true, "lines": out}
@@ -630,14 +630,14 @@ func _extract_trade_lines_with_shelf(owner: Character, lines: Array) -> Dictiona
 		if item_id.is_empty() or count_raw <= 0.0:
 			owner.inventory_ops().restore_extracted_stacks(inventory_stacks)
 			owner.inventory_ops().refund_centi(centi_taken)
-			return {"ok": false, "message": "无效交易条目：%s" % str(line)}
+			return {"ok": false, "message": _fmt("error.trade_line.invalid_line_format", [str(line)])}
 		if coin_centi > 0:
 			# 货币：count 是"几枚币"（float），换算到 centi 后必为整数（schema 保证 0.01 精度）。
 			var line_centi := int(round(float(coin_centi) * count_raw))
 			if line_centi <= 0:
 				owner.inventory_ops().restore_extracted_stacks(inventory_stacks)
 				owner.inventory_ops().refund_centi(centi_taken)
-				return {"ok": false, "message": "无效交易条目：%s" % str(line)}
+				return {"ok": false, "message": _fmt("error.trade_line.invalid_line_format", [str(line)])}
 			var pay := owner.inventory_ops().pay_centi(line_centi)
 			if not bool(pay.get("ok", false)):
 				owner.inventory_ops().restore_extracted_stacks(inventory_stacks)
@@ -649,7 +649,7 @@ func _extract_trade_lines_with_shelf(owner: Character, lines: Array) -> Dictiona
 		if quantity <= 0:
 			owner.inventory_ops().restore_extracted_stacks(inventory_stacks)
 			owner.inventory_ops().refund_centi(centi_taken)
-			return {"ok": false, "message": "无效交易条目：%s" % str(line)}
+			return {"ok": false, "message": _fmt("error.trade_line.invalid_line_format", [str(line)])}
 		var remaining := quantity
 		var inventory_take := _extract_named_trade_item_across_inventory(owner, item_id, remaining)
 		var named_stacks := _as_dict_array(inventory_take.get("stacks", []))
@@ -672,7 +672,7 @@ func _extract_trade_lines_with_shelf(owner: Character, lines: Array) -> Dictiona
 			owner.inventory_ops().refund_centi(centi_taken)
 			return {
 				"ok": false,
-				"message": "背包和当前附近自家货架里都没有足够的 %s（需要 %d）" % [item_id, quantity],
+				"message": _fmt("error.trade_line.not_enough_inventory_or_shelf_format", [item_id, quantity]),
 			}
 	return {
 		"ok": true,
@@ -800,3 +800,12 @@ func _is_character_near_shelf(other: Character, shelf: ShelfNode) -> bool:
 	# 可交互距离 = 货架自己 SiteMarker 的半径（逐对象），以货架自身位置为基准；不用寻路 approach 点。
 	var radius := SiteMarker.interaction_radius_of(shelf)
 	return other.global_position.distance_squared_to(shelf.global_position) <= radius * radius
+
+
+func _msg(key: String) -> String:
+	var translated := str(TranslationServer.translate(key))
+	return translated if not translated.is_empty() and translated != key else key
+
+
+func _fmt(key: String, args: Array) -> String:
+	return _msg(key) % args

@@ -21,7 +21,7 @@ class_name MechanicVerb
 
 static func resolve(verb_name: String, ctx: Dictionary, hook: String = "on_resolve") -> Dictionary:
 	if not MechanicHost.has_mechanic(verb_name):
-		return { "ok": false, "message": "verb '%s' 未注册到 MechanicHost" % verb_name }
+		return { "ok": false, "message": _fmt("error.mechanic.verb_unregistered_format", [verb_name]) }
 
 	var invoke_result := MechanicHost.invoke(verb_name, hook, ctx)
 	if not bool(invoke_result.get("ok", false)):
@@ -91,3 +91,12 @@ static func _event_data_with_default_visibility(data: Dictionary, ctx: Dictionar
 	else:
 		out["affectedCharacterIds"] = []
 	return out
+
+
+static func _msg(key: String) -> String:
+	var translated := str(TranslationServer.translate(key))
+	return translated if not translated.is_empty() and translated != key else key
+
+
+static func _fmt(key: String, args: Array) -> String:
+	return _msg(key) % args

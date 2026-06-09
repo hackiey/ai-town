@@ -608,7 +608,7 @@ func request_pickup_item(path: NodePath) -> void:
 	var stacks: Array[Dictionary] = [stack]
 	var recv := inventory_ops().receive_stacks(stacks)
 	if not bool(recv.get("ok", false)):
-		_fail_owner(str(recv.get("message", "背包装不下")))
+		_fail_owner(str(recv.get("message", tr("error.inventory.full"))))
 		return
 	var item_id := gi.item_id
 	Db.delete_ground_item(gi.db_id)
@@ -1146,7 +1146,7 @@ func request_craft(verb: String, workstation_id: String, sub_option: String) -> 
 	var result: Dictionary = Crafting.resolve(verb, workstation_id, sub_option, instances, get_proficiency_table())
 	var outcome: String = result.get("outcome", "no_match")
 	if outcome == "no_match":
-		_fail_owner(String(result.get("message", "无可用反应")))
+		_fail_owner(String(result.get("message", tr("error.workstation.no_matching_reaction"))))
 		return
 	var duration: float = float(result.get("duration_seconds", 0.0))
 	var reaction_label: String = WorkstationActionRunner.craft_label(verb, workstation_id, sub_option)
@@ -1446,7 +1446,7 @@ func request_unstage_liquid_to_container(staged_idx: int, target_backpack_slot: 
 	var n := mini(amount, have)
 	var res := LiquidOps.fill_from_source(target, content, float(staged.get("quality", 100)), float(n))
 	if not bool(res.get("ok", false)):
-		_fail_owner(str(res.get("message", "倒不进去")))
+		_fail_owner(str(res.get("message", tr("error.liquid.transfer_failed"))))
 		return
 	var moved := int(round(float(res.get("moved", 0.0))))
 	if moved <= 0:
@@ -1527,7 +1527,7 @@ func request_container_take(container_id: String, container_slot_index: int, qty
 	if not bool(receive.get("ok", false)):
 		# 背包装不下 → 把刚取出的塞回容器，避免吞物
 		Containers.adapter_place(node, stacks)
-		_fail_owner(str(receive.get("message", "背包装不下")))
+		_fail_owner(str(receive.get("message", tr("error.inventory.full"))))
 		return
 	var actual_cost := price_centi * actual_qty if shelf_mode else 0
 	if actual_cost > 0:
@@ -1541,7 +1541,7 @@ func request_container_take(container_id: String, container_slot_index: int, qty
 						received_stacks.append(r as Dictionary)
 			inventory_ops().rollback_received_stacks(received_stacks)
 			Containers.adapter_place(node, stacks)
-			_fail_owner(str(pay.get("message", "钱不够")))
+			_fail_owner(str(pay.get("message", tr("error.money.not_enough"))))
 			return
 		Containers.wallet_add_centi(container_id, actual_cost)
 
@@ -1574,7 +1574,7 @@ func request_container_put(container_id: String, player_slot_index: int, qty: in
 		# 容器装不下 → 退回背包
 		inventory_ops().receive_stacks(leftover)
 		if int(place.get("placed_qty", 0)) <= 0:
-			_fail_owner(str(place.get("message", "容器装不下")))
+		_fail_owner(str(place.get("message", tr("error.container.full"))))
 
 
 @rpc("any_peer", "call_remote", "reliable")
@@ -1596,7 +1596,7 @@ func request_container_wallet_transfer(container_id: String, direction: String, 
 		"put":
 			var pay := inventory_ops().pay_centi(centi)
 			if not bool(pay.get("ok", false)):
-				_fail_owner(str(pay.get("message", "钱不够")))
+				_fail_owner(str(pay.get("message", tr("error.money.not_enough"))))
 				return
 			Containers.wallet_add_centi(container_id, centi)
 		"take":
@@ -1689,15 +1689,15 @@ func request_pour_liquid(from_container_id: String, from_slot: int, to_container
 		return
 	var from_res := ContainerHandlers._resolve_liquid_endpoint(self, _pour_endpoint(from_container_id, from_slot))
 	if not bool(from_res.get("ok", false)):
-		_fail_owner(str(from_res.get("message", "源容器无效")))
+		_fail_owner(str(from_res.get("message", tr("error.container.invalid_source"))))
 		return
 	var to_res := ContainerHandlers._resolve_liquid_endpoint(self, _pour_endpoint(to_container_id, to_slot))
 	if not bool(to_res.get("ok", false)):
-		_fail_owner(str(to_res.get("message", "目标容器无效")))
+		_fail_owner(str(to_res.get("message", tr("error.container.invalid_target"))))
 		return
 	var result := LiquidOps.transfer_between_slots(from_res["slot"], to_res["slot"], amount)
 	if not bool(result.get("ok", false)):
-		_fail_owner(str(result.get("message", "倒不动")))
+		_fail_owner(str(result.get("message", tr("error.liquid.transfer_failed"))))
 		return
 	(from_res["commit"] as Callable).call()
 	(to_res["commit"] as Callable).call()
@@ -1733,7 +1733,7 @@ func request_brew(container_id: String, slot_index: int, recipe_id: String) -> v
 	}
 	var res := BrewHandlers.run_brew(self, action_request)
 	if not bool(res.get("ok", false)):
-		_fail_owner(str(res.get("message", "酿不了")))
+		_fail_owner(str(res.get("message", tr("error.brew.failed"))))
 
 
 # ─ 容器/货架分页查看 ──────────────────────────────────────────────────────
@@ -1849,7 +1849,7 @@ func _commit_craft_outcome(verb: String, workstation_id: String, sub_option: Str
 		"verb": verb,
 		"sub_option": sub_option,
 	})
-	var summary_text := str(summary.get("message", "制造完成"))
+	var summary_text := str(summary.get("message", tr("tool.tool_result.workstation.completed")))
 	if bool(summary.get("ok", false)):
 		_ok_owner(summary_text)
 		var qm := float(summary.get("quality_modifier", 1.0))

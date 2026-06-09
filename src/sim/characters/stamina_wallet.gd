@@ -44,7 +44,7 @@ static func try_spend(character, cost: float, reason: String) -> Dictionary:
 		return {
 			"ok": false,
 			"code": "stamina_depleted",
-			"message": "体力不足：%s 需要 %.0f，当前 %.1f" % [reason, cost, character.stamina],
+			"message": _fmt("error.stamina.not_enough_format", [reason, cost, character.stamina]),
 			"stamina_cost": cost,
 			"stamina_before": character.stamina,
 			"stamina_after": character.stamina,
@@ -85,3 +85,12 @@ static func _result_ok(character, spent: float, before: float, reason: String) -
 		"stamina_after": character.stamina,
 		"reason": reason,
 	}
+
+
+static func _msg(key: String) -> String:
+	var translated := str(TranslationServer.translate(key))
+	return translated if not translated.is_empty() and translated != key else key
+
+
+static func _fmt(key: String, args: Array) -> String:
+	return _msg(key) % args

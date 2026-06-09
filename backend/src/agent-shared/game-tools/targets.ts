@@ -265,9 +265,9 @@ export function resolveItemByIndex(
   const flat = currentContext?.itemIndex?.flat;
   if (flat && flat.length > 0) {
     if (ref.index > flat.length) {
-      return { error: t("error.item_index_out_of_range", getActiveLocale(), { list: "可交互物", index: ref.index, size: flat.length }) };
+      return { error: t("error.item_index_out_of_range", getActiveLocale(), { list: td("item_ref.list.interactive"), index: ref.index, size: flat.length }) };
     }
-    return resolveFromEntry(flat[ref.index - 1], requestedName, "可交互物", ref.index);
+    return resolveFromEntry(flat[ref.index - 1], requestedName, td("item_ref.list.interactive"), ref.index);
   }
   const entries = pickEntries(list, currentContext);
   const listLabel = itemRefListLabel(list);
@@ -329,14 +329,14 @@ function pickEntries(list: ItemRefList | ScopedItemRefList, ctx?: AgentCurrentCo
 function itemRefListLabel(list: ItemRefList | ScopedItemRefList): string {
   if (typeof list === "string") {
     switch (list) {
-      case "backpack": return "# 背包";
-      case "equipment": return "# 当前装备";
-      case "nearby": return "# 附近物品";
+      case "backpack": return td("item_ref.list.backpack");
+      case "equipment": return td("item_ref.list.equipment");
+      case "nearby": return td("item_ref.list.nearby");
     }
   }
   return list.kind === "container"
-    ? `${localizeStringValue(list.containerId)} 容器内容`
-    : `${localizeStringValue(list.shelfId)} 货架内容`;
+    ? td("item_ref.list.container_format", { container: localizeStringValue(list.containerId) })
+    : td("item_ref.list.shelf_format", { shelf: localizeStringValue(list.shelfId) });
 }
 
 

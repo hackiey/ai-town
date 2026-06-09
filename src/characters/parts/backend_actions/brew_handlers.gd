@@ -21,25 +21,25 @@ static func run_brew(character: Character, action_request: Dictionary) -> Dictio
 	var ep_v: Variant = (target as Dictionary).get("barrel", {})
 	var ep := ContainerHandlers._resolve_liquid_endpoint(character, ep_v)
 	if not bool(ep.get("ok", false)):
-		return {"ok": false, "message": str(ep.get("message", "找不到酿酒桶"))}
+		return {"ok": false, "message": str(ep.get("message", _msg("error.brew.barrel_missing")))}
 
 	var recipe_id := str(action_request.get("recipe", "")).strip_edges()
 	if recipe_id.is_empty():
 		recipe_id = DEFAULT_RECIPE
 	var rec_v: Variant = MechanicHost.query("crafting", "passive_recipe", [recipe_id])
 	if rec_v == null:
-		return {"ok": false, "message": "没有这种酒的配方"}
+		return {"ok": false, "message": _msg("error.brew.recipe_missing")}
 	var rec := LuaConv.to_dict(rec_v)
 
 	var slot: Dictionary = ep["slot"]
 	var view := InventorySlotData.of(slot)
 	if not view.has_tag(str(rec.get("vessel_tag", ""))):
-		return {"ok": false, "message": "这不是酿酒桶"}
+		return {"ok": false, "message": _msg("error.brew.not_vessel")}
 	var c := view.as_container()
 	if c == null or c.content_id() != str(rec.get("base_liquid", "")) or c.amount() <= 0.0:
-		return {"ok": false, "message": "酿酒桶里没有水，先打水"}
+		return {"ok": false, "message": _msg("error.brew.no_base_liquid")}
 	if slot.get("ferment_ceiling", null) != null or slot.get("transform_age", null) != null:
-		return {"ok": false, "message": "这桶正在酿，别打断"}
+		return {"ok": false, "message": _msg("error.brew.already_fermenting")}
 
 	var liters := int(ceil(c.amount()))
 	var per := maxi(1, int(rec.get("ingredient_per_liter", 1)))
@@ -47,11 +47,11 @@ static func run_brew(character: Character, action_request: Dictionary) -> Dictio
 	var ingredient := str(rec.get("ingredient", ""))
 	var have := character.inventory_ops().count_item(ingredient)
 	if have < need:
-		return {"ok": false, "message": "%s 不够（需 %d 份，背包只有 %d 份）" % [_item_name(ingredient), need, have]}
+		return {"ok": false, "message": _fmt("error.brew.ingredient_not_enough_format", [_item_name(ingredient), need, have])}
 
 	var ext := character.inventory_ops().extract_item_id_across_stacks(ingredient, need)
 	if not bool(ext.get("ok", false)):
-		return {"ok": false, "message": "取原料失败"}
+		return {"ok": false, "message": _msg("error.brew.extract_failed")}
 	var ingredient_quality := _avg_quality(ext.get("stacks", []))
 
 	# 上限 = ferment_ceiling(熟练度, 配方难度, 原料品质)。公式在 crafting.lua,单一真值。
@@ -77,7 +77,7 @@ static func run_brew(character: Character, action_request: Dictionary) -> Dictio
 	})
 	return {
 		"ok": true,
-		"message": "开始酿酒：%d 升，品质上限 %d，约 %d 小时后成酒" % [liters, ceiling, int(rec.get("hours", 0))],
+		"message": _fmt("tool.tool_result.brew.started_format", [liters, ceiling, int(rec.get("hours", 0))]),
 		"result": {"liters": liters, "ceiling": ceiling},
 	}
 
@@ -99,3 +99,12 @@ static func _item_name(item_id: String) -> String:
 	var key := "item.%s.name" % item_id
 	var n := str(TranslationServer.translate(key))
 	return n if n != key else item_id
+
+
+static func _msg(key: String) -> String:
+	var translated := str(TranslationServer.translate(key))
+	return translated if not translated.is_empty() and translated != key else key
+
+
+static func _fmt(key: String, args: Array) -> String:
+	return _msg(key) % args

@@ -143,44 +143,30 @@ function renderGenericActionContext(
 ): string {
   const targetText = renderToolTarget(target, displayTarget) || td("action.default_target");
   const lines = [
-    "# 行动结果",
-    `动作：${genericActionName(toolName)}`,
+    td("action.result.header"),
+    td("action.result.action_format", { action: genericActionName(toolName) }),
     targetText,
   ];
   const timeText = actionGameTimeText(record);
   const summary = genericActionSummary(toolName, record, target, displayTarget);
   if (summary) {
-    lines.push(`结果：${timeText}，${summary}`);
+    lines.push(td("action.result.summary_format", { time: timeText, summary }));
   } else if (record.status === "failed" || record.status === "cancelled") {
-    const verb = record.status === "failed" ? "失败" : "被取消";
-    lines.push(`结果：${timeText}，${genericActionName(toolName)}${verb}。`);
+    const status = record.status === "failed" ? td("action.result.status_failed") : td("action.result.status_cancelled");
+    lines.push(td("action.result.terminal_no_summary_format", { time: timeText, action: genericActionName(toolName), status }));
   }
   lines.push(...renderActionResultCharacterChangeLines(record.result));
   if (record.error) {
-    lines.push(`原因：${renderToolError(record.error)}`);
+    lines.push(td("action.result.reason_format", { reason: renderToolError(record.error) }));
   }
   if (resultNote && !isTerminalActionStatus(record.status)) {
-    lines.push("结果：原工作仍在进行中（不会因这次中断而停下）。");
+    lines.push(td("action.result.detached_work_note"));
   }
   return lines.join("\n");
 }
 
 function genericActionName(toolName: string): string {
-  switch (toolName) {
-    case "plan_farm_work": return "农事工单";
-    case "use_workstation": return "工作台动作";
-    case "use_item": return "使用物品";
-    case "pick_up_item": return "拾取物品";
-    case "drop_item": return "放下物品";
-    case "put_take": return "存取货架/容器";
-    case "view_container": return "查看货架/容器";
-    case "offer": return "递交 / 交换";
-    case "respond": return "回应请求";
-    case "write": return "书写";
-    case "read": return "阅读";
-    case "sleep": return "睡觉";
-    default: return toolName;
-  }
+  return tdOr(`action.name.${toolName}`, toolName);
 }
 
 function genericActionSummary(
@@ -193,21 +179,21 @@ function genericActionSummary(
     return undefined;
   }
   if (!isTerminalActionStatus(record.status)) {
-    return `${genericActionName(toolName)}正在进行。`;
+    return td("action.summary.pending_format", { action: genericActionName(toolName) });
   }
   const resultMessage = stringField(record.result ?? {}, ["message", "summary"]);
   if (resultMessage) {
     return localizeText(resultMessage);
   }
   switch (toolName) {
-    case "pick_up_item": return `已拾取 ${targetItemLabel(target, displayTarget)}。`;
-    case "drop_item": return `已放下 ${targetItemLabel(target, displayTarget)}。`;
-    case "use_item": return `已使用 ${targetItemLabel(target, displayTarget)}。`;
-    case "put_take": return "已完成货架/容器存取。";
-    case "offer": return "递交动作已提交。";
+    case "pick_up_item": return td("action.summary.pick_up_item_format", { item: targetItemLabel(target, displayTarget) });
+    case "drop_item": return td("action.summary.drop_item_format", { item: targetItemLabel(target, displayTarget) });
+    case "use_item": return td("action.summary.use_item_format", { item: targetItemLabel(target, displayTarget) });
+    case "put_take": return td("action.summary.put_take_completed");
+    case "offer": return td("action.summary.offer_submitted");
     case "respond": return respondSummary(record.result, target);
     case "sleep": return sleepSummary(record.result, target);
-    default: return `${genericActionName(toolName)}已完成。`;
+    default: return td("action.summary.default_completed_format", { action: genericActionName(toolName) });
   }
 }
 
@@ -219,16 +205,16 @@ function targetItemLabel(target: Record<string, unknown> | string, displayTarget
     return localizeStringValue(target) ?? target;
   }
   const item = stringField(target, ["item", "itemId", "item_id", "seed"]);
-  return item ? localizeStringValue(item) : renderToolTarget(target).replace(/^目标\s*/, "");
+  return item ? localizeStringValue(item) : stripToolTargetPrefix(renderToolTarget(target));
 }
 
 function inspectContainerSummary(result: Record<string, unknown> | undefined): string {
   const snapshot = objectField(result, ["snapshot"]);
   const items = recordListValue(snapshot?.items ?? result?.items);
   if (items.length === 0) {
-    return "容器里没有可见物品。";
+    return td("action.summary.container.empty");
   }
-  return `容器里有 ${items.map(containerItemLabel).join("、")}。`;
+  return td("action.summary.container.items_format", { items: items.map(containerItemLabel).join(td("action.list_separator")) });
 }
 
 function containerItemLabel(entry: Record<string, unknown>): string {
@@ -237,7 +223,7 @@ function containerItemLabel(entry: Record<string, unknown>): string {
   const quality = numberField(entry, ["quality"]);
   const base = item ? localizeStringValue(item) : JSON.stringify(localizeValue(entry));
   const quantityText = quantity == null ? "" : ` x${quantity}`;
-  const qualityText = quality == null ? "" : `（品质 ${quality}）`;
+  const qualityText = quality == null ? "" : td("action.summary.container.quality_format", { quality });
   return `${base}${quantityText}${qualityText}`;
 }
 
@@ -246,12 +232,12 @@ function respondSummary(result: Record<string, unknown> | undefined, target: Rec
   const response = stringField(result ?? {}, ["response"])
     ?? (typeof target === "string" ? undefined : stringField(target, ["response"]));
   if (response === "accept") {
-    return "已接受请求。";
+    return td("action.summary.respond_accept");
   }
   if (response === "reject") {
-    return "已拒绝请求。";
+    return td("action.summary.respond_reject");
   }
-  return "请求回应已提交。";
+  return td("action.summary.respond_submitted");
 }
 
 function sleepSummary(result: Record<string, unknown> | undefined, target: Record<string, unknown> | string): string {
@@ -259,9 +245,11 @@ function sleepSummary(result: Record<string, unknown> | undefined, target: Recor
     ?? (typeof target === "string" ? undefined : numberField(target, ["duration_game_minutes", "durationGameMinutes"]));
   const interrupted = result?.interrupted === true;
   if (duration == null) {
-    return interrupted ? "睡眠被打断。" : "睡眠结束。";
+    return interrupted ? td("action.summary.sleep_interrupted") : td("action.summary.sleep_finished");
   }
-  return interrupted ? `睡眠被打断，原计划睡 ${duration} 分钟。` : `睡了 ${duration} 分钟。`;
+  return interrupted
+    ? td("action.summary.sleep_interrupted_duration_format", { duration })
+    : td("action.summary.sleep_duration_format", { duration });
 }
 
 function numberField(record: Record<string, unknown>, keys: string[]): number | undefined {
@@ -309,18 +297,26 @@ export function formatMoveToLocationToolResult(
   let text: string;
 
   if (record.status === "completed") {
-    const elapsedPrefix = elapsedText ? `行走了${elapsedText}，` : "";
-    text = `${timeText}，${elapsedPrefix}${moveArrivalText(destination, targetType)}${nearbyEnvironmentText ? `\n\n${nearbyEnvironmentText}` : ""}`;
+    const elapsedPrefix = elapsedText ? td("action.move.elapsed_prefix_format", { elapsed: elapsedText }) : "";
+    text = td("action.move.completed_format", {
+      time: timeText,
+      elapsedPrefix,
+      arrival: moveArrivalText(destination, targetType),
+    }) + (nearbyEnvironmentText ? `\n\n${nearbyEnvironmentText}` : "");
   } else if (record.status === "failed") {
-    const reason = record.error ? `原因：${renderToolError(record.error)}。` : "没有到达目标。";
-    text = `${timeText}，前往 ${destination} 失败，${reason}`;
+    const reason = record.error
+      ? td("action.move.reason_format", { reason: renderToolError(record.error) })
+      : td("action.move.reason_not_arrived");
+    text = td("action.move.failed_format", { time: timeText, destination, reason });
   } else if (record.status === "cancelled") {
-    const reason = record.error ? `原因：${renderToolError(record.error)}。` : "动作被取消。";
+    const reason = record.error
+      ? td("action.move.reason_format", { reason: renderToolError(record.error) })
+      : td("action.move.reason_cancelled");
     text = interrupted
-      ? `${timeText}，前往 ${destination} 已被打断，${reason}`
-      : `${timeText}，前往 ${destination} 已取消，${reason}`;
+      ? td("action.move.interrupted_format", { time: timeText, destination, reason })
+      : td("action.move.cancelled_format", { time: timeText, destination, reason });
   } else {
-    text = `${timeText}，正在前往 ${destination}。`;
+    text = td("action.move.pending_format", { time: timeText, destination });
   }
   text = appendActionResultCharacterChangeText(text, record);
 
@@ -359,18 +355,20 @@ export function formatSayToToolResult(
   let contentText: string;
 
   if (record.status === "completed") {
-    const heardByText = heardBy.length > 0 ? `\n旁听者：${heardBy.join("、")}。` : "";
-    contentText = `${timeText}，你对${targetLabel}说：“${text}”${heardByText}`;
+    const heardByText = heardBy.length > 0
+      ? td("action.say.heard_by_format", { listeners: heardBy.join(td("action.list_separator")) })
+      : "";
+    contentText = td("action.say.completed_format", { time: timeText, target: targetLabel, text, heardByText });
   } else if (record.status === "failed") {
-    const reason = record.error ? renderToolError(record.error) : "没有说出口";
-    contentText = `${timeText}，你没能对${targetLabel}说：${text}。原因：${reason}。`;
+    const reason = record.error ? renderToolError(record.error) : td("action.say.reason_not_spoken");
+    contentText = td("action.say.failed_format", { time: timeText, target: targetLabel, text, reason });
   } else if (record.status === "cancelled") {
-    const reason = record.error ? renderToolError(record.error) : "动作被取消";
+    const reason = record.error ? renderToolError(record.error) : td("action.say.reason_cancelled");
     contentText = interrupted
-      ? `${timeText}，你对${targetLabel}说的话被打断了。原因：${reason}。`
-      : `${timeText}，你对${targetLabel}说的话被取消了。原因：${reason}。`;
+      ? td("action.say.interrupted_format", { time: timeText, target: targetLabel, reason })
+      : td("action.say.cancelled_format", { time: timeText, target: targetLabel, reason });
   } else {
-    contentText = `${timeText}，你正要对${targetLabel}说：${text}。`;
+    contentText = td("action.say.pending_format", { time: timeText, target: targetLabel, text });
   }
   contentText = appendActionResultCharacterChangeText(contentText, record);
 
@@ -424,24 +422,24 @@ function renderFarmWorkContext(
 ): string {
   const timeText = actionGameTimeText(record);
   const lines = [
-    "# 农事结果",
-    `结果：${timeText}，${progressText || "没有完成的农事。"}`,
+    td("action.farm.header"),
+    td("action.farm.result_format", { time: timeText, progress: progressText || td("action.farm.empty_progress") }),
   ];
   if (record.error) {
-    lines.push(`原因：${renderToolError(record.error)}`);
+    lines.push(td("action.result.reason_format", { reason: renderToolError(record.error) }));
   }
   lines.push(...renderActionResultCharacterChangeLines(record.result));
   lines.push(...renderFarmFailureLines(recordListField(record.result ?? {}, "completed")));
   if (!isTerminalActionStatus(record.status)) {
-    lines.push("未完成：农事仍在进行中（动作没有取消，会在后台继续）。如需回应周围事件可调用 say_to，不会打断农事；其他占用身体的工具会接力安排，等农事自然结束后再起。");
+    lines.push(td("action.farm.pending_note"));
   } else if (interrupted) {
     const reason = stringField(record.result ?? {}, ["reason"]);
     if (reason === "slot_occupied") {
-      lines.push("未完成：种植时遇到 slot 已被占用，农事提前停止。请按最新农田上下文重新规划再发工单。");
+      lines.push(td("action.farm.interrupted_slot_occupied"));
     } else if (reason === "stamina_depleted") {
-      lines.push("未完成：体力不足，农事提前停止。");
+      lines.push(td("action.farm.interrupted_stamina_depleted"));
     } else {
-      lines.push("未完成：农事被打断，还有剩余项。取最新农田上下文判断后续动作。");
+      lines.push(td("action.farm.interrupted_default"));
     }
   }
   return lines.join("\n");
@@ -461,17 +459,19 @@ function formatFarmProgressText(
   const failedCount = completed.length - successes.length;
   const counts = farmActionCounts(successes);
   const parts = [
-    farmCountText(counts.plant, "已种植", "格"),
-    farmCountText(counts.water, "已浇水", "次"),
-    farmCountText(counts.pest, "已除虫", "格"),
-    farmCountText(counts.harvest, "已收获", "格"),
-    farmCountText(counts.uproot, "已铲除", "格"),
+    farmCountText(counts.plant, "plant"),
+    farmCountText(counts.water, "water"),
+    farmCountText(counts.pest, "pest"),
+    farmCountText(counts.harvest, "harvest"),
+    farmCountText(counts.uproot, "uproot"),
   ].filter((part): part is string => Boolean(part));
-  const completedText = parts.length > 0 ? parts.join("，") : "已完成0项";
-  const failedText = failedCount > 0 ? `失败${failedCount}项` : undefined;
-  const remainingText = remaining.length > 0 ? `还有${remaining.length}项未完成` : "没有剩余项";
+  const completedText = parts.length > 0 ? parts.join(td("action.clause_separator")) : td("action.farm.completed_zero");
+  const failedText = failedCount > 0 ? td("action.farm.failed_count_format", { count: failedCount }) : undefined;
+  const remainingText = remaining.length > 0
+    ? td("action.farm.remaining_count_format", { count: remaining.length })
+    : td("action.farm.remaining_none");
   const activeText = farmActiveText(result);
-  return [completedText, failedText, remainingText, activeText].filter(Boolean).join("，");
+  return [completedText, failedText, remainingText, activeText].filter(Boolean).join(td("action.clause_separator"));
 }
 
 function farmActionCounts(records: Record<string, unknown>[]): Record<string, number> {
@@ -485,8 +485,8 @@ function farmActionCounts(records: Record<string, unknown>[]): Record<string, nu
   return counts;
 }
 
-function farmCountText(count: number, label: string, unit: string): string | undefined {
-  return count > 0 ? `${label}${count}${unit}` : undefined;
+function farmCountText(count: number, kind: string): string | undefined {
+  return count > 0 ? td(`action.farm.count.${kind}`, { count }) : undefined;
 }
 
 function isFarmOpSuccess(record: Record<string, unknown>): boolean {
@@ -502,12 +502,12 @@ function renderFarmFailureLines(completed: Record<string, unknown>[]): string[] 
   if (failures.length === 0) {
     return [];
   }
-  const lines = ["失败项："];
+  const lines = [td("action.farm.failure_header")];
   for (const failure of failures.slice(0, 5)) {
     lines.push(`- ${renderFarmFailureLine(failure)}`);
   }
   if (failures.length > 5) {
-    lines.push(`- 还有${failures.length - 5}项失败未列出。`);
+    lines.push(`- ${td("action.farm.failure_overflow_format", { count: failures.length - 5 })}`);
   }
   return lines;
 }
@@ -519,9 +519,9 @@ function renderFarmFailureLine(record: Record<string, unknown>): string {
   const message = stringField(result ?? {}, ["message", "error", "reason"])
     ?? stringField(record, ["message", "error", "reason"])
     ?? JSON.stringify(localizeValue(result ?? record));
-  const slotText = slot != null ? `slot ${slot} ` : "";
-  const actionText = kind ? `${farmActionLabel(kind)} ` : "";
-  return `${slotText}${actionText}失败：${localizeText(message)}`;
+  const slotText = slot != null ? td("action.farm.failure_slot_format", { slot }) : "";
+  const actionText = kind ? td("action.farm.failure_action_format", { action: farmActionLabel(kind) }) : "";
+  return td("action.farm.failure_line_format", { slot: slotText, action: actionText, reason: localizeText(message) });
 }
 
 function farmActiveText(result: Record<string, unknown>): string | undefined {
@@ -531,18 +531,13 @@ function farmActiveText(result: Record<string, unknown>): string | undefined {
     return undefined;
   }
   const action = farmActionLabel(kind);
-  return state === "walking" ? `正在前往${action}目标` : `正在${action}`;
+  return state === "walking"
+    ? td("action.farm.active_walking_format", { action })
+    : td("action.farm.active_working_format", { action });
 }
 
 function farmActionLabel(kind: string): string {
-  switch (kind) {
-    case "plant": return "种植";
-    case "water": return "浇水";
-    case "pest": return "除虫";
-    case "harvest": return "收获";
-    case "uproot": return "铲除";
-    default: return kind;
-  }
+  return tdOr(`action.farm.action.${kind}`, kind);
 }
 
 function planFarmOpsFromTarget(target: Record<string, unknown> | string): Record<string, unknown>[] {
@@ -594,7 +589,7 @@ function actionGameTimeText(record: ActionLogRecord): string {
       ?? record.failedGameTime
       ?? record.acceptedGameTime
       ?? record.gameTime,
-  ) ?? "此刻";
+  ) ?? td("action.time_now");
 }
 
 function isTerminalActionStatus(status: string): boolean {
@@ -713,7 +708,7 @@ function moveDestinationLabel(
   if (targetType === "item" && typeof target.item === "string") {
     return localizeText(target.item);
   }
-  return renderToolTarget(target).replace(/^目标\s*/, "");
+  return stripToolTargetPrefix(renderToolTarget(target));
 }
 
 function moveArrivalText(
@@ -721,9 +716,9 @@ function moveArrivalText(
   targetType: MoveToLocationToolDetails["targetType"],
 ): string {
   if (targetType === "character" || targetType === "item") {
-    return `到达 ${destination} 附近。`;
+    return td("action.move.arrival_nearby_format", { destination });
   }
-  return `到达 ${destination} 地点。`;
+  return td("action.move.arrival_location_format", { destination });
 }
 
 function moveNearbyEnvironmentText(current: AgentCurrentContext | undefined): string {
@@ -769,5 +764,19 @@ function formatGameDurationMinutes(totalMinutes: number): string {
   const clamped = Math.max(0, Math.floor(totalMinutes));
   const hours = Math.floor(clamped / 60);
   const minutes = clamped % 60;
-  return `${hours}时${minutes}分`;
+  return td("action.duration.hours_minutes_format", { hours, minutes });
+}
+
+function tdOr(key: string, fallback: string): string {
+  const value = td(key);
+  return value === `tool.${key}` ? fallback : value;
+}
+
+function stripToolTargetPrefix(value: string): string {
+  const prefix = td("action.target.label_prefix");
+  return value.replace(new RegExp(`^${escapeRegExp(prefix)}\\s*`), "");
+}
+
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }

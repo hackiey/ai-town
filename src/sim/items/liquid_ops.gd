@@ -30,16 +30,16 @@ static func transfer_between_slots(src_slot: Dictionary, dst_slot: Dictionary, a
 	var src := InventorySlotData.of(src_slot).as_container()
 	var dst := InventorySlotData.of(dst_slot).as_container()
 	if src == null or dst == null:
-		return {"ok": false, "moved": 0.0, "message": "不是液体容器"}
+		return {"ok": false, "moved": 0.0, "message": _msg("error.liquid.not_container")}
 	if src.is_empty():
-		return {"ok": false, "moved": 0.0, "message": "源容器是空的"}
+		return {"ok": false, "moved": 0.0, "message": _msg("error.liquid.source_empty")}
 	var content := src.content_id()
 	if not dst.is_empty() and dst.content_id() != content:
-		return {"ok": false, "moved": 0.0, "message": "目标容器装着别的液体"}
+		return {"ok": false, "moved": 0.0, "message": _msg("error.liquid.incompatible_content")}
 	var room := dst.capacity() - dst.amount()
 	var move := minf(amount, minf(src.amount(), room))
 	if move <= 0.0:
-		return {"ok": false, "moved": 0.0, "message": "倒不动了（目标满或源空）"}
+		return {"ok": false, "moved": 0.0, "message": _msg("error.liquid.no_room_or_source")}
 
 	var dst_amt_before := dst.amount()
 	var src_fermenting := src_slot.get("ferment_ceiling", null) != null
@@ -54,13 +54,13 @@ static func transfer_between_slots(src_slot: Dictionary, dst_slot: Dictionary, a
 static func fill_from_source(dst_slot: Dictionary, content: String, src_quality: float, amount: float) -> Dictionary:
 	var dst := InventorySlotData.of(dst_slot).as_container()
 	if dst == null:
-		return {"ok": false, "moved": 0.0, "message": "不是液体容器"}
+		return {"ok": false, "moved": 0.0, "message": _msg("error.liquid.not_container")}
 	if not dst.is_empty() and dst.content_id() != content:
-		return {"ok": false, "moved": 0.0, "message": "目标容器装着别的液体"}
+		return {"ok": false, "moved": 0.0, "message": _msg("error.liquid.incompatible_content")}
 	var room := dst.capacity() - dst.amount()
 	var move := minf(amount, room)
 	if move <= 0.0:
-		return {"ok": false, "moved": 0.0, "message": "容器满了"}
+		return {"ok": false, "moved": 0.0, "message": _msg("error.liquid.container_full")}
 	var dfields := dst.with_blended(move, src_quality, content)
 	dst_slot["container_amount"] = dfields["container_amount"]
 	dst_slot["container_content"] = dfields["container_content"]
@@ -97,3 +97,8 @@ static func _blend_ferment_state(src_slot: Dictionary, dst_slot: Dictionary, dst
 	dst_slot["transform_age"] = blend_quality(dst_amt_before, dst_age, move, src_age)
 	dst_slot["ferment_ceiling"] = int(round(blend_quality(dst_amt_before, dst_ceiling, move, src_ceiling)))
 	dst_slot["transform_settle_hour"] = now_hours()
+
+
+static func _msg(key: String) -> String:
+	var translated := str(TranslationServer.translate(key))
+	return translated if not translated.is_empty() and translated != key else key

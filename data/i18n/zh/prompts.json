@@ -251,6 +251,8 @@
       },
       "event": {
         "self_pronoun": "你",
+        "list_separator": "、",
+        "clause_separator": "；",
         "witness_list_format": "在场: {names}",
         "actor_unknown": "某人",
         "attribute_changes": {
@@ -307,6 +309,29 @@
           "self_format": "你丢下 {item}×{count}",
           "other_format": "{actor} 丢下 {item}×{count}"
         },
+        "item": {
+          "unknown": "东西",
+          "unknown_object": "某样东西",
+          "reason_format": "：{reason}"
+        },
+        "pick_up_item": {
+          "failure_self_format": "你试着拾取{item}，但没拿成{reason}",
+          "failure_other_format": "{actor}试着拾取{item}，但没拿成",
+          "success_self_format": "你拾取了{item} x{count}",
+          "success_other_format": "{actor}拾取了{item} x{count}"
+        },
+        "write": {
+          "failure_self_format": "你试着书写{target}，但没写成{reason}",
+          "failure_other_format": "{actor}试着书写{target}，但没写成",
+          "success_self_format": "你书写了{target}",
+          "success_other_format": "{actor}书写了{target}"
+        },
+        "read": {
+          "failure_self_format": "你试着阅读{target}，但没读成{reason}",
+          "failure_other_format": "{actor}试着阅读{target}，但没读成",
+          "success_self_format": "你阅读了{target}",
+          "success_other_format": "{actor}阅读了{target}"
+        },
         "woke_up": {
           "self_format": "你醒了",
           "other_format": "{actor} 醒了",
@@ -334,12 +359,42 @@
           "other_format": "{actor} 除掉了害虫"
         },
         "container_put_take": {
+          "move_self_format": "你搬运了 {items}",
+          "move_other_format": "{actor} 搬运了 {items}",
           "put_self": "你往 {container} 存入 {items}",
           "put_other": "{actor} 往 {container} 存入 {items}",
           "take_self": "你从 {container} 取走 {items}",
           "take_other": "{actor} 从 {container} 取走 {items}",
-          "noop_self": "你在 {container} 翻了翻",
-          "noop_other": "{actor} 在 {container} 翻了翻"
+          "noop_self": "你摆弄了一下容器",
+          "noop_other": "{actor} 摆弄了一下容器"
+        },
+        "view_container": {
+          "container_fallback": "容器",
+          "reason_format": "：{reason}",
+          "failure_self_format": "你试着查看{label}，但没看成{reason}",
+          "failure_other_format": "{actor}试着查看{label}，但没看成",
+          "success_self_items_format": "你查看了{label}，里面有：{items}",
+          "success_self_empty_format": "你查看了{label}，里面是空的",
+          "success_other_format": "{actor}查看了{label}",
+          "price_silver_format": " @ {price}银"
+        },
+        "trade": {
+          "none": "（无）",
+          "offer_format": "{buyer} 向 {seller} 提出交易：付 {offer}，换 {request}",
+          "offer_no_participants_format": "交易：付 {offer}，换 {request}",
+          "response_accept": "接受",
+          "response_reject": "拒绝",
+          "response_cancelled": "取消",
+          "response_default": "回应",
+          "response_detail_format": "：付 {offer}，换 {request}",
+          "response_format": "{seller} {verb}了 {buyer} 的交易{detail}",
+          "response_no_participants_format": "{verb}交易{detail}"
+        },
+        "give": {
+          "none": "（无）",
+          "self_format": "你把 {items} 递给 {recipient}",
+          "recipient_format": "{giver} 把 {items} 递给了你",
+          "other_format": "{giver} 把 {items} 递给 {recipient}"
         },
         "fallback": {
           "self_format": "[{type}] 你做了一件事",

@@ -23,7 +23,7 @@ export function renderWitnessSuffix(
     labels.push(localizeStringValue(id) ?? id);
   }
   if (labels.length === 0) return "";
-  return t("prompt.context.event.witness_list_format", locale, { names: labels.join("、") });
+  return t("prompt.context.event.witness_list_format", locale, { names: labels.join(t("prompt.context.event.list_separator", locale)) });
 }
 
 function affectedCharacterIds(event: WorldEventRecord): string[] {

@@ -557,9 +557,9 @@ export function createPutTakeTool(
           wire.push({ kind: "liquid", amount: tr.amount, from, to });
         } else {
           // 离散：from.item 是全局编号，定位要搬的物（itemId + 来源位置）。
-          if (!tr.from.item) throw new Error("搬离散物需在 from.item 指定物品编号");
+          if (!tr.from.item) throw new Error(td("put_take.error.discrete_missing_item"));
           const e = resolveFlatEntry(tr.from.item.index, currentContext);
-          if (!e) throw new Error("from.item 编号无效");
+          if (!e) throw new Error(td("put_take.error.flat_item_invalid"));
           const from = entryToEndpoint(e);
           const to = containerNameToEndpoint(tr.to, currentContext);
           if (to.isShelf && tr.price_silver != null) to.priceCenti = Math.round(tr.price_silver * 100);
@@ -573,8 +573,8 @@ export function createPutTakeTool(
         characterId,
         "put_take_container",
         { transfers: wire },
-        args.reason ?? td("put_take.reason_format", { label: "搬运" }),
-        { toolName: "put_take", displayTarget: "搬运", gameTime, signal, timeoutMs: putTakeTimeoutMs(wire), onUpdate, interrupts },
+        args.reason ?? td("put_take.reason_format", { label: td("put_take.display_target") }),
+        { toolName: "put_take", displayTarget: td("put_take.display_target"), gameTime, signal, timeoutMs: putTakeTimeoutMs(wire), onUpdate, interrupts },
       );
     },
   };
@@ -587,7 +587,7 @@ function entryToEndpoint(e: ItemIndexEntry): ContainerEndpoint {
   }
   if (e.scope === "nearby") {
     if (e.groundItemId) return { where: "ground", groundItemId: e.groundItemId };
-    throw new Error("地面上的这件东西暂时不能当容器用");
+    throw new Error(td("put_take.error.ground_item_not_container"));
   }
   return { where: "backpack", slotIndex: e.slotIndex };
 }
@@ -597,16 +597,16 @@ function entryToEndpoint(e: ItemIndexEntry): ContainerEndpoint {
 function resolveLiquidSourceEndpoint(ep: TransferEndpointParam, ctx?: AgentCurrentContext): ContainerEndpoint {
   if (ep.item) {
     const e = resolveFlatEntry(ep.item.index, ctx);
-    if (!e) throw new Error("液体容器编号无效");
+    if (!e) throw new Error(td("put_take.error.liquid_container_invalid"));
     return entryToEndpoint(e);
   }
   if (ep.container) {
     const site = resolveContainerOrShelfTarget(ep.container, ctx);
     if (isMoveTargetError(site)) throw new Error(site.error);
     if (site.id === "well") return { where: "well", containerId: site.id };
-    throw new Error(`请用编号指定「${site.label}」里的具体桶/酿酒桶`);
+    throw new Error(td("put_take.error.liquid_source_specific_item_format", { label: site.label }));
   }
-  throw new Error("液体来源/目标需给 item 编号或 container 名（水井）");
+  throw new Error(td("put_take.error.liquid_endpoint_required"));
 }
 
 // 液体目标可以是具体液体容器，也可以是背包/容器/货架本身。
@@ -614,13 +614,13 @@ function resolveLiquidSourceEndpoint(ep: TransferEndpointParam, ctx?: AgentCurre
 function resolveLiquidDestinationEndpoint(ep: TransferEndpointParam, ctx?: AgentCurrentContext): ContainerEndpoint {
   if (ep.item) {
     const e = resolveFlatEntry(ep.item.index, ctx);
-    if (!e) throw new Error("液体容器编号无效");
+    if (!e) throw new Error(td("put_take.error.liquid_container_invalid"));
     return entryToEndpoint(e);
   }
   if (ep.container) {
     const site = resolveContainerOrShelfTarget(ep.container, ctx);
     if (isMoveTargetError(site)) throw new Error(site.error);
-    if (site.id === "well") throw new Error("不能把液体倒回水井");
+    if (site.id === "well") throw new Error(td("put_take.error.liquid_destination_well"));
     return { where: "node", containerId: site.id, isShelf: site.kind === "shelf" };
   }
   return { where: "backpack" };
@@ -673,9 +673,9 @@ export function createBrewTool(
 ): AgentTool<any, CharacterActionToolDetails> {
   const gameTime = currentContext?.gameTime;
   return {
-    label: "酿酒",
+    label: td("brew.label"),
     name: "brew",
-    description: "把一个装着水的酿酒桶 + 背包里的麦芽变成发酵中的酒（需麦芽数≥水升数）。barrel 指酿酒桶所在：在你背包就填 item，在仓库里就填 container+item。",
+    description: td("brew.description"),
     parameters: createBrewSchema(),
     execute: async (_toolCallId, rawArgs, signal, onUpdate) => {
       const args = rawArgs as BrewParams;
@@ -685,8 +685,8 @@ export function createBrewTool(
         characterId,
         "brew",
         { barrel },
-        args.reason ?? "酿酒",
-        { toolName: "brew", displayTarget: "酿酒", gameTime, signal, onUpdate, interrupts },
+        args.reason ?? td("brew.reason_default"),
+        { toolName: "brew", displayTarget: td("brew.display_target"), gameTime, signal, onUpdate, interrupts },
       );
     },
   };

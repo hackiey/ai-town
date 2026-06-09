@@ -24,8 +24,9 @@ static func run_write(character: Character, action_request: Dictionary) -> Dicti
 	var title := str(t.get("title", "")).strip_edges()
 	var content := str(t.get("content", "")).strip_edges()
 	if item_name.is_empty() or title.is_empty() or content.is_empty():
-		_emit_write_event(character, item_name, title, "failure", "write 需要 itemName + title + content 三个非空字段")
-		return {"ok": false, "message": "write 需要 itemName + title + content 三个非空字段"}
+		var err_missing := _msg("error.write.missing_fields")
+		_emit_write_event(character, item_name, title, "failure", err_missing)
+		return {"ok": false, "message": err_missing}
 
 	var actor_id := character.backend_character_id()
 
@@ -35,19 +36,21 @@ static func run_write(character: Character, action_request: Dictionary) -> Dicti
 		var game_hour := GameClock.game_hour()
 		var ok := Db.append_agent_ledger(actor_id, _ROYAL_PAYROLL_LEDGER, title, content, game_day, game_hour)
 		if not ok:
-			_emit_write_event(character, item_name, title, "failure", "写入王室薪水记录失败")
-			return {"ok": false, "message": "写入王室薪水记录失败"}
+			var err_write := _msg("error.write.royal_payroll_failed")
+			_emit_write_event(character, item_name, title, "failure", err_write)
+			return {"ok": false, "message": err_write}
 		_emit_write_event(character, item_name, title, "success", "")
 		return {
 			"ok": true,
-			"message": "已记入王室薪水记录【%s】：%s" % [title, content],
+			"message": _fmt("tool.tool_result.write.royal_payroll_recorded_format", [title, content]),
 			"result": {"ledger": _ROYAL_PAYROLL_LEDGER, "title": title},
 		}
 
 	# 通用路径：背包或附近容器找名为 item_name 的可书写道具。当前没有任何道具有 writable 标签
 	# / aspect → 一律失败。未来加 writable aspect 时在这里实现实物消耗+转化。
-	_emit_write_event(character, item_name, title, "failure", "你身上和附近都没有可书写的「%s」（也不是你能动的虚拟账册）" % item_name)
-	return {"ok": false, "message": "你身上和附近都没有可书写的「%s」（也不是你能动的虚拟账册）" % item_name}
+	var err_no_writable := _fmt("error.write.no_writable_format", [item_name])
+	_emit_write_event(character, item_name, title, "failure", err_no_writable)
+	return {"ok": false, "message": err_no_writable}
 
 
 static func run_read(character: Character, action_request: Dictionary) -> Dictionary:
@@ -58,8 +61,9 @@ static func run_read(character: Character, action_request: Dictionary) -> Dictio
 	var t: Dictionary = target as Dictionary
 	var title := str(t.get("title", "")).strip_edges()
 	if title.is_empty():
-		_emit_read_event(character, title, "failure", "read 缺少 title")
-		return {"ok": false, "message": "read 缺少 title"}
+		var err_missing := _msg("error.read.missing_title")
+		_emit_read_event(character, title, "failure", err_missing)
+		return {"ok": false, "message": err_missing}
 
 	var actor_id := character.backend_character_id()
 
@@ -70,8 +74,9 @@ static func run_read(character: Character, action_request: Dictionary) -> Dictio
 		return {"ok": true, "message": content, "result": {"title": title, "content": content}}
 
 	# 通用路径：当前没有任何道具有 readable 标签 → 一律失败。
-	_emit_read_event(character, title, "failure", "你身上和附近都没有名为「%s」的可阅读物品（也不是你能动的虚拟账册）" % title)
-	return {"ok": false, "message": "你身上和附近都没有名为「%s」的可阅读物品（也不是你能动的虚拟账册）" % title}
+	var err_no_readable := _fmt("error.read.no_readable_format", [title])
+	_emit_read_event(character, title, "failure", err_no_readable)
+	return {"ok": false, "message": err_no_readable}
 
 
 static func _emit_write_event(character: Character, item_name: String, title: String, outcome: String, error: String) -> void:
@@ -108,9 +113,9 @@ static func _read_royal_payroll_ledger(character: Character, actor_id: String) -
 	var ledger := Db.read_agent_ledger(actor_id, _ROYAL_PAYROLL_LEDGER)
 
 	var lines: Array[String] = []
-	lines.append("== 系统记录·矿工挖矿流水（最近 %d game-day，自第 %d 天起） ==" % [_PAYROLL_LOG_DAYS, since_day])
+	lines.append(_fmt("tool.tool_result.read.payroll_mining_header_format", [_PAYROLL_LOG_DAYS, since_day]))
 	if mining.is_empty():
-		lines.append("（窗口内无任何挖矿记录）")
+		lines.append(_msg("tool.tool_result.read.payroll_mining_empty"))
 	else:
 		# 按 characterId 分组
 		var grouped: Dictionary = {}
@@ -142,28 +147,28 @@ static func _read_royal_payroll_ledger(character: Character, actor_id: String) -
 			for ore_v in by_ore.keys():
 				var ore: String = ore_v
 				totals_parts.append("%s ×%d" % [character.localize_item_name(ore), int(by_ore[ore])])
-			lines.append("· %s（%s）共：%s" % [miner_name, cid, ", ".join(totals_parts)])
+			lines.append(_fmt("tool.tool_result.read.payroll_miner_total_format", [miner_name, cid, ", ".join(totals_parts)]))
 			for e_v in entries:
 				var e: Dictionary = e_v as Dictionary
-				lines.append("    第%d天 %02d:00  %s ×%d" % [
+				lines.append(_fmt("tool.tool_result.read.payroll_mining_entry_format", [
 					int(e.get("gameDay", 0)),
 					int(e.get("gameHour", 0)),
 					character.localize_item_name(str(e.get("oreType", ""))),
 					int(e.get("qty", 0)),
-				])
+				]))
 	lines.append("")
-	lines.append("== 你的账册·历次发薪记录 ==")
+	lines.append(_msg("tool.tool_result.read.payroll_ledger_header"))
 	if ledger.is_empty():
-		lines.append("（账册尚无任何条目；发完薪记得 write('王室薪水记录', '<标题>', '<明细>') 记下来）")
+		lines.append(_msg("tool.tool_result.read.payroll_ledger_empty"))
 	else:
 		for row_v in ledger:
 			var row: Dictionary = row_v as Dictionary
-			lines.append("· 第%d天 %02d:00  【%s】%s" % [
+			lines.append(_fmt("tool.tool_result.read.payroll_ledger_entry_format", [
 				int(row.get("gameDay", 0)),
 				int(row.get("gameHour", 0)),
 				str(row.get("title", "")),
 				str(row.get("entry", "")),
-			])
+			]))
 	return "\n".join(lines)
 
 
@@ -176,3 +181,12 @@ static func _miner_display_name(cid: String) -> String:
 	if translated != key and not translated.strip_edges().is_empty():
 		return translated
 	return cid
+
+
+static func _msg(key: String) -> String:
+	var translated := str(TranslationServer.translate(key))
+	return translated if not translated.is_empty() and translated != key else key
+
+
+static func _fmt(key: String, args: Array) -> String:
+	return _msg(key) % args

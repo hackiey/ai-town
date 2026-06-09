@@ -12,7 +12,7 @@ static func resolve(character: Character, action_request: Dictionary) -> Diction
 	var target: Variant = action_request.get("target", {})
 	var result := _run_farming_action(character, action, target)
 	if not bool(result.get("ok", false)):
-		return {"ok": false, "message": str(result.get("message", "农事行动失败"))}
+		return {"ok": false, "message": str(result.get("message", _msg("error.farm.action_failed")))}
 
 	var actor_id := character.backend_character_id()
 	var target_dict: Dictionary = target as Dictionary if typeof(target) == TYPE_DICTIONARY else {}
@@ -45,6 +45,11 @@ static func _run_farming_action(character: Character, action: String, target: Va
 			return character.farm_actions().try_remove_pest_facing()
 		_:
 			return {"ok": false, "message": "unsupported farming action: %s" % action}
+
+
+static func _msg(key: String) -> String:
+	var translated := str(TranslationServer.translate(key))
+	return translated if not translated.is_empty() and translated != key else key
 
 
 static func _seed_id_from_target(target: Variant) -> String:

@@ -10,24 +10,24 @@ const ROTTEN_SICKNESS := 35.0
 
 static func resolve(view: InventorySlotData, food_only: bool = false) -> Dictionary:
 	if view.is_empty():
-		return {"ok": false, "message": "物品槽位为空"}
+		return {"ok": false, "message": _msg("error.item_use.empty_slot")}
 	var item := view.template()
 	if item == null:
-		return {"ok": false, "message": "未知物品：%s" % view.id()}
+		return {"ok": false, "message": _fmt("error.item.unknown_format", [view.id()])}
 	if food_only and item.kind != "food":
-		return {"ok": false, "message": "/eat %s 不是食物（kind=%s）" % [view.id(), item.kind]}
+		return {"ok": false, "message": _fmt("error.item_use.not_food_format", [view.id(), item.kind])}
 	var perishable := view.as_perishable()
 	var spoiled := view.has_tag("spoiled") or (perishable != null and perishable.is_rotten())
 	# 腐烂的可入口物（食物/饮料/腐食残渣）允许硬着头皮吃下去——但会生病（execute 里加 sickness）。
 	# 其它东西腐了仍不可用。
 	if perishable != null and perishable.is_rotten() and not (item.kind in ["food", "drink", "trash"]):
-		return {"ok": false, "message": "%s 已经腐烂，不能使用" % item.display_name}
+		return {"ok": false, "message": _fmt("error.item_use.rotten_unusable_format", [item.display_name])}
 	# "可使用"判定：有 base_effects 即可；腐烂可入口物即使没有效果数据也可吃（吃了会生病）。
 	var effects_preview := ItemEffects.compute_displayed(view)
 	if effects_preview.is_empty() and not spoiled:
 		if item.kind == "food":
-			return {"ok": false, "message": "/eat %s 没有效果数据（base_effects 空）" % view.id()}
-		return {"ok": false, "message": "%s 无法直接使用" % item.display_name}
+			return {"ok": false, "message": _fmt("error.item_use.food_no_effects_format", [view.id()])}
+		return {"ok": false, "message": _fmt("error.item_use.unusable_format", [item.display_name])}
 	return {
 		"ok": true,
 		"item": item,
@@ -39,10 +39,10 @@ static func resolve(view: InventorySlotData, food_only: bool = false) -> Diction
 
 static func action_name(item: Item) -> String:
 	if item == null:
-		return "使用物品"
+		return _msg("tool.tool_result.use_item.action_default")
 	if item.kind == "food":
-		return "吃%s" % item.display_name
-	return "使用%s" % item.display_name
+		return _fmt("tool.tool_result.use_item.eat_action_format", [item.display_name])
+	return _fmt("tool.tool_result.use_item.use_action_format", [item.display_name])
 
 
 static func duration_seconds(item: Item) -> float:
@@ -106,7 +106,16 @@ static func _extract_medicine_effect(character: Character, view: InventorySlotDa
 
 static func completion_message(item: Item, character: Character) -> String:
 	if item != null and item.kind == "food":
-		return "吃了 %s（饱食 %.0f / 体力 %.0f）" % [item.display_name, character.hunger, character.stamina]
+		return _fmt("tool.tool_result.use_item.eat_completed_format", [item.display_name, character.hunger, character.stamina])
 	if item != null:
-		return "使用了 %s" % item.display_name
-	return "使用了物品"
+		return _fmt("tool.tool_result.use_item.use_completed_format", [item.display_name])
+	return _msg("tool.tool_result.use_item.completed_default")
+
+
+static func _msg(key: String) -> String:
+	var translated := str(TranslationServer.translate(key))
+	return translated if not translated.is_empty() and translated != key else key
+
+
+static func _fmt(key: String, args: Array) -> String:
+	return _msg(key) % args

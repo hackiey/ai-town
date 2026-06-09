@@ -3,6 +3,7 @@
 
 import { characterAttributeName, localizeText } from "../name-resolver/index.js";
 import { arrayValue, objectValue } from "../utils/primitives.js";
+import { td } from "./i18n.js";
 
 export type AgentCharacterChanges = {
   attributes: Record<string, unknown>[];
@@ -28,13 +29,13 @@ export function renderAgentCharacterChangeLines(value: unknown): string[] {
     .map(renderAgentAttributeChange)
     .filter((line): line is string => Boolean(line));
   if (attributes.length > 0) {
-    lines.push(`属性变动：${attributes.join("；")}`);
+    lines.push(td("character_changes.attributes_format", { changes: attributes.join(td("character_changes.separator")) }));
   }
   const backpack = changes.backpack
     .map(renderAgentBackpackChange)
     .filter((line): line is string => Boolean(line));
   if (backpack.length > 0) {
-    lines.push(`背包变动：${backpack.join("；")}`);
+    lines.push(td("character_changes.backpack_format", { changes: backpack.join(td("character_changes.separator")) }));
   }
   return lines;
 }
@@ -48,29 +49,37 @@ function renderAgentAttributeChange(change: Record<string, unknown>): string | u
 
 function renderAgentBackpackChange(change: Record<string, unknown>): string | undefined {
   const kind = stringField(change, ["kind"]);
-  const name = localizeText(stringField(change, ["display_name", "displayName", "item_id", "itemId"]) ?? "物品");
+  const name = localizeText(stringField(change, ["display_name", "displayName", "item_id", "itemId"]) ?? td("character_changes.item_unknown"));
   if (kind === "quantity") {
     const delta = numberField(change, ["delta"]) ?? 0;
-    if (delta > 0) return `获得 ${name} x${formatCompactNumber(delta)}`;
-    if (delta < 0) return `失去 ${name} x${formatCompactNumber(Math.abs(delta))}`;
+    if (delta > 0) return td("character_changes.backpack_gain_format", { item: name, count: formatCompactNumber(delta) });
+    if (delta < 0) return td("character_changes.backpack_loss_format", { item: name, count: formatCompactNumber(Math.abs(delta)) });
     return undefined;
   }
   if (kind === "durability") {
     const max = numberField(change, ["max"]);
     const suffix = max == null || max <= 0 ? "" : `/${formatCompactNumber(max)}`;
-    return `${name}耐久 ${formatChangeValue(change.before)} -> ${formatChangeValue(change.after)}${suffix}`;
+    return td("character_changes.durability_format", {
+      item: name,
+      before: formatChangeValue(change.before),
+      after: `${formatChangeValue(change.after)}${suffix}`,
+    });
   }
   if (kind === "container") {
-    return `${name}：${formatChangeValue(change.before)} -> ${formatChangeValue(change.after)}`;
+    return td("character_changes.container_format", {
+      item: name,
+      before: formatChangeValue(change.before),
+      after: formatChangeValue(change.after),
+    });
   }
   return undefined;
 }
 
 function formatChangeValue(value: unknown): string {
   if (typeof value === "number") return formatCompactNumber(value);
-  if (typeof value === "boolean") return value ? "是" : "否";
+  if (typeof value === "boolean") return value ? td("character_changes.boolean_yes") : td("character_changes.boolean_no");
   if (typeof value === "string") return localizeText(value);
-  return String(value ?? "未知");
+  return String(value ?? td("character_changes.unknown"));
 }
 
 function formatCompactNumber(value: number): string {

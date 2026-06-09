@@ -19,21 +19,21 @@ static func run_use_item(character: Character, action_request: Dictionary, compl
 	var t: Dictionary = target as Dictionary
 	var item_id := str(t.get("itemId", "")).strip_edges()
 	if item_id.is_empty():
-		return {"ok": false, "message": "use_item 缺少 itemId"}
+		return {"ok": false, "message": _msg("error.use_item.missing_item_id")}
 	var item: Item = Items.by_id(item_id)
 	if item == null:
-		return {"ok": false, "message": "未知物品：%s" % item_id}
+		return {"ok": false, "message": _fmt("error.item.unknown_format", [item_id])}
 
 	var actor_id := character.backend_character_id()
 	var target_id := str(t.get("targetId", "")).strip_edges()
 	if target_id in ["self", "me", "自己"]:
 		target_id = actor_id
 	if not target_id.is_empty() and target_id != actor_id:
-		return {"ok": false, "message": "物品暂时只能自己使用"}
+		return {"ok": false, "message": _msg("error.use_item.self_only")}
 
 	var slot_index := character.first_inventory_slot_for_item(item_id)
 	if slot_index < 0:
-		return {"ok": false, "message": "背包里没有%s" % character.localize_item_name(item_id)}
+		return {"ok": false, "message": _fmt("error.inventory.missing_plain_format", [character.localize_item_name(item_id)])}
 	return character.use_item_controller().start(action_request, slot_index, item.kind == "food", completion)
 
 
@@ -48,15 +48,15 @@ static func run_drop_item(character: Character, action_request: Dictionary) -> D
 	var t: Dictionary = target as Dictionary
 	var item_id := str(t.get("itemId", "")).strip_edges()
 	if item_id.is_empty():
-		return {"ok": false, "message": "drop_item 缺少 itemId"}
+		return {"ok": false, "message": _msg("error.drop_item.missing_item_id")}
 	var slot_index := int(t.get("slotIndex", -1))
 	if slot_index < 0:
 		slot_index = character.first_inventory_slot_for_item(item_id)
 	if slot_index < 0 or slot_index >= character.inventory.size():
-		return {"ok": false, "message": "背包里没有%s" % character.localize_item_name(item_id)}
+		return {"ok": false, "message": _fmt("error.inventory.missing_plain_format", [character.localize_item_name(item_id)])}
 	var slot: Dictionary = character.inventory[slot_index]
 	if str(slot.get("item_id", "")) != item_id:
-		return {"ok": false, "message": "槽位 %d 不是%s" % [slot_index, character.localize_item_name(item_id)]}
+		return {"ok": false, "message": _fmt("error.inventory.slot_not_item_format", [slot_index, character.localize_item_name(item_id)])}
 	var want_qty := int(t.get("quantity", int(slot.get("quantity", 0))))
 	if want_qty <= 0:
 		want_qty = int(slot.get("quantity", 0))
@@ -65,7 +65,7 @@ static func run_drop_item(character: Character, action_request: Dictionary) -> D
 	var snapshot: Dictionary = slot.duplicate(true)
 	var taken := character.inventory_ops().remove_item(slot_index, want_qty)
 	if taken <= 0:
-		return {"ok": false, "message": "无法丢弃 %s" % character.localize_item_name(item_id)}
+		return {"ok": false, "message": _fmt("error.drop_item.failed_format", [character.localize_item_name(item_id)])}
 	snapshot["quantity"] = taken
 	GroundItemSpawner.spawn_for_character(character, snapshot)
 	# wire contract: DropItemEventData = {itemId, quantity}。affectedCharacterIds 走 voice_far
@@ -88,8 +88,9 @@ static func run_pick_up_item(character: Character, action_request: Dictionary) -
 	var t: Dictionary = target as Dictionary
 	var item_id := str(t.get("itemId", "")).strip_edges()
 	if item_id.is_empty():
-		_emit_pick_up_event(character, item_id, 0, "failure", "pick_up_item 缺少 itemId")
-		return {"ok": false, "message": "pick_up_item 缺少 itemId"}
+		var err_missing := _msg("error.pick_up_item.missing_item_id")
+		_emit_pick_up_event(character, item_id, 0, "failure", err_missing)
+		return {"ok": false, "message": err_missing}
 	# 找各自拾取半径内、离我最近的同 item_id GroundItem（半径逐物品读其 SiteMarker）。
 	var nearest: GroundItem = null
 	var best_dist := INF
@@ -105,8 +106,9 @@ static func run_pick_up_item(character: Character, action_request: Dictionary) -
 			best_dist = d
 			nearest = gi
 	if nearest == null:
-		_emit_pick_up_event(character, item_id, 0, "failure", "附近没有 %s" % character.localize_item_name(item_id))
-		return {"ok": false, "message": "附近没有 %s" % character.localize_item_name(item_id)}
+		var err_nearby := _fmt("error.pick_up_item.nearby_missing_format", [character.localize_item_name(item_id)])
+		_emit_pick_up_event(character, item_id, 0, "failure", err_nearby)
+		return {"ok": false, "message": err_nearby}
 	# 全有全无：用 receive_inventory_stacks 原子加，装不下时它会自己 rollback。
 	var qty := nearest.quantity()
 	var stack: Dictionary = nearest.slot_data.duplicate(true)
@@ -114,8 +116,9 @@ static func run_pick_up_item(character: Character, action_request: Dictionary) -
 	var stacks: Array[Dictionary] = [stack]
 	var recv := character.inventory_ops().receive_stacks(stacks)
 	if not bool(recv.get("ok", false)):
-		_emit_pick_up_event(character, item_id, qty, "failure", str(recv.get("message", "背包装不下")))
-		return {"ok": false, "message": str(recv.get("message", "背包装不下"))}
+		var err_full := str(recv.get("message", _msg("error.inventory.full")))
+		_emit_pick_up_event(character, item_id, qty, "failure", err_full)
+		return {"ok": false, "message": err_full}
 	Db.delete_ground_item(nearest.db_id)
 	nearest.queue_free()
 	_emit_pick_up_event(character, item_id, qty, "success", "")
@@ -133,3 +136,12 @@ static func _emit_pick_up_event(character: Character, item_id: String, quantity:
 	if not error.is_empty():
 		data["error"] = error
 	character.emit_world_event("pick_up_item", data)
+
+
+static func _msg(key: String) -> String:
+	var translated := str(TranslationServer.translate(key))
+	return translated if not translated.is_empty() and translated != key else key
+
+
+static func _fmt(key: String, args: Array) -> String:
+	return _msg(key) % args

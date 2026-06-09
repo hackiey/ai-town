@@ -254,10 +254,10 @@ function createPutTakeEntrySchema(kind: "put" | "take") {
 // item=该 endpoint 里具体的容器物（木桶/杯/酿酒桶）或要搬的离散物（{name,index}）。
 function createTransferEndpointSchema() {
   return Type.Object({
-    container: Type.Optional(Type.String({ description: "附近容器名（仓库/水井/货架等）。省略=你自己的背包。" })),
+    container: Type.Optional(Type.String({ description: td("put_take.param.endpoint_container") })),
     item: Type.Optional(Type.Object({
-      name: Type.String({ minLength: 1, description: "容器物/离散物的名字" }),
-      index: Type.Integer({ minimum: 1, description: "同名多件时的序号（从 1 起）" }),
+      name: Type.String({ minLength: 1, description: td("put_take.param.endpoint_item_name") }),
+      index: Type.Integer({ minimum: 1, description: td("put_take.param.endpoint_item_index") }),
     })),
   });
 }
@@ -269,12 +269,12 @@ function createTransferEndpointSchema() {
 export function createPutTakeSchema() {
   return Type.Object({
     transfers: Type.Array(Type.Object({
-      kind: StringEnum(["item", "liquid"], { description: "item=搬离散物品；liquid=倒液体或按份取出饮品（按升）" }),
-      amount: Type.Number({ minimum: 0.01, description: "数量：item 按个数，liquid 按升" }),
+      kind: StringEnum(["item", "liquid"], { description: td("put_take.param.transfer_kind") }),
+      amount: Type.Number({ minimum: 0.01, description: td("put_take.param.transfer_amount") }),
       from: createTransferEndpointSchema(),
       to: createTransferEndpointSchema(),
-      price_silver: Type.Optional(Type.Number({ minimum: 0, multipleOf: 0.01, description: "存货架时的标价" })),
-    }), { minItems: 1, maxItems: 16, description: "搬运列表" }),
+      price_silver: Type.Optional(Type.Number({ minimum: 0, multipleOf: 0.01, description: td("put_take.param.transfer_price_silver") })),
+    }), { minItems: 1, maxItems: 16, description: td("put_take.param.transfers") }),
     reason: Type.Optional(Type.String({ description: toolReasonDescription() })),
   });
 }

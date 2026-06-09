@@ -10,6 +10,74 @@
       "runtime_pending_note": "runtime 正在执行，等待 completed/failed 回执。",
       "item_ref_index": "对应清单中物品行首方括号里的 [N] 序号。整个 user prompt 里所有清单（背包 / 装备 / 附近物品 / 容器内容 / 货架）统一连续编号，从 1 顺序往后、全场不重号——直接照抄目标那一行的 [N] 即可，不要按清单各自重新数。同名物品（如不同品质的面包）会分多行显示，必须同时提供 name 与 index 才能定位到具体那份堆叠。"
     },
+    "tool_result": {
+      "separator": "；",
+      "list_separator": "、",
+      "container_fallback": "容器",
+      "liquid_fallback": "液体",
+      "put_take": {
+        "change_format": "找零 %s",
+        "poured_format": "倒了 %.0f 升「%s」进「%s」",
+        "servings_taken_format": "取出 %d 份「%s」（消耗 %.1f 升）",
+        "take_amount_format": "取出 %s 份「%s」",
+        "take_count_format": "取出 %d 份「%s」",
+        "put_amount_format": "存入 %s 份「%s」",
+        "put_count_format": "存入 %d 份「%s」"
+      },
+      "view_container": {
+        "empty": "（空的）",
+        "message_format": "%s 里：\n%s",
+        "infinite_format": "%s（无限）",
+        "price_silver_format": " @ %.2f银"
+      },
+      "write": {
+        "royal_payroll_recorded_format": "已记入王室薪水记录【%s】：%s"
+      },
+      "read": {
+        "payroll_mining_header_format": "== 系统记录·矿工挖矿流水（最近 %d game-day，自第 %d 天起） ==",
+        "payroll_mining_empty": "（窗口内无任何挖矿记录）",
+        "payroll_miner_total_format": "· %s（%s）共：%s",
+        "payroll_mining_entry_format": "    第%d天 %02d:00  %s ×%d",
+        "payroll_ledger_header": "== 你的账册·历次发薪记录 ==",
+        "payroll_ledger_empty": "（账册尚无任何条目；发完薪记得 write('王室薪水记录', '<标题>', '<明细>') 记下来）",
+        "payroll_ledger_entry_format": "· 第%d天 %02d:00  【%s】%s"
+      },
+      "brew": {
+        "started_format": "开始酿酒：%d 升，品质上限 %d，约 %d 小时后成酒"
+      },
+      "farm": {
+        "planted_format": "种下了 %s",
+        "watered_prefix_format": "给整片农田浇了水（水分 %d%%→%d%%",
+        "water_shaky_suffix": "，手一抖洒了大半",
+        "water_affected_format": "，影响 %d 株",
+        "water_no_crop_suffix": "，当前无作物",
+        "close_paren": "）",
+        "water_too_wet_suffix_format": "；其中 %d 株进入过湿区，成熟度会下降",
+        "pest_removed_format": "撒了草木灰除虫（%s）",
+        "crop_fallback": "作物",
+        "uprooted_format": "用铁铲铲除 %s",
+        "shovel_broke_suffix": "；铁铲用坏了",
+        "harvested_format": "收割 %s（%s 品质 %d）"
+      },
+      "use_item": {
+        "action_default": "使用物品",
+        "eat_action_format": "吃%s",
+        "use_action_format": "使用%s",
+        "eat_completed_format": "吃了 %s（饱食 %.0f / 体力 %.0f）",
+        "use_completed_format": "使用了 %s",
+        "completed_default": "使用了物品"
+      },
+      "workstation": {
+        "default_label": "使用工作台",
+        "in_progress_format": "%s 进行中",
+        "completed": "制造完成",
+        "success": "制造成功",
+        "success_outputs_format": "制造成功：%s",
+        "failure": "失败",
+        "failure_format": "制造失败 [%s]：%s",
+        "mining_diverted_format": "挖到 %s，已自动入国库"
+      }
+    },
     "move_to_location": {
       "param": {
         "location": "目标用以下来源中列出的名称：# 城镇地图（system prompt 中的全城地点总览，可直接前往）、# 周围地点 或 # 可交互地点&工作台&货架（含子地点）；走向远处的人物用 # 附近人物 远处（10米）行的名字；走向远处的物品用 # 附近物品 远处（10米）行的名字。填 「当前位置」 表示保持原地。禁止使用坐标。"
@@ -147,7 +215,32 @@
       "label": "存取（货架/容器/水井）",
       "description": "在任意两个容器之间搬东西。transfers 是一串搬运，每条 {kind, amount, from, to}：kind=item 搬离散物品（amount=个数；silver_coin/gold_coin 按钱包金额，可写 1.25 这类小数银）；kind=liquid 倒液体（amount=升，混合时品质按量加权平均）。from / to 是 endpoint——container 填 # 当前附近 列出的容器名（仓库 / 货架 / 酿酒桶 / 水井），省略 container = 你自己的背包；item 填 {name, index} 指向该 endpoint 里要搬的那件（离散物、容器钱包里的银币，或木桶 / 杯这类容器物）。倒水：from.container 填水井（无限水源，from 不用填 item）、to 指你背包里的木桶。取桶装酒：from.item 指酒桶/酿酒桶，to 可省略 item 直接填背包或货架，系统会按饮品的 serving_liters 把液体转成离散物品（例如 0.5 升 beer → 1 份 beer）；存货架时可在该条加 price_silver 标价。\n从货架 take 带标价商品时，必须在同一次 put_take 里把足额 silver_coin 从你的钱包 put 到该货架；多给会自动找零，少给会失败并返回“你给的钱不够”。钱币都存在钱包里，不占背包/货架/仓库槽位。\n货架人人可存取；上锁的容器需要背包里有对应钥匙。",
       "reason_format": "搬运物品",
-      "error_empty": "至少要指定一条 transfers。"
+      "display_target": "搬运",
+      "error_empty": "至少要指定一条 transfers。",
+      "param": {
+        "endpoint_container": "附近容器名（仓库/水井/货架等）。省略=你自己的背包。",
+        "endpoint_item_name": "容器物/离散物的名字",
+        "endpoint_item_index": "同名多件时的序号（从 1 起）",
+        "transfer_kind": "item=搬离散物品；liquid=倒液体或按份取出饮品（按升）",
+        "transfer_amount": "数量：item 按个数，liquid 按升",
+        "transfer_price_silver": "存货架时的标价",
+        "transfers": "搬运列表"
+      },
+      "error": {
+        "discrete_missing_item": "搬离散物需在 from.item 指定物品编号",
+        "flat_item_invalid": "from.item 编号无效",
+        "ground_item_not_container": "地面上的这件东西暂时不能当容器用",
+        "liquid_container_invalid": "液体容器编号无效",
+        "liquid_source_specific_item_format": "请用编号指定「{label}」里的具体桶/酿酒桶",
+        "liquid_endpoint_required": "液体来源/目标需给 item 编号或 container 名（水井）",
+        "liquid_destination_well": "不能把液体倒回水井"
+      }
+    },
+    "brew": {
+      "label": "酿酒",
+      "description": "把一个装着水的酿酒桶 + 背包里的麦芽变成发酵中的酒（需麦芽数≥水升数）。barrel 指酿酒桶所在：在你背包就填 item，在仓库里就填 container+item。",
+      "reason_default": "酿酒",
+      "display_target": "酿酒"
     },
     "view_container": {
       "label": "查看（货架/容器）",
@@ -304,14 +397,146 @@
     "shelf": {
       "default_format": "第{n}个货架"
     },
+    "character_changes": {
+      "separator": "；",
+      "attributes_format": "属性变动：{changes}",
+      "backpack_format": "背包变动：{changes}",
+      "item_unknown": "物品",
+      "backpack_gain_format": "获得 {item} x{count}",
+      "backpack_loss_format": "失去 {item} x{count}",
+      "durability_format": "{item}耐久 {before} -> {after}",
+      "container_format": "{item}：{before} -> {after}",
+      "boolean_yes": "是",
+      "boolean_no": "否",
+      "unknown": "未知"
+    },
+    "item_ref": {
+      "list": {
+        "interactive": "可交互物",
+        "backpack": "# 背包",
+        "equipment": "# 当前装备",
+        "nearby": "# 附近物品",
+        "container_format": "{container} 容器内容",
+        "shelf_format": "{shelf} 货架内容"
+      }
+    },
     "action": {
       "interrupt_note": "动作被新事件打断，等待 runtime 返回取消结果。",
       "intermediate_note": "收到新事件，先返回当前进度；原动作仍在继续。接下来调用 say_to 只会说话，不会打断当前工作；调用其他工具会先打断当前工作。",
       "default_target": "动作",
+      "time_now": "此刻",
+      "list_separator": "、",
+      "clause_separator": "，",
       "blocked_text": "，被另一个未完成动作阻止",
       "result_data_format": " 详细结果：{json}",
       "interrupted_by_event_prefix": "被打断：",
       "interrupted_prefix": "被打断：",
+      "result": {
+        "header": "# 行动结果",
+        "action_format": "动作：{action}",
+        "summary_format": "结果：{time}，{summary}",
+        "status_failed": "失败",
+        "status_cancelled": "被取消",
+        "terminal_no_summary_format": "结果：{time}，{action}{status}。",
+        "reason_format": "原因：{reason}",
+        "detached_work_note": "结果：原工作仍在进行中（不会因这次中断而停下）。"
+      },
+      "name": {
+        "plan_farm_work": "农事工单",
+        "use_workstation": "工作台动作",
+        "use_item": "使用物品",
+        "pick_up_item": "拾取物品",
+        "drop_item": "放下物品",
+        "put_take": "存取货架/容器",
+        "view_container": "查看货架/容器",
+        "offer": "递交 / 交换",
+        "respond": "回应请求",
+        "write": "书写",
+        "read": "阅读",
+        "sleep": "睡觉",
+        "brew": "酿酒"
+      },
+      "summary": {
+        "pending_format": "{action}正在进行。",
+        "pick_up_item_format": "已拾取 {item}。",
+        "drop_item_format": "已放下 {item}。",
+        "use_item_format": "已使用 {item}。",
+        "put_take_completed": "已完成货架/容器存取。",
+        "offer_submitted": "递交动作已提交。",
+        "default_completed_format": "{action}已完成。",
+        "respond_accept": "已接受请求。",
+        "respond_reject": "已拒绝请求。",
+        "respond_submitted": "请求回应已提交。",
+        "sleep_interrupted": "睡眠被打断。",
+        "sleep_finished": "睡眠结束。",
+        "sleep_interrupted_duration_format": "睡眠被打断，原计划睡 {duration} 分钟。",
+        "sleep_duration_format": "睡了 {duration} 分钟。",
+        "container": {
+          "empty": "容器里没有可见物品。",
+          "items_format": "容器里有 {items}。",
+          "quality_format": "（品质 {quality}）"
+        }
+      },
+      "move": {
+        "elapsed_prefix_format": "行走了{elapsed}，",
+        "completed_format": "{time}，{elapsedPrefix}{arrival}",
+        "reason_format": "原因：{reason}。",
+        "reason_not_arrived": "没有到达目标。",
+        "reason_cancelled": "动作被取消。",
+        "failed_format": "{time}，前往 {destination} 失败，{reason}",
+        "interrupted_format": "{time}，前往 {destination} 已被打断，{reason}",
+        "cancelled_format": "{time}，前往 {destination} 已取消，{reason}",
+        "pending_format": "{time}，正在前往 {destination}。",
+        "arrival_nearby_format": "到达 {destination} 附近。",
+        "arrival_location_format": "到达 {destination} 地点。"
+      },
+      "say": {
+        "heard_by_format": "\n旁听者：{listeners}。",
+        "completed_format": "{time}，你对{target}说：“{text}”{heardByText}",
+        "reason_not_spoken": "没有说出口",
+        "reason_cancelled": "动作被取消",
+        "failed_format": "{time}，你没能对{target}说：{text}。原因：{reason}。",
+        "interrupted_format": "{time}，你对{target}说的话被打断了。原因：{reason}。",
+        "cancelled_format": "{time}，你对{target}说的话被取消了。原因：{reason}。",
+        "pending_format": "{time}，你正要对{target}说：{text}。"
+      },
+      "farm": {
+        "header": "# 农事结果",
+        "result_format": "结果：{time}，{progress}",
+        "empty_progress": "没有完成的农事。",
+        "pending_note": "未完成：农事仍在进行中（动作没有取消，会在后台继续）。如需回应周围事件可调用 say_to，不会打断农事；其他占用身体的工具会接力安排，等农事自然结束后再起。",
+        "interrupted_slot_occupied": "未完成：种植时遇到 slot 已被占用，农事提前停止。请按最新农田上下文重新规划再发工单。",
+        "interrupted_stamina_depleted": "未完成：体力不足，农事提前停止。",
+        "interrupted_default": "未完成：农事被打断，还有剩余项。取最新农田上下文判断后续动作。",
+        "completed_zero": "已完成0项",
+        "failed_count_format": "失败{count}项",
+        "remaining_count_format": "还有{count}项未完成",
+        "remaining_none": "没有剩余项",
+        "failure_header": "失败项：",
+        "failure_overflow_format": "还有{count}项失败未列出。",
+        "failure_slot_format": "slot {slot} ",
+        "failure_action_format": "{action} ",
+        "failure_line_format": "{slot}{action}失败：{reason}",
+        "active_walking_format": "正在前往{action}目标",
+        "active_working_format": "正在{action}",
+        "count": {
+          "plant": "已种植{count}格",
+          "water": "已浇水{count}次",
+          "pest": "已除虫{count}格",
+          "harvest": "已收获{count}格",
+          "uproot": "已铲除{count}格"
+        },
+        "action": {
+          "plant": "种植",
+          "water": "浇水",
+          "pest": "除虫",
+          "harvest": "收获",
+          "uproot": "铲除"
+        }
+      },
+      "duration": {
+        "hours_minutes_format": "{hours}时{minutes}分"
+      },
       "completed_format": "{toolName} 执行完成：{target} 已完成。{resultText}{noteText}",
       "interrupted_completed_format": "{toolName} 被打断：{target} 当前动作已提前结束，并返回了截至打断时的结果。{resultText}{noteText}",
       "failed_format": "{toolName} 执行失败：{target} 未完成，{reason}{resultText}{noteText}",
@@ -323,6 +548,7 @@
       "cancelled_reason_with_error_format": "原因：{error}。",
       "cancelled_reason_default": "动作被取消。",
       "target": {
+        "label_prefix": "目标",
         "label_format": "目标 {value}",
         "speech_with_target_format": "目标 {target}：「{text}」",
         "speech_no_target_format": "目标 「{text}」",
