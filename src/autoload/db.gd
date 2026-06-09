@@ -206,7 +206,7 @@ const _GAME_WORLD_SCHEMA: Array[String] = [
 		ON item_instances (townId, ownerKind, ownerId, slotIndex)
 		WHERE ownerKind = 'container'""",
 
-	# trade_offers: offer_trade/respond_to_trade 的 pending 状态真值。
+	# trade_offers: offer/respond(kind="trade") 的 pending 状态真值。
 	# offerJson/requestJson 保留 LLM 文本，requestedShelfItemsJson 存结构化的 listing+数量。
 	"""CREATE TABLE IF NOT EXISTS trade_offers (
 		id TEXT PRIMARY KEY,
@@ -1117,6 +1117,20 @@ func remove_member(character_id: String, group_id: String) -> void:
 
 # ─── Public API: player_accounts ──────────────────────────────────────
 
+# 反查 player 显示名（player_accounts.name）by characterId。spawn 时给 character_name
+# 字段填值用；找不到返回空串。这是玩家显示名的**唯一**真值——backend resolver 也直接读这张表。
+func get_player_name(character_id: String) -> String:
+	if _db == null or character_id.is_empty():
+		return ""
+	if not _db.query("SELECT name FROM player_accounts WHERE townId = '%s' AND characterId = '%s' LIMIT 1" % [_esc(RunMode.town_id), _esc(character_id)]):
+		push_warning("[Db] get_player_name select failed: %s" % _db.error_message)
+		return ""
+	var rows: Array = _db.query_result as Array
+	if rows.is_empty():
+		return ""
+	return str(rows[0].get("name", ""))
+
+
 # 按 login name 拿/建 characterId。name 已存在 → 复用旧 characterId（玩家回归）；
 # 否则生成 player_<8hex> + INSERT 一行新账号。返回 {"characterId": String, "isNew": bool}；
 # DB 没开或 name 空 → {"characterId": "", "isNew": false}。
@@ -1623,7 +1637,7 @@ func pending_trade_snapshots_for_character(character_id: String) -> Array[Dictio
 	return out
 
 
-# 同一对买卖只允许 1 条 pending：offer_trade 前置 check + respond_to_trade 查找入口。
+# 同一对买卖只允许 1 条 pending：offer 前置 check + respond(kind="trade") 查找入口。
 func list_pending_trades_for_pair(buyer_id: String, seller_id: String) -> Array[Dictionary]:
 	if _db == null or buyer_id.is_empty() or seller_id.is_empty():
 		return []

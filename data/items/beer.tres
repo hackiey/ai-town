@@ -12,6 +12,9 @@ shape_type = "tankard"
 materials = {
 "body": "beer"
 }
+properties = {
+"serving_liters": 0.5
+}
 tint = Color(0.8, 0.55, 0.15, 1)
 base_effects = {
 "drunk": 6,

@@ -50,7 +50,6 @@ export type RuntimeHelloPayload = {
 
 export type RuntimeHeartbeatPayload = {
   instanceId?: string;
-  onlinePlayers?: number;
   characterCount?: number;
   gameTime?: GameTimeSnapshot;
 };
@@ -204,8 +203,6 @@ export type CharacterGroupsRefreshPayload = {
 export const RUNTIME_MESSAGE = {
   heartbeat: "runtime.heartbeat",
   perceptionManifest: "character.perception_manifest",
-  characterRegister: "character.register",
-  characterUnregister: "character.unregister",
   actionAck: "action.ack",
   actionRequest: "action.request",
   playerCommand: "player.command",
@@ -233,19 +230,6 @@ export type ReactionMetaPayload = {
 
 export type ReactionCatalogSyncPayload = {
   reactions: ReactionMetaPayload[];
-};
-
-// Runtime-registered character (player or other dynamic character not in the
-// static npcs.json catalog). Godot sends one on connect, one on disconnect.
-export type CharacterRegisterPayload = {
-  characterId: string;
-  displayName?: string;
-  kind?: "player" | "npc" | "other";
-  aliases?: string[];
-};
-
-export type CharacterUnregisterPayload = {
-  characterId: string;
 };
 
 export const AGENT_HOST_MESSAGE = {

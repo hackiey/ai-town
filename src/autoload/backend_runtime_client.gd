@@ -16,8 +16,6 @@ const MSG_ERROR := "error"
 
 const RUNTIME_HEARTBEAT := "runtime.heartbeat"
 const RUNTIME_PERCEPTION_MANIFEST := "character.perception_manifest"
-const RUNTIME_CHARACTER_REGISTER := "character.register"
-const RUNTIME_CHARACTER_UNREGISTER := "character.unregister"
 const RUNTIME_ACTION_ACK := "action.ack"
 const RUNTIME_ACTION_REQUEST := "action.request"
 const RUNTIME_WORLD_EVENT := "world.event"
@@ -46,7 +44,6 @@ var _server := TCPServer.new()
 var _socket := WebSocketPeer.new()
 var _has_socket := false
 var _characters_by_id: Dictionary = {}
-var _player_character_ids: Dictionary = {}
 var _recent_action_ids: Array[String] = []
 var _recent_action_lookup: Dictionary = {}
 var _active_actions: Dictionary = {}
@@ -118,11 +115,6 @@ func register_player(player: Node) -> void:
 	if player_id.is_empty():
 		return
 	_register_character(player_id, player, "Player")
-	_player_character_ids[player_id] = true
-	# 通知 backend 这是一个 runtime character（player），把它纳入 alias index，
-	# 让 resolveCharacterIdByName / characterName 等能命中。displayName 来自
-	# 登录名（spawn 时由 town.gd 写到 player.character_name），缺失才退到 player_xxx。
-	_send_character_register(player_id, _player_display_name(player), "player")
 
 
 func unregister_player(player: Node) -> void:
@@ -130,55 +122,16 @@ func unregister_player(player: Node) -> void:
 	if player_id.is_empty():
 		return
 	_unregister_character(player_id, player)
-	_player_character_ids.erase(player_id)
-	_send_character_unregister(player_id)
 
 
 func _on_runtime_connected() -> void:
-	# 重连：把已登记的 player 重放给 backend，重建 runtime registry。
-	# NPC 已经在 backend 静态 npcs.json 里，不用重放。
-	for character_id in _player_character_ids.keys():
-		var character: Node = _characters_by_id.get(character_id)
-		if character == null:
-			continue
-		_send_character_register(str(character_id), _player_display_name(character), "player")
+	# 玩家显示名真值在 player_accounts 表，backend resolver 直接读，不需要 client 推送。
+	# NPC 同样走 npcs.json catalog，也不推送。这里只重放 perception。
 	for character in _characters_by_id.values():
 		if character is Node and character.has_method("send_perception_manifest"):
 			character.call_deferred("send_perception_manifest")
 	# 连接即拉一次可用模型，AI 托管弹窗打开时通常已就位。
 	request_available_models()
-
-
-# 玩家展示名 —— spawn 时 town.gd 把登录名（player_accounts.name）写到 player.character_name，
-# 这里优先取它；fallback 到 backend_character_id（"player_<8hex>"）。
-func _player_display_name(player: Node) -> String:
-	if player == null:
-		return ""
-	var explicit := str(player.get("character_name")) if player.has_method("get") else ""
-	if not explicit.strip_edges().is_empty():
-		return explicit.strip_edges()
-	return _player_backend_id(player)
-
-
-func _send_character_register(character_id: String, display_name: String, kind: String) -> void:
-	if character_id.is_empty():
-		return
-	if not is_runtime_connected():
-		# 等 _on_runtime_connected 时统一重放
-		return
-	_send_message(RUNTIME_CHARACTER_REGISTER, {
-		"characterId": character_id,
-		"displayName": display_name if not display_name.is_empty() else character_id,
-		"kind": kind,
-	})
-
-
-func _send_character_unregister(character_id: String) -> void:
-	if character_id.is_empty() or not is_runtime_connected():
-		return
-	_send_message(RUNTIME_CHARACTER_UNREGISTER, {
-		"characterId": character_id,
-	})
 
 
 # 玩家在 client 输入的自然语言指令 → server 收到 RPC 后调这个 → 走 player.command
@@ -716,7 +669,6 @@ func _tick_heartbeat(delta: float) -> void:
 	_send_message(RUNTIME_HEARTBEAT, {
 		"instanceId": instance_id,
 		"characterCount": _characters_by_id.size(),
-		"onlinePlayers": _player_character_ids.size(),
 		"gameTime": _game_time_snapshot(),
 	})
 	for action_id_v in _active_actions.keys():

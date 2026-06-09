@@ -105,7 +105,7 @@ function createDropItemSchema() {
 // 对方付出（request[]）：是"我想要"的描述，对方背包对我不可见，用纯 name + count。
 // 货币 count 对 silver_coin/gold_coin 允许小数（精度 0.01），其他 item 仍须正整数，
 // 由 resolveRequiredTradeLine 在 tool 边界做类型校验。
-function createOfferTradeLineSchema() {
+function createTradeOfferLineSchema() {
   return Type.Object({
     item: createItemRefSchema("trade_line.param.offer_item"),
     count: Type.Number({ minimum: 0.01, multipleOf: 0.01, description: td("trade_line.param.count") }),
@@ -124,7 +124,7 @@ function createRequestTradeLineSchema() {
 function createOfferSchema() {
   return Type.Object({
     character: Type.String({ minLength: 1, description: td("offer.param.character") }),
-    offer: Type.Array(createOfferTradeLineSchema(), {
+    offer: Type.Array(createTradeOfferLineSchema(), {
       description: td("offer.param.offer"),
     }),
     request: Type.Array(createRequestTradeLineSchema(), {
@@ -263,12 +263,13 @@ function createTransferEndpointSchema() {
 }
 
 // put_take：一串搬运。kind=item 搬离散物（from.item=要搬的物，amount=个数）；
-// kind=liquid 倒液体（from/to 各指一个液体容器，amount=升，品质按量加权平均）。
+// kind=liquid 倒液体（amount=升）。目标指具体液体容器时按量互倒；目标是背包/容器/货架本身时，
+// Godot 会按饮品 item 的 serving_liters 把桶装液体转成离散 drink item（如 beer）。
 // 液体源可为水井（from.container=水井，无 item）。
 export function createPutTakeSchema() {
   return Type.Object({
     transfers: Type.Array(Type.Object({
-      kind: StringEnum(["item", "liquid"], { description: "item=搬离散物品；liquid=倒液体（按升）" }),
+      kind: StringEnum(["item", "liquid"], { description: "item=搬离散物品；liquid=倒液体或按份取出饮品（按升）" }),
       amount: Type.Number({ minimum: 0.01, description: "数量：item 按个数，liquid 按升" }),
       from: createTransferEndpointSchema(),
       to: createTransferEndpointSchema(),

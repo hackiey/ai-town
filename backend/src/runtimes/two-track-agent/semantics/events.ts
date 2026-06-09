@@ -88,7 +88,7 @@ export function isThinkFirstEvent(event: WorldEventRecord): boolean {
 export function isSignificantForThinking(event: WorldEventRecord, characterId: string): boolean {
   if (eventActorId(event) === characterId) return false;
   if (ALWAYS_INTERRUPTING_EVENTS.has(event.type)) return true;
-  if (event.type === "offer_trade") return true;
+  if (event.type === "trade_offer") return true;
   // give：单向赠送对收件人是重要事件（拿到东西后要重写 working_memory 反映新背包），
   // actor 已被 eventActorId === characterId 闸门排除，旁观者按距离闸门归类 ambient_sensory。
   if (event.type === "give") return true;

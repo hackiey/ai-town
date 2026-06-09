@@ -317,6 +317,7 @@ func _pick_weighted_variety_id(mix: Dictionary) -> String:
 # display 渲染由 backend item-display 模块处理；name 走 i18n catalog。
 # staticJson 当前装：
 #   capacity        容器型物品（如桶）总容量，给"容量：水 19/20"的 /20 用
+#   serving_liters  饮品型物品每份对应的桶装液体升数（如 beer 0.5L/份）
 #   max_durability  工具耐久上限，给"耐久 42/50"的 /50 用
 #   max_stack       backend 估算堆叠空间用
 #   weight          单件重量（kg），给负重展示用
@@ -338,6 +339,9 @@ func _seed_item_defs_to_db() -> void:
 		var capacity := float(item.properties.get("capacity", 0.0))
 		if capacity > 0.0:
 			static_dict["capacity"] = capacity
+		var serving_liters := float(item.properties.get("serving_liters", 0.0))
+		if serving_liters > 0.0:
+			static_dict["serving_liters"] = serving_liters
 		var max_durability := int(item.properties.get("max_durability", 0))
 		if max_durability > 0:
 			static_dict["max_durability"] = max_durability

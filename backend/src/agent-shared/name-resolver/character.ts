@@ -1,7 +1,12 @@
-// Character name resolver：静态 NPC（npcs.json）走缓存索引；运行时注册角色（player_*）走 in-memory registry 实时扫。
+// Character name resolver。所有"id ↔ 显示名"翻译只走这一处。
+// 真值来源（按 lookup 顺序）：
+//   1. i18n catalog `npc.<id>.name`（静态 NPC，由 npcs.json + locale 包驱动）
+//   2. 静态 descriptor（npcs.json，作为 i18n 缺译时的 fallback）
+//   3. player name cache（player_accounts 表镜像，玩家名真值）
+//   4. id 本身（兜底，让 localize 链能 detect "no match"）
 // LLM 边界约定见 [[feedback_llm_id_name_boundary]]。
 
-import { allRuntimeCharacters, getRuntimeCharacter } from "../../services/runtime-character-registry.js";
+import { allPlayerNames, getPlayerName } from "./player-name-cache.js";
 import { SOURCE_LOCALE, t, type Locale } from "../../i18n/index.js";
 import { buildAliasIndex, normalizeCharacterAliasKey, uniqueDisplayStrings, type AliasIndex } from "./alias-index.js";
 import { characterDescriptor, characterDescriptors } from "./source-data.js";
@@ -10,10 +15,6 @@ export function characterName(id: string): string {
   return characterDisplayName(id);
 }
 
-// Lookup order: i18n catalog → static descriptor (npcs.json) → runtime registry
-// (players registered at login) → the id itself. Resolver is the sole authority —
-// no fallback parameter, otherwise callers can accidentally override the runtime
-// registry (the bug that made players render as "player_xxx").
 export function characterDisplayName(id: string, locale: Locale = SOURCE_LOCALE): string {
   const i18nKey = `npc.${id}.name`;
   const i18nValue = t(i18nKey, locale);
@@ -21,19 +22,18 @@ export function characterDisplayName(id: string, locale: Locale = SOURCE_LOCALE)
     return i18nValue;
   }
   return characterDescriptor(id)?.name?.trim()
-    || getRuntimeCharacter(id)?.displayName?.trim()
+    || getPlayerName(id)?.trim()
     || id;
 }
 
 export function characterNameAliases(id: string): string[] {
   const descriptor = characterDescriptor(id);
-  const runtime = getRuntimeCharacter(id);
+  const playerName = getPlayerName(id);
   return uniqueDisplayStrings([
     characterDisplayName(id),
     descriptor?.name,
     ...(descriptor?.aliases ?? []),
-    runtime?.displayName,
-    ...(runtime?.aliases ?? []),
+    playerName,
     id,
   ]);
 }
@@ -44,9 +44,9 @@ export function resolveCharacterIdByName(value: unknown): string | undefined {
   if (!key) return undefined;
   const staticId = characterAliasIndex().get(key);
   if (staticId) return staticId;
-  // Runtime registry 没 cache，每次查；规模小 + 生命周期短，没必要缓存失效逻辑。
-  for (const entry of allRuntimeCharacters()) {
-    const aliases = [entry.characterId, entry.displayName, ...entry.aliases];
+  // 玩家名 cache 不大且生命周期短，直接全表线性扫。
+  for (const entry of allPlayerNames()) {
+    const aliases = [entry.characterId, entry.displayName];
     if (aliases.some((alias) => normalizeCharacterAliasKey(alias) === key)) {
       return entry.characterId;
     }
@@ -65,4 +65,3 @@ function characterAliasIndex(): AliasIndex {
   );
   return cachedIndex;
 }
-

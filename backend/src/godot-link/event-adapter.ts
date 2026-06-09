@@ -7,9 +7,9 @@
 //   - per-event-type semantic fields, camelCase
 //
 // We assert and pass through. No alias normalization, no key re-derivation —
-// the previous "tolerate every shape" approach hid drift bugs (offer_trade
-// silently dropped its offer/request arrays). If the wire shape is wrong now,
-// we reject loudly so the emitter gets fixed at the source.
+// the previous "tolerate every shape" approach hid drift bugs by silently
+// dropping trade offer/request arrays. If the wire shape is wrong now, we
+// reject loudly so the emitter gets fixed at the source.
 
 import type { WorldEventPayload, WorldEventRecord } from "./protocol.js";
 import { isKnownWorldEventType, type WorldEvent } from "./events.js";

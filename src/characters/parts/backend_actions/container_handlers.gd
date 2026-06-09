@@ -211,7 +211,10 @@ static func _do_liquid(character: Character, tr: Dictionary, lines: Array) -> Di
 	var amount := float(tr.get("amount", 0.0))
 	if amount <= 0.0:
 		amount = 1.0
-	var to_ep := _resolve_liquid_endpoint(character, tr.get("to", {}))
+	var to_raw: Dictionary = tr.get("to", {}) if typeof(tr.get("to", {})) == TYPE_DICTIONARY else {}
+	if _is_liquid_to_item_target(to_raw):
+		return _do_liquid_to_item(character, tr, amount, to_raw, lines)
+	var to_ep := _resolve_liquid_endpoint(character, to_raw)
 	if not bool(to_ep.get("ok", false)):
 		lines.append(str(to_ep.get("message", "目标容器无效")))
 		return {}
@@ -246,6 +249,135 @@ static func _do_liquid(character: Character, tr: Dictionary, lines: Array) -> Di
 	var content_name := character.localize_item_name(content) if content != "" else "液体"
 	lines.append("倒了 %.0f 升「%s」进「%s」" % [moved, content_name, str(to_ep.get("label", "容器"))])
 	return {"ok": true, "kind": "liquid", "content": content, "amount": moved}
+
+
+static func _is_liquid_to_item_target(to_raw: Dictionary) -> bool:
+	var where := str(to_raw.get("where", ""))
+	if where != "backpack" and where != "node":
+		return false
+	return not to_raw.has("slotIndex")
+
+
+static func _do_liquid_to_item(character: Character, tr: Dictionary, amount: float, to_raw: Dictionary, lines: Array) -> Dictionary:
+	var from_raw: Dictionary = tr.get("from", {}) if typeof(tr.get("from", {})) == TYPE_DICTIONARY else {}
+	if str(from_raw.get("where", "")) == "well":
+		lines.append("水井里的液体不能直接取成物品")
+		return {}
+	var from_ep := _resolve_liquid_endpoint(character, from_raw)
+	if not bool(from_ep.get("ok", false)):
+		lines.append(str(from_ep.get("message", "源容器无效")))
+		return {}
+	var src_slot: Dictionary = from_ep["slot"]
+	if src_slot.get("ferment_ceiling", null) != null or src_slot.get("transform_age", null) != null:
+		lines.append("这桶还在发酵，先等成酒")
+		return {}
+	var src := InventorySlotData.of(src_slot).as_container()
+	if src == null or src.is_empty():
+		lines.append("源容器是空的")
+		return {}
+	var content := src.content_id()
+	var serving_item_id := _serving_item_for_liquid(content)
+	if serving_item_id.is_empty():
+		lines.append("「%s」不能直接按份取出" % character.localize_item_name(content))
+		return {}
+	var serving_item: Item = Items.by_id(serving_item_id)
+	var serving_liters := float(serving_item.properties.get("serving_liters", 0.0))
+	if serving_liters <= 0.0:
+		lines.append("「%s」没有每份容量配置" % character.localize_item_name(serving_item_id))
+		return {}
+	var available := minf(amount, src.amount())
+	var servings := int(floor(available / serving_liters + 0.0001))
+	if servings <= 0:
+		lines.append("至少要取 %.2f 升才能得到 1 份「%s」" % [serving_liters, character.localize_item_name(serving_item_id)])
+		return {}
+	var liters := float(servings) * serving_liters
+	var quality := int(round(src.quality()))
+	var stack := InventorySlotData.from_template(serving_item_id, quality)
+	stack["quantity"] = servings
+
+	var placed_ok := false
+	var where := str(to_raw.get("where", ""))
+	if where == "backpack":
+		var recv := character.inventory_ops().receive_stacks([stack])
+		if not bool(recv.get("ok", false)):
+			lines.append(str(recv.get("message", "背包装不下")))
+			return {}
+		placed_ok = true
+	elif where == "node":
+		var cid := str(to_raw.get("containerId", ""))
+		var node := _near_node(character, cid)
+		if node == null:
+			lines.append("「%s」不在手边" % cid)
+			return {}
+		if not _node_can_place_stack(node, stack, servings):
+			lines.append("「%s」装不下「%s」" % [node.effective_display_name(), character.localize_item_name(serving_item_id)])
+			return {}
+		var placed := Containers.adapter_place(node, [stack])
+		if not bool(placed.get("ok", false)):
+			lines.append(str(placed.get("message", "容器装不下")))
+			return {}
+		if bool(to_raw.get("isShelf", false)) and int(to_raw.get("priceCenti", -1)) >= 0:
+			Containers.set_price_for_item(node, serving_item_id, int(to_raw.get("priceCenti", -1)))
+		placed_ok = true
+	if not placed_ok:
+		lines.append("不支持把液体取到这里")
+		return {}
+
+	_consume_liquid_from_slot(src_slot, liters)
+	(from_ep["commit"] as Callable).call()
+	lines.append("取出 %d 份「%s」（消耗 %.1f 升）" % [servings, character.localize_item_name(serving_item_id), liters])
+	return {"ok": true, "kind": "item", "itemId": serving_item_id, "amount": servings}
+
+
+static func _serving_item_for_liquid(content_id: String) -> String:
+	var item := Items.by_id(content_id)
+	if item == null:
+		return ""
+	if float(item.properties.get("serving_liters", 0.0)) <= 0.0:
+		return ""
+	return content_id
+
+
+static func _consume_liquid_from_slot(slot: Dictionary, amount: float) -> void:
+	var container := InventorySlotData.of(slot).as_container()
+	if container == null:
+		return
+	var fields := container.with_consumed(amount)
+	slot["container_amount"] = fields["container_amount"]
+	slot["container_content"] = fields["container_content"]
+	if float(fields["container_amount"]) <= 0.0:
+		slot["transform_age"] = null
+		slot["transform_settle_hour"] = null
+		slot["ferment_ceiling"] = null
+
+
+static func _node_can_place_stack(node: ContainerNode, stack: Dictionary, quantity: int) -> bool:
+	if node == null or quantity <= 0:
+		return false
+	var remaining := quantity
+	var stack_max := _stack_max_for_stack(stack)
+	for slot_v in node.contents:
+		if remaining <= 0:
+			return true
+		var slot: Dictionary = slot_v as Dictionary
+		if InventorySlotData.of(slot).is_empty():
+			remaining -= stack_max
+			continue
+		if not InventorySlotData.of(slot).equals_stackable_with(InventorySlotData.of(stack)):
+			continue
+		remaining -= maxi(0, stack_max - int(slot.get("quantity", 0)))
+	return remaining <= 0
+
+
+static func _stack_max_for_stack(stack: Dictionary) -> int:
+	var tmpl: Item = Items.by_id(str(stack.get("item_id", "")))
+	if tmpl == null:
+		return Character.INVENTORY_STACK_MAX
+	if not tmpl.stackable:
+		return 1
+	if tmpl.max_stack > 0:
+		return tmpl.max_stack
+	return Character.INVENTORY_STACK_MAX
 
 
 # ─── 离散 item transfer ───────────────────────────────────────────────

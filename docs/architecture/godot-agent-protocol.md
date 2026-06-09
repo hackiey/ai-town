@@ -13,7 +13,7 @@ Godot server 是世界状态的唯一权威（[runtime-layers.md §2.1](./runtim
 - Action wire：`backend/src/godot-link/actions.ts` 的 `ActionTargetByName` / `ActionResultByName`。Backend tool-factory 直接写这个 shape，Godot dispatcher 按 canonical 单 key 读，**中间没有翻译层**（旧版本的 `action-adapter.ts` 已删除）。
 - World event data：`backend/src/godot-link/world-events.ts` 的 `WorldEventDataByType`。Lua mech 和 GDScript emit 站点直接写这个 shape，backend renderer 按 canonical 单 key 读。
 - 命名：camelCase，单字段。**禁止** alias（`characterId`/`actorId` 不能并存；`affectedCharacterIds`/`visibleToCharacterIds` 不能并存；snake_case 变体不能并存）。任何字段加 alias 都是 schema 漂移的开始。
-- 校验：违反契约就 reject（参见 §3.2 / §4），不再"宽容兜底"——历史经验：兜底层会把空数据偷偷传下去，bug 浮到 prompt 层才被发现（offer_trade 的"付（无），换（无）"就是这么来的）。
+- 校验：违反契约就 reject（参见 §3.2 / §4），不再"宽容兜底"——历史经验：兜底层会把空数据偷偷传下去，bug 浮到 prompt 层才被发现（交易事件的"付（无），换（无）"就是这么来的）。
 
 ## 2. 角色与连接
 
@@ -119,7 +119,7 @@ backend.send_world_event("item_used", "", {...})    # 再 emit；wrapper 内 flu
 
 **Target 形状契约**：每种 action 的 `target` shape 定义在 `backend/src/godot-link/actions.ts` 的 `ActionTargetByName`。Backend `tool-factory` 通过 `submitToolAction<TName>(actions, characterId, action, target: ActionTarget<TName>, ...)` 提交时 TS 编译期就把 shape 钉死；Godot dispatcher 按 canonical 单 key 读。**中间无翻译层**——`action-log-service` 直接透传 `target` 字典进 sqlite，Godot dispatcher 再原样取出。
 
-不允许 alias：和 §3.2 的命名规则相同（camelCase 单 key，不写 snake_case 变体也不并存语义重复的字段）。例如 `offer_trade.target` 就是 `{characterId, offer: TradeLine[], request: TradeLine[]}`，不再有 `targetCharacterId` / `offerItemIds` 等并存形态。
+不允许 alias：和 §3.2 的命名规则相同（camelCase 单 key，不写 snake_case 变体也不并存语义重复的字段）。例如 `offer.target` 就是 `{characterId, offer: TradeLine[], request: TradeLine[]}`，不再有 `targetCharacterId` / `offerItemIds` 等并存形态。
 
 Ack 回来的 `result` 形状对应 `ActionResultByName[<action>]`，同样 camelCase 单 key。
 

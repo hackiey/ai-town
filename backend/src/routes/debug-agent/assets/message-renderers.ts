@@ -44,10 +44,11 @@ export function isGroupedTurnSelected(groupedTurn, selectedTurn) {
   return first.seq === selectedTurn.startSeq && last.seq === selectedTurn.endSeq;
 }
 
-export function buildTurn(app, index, turn, selectedTurn) {
+export function buildTurn(app, index, turn, selectedTurn, options) {
   const wrap = document.createElement("div");
   const isSelected = isGroupedTurnSelected(turn, selectedTurn);
   wrap.className = "turn" + (isSelected ? " selected" : " collapsed");
+  const prefixMessages = Array.isArray(options && options.prefixMessages) ? options.prefixMessages : [];
 
   const first = turn.messages[0];
   const last = turn.messages[turn.messages.length - 1];
@@ -89,6 +90,9 @@ export function buildTurn(app, index, turn, selectedTurn) {
 
   const body = document.createElement("div");
   body.className = "turn-body";
+  for (const message of prefixMessages) {
+    body.appendChild(buildMessage(app, message));
+  }
   for (const message of turn.messages) {
     body.appendChild(buildMessage(app, message));
   }
@@ -154,11 +158,16 @@ export function buildDetailsBlock(title, innerHtml, open) {
 
 export function buildMessage(app, record) {
   const div = document.createElement("div");
-  div.className = "msg " + record.role;
-  div.dataset.messageSeq = String(record.seq);
+  const isCollapsibleMessage = !!record.collapsibleMessage;
+  div.className = "msg " + record.role + (isCollapsibleMessage ? " collapsible-message" : "");
+  if (isCollapsibleMessage && record.collapsed !== false) div.classList.add("collapsed");
+  if (record.seq != null) div.dataset.messageSeq = String(record.seq);
   const message = record.message || {};
-  const roleLabel = record.role === "toolResult" ? "tool response" : record.role;
-  const roleMeta = record.role === "assistant" ? buildAssistantHeaderMeta(message) : "";
+  const roleLabel = record.displayRole || (record.role === "toolResult" ? "tool response" : record.role);
+  const roleMeta = [
+    record.role === "assistant" ? buildAssistantHeaderMeta(message) : "",
+    record.roleMetaHtml || "",
+  ].filter(Boolean).join(" ");
 
   const bar = document.createElement("div");
   bar.className = "role-bar";
@@ -166,33 +175,51 @@ export function buildMessage(app, record) {
     + '<span class="role">' + escapeHtml(roleLabel) + "</span>"
     + '<span class="seq">#' + record.seq + "</span>"
     + '<span class="ts">' + formatGameTime(record.gameTime, { short: true }) + "</span>"
-    + (roleMeta ? '<span class="role-meta">' + roleMeta + "</span>" : "");
+    + (roleMeta ? '<span class="role-meta">' + roleMeta + "</span>" : "")
+    + (isCollapsibleMessage ? '<span class="msg-toggle"></span>' : "");
   div.appendChild(bar);
+
+  const body = document.createElement("div");
+  body.className = "msg-body";
+  div.appendChild(body);
+
+  if (isCollapsibleMessage) {
+    const toggle = bar.querySelector(".msg-toggle");
+    const syncToggleText = () => {
+      if (!toggle) return;
+      toggle.textContent = div.classList.contains("collapsed") ? "展开" : "收起";
+    };
+    syncToggleText();
+    bar.addEventListener("click", () => {
+      div.classList.toggle("collapsed");
+      syncToggleText();
+    });
+  }
 
   if (record.role === "toolResult") {
     const toolCallId = message.toolCallId || message.tool_call_id;
     if (toolCallId) div.dataset.toolCallId = String(toolCallId);
   }
 
-  if (record.role === "user") {
-    div.appendChild(renderUserBody(message));
+  if (record.role === "user" || record.role === "system") {
+    body.appendChild(renderUserBody(message, record.defaultExpanded !== false));
   } else if (record.role === "assistant") {
-    renderAssistantBody(div, message, record.toolsSnapshot, record.llmMessages, record.llmSystemPrompt);
+    renderAssistantBody(body, message, record.toolsSnapshot, record.llmMessages, record.llmSystemPrompt);
   } else if (record.role === "toolResult") {
-    div.appendChild(renderToolResultBody(message));
+    body.appendChild(renderToolResultBody(message));
   } else {
     const pre = document.createElement("pre");
     pre.textContent = JSON.stringify(message, null, 2);
-    div.appendChild(pre);
+    body.appendChild(pre);
   }
 
   return div;
 }
 
-function renderUserBody(message) {
+function renderUserBody(message, defaultExpanded) {
   const text = extractText(message.content);
   // user message 默认展开（超长仍提供「收起」），看消息时不用先点开。
-  return collapsibleText(text || "(empty)", { defaultExpanded: true });
+  return collapsibleText(text || "(empty)", { defaultExpanded });
 }
 
 function renderAssistantBody(container, message, toolsSnapshot, llmMessages, llmSystemPrompt) {
@@ -203,7 +230,7 @@ function renderAssistantBody(container, message, toolsSnapshot, llmMessages, llm
       "messages at LLM call",
       buildLlmCallDetails(llmMessages, llmSystemPrompt),
       '<span class="pill">' + (hasLlmMessages ? llmMessages.length : 0) + " messages</span>",
-      { collapsible: true, defaultOpen: true },
+      { collapsible: true },
     ));
   }
 
@@ -272,7 +299,6 @@ function buildLlmCallDetails(messages, systemPrompt) {
   if (systemPrompt) {
     const details = document.createElement("details");
     details.className = "llm-message-card";
-    details.open = true;
     details.innerHTML = '<summary><span class="role">system</span></summary>';
     const pre = document.createElement("pre");
     pre.textContent = systemPrompt;
@@ -281,16 +307,12 @@ function buildLlmCallDetails(messages, systemPrompt) {
   }
 
   const list = Array.isArray(messages) ? messages : [];
-  let openedFirstUser = false;
   for (let index = 0; index < list.length; index += 1) {
     const message = list[index] || {};
     const role = message.role || "unknown";
     const preview = extractText(message.content) || message.errorMessage || "";
-    const defaultOpen = role === "system" || (role === "user" && !openedFirstUser);
-    if (role === "user" && !openedFirstUser) openedFirstUser = true;
     const details = document.createElement("details");
     details.className = "llm-message-card";
-    if (defaultOpen) details.open = true;
     details.innerHTML = ""
       + "<summary>"
       + '<span class="role">' + escapeHtml(role) + "</span>"

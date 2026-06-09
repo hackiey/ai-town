@@ -1,22 +1,22 @@
-// offer_trade / respond_to_trade renderers. Phrases trade in terms of
-// buyer/seller, swapping in "你" when the viewer matches.
+// Trade event renderers. Phrases trade in terms of buyer/seller, swapping in
+// "你" when the viewer matches.
 //
-// Wire contract: OfferTradeEventData / RespondToTradeEventData in
+// Wire contract: TradeOfferEventData / TradeResponseEventData in
 // world-events.ts. offer = lines the buyer pays; request = lines the buyer
 // asks for back.
 
 import { t, type Locale } from "../../i18n/index.js";
 import type { WorldEventRecord } from "../../godot-link/protocol.js";
-import type { OfferTradeEventData, RespondToTradeEventData } from "../../godot-link/world-events.js";
+import type { TradeOfferEventData, TradeResponseEventData } from "../../godot-link/world-events.js";
 import { localizeStringValue } from "../name-resolver/index.js";
 import { composeEventLine } from "./shared/compose.js";
 
-export function renderOfferTradeEventLine(
+export function renderTradeOfferEventLine(
   event: WorldEventRecord,
   viewerId: string,
   locale: Locale,
 ): string {
-  const data = (event.data ?? {}) as Partial<OfferTradeEventData>;
+  const data = (event.data ?? {}) as Partial<TradeOfferEventData>;
   const buyer = participantLabel(data.buyerCharacterId, viewerId, locale);
   const seller = participantLabel(data.sellerCharacterId, viewerId, locale);
   const offerPart = renderTradeLineList(data.offer) || "（无）";
@@ -27,12 +27,12 @@ export function renderOfferTradeEventLine(
   return composeEventLine(event, viewerId, locale, main);
 }
 
-export function renderRespondToTradeEventLine(
+export function renderTradeResponseEventLine(
   event: WorldEventRecord,
   viewerId: string,
   locale: Locale,
 ): string {
-  const data = (event.data ?? {}) as Partial<RespondToTradeEventData>;
+  const data = (event.data ?? {}) as Partial<TradeResponseEventData>;
   const seller = participantLabel(data.sellerCharacterId, viewerId, locale);
   const buyer = participantLabel(data.buyerCharacterId, viewerId, locale);
   const verb = data.response === "accept"

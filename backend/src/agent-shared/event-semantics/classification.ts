@@ -41,9 +41,9 @@ export function classifyEventForCharacter(
     return { kind: "hard_interrupt", interruptKey: "hard" };
   }
 
-  // 1b. offer_trade：买家当面找卖家撮合，等同 direct_speech 语义。
+  // 1b. 交易提议事件：买家当面找卖家撮合，等同 direct_speech 语义。
   //     买家自己发出的忽略（自己已 pending tool 阻塞等回应，不需要 hard_interrupt 自己）。
-  if (event.type === "offer_trade") {
+  if (event.type === "trade_offer") {
     if (eventActorId(event) === characterId) {
       return { kind: "ignored" };
     }

@@ -196,9 +196,14 @@ export const DEBUG_AGENT_PAGE_STYLE = String.raw`
     font-size: 11px;
   }
   .msg .role { font-weight: 700; text-transform: uppercase; letter-spacing: 0.4px; }
+  .msg.system .role { color: var(--accent); }
   .msg.user .role { color: var(--user); }
   .msg.assistant .role { color: var(--assistant); }
   .msg.toolResult .role { color: var(--tool-result); }
+  .msg.collapsible-message .role-bar { cursor: pointer; }
+  .msg.collapsible-message.collapsed .role-bar { margin-bottom: 0; padding-bottom: 0; border-bottom: 0; }
+  .msg.collapsible-message.collapsed .msg-body { display: none; }
+  .msg .msg-toggle { color: var(--muted); font-size: 11px; }
   .msg .seq, .msg .ts { color: var(--muted); }
   .msg .role-meta {
     margin-left: auto;

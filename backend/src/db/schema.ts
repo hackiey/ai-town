@@ -127,19 +127,9 @@ export const SCHEMA_STATEMENTS = [
   `CREATE INDEX IF NOT EXISTS idx_thinking_turns_town_char_started ON thinking_turns (townId, characterId, startedAt DESC)`,
   `CREATE INDEX IF NOT EXISTS idx_thinking_turns_town_started ON thinking_turns (townId, startedAt DESC)`,
 
-  // runtime_characters：运行时注册的角色（当前=已连接玩家）的 id→显示名映射。
-  // 玩家是动态创建、无 i18n catalog 的实体，名字来自登录名。registry 本是进程内内存 Map，
-  // 但 character.register 由 server 进程处理、prompt 渲染在独立 worker 进程，内存不跨进程——
-  // 落到这张共享表，server 写、worker 读，任何进程都能把玩家解析成真名（[[feedback_llm_id_name_boundary]]）。
-  // backend 自有表（与 runtime_storage 同级）；characterId 全局唯一（player_<hex>），故作主键。
-  `CREATE TABLE IF NOT EXISTS runtime_characters (
-    characterId TEXT PRIMARY KEY,
-    townId TEXT NOT NULL,
-    displayName TEXT NOT NULL,
-    kind TEXT NOT NULL,
-    aliases TEXT NOT NULL,       -- JSON string[]
-    updatedAt TEXT NOT NULL
-  )`,
+  // NOTE: 玩家显示名真值在 Godot 端 player_accounts 表（src/autoload/db.gd），
+  // backend resolver 直接读那张表（agent-shared/name-resolver/character.ts）。
+  // 不再有 backend-private 的 runtime_characters 镜像，也不再有 character.register 消息。
 
   // NOTE: character_groups 由 Godot 端建表（src/autoload/db.gd 的 _GAME_WORLD_SCHEMA）。
   // backend service (services/character-groups-service.ts) 只 SELECT/INSERT/DELETE，不 CREATE。

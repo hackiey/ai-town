@@ -27,15 +27,15 @@ import { renderDropItemEventLine, renderUseItemEventLine } from "./item.js";
 import { renderMoveToLocationEventLine } from "./move.js";
 import { renderSayToEventLine } from "./say.js";
 import { renderWentToSleepEventLine, renderWokeUpEventLine } from "./sleep.js";
-import { renderOfferTradeEventLine, renderRespondToTradeEventLine } from "./trade.js";
+import { renderTradeOfferEventLine, renderTradeResponseEventLine } from "./trade.js";
 import { renderUseWorkstationEventLine } from "./workstation.js";
 
 type EventLineRenderer = (event: WorldEventRecord, viewerId: string, locale: Locale) => string;
 
 const RENDERERS: Record<string, EventLineRenderer> = {
   say_to: renderSayToEventLine,
-  offer_trade: renderOfferTradeEventLine,
-  respond_to_trade: renderRespondToTradeEventLine,
+  trade_offer: renderTradeOfferEventLine,
+  trade_response: renderTradeResponseEventLine,
   went_to_sleep: renderWentToSleepEventLine,
   woke_up: renderWokeUpEventLine,
   container_put_take: renderContainerPutTakeEventLine,

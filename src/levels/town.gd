@@ -310,11 +310,11 @@ func _on_peer_connected(peer_id: int) -> void:
 		_peer.disconnect_peer(peer_id, true)
 		return
 	# spawn(data) —— 内部 add_child 到 spawn_path，并把 data 同步给所有 client
-	# 重跑 spawn_function。
+	# 重跑 spawn_function。display_name 直接查 player_accounts，spawn data 是单一传输介质。
 	_player_spawner.spawn({
 		"peer_id": peer_id,
 		"character_id": cid,
-		"display_name": Players.display_name_of_peer(peer_id),
+		"display_name": Db.get_player_name(cid),
 		"spawn_pos": _player_spawn.global_position,
 	})
 
@@ -349,7 +349,7 @@ func _on_server_auth(peer_id: int, data: PackedByteArray) -> void:
 		mp.send_auth(peer_id, ("登录失败：「%s」已在游戏中" % login_name).to_utf8_buffer())
 		_peer.disconnect_peer(peer_id, false)
 		return
-	Players.register(peer_id, cid, login_name)
+	Players.register(peer_id, cid)
 	mp.complete_auth(peer_id)
 
 
@@ -743,7 +743,7 @@ func _notify(text: String, level: String = "info") -> void:
 
 # ────────────────────────── NPC 右键菜单 handlers ──────────────────────────
 # 两个动作都先让玩家走近 NPC（standoff 距离），UI 不阻塞等到达——服务端的
-# emit_say (near 校验) / offer_trade (mech 内距离判定) 各自处理"过远"情形。
+# emit_say (near 校验) / 交易 mechanic (距离判定) 各自处理"过远"情形。
 
 func _on_npc_talk_selected(npc: Node) -> void:
 	if _local_player == null or npc == null or not is_instance_valid(npc):
@@ -800,8 +800,8 @@ func _spawn_player_from_data(data: Variant) -> Node:
 	player.name = character_id
 	player.owner_peer_id = peer_id
 	player.character_id = character_id
-	# character_name 用于 head nameplate + backend displayName（_player_display_name 读它）；
-	# 必须在 _ready 之前赋值，否则 BackendRuntimeClient.register_player 拿到的还是 player_xxx。
+	# character_name 仅供 head nameplate UI 显示；backend resolver 直接读 player_accounts，
+	# 不再依赖这个字段。spawn data 在 server 端从 Db.get_player_name 读出，replicate 给 client。
 	if not display_name.is_empty():
 		player.character_name = display_name
 	player.position = spawn_pos

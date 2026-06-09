@@ -3,6 +3,7 @@ export const DEBUG_AGENT_SESSION_VIEW_MODULE = String.raw`
 import {
   costFromUsage,
   escapeHtml,
+  extractText,
   extractToolCalls,
   formatCostUsd,
   formatTokenCount,
@@ -39,12 +40,15 @@ export function buildSessionDetailView(app, turn, session, messagesRes, promptMe
       const turnsWrap = document.createElement("div");
       turnsWrap.appendChild(buildSelectedTurnScopeCard(turn, session, selectedTurnMessages));
       if (selectedTurnMessages.length > 0) {
+        const promptSnapshotMessages = buildPromptSnapshotMessages(selectedTurnMessages, turn);
         turnsWrap.appendChild(buildInnerTimeline(app, selectedTurnMessages, turn, handlers));
         const groupedSelectedTurns = groupTurns(selectedTurnMessages);
         let selectedIndex = 0;
         for (const groupedTurn of groupedSelectedTurns) {
           selectedIndex += 1;
-          turnsWrap.appendChild(buildTurn(app, selectedIndex, groupedTurn, turn));
+          turnsWrap.appendChild(buildTurn(app, selectedIndex, groupedTurn, turn, {
+            prefixMessages: selectedIndex === 1 ? promptSnapshotMessages : [],
+          }));
         }
       } else {
         const empty = document.createElement("div");
@@ -150,6 +154,48 @@ export function buildSessionDetailView(app, turn, session, messagesRes, promptMe
   return wrap;
 }
 
+function buildPromptSnapshotMessages(selectedTurnMessages, turn) {
+  const call = selectedTurnMessages.find((message) => (
+    message && message.role === "assistant" && (message.llmSystemPrompt || Array.isArray(message.llmMessages))
+  ));
+  if (!call) return [];
+
+  const snapshotMessages = [];
+  const meta = '<span class="pill">from response #' + escapeHtml(call.seq) + "</span>";
+
+  if (call.llmSystemPrompt) {
+    snapshotMessages.push({
+      role: "system",
+      displayRole: "system prompt",
+      seq: "llm#" + call.seq + ":system",
+      gameTime: call.gameTime || turn.startGameTime || null,
+      message: { content: call.llmSystemPrompt },
+      roleMetaHtml: meta,
+      collapsibleMessage: true,
+      collapsed: true,
+    });
+  }
+
+  const requestMessages = Array.isArray(call.llmMessages) ? call.llmMessages : [];
+  const firstUserIndex = requestMessages.findIndex((message) => message && message.role === "user");
+  if (firstUserIndex >= 0) {
+    const firstUser = requestMessages[firstUserIndex] || {};
+    const text = extractText(firstUser.content) || prettyJson(firstUser);
+    snapshotMessages.push({
+      role: "user",
+      displayRole: "first user prompt",
+      seq: "llm#" + call.seq + ":user#" + (firstUserIndex + 1),
+      gameTime: call.gameTime || turn.startGameTime || null,
+      message: { content: text },
+      roleMetaHtml: meta + '<span class="pill">request msg #' + (firstUserIndex + 1) + "</span>",
+      collapsibleMessage: true,
+      collapsed: true,
+    });
+  }
+
+  return snapshotMessages;
+}
+
 function filterMessagesForSelectedTurn(messages, selectedTurn) {
   return messages.filter((message) => (
     message.seq >= selectedTurn.startSeq && message.seq <= selectedTurn.endSeq
@@ -239,7 +285,7 @@ function buildLlmCallCard(index, record, selectedTurn) {
   const body = document.createElement("div");
   body.className = "body";
   if (record.llmSystemPrompt) {
-    body.appendChild(buildLlmRequestMessageDetails("system", 0, record.llmSystemPrompt, record.llmSystemPrompt, true));
+    body.appendChild(buildLlmRequestMessageDetails("system", 0, record.llmSystemPrompt, record.llmSystemPrompt));
   }
 
   if (messages.length === 0) {
@@ -248,18 +294,13 @@ function buildLlmCallCard(index, record, selectedTurn) {
     empty.textContent = "没有保存这次 LLM call 的 request messages（通常是旧数据）";
     body.appendChild(empty);
   } else {
-    let openedFirstUser = false;
     for (let messageIndex = 0; messageIndex < messages.length; messageIndex += 1) {
       const message = messages[messageIndex] || {};
-      const role = message.role || "unknown";
-      const defaultOpen = role === "system" || (role === "user" && !openedFirstUser);
-      if (role === "user" && !openedFirstUser) openedFirstUser = true;
       body.appendChild(buildLlmRequestMessageDetails(
-        role,
+        message.role || "unknown",
         messageIndex + 1,
         llmMessagePreview(message),
         prettyJson(message),
-        defaultOpen,
       ));
     }
   }
@@ -268,10 +309,9 @@ function buildLlmCallCard(index, record, selectedTurn) {
   return details;
 }
 
-function buildLlmRequestMessageDetails(role, index, preview, fullText, defaultOpen) {
+function buildLlmRequestMessageDetails(role, index, preview, fullText) {
   const details = document.createElement("details");
   details.className = "llm-request-message";
-  if (defaultOpen) details.open = true;
   details.innerHTML = ""
     + "<summary>"
     + '<span class="role">' + escapeHtml(role) + "</span>"

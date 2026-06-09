@@ -551,8 +551,9 @@ export function createPutTakeTool(
       const wire: TransferWire[] = [];
       for (const tr of args.transfers ?? []) {
         if (tr.kind === "liquid") {
-          const from = resolveLiquidEndpoint(tr.from, currentContext);
-          const to = resolveLiquidEndpoint(tr.to, currentContext);
+          const from = resolveLiquidSourceEndpoint(tr.from, currentContext);
+          const to = resolveLiquidDestinationEndpoint(tr.to, currentContext);
+          if (to.isShelf && tr.price_silver != null) to.priceCenti = Math.round(tr.price_silver * 100);
           wire.push({ kind: "liquid", amount: tr.amount, from, to });
         } else {
           // 离散：from.item 是全局编号，定位要搬的物（itemId + 来源位置）。
@@ -591,9 +592,9 @@ function entryToEndpoint(e: ItemIndexEntry): ContainerEndpoint {
   return { where: "backpack", slotIndex: e.slotIndex };
 }
 
-// 把 transfer endpoint 解析成液体 wire endpoint。
-// 优先用 item 全局编号（定位具体桶/酿酒桶/杯，自带所在位置）；只给 container 名时用于水井。
-function resolveLiquidEndpoint(ep: TransferEndpointParam, ctx?: AgentCurrentContext): ContainerEndpoint {
+// 把 transfer endpoint 解析成液体来源 endpoint。
+// 来源必须是具体液体容器 item（桶/酿酒桶/杯），或水井这类无限液体源。
+function resolveLiquidSourceEndpoint(ep: TransferEndpointParam, ctx?: AgentCurrentContext): ContainerEndpoint {
   if (ep.item) {
     const e = resolveFlatEntry(ep.item.index, ctx);
     if (!e) throw new Error("液体容器编号无效");
@@ -606,6 +607,23 @@ function resolveLiquidEndpoint(ep: TransferEndpointParam, ctx?: AgentCurrentCont
     throw new Error(`请用编号指定「${site.label}」里的具体桶/酿酒桶`);
   }
   throw new Error("液体来源/目标需给 item 编号或 container 名（水井）");
+}
+
+// 液体目标可以是具体液体容器，也可以是背包/容器/货架本身。
+// 后者由 Godot 端把桶装液体按 serving_liters 转成离散 drink item（如 beer）。
+function resolveLiquidDestinationEndpoint(ep: TransferEndpointParam, ctx?: AgentCurrentContext): ContainerEndpoint {
+  if (ep.item) {
+    const e = resolveFlatEntry(ep.item.index, ctx);
+    if (!e) throw new Error("液体容器编号无效");
+    return entryToEndpoint(e);
+  }
+  if (ep.container) {
+    const site = resolveContainerOrShelfTarget(ep.container, ctx);
+    if (isMoveTargetError(site)) throw new Error(site.error);
+    if (site.id === "well") throw new Error("不能把液体倒回水井");
+    return { where: "node", containerId: site.id, isShelf: site.kind === "shelf" };
+  }
+  return { where: "backpack" };
 }
 
 // 离散搬运的"目标"endpoint：container 名 → node；没给 = 背包。
@@ -678,7 +696,7 @@ export function createBrewTool(
     parameters: createBrewSchema(),
     execute: async (_toolCallId, rawArgs, signal, onUpdate) => {
       const args = rawArgs as BrewParams;
-      const barrel = resolveLiquidEndpoint(args.barrel, currentContext);
+      const barrel = resolveLiquidSourceEndpoint(args.barrel, currentContext);
       return submitToolAction(
         runtime.actions,
         characterId,
@@ -853,7 +871,7 @@ export function createOfferTool(
       if (isMoveTargetError(target)) {
         throw new Error(target.error);
       }
-      const offer = args.offer.map((line) => resolveOfferTradeLine(line, _currentContext));
+      const offer = args.offer.map((line) => resolveTradeOfferLine(line, _currentContext));
       const request = args.request.map((line) => resolveRequestTradeLine(line));
       return submitToolAction(
         runtime.actions,
@@ -981,7 +999,7 @@ const CURRENCY_ITEM_IDS = new Set(["silver_coin", "gold_coin"]);
 // prependWalletEntriesToBackpack），entry.slotIndex 为 undefined —— 不传 slotIndex 给
 // Godot，Godot 端按 item id 自动从 wallet 扣。LLM 看到的是统一的 {name, index} 模型，
 // 不用记"货币要特殊处理"。
-function resolveOfferTradeLine(
+function resolveTradeOfferLine(
   line: { item: { name: string; index: number }; count: number },
   currentContext?: AgentCurrentContext,
 ): { item: string; count: number; slotIndex?: number } {

@@ -145,7 +145,7 @@
     },
     "put_take": {
       "label": "存取（货架/容器/水井）",
-      "description": "在任意两个容器之间搬东西。transfers 是一串搬运，每条 {kind, amount, from, to}：kind=item 搬离散物品（amount=个数；silver_coin/gold_coin 按钱包金额，可写 1.25 这类小数银）；kind=liquid 倒液体（amount=升，混合时品质按量加权平均）。from / to 是 endpoint——container 填 # 当前附近 列出的容器名（仓库 / 货架 / 酿酒桶 / 水井），省略 container = 你自己的背包；item 填 {name, index} 指向该 endpoint 里要搬的那件（离散物、容器钱包里的银币，或木桶 / 杯这类容器物）。倒水：from.container 填水井（无限水源，from 不用填 item）、to 指你背包里的木桶。存货架时可在该条加 price_silver 标价。\n从货架 take 带标价商品时，必须在同一次 put_take 里把足额 silver_coin 从你的钱包 put 到该货架；多给会自动找零，少给会失败并返回“你给的钱不够”。钱币都存在钱包里，不占背包/货架/仓库槽位。\n货架人人可存取；上锁的容器需要背包里有对应钥匙。",
+      "description": "在任意两个容器之间搬东西。transfers 是一串搬运，每条 {kind, amount, from, to}：kind=item 搬离散物品（amount=个数；silver_coin/gold_coin 按钱包金额，可写 1.25 这类小数银）；kind=liquid 倒液体（amount=升，混合时品质按量加权平均）。from / to 是 endpoint——container 填 # 当前附近 列出的容器名（仓库 / 货架 / 酿酒桶 / 水井），省略 container = 你自己的背包；item 填 {name, index} 指向该 endpoint 里要搬的那件（离散物、容器钱包里的银币，或木桶 / 杯这类容器物）。倒水：from.container 填水井（无限水源，from 不用填 item）、to 指你背包里的木桶。取桶装酒：from.item 指酒桶/酿酒桶，to 可省略 item 直接填背包或货架，系统会按饮品的 serving_liters 把液体转成离散物品（例如 0.5 升 beer → 1 份 beer）；存货架时可在该条加 price_silver 标价。\n从货架 take 带标价商品时，必须在同一次 put_take 里把足额 silver_coin 从你的钱包 put 到该货架；多给会自动找零，少给会失败并返回“你给的钱不够”。钱币都存在钱包里，不占背包/货架/仓库槽位。\n货架人人可存取；上锁的容器需要背包里有对应钥匙。",
       "reason_format": "搬运物品",
       "error_empty": "至少要指定一条 transfers。"
     },

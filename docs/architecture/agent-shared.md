@@ -89,7 +89,7 @@ WorldEvent → LLM 可读文本。每个 event 类型一个 renderer。读 `even
 | 文件 | 内容 |
 |---|---|
 | `say.ts` | `renderSayToEventText`：把 say_to event 渲染成 `"X 对你说: ..."` 等格式 |
-| `trade.ts` | `renderOfferTradeEventText / renderRespondToTradeEventText` |
+| `trade.ts` | `renderTradeOfferEventLine / renderTradeResponseEventLine` |
 | `index.ts` | `renderEventText / renderEventSummary / renderEventGameTimeLabel / isSayToEventType / eventNormalizedGameTime` 通用入口 |
 
 新增 event 类型 → 先在 `world-events.ts` 加 typed shape，再在这里加 renderer，所有 agent 立刻能用上。
@@ -131,7 +131,7 @@ Continued action（detached 长 body action）的队列管理 + 给 LLM 的 noti
 
 | 文件 | 内容 |
 |---|---|
-| `factory.ts` | `createSharedGameAgentTools(options)`：返回 18 个 tool 数组（say_to / move_to_location / pick_up_item / use_item / use_workstation / plan_farm_work / start_trade / respond_to_trade / equip_item / unequip_item / give_item / drop_item / open_container / close_container / put_in_container / take_from_container / sleep / do_nothing 等） |
+| `factory.ts` | `createSharedGameAgentTools(options)`：返回 game tool 数组（say_to / move_to_location / pick_up_item / use_item / plan_farm_work / offer / respond / drop_item / put_take_container / sleep / do_nothing 等） |
 | `tool-factories.ts` | 每个 tool 单独的 factory 函数 |
 | `schemas.ts` | TypeBox schema 集合，包括 export `updateMemorySchema` 给 per-agent 拼装用 |
 | `targets.ts` | `resolveItemTarget / resolveContainerTarget / resolveWorkstationTarget / resolveLocationOrSiteTarget / resolveOptionalKnownTargetName` —— 名字 → id 翻译的 tool 边界 |

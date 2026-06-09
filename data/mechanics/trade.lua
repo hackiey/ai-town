@@ -34,7 +34,7 @@ function on_offer(ctx)
         ok = true,
         result = r.trade,
         world_event = {
-            event_type = "offer_trade",
+            event_type = "trade_offer",
             data = {
                 actorId = ctx.buyer_id,
                 affectedCharacterIds = { ctx.buyer_id, ctx.seller_id },
@@ -64,7 +64,7 @@ function on_respond(ctx)
         ok = true,
         result = r.trade,
         world_event = {
-            event_type = "respond_to_trade",
+            event_type = "trade_response",
             data = {
                 actorId = r.seller_id,
                 affectedCharacterIds = { r.buyer_id, r.seller_id },

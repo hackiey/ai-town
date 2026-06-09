@@ -115,7 +115,7 @@ session(npc).onEvent(event)
 
 **路径 A（think-first）**：当前只有 `woke_up`。角色刚醒，意识断了一整觉，第一反应前必须重建认知——blocking 等 thinking 写好 working_memory，action 才看得到"我醒了，今天打算做什么"。
 
-**路径 B（significant for thinking）**：`spoken_to_directly` / `offer_trade` / player 喊话 / always-interrupting 事件——异步触发 thinking 提前重写 working_memory；action 不等它，按自己节奏跑。下次 action turn 入口才会用上更新后的 brief。
+**路径 B（significant for thinking）**：`spoken_to_directly` / 交易提议事件 / player 喊话 / always-interrupting 事件——异步触发 thinking 提前重写 working_memory；action 不等它，按自己节奏跑。下次 action turn 入口才会用上更新后的 brief。
 
 **路径 C（普通）**：仅入历史 / 触发 action turn，thinking 不动。
 

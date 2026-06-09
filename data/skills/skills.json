@@ -44,7 +44,9 @@
       "books": []
     },
     "brewing": {
-      "books": []
+      "books": [
+        "brewing_basics"
+      ]
     }
   }
 }

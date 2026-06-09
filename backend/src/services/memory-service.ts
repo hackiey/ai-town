@@ -25,7 +25,7 @@ import {
 import { stableHash } from "../agent-shared/utils/primitives.js";
 import type { GameTimeSnapshot } from "../godot-link/protocol.js";
 import { getProficiencyForCharacter } from "./world-state/proficiency-repo.js";
-import { getRuntimeCharacter } from "./runtime-character-registry.js";
+import { getPlayerName, syncPlayerNameCacheFromDb } from "../agent-shared/name-resolver/player-name-cache.js";
 
 // 从 npcs.json 把 NPC 的 soul / 关系 / 技能 seed 进 runtime_storage。
 // 技能 entries 真值在 data/i18n/<locale>/skills.json，没有单独注册表。
@@ -120,7 +120,10 @@ export function seedPlayerTakeoverMemories(
   const proficiency = profRows.length > 0
     ? Object.fromEntries(profRows.map((row) => [row.skillId, row.value]))
     : (template.proficiency ?? {});
-  const name = getRuntimeCharacter(characterId)?.displayName ?? template.name;
+  // 取玩家登录名（player_accounts.name，Godot 写）当 NPC 等价的 name；查不到退回模板默认。
+  // 走 cache：seedPlayerTakeoverMemories 是 AI 接管事件触发的低频路径，直接刷一次 cache 没成本。
+  syncPlayerNameCacheFromDb(db, townId);
+  const name = getPlayerName(characterId) ?? template.name;
   const entry: NpcEntry = { ...template, name, proficiency };
   const seeded = seedMemoriesForCharacter(
     db,
@@ -479,7 +482,8 @@ function memoryValue(townId: string, characterId: string, memory: SeededMemoryEn
 
 function isSeedPriceMemoryText(text: string): boolean {
   return /小麦镇价\s*\d/.test(text)
-    || /\b(?:wheat|wood|charcoal|flour|bread|iron_ore)\b[^。！？.!?]*\d+(?:\.\d+)?\s*银/.test(text);
+    || /(?:麦芽|麦芽酒)[^。！？.!?]*\d+(?:\.\d+)?\s*银/.test(text)
+    || /\b(?:wheat|wood|charcoal|flour|bread|iron_ore|malt|beer)\b[^。！？.!?]*\d+(?:\.\d+)?\s*银/.test(text);
 }
 
 function softenSeedPriceMemoryText(text: string): string {

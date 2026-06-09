@@ -4,13 +4,23 @@
       {
         "item_id": "brewing_barrel",
         "quantity": 1,
-        "container_amount": 100,
+        "container_amount": 94,
         "container_content": "beer",
         "quality": 70
       },
       {
         "item_id": "brewing_barrel",
         "quantity": 2
+      }
+    ]
+  },
+  "tavern_bar_shelf@tavern": {
+    "starting_inventory": [
+      {
+        "item_id": "beer",
+        "quantity": 12,
+        "quality": 70,
+        "price_silver": 2.5
       }
     ]
   },

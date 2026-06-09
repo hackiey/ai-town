@@ -4,7 +4,7 @@ import type { AppDb } from "../../db/sqlite.js";
 //   - kind 单列：常做 WHERE 过滤
 //   - baseEffects：typed JSON dict（如 {"hunger":30,"stamina":5}），template-level
 //     默认效果；instance 自己也可能写一份覆盖（reaction generate 时定）
-//   - staticJson：Item template 渲染需要的模板级数值（capacity / max_durability /
+//   - staticJson：Item template 渲染需要的模板级数值（capacity / serving_liters / max_durability /
 //     max_stack 等）。schema 不固化，加字段不用改表。
 // displayName 不在这里——source-of-truth 是 data/i18n/<locale>/items.json，
 // 调用方走 DisplayNameResolver.item(id)。
@@ -14,7 +14,7 @@ export type ItemDefView = {
   kind: string;
   // 模板级"基础效果"dict，instance 没自己写时作 fallback；NULL = 无固定效果。
   baseEffects: Record<string, number> | null;
-  // 模板级静态属性袋：capacity / max_durability / max_stack 等都塞这里。
+  // 模板级静态属性袋：capacity / serving_liters / max_durability / max_stack 等都塞这里。
   // schema 不固化，调用方按需 narrow。NULL = Godot 没 dump 静态信息。
   staticJson: Record<string, unknown> | null;
 };

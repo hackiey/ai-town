@@ -22,7 +22,7 @@ const _MINE_BY_WORKSTATION: Dictionary = {
 	"iron_mine_workstation": "iron_mine",
 }
 
-# 国营矿：产出自动入领主国库，矿工找玛格达 offer_trade 兑银币。
+# 国营矿：产出自动入领主国库，矿工找玛格达用 offer 兑银币。
 # 不在此集合中的矿（如铁矿）走私营，产出直接进矿工背包。
 const _STATE_OWNED_MINES: Dictionary = {
 	"gold_mine": true,

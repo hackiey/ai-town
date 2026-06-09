@@ -937,7 +937,7 @@ function computeWageRows(catalog: Catalog, mineRows: MinePlanRow[]): WageRow[] {
         payerGroupId: "royal_treasury",
         payerSectorId: "royal_mines",
         silverPerDay: mine.wageTotal * (weights[index] ?? 1) / Math.max(1, weightTotal),
-        source: "magda_kerr offer_trade: ore rate from backend_action_runner.gd",
+        source: "magda_kerr offer: ore rate from backend_action_runner.gd",
         status: catalog.runtimeWages.minerIds.includes(id) ? "implemented" : "design_only",
       });
     });

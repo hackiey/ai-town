@@ -430,6 +430,7 @@
   "prompt.context.proficiency.skill.alchemy": "草药炼金",
   "prompt.context.proficiency.skill.milling": "磨坊",
   "prompt.context.proficiency.skill.salt_making": "制盐",
+  "prompt.context.proficiency.skill.brewing": "酿酒",
   "prompt.context.memory.skill_other_group": "其他",
   "prompt.context.event.workstation.proficiency_gain_format": "（{skill}熟练度小有长进 {before}→{after}）",
   "prompt.context.event.workstation.proficiency_breakthrough_format": "（{skill}熟练度大有突破 {before}→{after}！）",

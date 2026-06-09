@@ -11,10 +11,10 @@ export const ACTION_NAMES = [
   SLEEP_ACTION,
   "pick_up_item",
   "drop_item",
-  // offer：原 offer_trade。request:[] 时是单向赠送（同步转移 + 发 give 事件），
+  // offer：request:[] 时是单向赠送（同步转移 + 发 give 事件），
   // request 非空时是议价交易（写 trade_offers，阻塞等对方 respond）。
   "offer",
-  // respond：原 respond_to_trade，加 kind 字段 dispatch。目前只 kind="trade"，
+  // respond：加 kind 字段 dispatch。目前只 kind="trade"，
   // 未来扩 request_join_group 等新 kind 时只加 dispatch case 即可，不再 rename tool。
   "respond",
   "create_item",
@@ -93,7 +93,7 @@ export type UseItemTarget = {
 export type TradeLine = { item: string; count: number; slotIndex?: number };
 
 // request: [] 时 Godot 走 _run_give 单向赠送分支（不写 trade_offers，立即发 give 事件）；
-// request 非空时走 trade.lua 原有谈判流程。schema 与历史 OfferTradeTarget 一致。
+// request 非空时走 trade.lua 谈判流程。schema 是交易报价目标。
 export type OfferTarget = {
   characterId: string;
   offer: TradeLine[];
@@ -139,7 +139,9 @@ export type PlanFarmWorkTarget = {
 
 // put_take_container：统一搬运。一串 transfers，每条把东西从一个容器搬到另一个。
 // 容器 endpoint：背包 / 附近容器 node（仓库·水井）/ 地面物品 / 它们里的容器 item。
-// 液体按升加权混合品质；离散按个数（背包侧货币走钱包）。Godot ContainerHandlers 执行。
+// 液体按升加权混合品质；若 liquid.to 指背包/容器/货架本身且无 slotIndex，Godot 会按
+// drink item 的 serving_liters 把桶装液体转成离散物品（如 beer）。离散按个数（背包侧货币走钱包）。
+// Godot ContainerHandlers 执行。
 export type ContainerEndpoint = {
   where: "backpack" | "node" | "ground" | "well";
   containerId?: string;   // where=node/well

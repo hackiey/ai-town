@@ -24,7 +24,7 @@ import {
 } from "../../services/world-state/index.js";
 import { cropStageDisplayName, getVariety, isRipeStage } from "../../services/world-state/crops-catalog.js";
 import { getActiveLocale, t, type Locale } from "../../i18n/index.js";
-import { syncRuntimeRegistryFromDb } from "../../services/runtime-character-registry.js";
+import { syncPlayerNameCacheFromDb } from "../name-resolver/player-name-cache.js";
 import { characterAttributeName } from "../name-resolver/index.js";
 import { refreshSiteCatalog } from "../name-resolver/site-catalog.js";
 import { getCraftSpec, listCraftSlugs, type CraftSlug } from "../game-tools/craft-registry.js";
@@ -64,9 +64,9 @@ export function assembleAgentContextFromManifest(
   townId: string,
   manifest: PerceptionManifestPayload,
 ): AgentCurrentContext {
-  // worker 进程的 runtime-character 内存 registry 不会被 character.register 直接填（那发生在
-  // server 进程）。渲染前从共享的 runtime_characters 表刷一次，玩家才能解析成真名而非 player_xxx。
-  syncRuntimeRegistryFromDb(db);
+  // 玩家显示名真值 = Godot 写的 player_accounts.name；渲染前刷一次到内存 cache，
+  // resolver 走单一查找链（i18n catalog → npc descriptor → player cache → id）。
+  syncPlayerNameCacheFromDb(db, townId);
   // 地点结构真值 = Godot 灌的 sites 表。刷新内存 catalog，供下游 db-less 的 resolver /
   // localize / renderTownMap 读取（地点全部由 Godot 传递，backend 只渲染+解析）。
   refreshSiteCatalog(db, townId);

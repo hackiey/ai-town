@@ -44,7 +44,7 @@ export type SayToEventData = WorldEventDataBase & {
 // ─── trade ───────────────────────────────────────────────────────────
 // Buyer makes offer to seller. actorId = buyer for offer, actorId = seller for respond.
 // Renderers use buyer/seller directly — no actor/target aliasing.
-export type OfferTradeEventData = WorldEventDataBase & {
+export type TradeOfferEventData = WorldEventDataBase & {
   buyerCharacterId: string;
   sellerCharacterId: string;
   tradeId: string;
@@ -52,7 +52,7 @@ export type OfferTradeEventData = WorldEventDataBase & {
   request: TradeLine[];
 };
 
-export type RespondToTradeEventData = WorldEventDataBase & {
+export type TradeResponseEventData = WorldEventDataBase & {
   buyerCharacterId: string;
   sellerCharacterId: string;
   tradeId: string;
@@ -170,8 +170,8 @@ export type ActionFailedEventData = WorldEventDataBase & {
 // ─── exhaustive map ──────────────────────────────────────────────────
 export type WorldEventDataByType = {
   say_to: SayToEventData;
-  offer_trade: OfferTradeEventData;
-  respond_to_trade: RespondToTradeEventData;
+  trade_offer: TradeOfferEventData;
+  trade_response: TradeResponseEventData;
   went_to_sleep: WentToSleepEventData;
   woke_up: WokeUpEventData;
   container_put_take: ContainerPutTakeEventData;
@@ -204,8 +204,8 @@ export function isKnownWorldEventType(type: string): type is WorldEventDataType 
 
 const WORLD_EVENT_TYPE_MARKER: Record<WorldEventDataType, true> = {
   say_to: true,
-  offer_trade: true,
-  respond_to_trade: true,
+  trade_offer: true,
+  trade_response: true,
   went_to_sleep: true,
   woke_up: true,
   container_put_take: true,
