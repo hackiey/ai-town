@@ -348,6 +348,7 @@ func _is_instant_action(action: String) -> bool:
 		"respond",
 		"create_item",
 		"put_take_container",
+		"view_container",
 		"brew",
 		"write",
 		"read",
@@ -396,6 +397,8 @@ func _complete_instant_action(action_request: Dictionary) -> void:
 			structured = character.trade_runner().run_respond(action_request)
 		"put_take_container":
 			structured = ContainerHandlers.run_put_take(character, action_request, finish)
+		"view_container":
+			structured = ContainerHandlers.run_view_container(character, action_request)
 		"brew":
 			structured = BrewHandlers.run_brew(character, action_request)
 		"write":
@@ -456,9 +459,10 @@ func _emit_public_finish_event(action_id: String, action: String, target: Varian
 # 这些动作失败时自己已经发了能体现失败的事件，不该再补 action_failed（否则重复）：
 # - craft（工作台）：失败发 outcome=failure 事件（含难度/熟练度）。
 # - sleep：被外部刺激唤醒走 finish(false)，但 woke_up 事件已表达"睡眠中断"。
-# 代价：这两类的"启动即失败"（没产生自有事件那种）也不会进历史，但 tool 同步返回值已即时告知。
+# - view/read/write/pick_up：handler 自己发成功/失败可感知事件（viewer-specific 渲染）。
+# 代价：这几类的"启动即失败"（没产生自有事件那种）也不会进历史，但 tool 同步返回值已即时告知。
 func _action_self_reports_failure(action: String) -> bool:
-	return Crafts.is_action(action) or action == "sleep"
+	return Crafts.is_action(action) or action == "sleep" or action in ["view_container", "read", "write", "pick_up_item"]
 
 
 # 失败动作 → actor-only 的 action_failed 自感知事件。data.actionId 与 action_log.actionId 一致，
@@ -472,7 +476,7 @@ func _emit_action_failed_event(action_id: String, action: String, target: Varian
 	var target_dict: Dictionary = target as Dictionary if typeof(target) == TYPE_DICTIONARY else {}
 	var data := {
 		"actorId": actor_id,
-		"affectedCharacterIds": [actor_id],
+		"affectedCharacterIds": character.perception().voice_affected_character_ids("far"),
 		"actionId": action_id,
 		"action": action,
 		"target": target_dict,

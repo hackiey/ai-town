@@ -38,6 +38,7 @@ export const ACTION_NAMES = [
   "remove_pest",
   "plan_farm_work",
   "put_take_container",
+  "view_container",
   "brew",
   "write",
   "read",
@@ -163,6 +164,11 @@ export type PutTakeContainerTarget = {
   transfers: TransferWire[];
 };
 
+export type ViewContainerTarget = {
+  containerId: string;
+  isShelf?: boolean;
+};
+
 // brew：装水的酿酒桶 + 背包麦芽 → 发酵中的酒。barrel = 酿酒桶所在 endpoint。
 export type BrewTarget = {
   barrel: ContainerEndpoint;
@@ -217,6 +223,7 @@ export type ActionTargetByName = {
   remove_pest: FarmingSubActionTargetUnused;
   plan_farm_work: PlanFarmWorkTarget;
   put_take_container: PutTakeContainerTarget;
+  view_container: ViewContainerTarget;
   brew: BrewTarget;
   write: WriteTarget;
   read: ReadTarget;
@@ -287,6 +294,7 @@ export type ActionResultByName = {
   remove_pest: Record<string, unknown>;
   plan_farm_work: PlanFarmWorkResult;
   put_take_container: { moves?: Array<{ kind?: string; itemId?: string; content?: string; amount?: number }> };
+  view_container: { containerId?: string; label?: string; message?: string; items?: Array<Record<string, unknown>> };
   brew: { liters?: number; ceiling?: number };
   write: { itemName?: string; title?: string };
   read: { title?: string; content?: string };

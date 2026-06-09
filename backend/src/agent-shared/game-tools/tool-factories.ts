@@ -634,49 +634,32 @@ function containerNameToEndpoint(ep: TransferEndpointParam, ctx?: AgentCurrentCo
   return { where: "node", containerId: site.id, isShelf: site.kind === "shelf" };
 }
 
-// view_container —— 查看货架/容器内容（货架额外显示标价）。只读，从 currentContext 渲染，不发 action。
+// view_container —— 查看货架/容器内容。外界可感知，必须走 Godot action + world_event；
+// 容器内容作为 actor 私有 action result 返回，旁观者只看到“查看了容器”。
 export function createViewContainerTool(
+  runtime: ToolRuntime,
+  characterId: string,
   currentContext?: AgentCurrentContext,
-): AgentTool<any, { containerId: string; itemCount: number }> {
+  interrupts?: AgentToolInterrupts,
+): AgentTool<any, CharacterActionToolDetails> {
+  const gameTime = currentContext?.gameTime;
   return {
     label: td("view_container.label"),
     name: "view_container",
     description: td("view_container.description"),
     parameters: createViewContainerSchema(),
-    execute: async (_toolCallId, rawArgs) => {
+    execute: async (_toolCallId, rawArgs, signal, onUpdate) => {
       const args = rawArgs as ViewContainerParams;
       const site = resolveContainerOrShelfTarget(args.container, currentContext);
       if (isMoveTargetError(site)) throw new Error(site.error);
-      let lines: string[];
-      let count = 0;
-      if (site.kind === "shelf") {
-        const shelf = (currentContext?.nearbyShelves ?? []).find((s) => s.id === site.id);
-        const listings = shelf?.listings ?? [];
-        count = listings.length;
-        lines = listings.length === 0
-          ? [td("view_container.result_empty")]
-          : listings.map((l) => {
-              const price = l.priceText ?? (l.priceSilver > 0 ? `${l.priceSilver.toFixed(2)} 银` : "");
-              return `[${l.index ?? "?"}] ${l.displayName ?? l.itemId} x${l.quantity}${price ? ` @ ${price}` : ""}`;
-            });
-      } else {
-        const ws = (currentContext?.nearbyWorkstations ?? []).find((w) => w.id === site.id);
-        const items = ws?.items ?? [];
-        count = items.length;
-        lines = items.length === 0
-          ? [td("view_container.result_empty")]
-          : items.map((it) => {
-              // 内容物本身是装液体的容器（仓库里的酒桶）→ 标液体量 + 发酵态。
-              const liq = it.container && it.container.amount > 0 && it.container.content
-                ? `（${localizeStringValue(it.container.content)} ${it.container.amount}L${it.container.fermenting ? `·酿造中(上限${it.container.ceiling ?? "?"})` : ""}）`
-                : "";
-              return `[${it.index}] ${localizeStringValue(it.itemId)} x${it.quantity}${liq}`;
-            });
-      }
-      return {
-        content: [{ type: "text", text: [td("view_container.result_header", { label: site.label }), lines.join("；")].join("\n") }],
-        details: { containerId: site.id, itemCount: count },
-      };
+      return submitToolAction(
+        runtime.actions,
+        characterId,
+        "view_container",
+        { containerId: site.id, isShelf: site.kind === "shelf" },
+        td("view_container.reason_format", { label: site.label }),
+        { toolName: "view_container", displayTarget: site.label, gameTime, signal, onUpdate, interrupts },
+      );
     },
   };
 }

@@ -83,10 +83,12 @@ static func run_drop_item(character: Character, action_request: Dictionary) -> D
 static func run_pick_up_item(character: Character, action_request: Dictionary) -> Dictionary:
 	var target: Variant = action_request.get("target", {})
 	if typeof(target) != TYPE_DICTIONARY:
+		_emit_pick_up_event(character, "", 0, "failure", "pick_up_item target must be object")
 		return {"ok": false, "message": "pick_up_item target must be object"}
 	var t: Dictionary = target as Dictionary
 	var item_id := str(t.get("itemId", "")).strip_edges()
 	if item_id.is_empty():
+		_emit_pick_up_event(character, item_id, 0, "failure", "pick_up_item 缺少 itemId")
 		return {"ok": false, "message": "pick_up_item 缺少 itemId"}
 	# 找各自拾取半径内、离我最近的同 item_id GroundItem（半径逐物品读其 SiteMarker）。
 	var nearest: GroundItem = null
@@ -103,6 +105,7 @@ static func run_pick_up_item(character: Character, action_request: Dictionary) -
 			best_dist = d
 			nearest = gi
 	if nearest == null:
+		_emit_pick_up_event(character, item_id, 0, "failure", "附近没有 %s" % character.localize_item_name(item_id))
 		return {"ok": false, "message": "附近没有 %s" % character.localize_item_name(item_id)}
 	# 全有全无：用 receive_inventory_stacks 原子加，装不下时它会自己 rollback。
 	var qty := nearest.quantity()
@@ -111,7 +114,22 @@ static func run_pick_up_item(character: Character, action_request: Dictionary) -
 	var stacks: Array[Dictionary] = [stack]
 	var recv := character.inventory_ops().receive_stacks(stacks)
 	if not bool(recv.get("ok", false)):
+		_emit_pick_up_event(character, item_id, qty, "failure", str(recv.get("message", "背包装不下")))
 		return {"ok": false, "message": str(recv.get("message", "背包装不下"))}
 	Db.delete_ground_item(nearest.db_id)
 	nearest.queue_free()
+	_emit_pick_up_event(character, item_id, qty, "success", "")
 	return {"ok": true, "result": {"itemId": item_id, "quantity": qty}}
+
+
+static func _emit_pick_up_event(character: Character, item_id: String, quantity: int, outcome: String, error: String) -> void:
+	var data := {
+		"actorId": character.backend_character_id(),
+		"affectedCharacterIds": character.perception().voice_affected_character_ids("far"),
+		"itemId": item_id,
+		"quantity": quantity,
+		"outcome": outcome,
+	}
+	if not error.is_empty():
+		data["error"] = error
+	character.emit_world_event("pick_up_item", data)

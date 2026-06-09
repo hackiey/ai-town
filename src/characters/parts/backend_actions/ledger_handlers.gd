@@ -17,12 +17,14 @@ const _MINER_IDS_FOR_PAYROLL: Array = ["tomas_pike", "harlan_dunn", "wilf_drake"
 static func run_write(character: Character, action_request: Dictionary) -> Dictionary:
 	var target: Variant = action_request.get("target", {})
 	if typeof(target) != TYPE_DICTIONARY:
+		_emit_write_event(character, "", "", "failure", "write target must be object")
 		return {"ok": false, "message": "write target must be object"}
 	var t: Dictionary = target as Dictionary
 	var item_name := str(t.get("itemName", "")).strip_edges()
 	var title := str(t.get("title", "")).strip_edges()
 	var content := str(t.get("content", "")).strip_edges()
 	if item_name.is_empty() or title.is_empty() or content.is_empty():
+		_emit_write_event(character, item_name, title, "failure", "write 需要 itemName + title + content 三个非空字段")
 		return {"ok": false, "message": "write 需要 itemName + title + content 三个非空字段"}
 
 	var actor_id := character.backend_character_id()
@@ -33,7 +35,9 @@ static func run_write(character: Character, action_request: Dictionary) -> Dicti
 		var game_hour := GameClock.game_hour()
 		var ok := Db.append_agent_ledger(actor_id, _ROYAL_PAYROLL_LEDGER, title, content, game_day, game_hour)
 		if not ok:
+			_emit_write_event(character, item_name, title, "failure", "写入王室薪水记录失败")
 			return {"ok": false, "message": "写入王室薪水记录失败"}
+		_emit_write_event(character, item_name, title, "success", "")
 		return {
 			"ok": true,
 			"message": "已记入王室薪水记录【%s】：%s" % [title, content],
@@ -42,16 +46,19 @@ static func run_write(character: Character, action_request: Dictionary) -> Dicti
 
 	# 通用路径：背包或附近容器找名为 item_name 的可书写道具。当前没有任何道具有 writable 标签
 	# / aspect → 一律失败。未来加 writable aspect 时在这里实现实物消耗+转化。
+	_emit_write_event(character, item_name, title, "failure", "你身上和附近都没有可书写的「%s」（也不是你能动的虚拟账册）" % item_name)
 	return {"ok": false, "message": "你身上和附近都没有可书写的「%s」（也不是你能动的虚拟账册）" % item_name}
 
 
 static func run_read(character: Character, action_request: Dictionary) -> Dictionary:
 	var target: Variant = action_request.get("target", {})
 	if typeof(target) != TYPE_DICTIONARY:
+		_emit_read_event(character, "", "failure", "read target must be object")
 		return {"ok": false, "message": "read target must be object"}
 	var t: Dictionary = target as Dictionary
 	var title := str(t.get("title", "")).strip_edges()
 	if title.is_empty():
+		_emit_read_event(character, title, "failure", "read 缺少 title")
 		return {"ok": false, "message": "read 缺少 title"}
 
 	var actor_id := character.backend_character_id()
@@ -59,10 +66,37 @@ static func run_read(character: Character, action_request: Dictionary) -> Dictio
 	# 脏检查：虚拟账册路径
 	if title == _ROYAL_PAYROLL_LEDGER and Db.is_member_of(actor_id, _ROYAL_TREASURER_GROUP):
 		var content := _read_royal_payroll_ledger(character, actor_id)
+		_emit_read_event(character, title, "success", "")
 		return {"ok": true, "message": content, "result": {"title": title, "content": content}}
 
 	# 通用路径：当前没有任何道具有 readable 标签 → 一律失败。
+	_emit_read_event(character, title, "failure", "你身上和附近都没有名为「%s」的可阅读物品（也不是你能动的虚拟账册）" % title)
 	return {"ok": false, "message": "你身上和附近都没有名为「%s」的可阅读物品（也不是你能动的虚拟账册）" % title}
+
+
+static func _emit_write_event(character: Character, item_name: String, title: String, outcome: String, error: String) -> void:
+	var data := {
+		"actorId": character.backend_character_id(),
+		"affectedCharacterIds": character.perception().voice_affected_character_ids("far"),
+		"itemName": item_name,
+		"title": title,
+		"outcome": outcome,
+	}
+	if not error.is_empty():
+		data["error"] = error
+	character.emit_world_event("write", data)
+
+
+static func _emit_read_event(character: Character, title: String, outcome: String, error: String) -> void:
+	var data := {
+		"actorId": character.backend_character_id(),
+		"affectedCharacterIds": character.perception().voice_affected_character_ids("far"),
+		"title": title,
+		"outcome": outcome,
+	}
+	if not error.is_empty():
+		data["error"] = error
+	character.emit_world_event("read", data)
 
 
 # 拼系统真值（mining_log 最近 N 个 game-day）+ 玛格达自己写过的所有条目，

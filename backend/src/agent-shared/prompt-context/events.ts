@@ -7,22 +7,20 @@ import { objectValue } from "../utils/primitives.js";
 
 const CHARACTER_CONTEXT_EVENT_TYPES = new Set(["character_context", "context_snapshot"]);
 
-// 自身专属事件：Godot 发出时 affectedCharacterIds=[actor]，只该进 actor 自己的时间线。
-// action_failed 的 data 里带 target.targetCharacterId（被说话对象），若按 target 匹配会
-// 漏进对方时间线——而它的渲染器硬编码 actor 为"你"，结果变成"你想对 你 说"且真正的
-// actor 被吞掉（见 action-failed.ts 的 self-only 不变式）。这里按 actor-only 收口。
-const SELF_ONLY_EVENT_TYPES = new Set(["action_failed"]);
-
 export function isCharacterContextEvent(event: WorldEventRecord): boolean {
   return CHARACTER_CONTEXT_EVENT_TYPES.has(event.type);
 }
 
 export function isEventRelevantToCharacter(event: WorldEventRecord, characterId: string): boolean {
   if (event.actorId === characterId) return true;
-  // 自身专属事件只认 actor，绝不因 target/affected 字段命中而漏进他人时间线。
-  if (SELF_ONLY_EVENT_TYPES.has(event.type)) return false;
 
   const data = event.data ?? {};
+  // backend 预提交失败仍是 actor-only；Godot 执行失败会把真实旁观者写进 affectedCharacterIds。
+  // action_failed.target 里可能有 targetCharacterId，但不能靠 target 推断可见性，否则未出口的
+  // backend 解析失败会漏进目标时间线。
+  if (event.type === "action_failed") {
+    return matchesCharacterIdList(data.affectedCharacterIds, characterId) || matchesCharacterIdList(data.affected_character_ids, characterId);
+  }
   const target = objectValue(data.target);
   if (
     matchesCharacterId(data.characterId, characterId)

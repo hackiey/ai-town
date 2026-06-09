@@ -17,13 +17,10 @@ export const WOKE_UP_EVENT = "woke_up";
 // Types that are recognized but don't have a typed data shape in world-events.ts
 // — ambient broadcasts and bookkeeping events.
 const AMBIENT_OR_UNHANDLED_EVENT_TYPES = [
-  "pick_up_item",
   "plant_seed",
   "water_crop",
   "harvest_crop",
   "remove_pest",
-  "write",
-  "read",
   "create_item",
   "weather_changed",
   "market_price_changed",

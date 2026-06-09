@@ -1,7 +1,6 @@
 // action_failed renderer. An actor's action was rejected (mechanic refused,
-// distance check failed, pre-submit validation failed…). Self-only by
-// construction (affectedCharacterIds = [actor]), so this line only ever renders
-// for the viewer-as-actor; observers never receive the event.
+// distance check failed, pre-submit validation failed…). Backend pre-submit
+// failures are actor-only; Godot-side failures may be visible to nearby observers.
 //
 // say_to failures get a dedicated phrasing that surfaces the attempted words and
 // the (resolved) target name; every other action falls back to a generic
@@ -14,6 +13,7 @@ import { SAY_TO_ACTION } from "../../godot-link/actions.js";
 import type { WorldEventRecord } from "../../godot-link/protocol.js";
 import type { ActionFailedEventData } from "../../godot-link/world-events.js";
 import { characterDisplayName, localizeText } from "../name-resolver/index.js";
+import { isSelfActor, renderActorLabel } from "./shared/actor-label.js";
 import { composeEventLine } from "./shared/compose.js";
 
 function str(value: unknown): string {
@@ -41,9 +41,17 @@ export function renderActionFailedEventLine(
   const data = (event.data ?? {}) as Partial<ActionFailedEventData>;
   const target = (data.target ?? {}) as Record<string, unknown>;
   const reason = humanizeReason(str(data.error), locale);
+  const self = isSelfActor(event.actorId, viewerId);
 
   let main: string;
-  if (data.action === SAY_TO_ACTION) {
+  if (!self) {
+    const labelKey = `prompt.context.action_label.${str(data.action)}`;
+    const actionLabel = str(data.action) && has(labelKey, locale) ? t(labelKey, locale) : str(data.action);
+    main = t("prompt.context.event.action_failed.other_generic_format", locale, {
+      actor: renderActorLabel(event.actorId, viewerId, locale),
+      action: actionLabel,
+    });
+  } else if (data.action === SAY_TO_ACTION) {
     const spokenRaw = str(data.spokenText) || str(target.text);
     const text = spokenRaw ? localizeText(spokenRaw) : "";
     const targetId = str(target.targetCharacterId);
@@ -67,6 +75,5 @@ export function renderActionFailedEventLine(
     });
   }
 
-  // Self-only event: no witness suffix, no attribute suffix.
-  return composeEventLine(event, viewerId, locale, main.trim(), { appendWitnesses: false });
+  return composeEventLine(event, viewerId, locale, main.trim());
 }

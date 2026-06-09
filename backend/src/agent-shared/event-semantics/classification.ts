@@ -14,6 +14,7 @@ import { WOKE_UP_EVENT } from "../../godot-link/events.js";
 import type { WorldEventRecord } from "../../godot-link/protocol.js";
 import { directSpeechTargetIds, eventActorId, isPlayerActor, resolveCharacterIdsForEvent } from "./actor.js";
 import { isSayToEventType } from "../event-descriptions/index.js";
+import { listCraftSlugs } from "../game-tools/craft-registry.js";
 
 export type EventSemanticKind = "hard_interrupt" | "sensory" | "ignored";
 export type EventInterruptKey = "hard" | "direct_speech" | "ambient_sensory";
@@ -28,9 +29,25 @@ export const ALWAYS_INTERRUPTING_EVENTS = new Set<string>([
   WOKE_UP_EVENT,
 ]);
 
-// give / container_put_take 加进 sensory 集合让旁观者落进 ambient_sensory（不打断只入历史）——
-// "附近的人会看到谁往货架/容器存取了什么"。give 的收发件人由专用分支 short-circuit。
-export const SENSORY_EVENT_TYPES = new Set<string>([SAY_TO_ACTION, "move_to_location", "give", "container_put_take"]);
+// 外界可感知动作进入 sensory 集合；旁观者落进 ambient_sensory（不打断，只入历史/待下次上下文）。
+// 直接互动（交易、赠送、对话）在下方专用分支升级成 direct_speech。
+export const SENSORY_EVENT_TYPES = new Set<string>([
+  SAY_TO_ACTION,
+  "move_to_location",
+  "give",
+  "container_put_take",
+  "view_container",
+  "use_item",
+  "pick_up_item",
+  "drop_item",
+  "brewed",
+  "went_to_sleep",
+  "write",
+  "read",
+  "plan_farm_work",
+  "action_failed",
+  ...listCraftSlugs(),
+]);
 
 export function classifyEventForCharacter(
   event: WorldEventRecord,
@@ -44,6 +61,13 @@ export function classifyEventForCharacter(
   // 1b. 交易提议事件：买家当面找卖家撮合，等同 direct_speech 语义。
   //     买家自己发出的忽略（自己已 pending tool 阻塞等回应，不需要 hard_interrupt 自己）。
   if (event.type === "trade_offer") {
+    if (eventActorId(event) === characterId) {
+      return { kind: "ignored" };
+    }
+    return { kind: "sensory", interruptKey: "direct_speech", direct: true };
+  }
+
+  if (event.type === "trade_response") {
     if (eventActorId(event) === characterId) {
       return { kind: "ignored" };
     }

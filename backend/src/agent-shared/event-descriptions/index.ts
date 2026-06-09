@@ -13,7 +13,7 @@ import type { Locale } from "../../i18n/index.js";
 import { SAY_TO_ACTION } from "../../godot-link/actions.js";
 import type { WorldEventRecord } from "../../godot-link/protocol.js";
 import { renderActionFailedEventLine } from "./action-failed.js";
-import { renderContainerPutTakeEventLine } from "./container.js";
+import { renderContainerPutTakeEventLine, renderViewContainerEventLine } from "./container.js";
 import { renderFallbackEventLine } from "./fallback.js";
 import { renderPlanFarmWorkEventLine } from "./farm.js";
 import {
@@ -23,7 +23,7 @@ import {
   renderWaterCropEventLine,
 } from "./farming.js";
 import { renderGiveEventLine } from "./give.js";
-import { renderDropItemEventLine, renderUseItemEventLine } from "./item.js";
+import { renderDropItemEventLine, renderPickUpItemEventLine, renderReadEventLine, renderUseItemEventLine, renderWriteEventLine } from "./item.js";
 import { renderMoveToLocationEventLine } from "./move.js";
 import { renderSayToEventLine } from "./say.js";
 import { renderWentToSleepEventLine, renderWokeUpEventLine } from "./sleep.js";
@@ -39,7 +39,9 @@ const RENDERERS: Record<string, EventLineRenderer> = {
   went_to_sleep: renderWentToSleepEventLine,
   woke_up: renderWokeUpEventLine,
   container_put_take: renderContainerPutTakeEventLine,
+  view_container: renderViewContainerEventLine,
   use_item: renderUseItemEventLine,
+  pick_up_item: renderPickUpItemEventLine,
   // Craft axis events 全部走同一个 workstation 渲染器（事件数据 shape 相同）。
   // 见 docs/proficiency_system.md + agent-shared/game-tools/craft-registry.ts。
   mine: renderUseWorkstationEventLine,
@@ -53,6 +55,8 @@ const RENDERERS: Record<string, EventLineRenderer> = {
   mill_grain: renderUseWorkstationEventLine,
   boil_salt: renderUseWorkstationEventLine,
   drop_item: renderDropItemEventLine,
+  write: renderWriteEventLine,
+  read: renderReadEventLine,
   give: renderGiveEventLine,
   move_to_location: renderMoveToLocationEventLine,
   plan_farm_work: renderPlanFarmWorkEventLine,

@@ -74,6 +74,7 @@
         "respond": "回应请求",
         "create_item": "创造物品",
         "use_item": "使用物品",
+        "sleep": "睡觉",
         "mine": "挖矿",
         "woodwork": "木工",
         "burn_charcoal": "烧炭",
@@ -87,7 +88,12 @@
         "water_crop": "浇水",
         "harvest_crop": "收割",
         "remove_pest": "除虫",
-        "plan_farm_work": "农事规划"
+        "plan_farm_work": "农事规划",
+        "put_take_container": "存取容器",
+        "view_container": "查看容器",
+        "brew": "酿酒",
+        "write": "书写",
+        "read": "阅读"
       },
       "status": {
         "pending": "等待中",
@@ -266,6 +272,7 @@
           "say_to_format": "（未成）你想对 {target} 说「{text}」：{reason}",
           "say_to_no_target_format": "（未成）你想开口说「{text}」：{reason}",
           "generic_format": "（未成）你尝试{action}没成：{reason}",
+          "other_generic_format": "{actor} 尝试{action}，但没成",
           "reason_unknown": "没成功"
         },
         "plan_farm_work": {

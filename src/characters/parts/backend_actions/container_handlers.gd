@@ -74,6 +74,97 @@ static func run_put_take_now(character: Character, action_request: Dictionary) -
 	return {"ok": true, "message": "\n".join(msg_lines), "result": {"moves": moves}}
 
 
+static func run_view_container(character: Character, action_request: Dictionary) -> Dictionary:
+	var target: Variant = action_request.get("target", {})
+	if typeof(target) != TYPE_DICTIONARY:
+		_emit_view_event(character, "", false, "failure", [], "view_container target must be object")
+		return {"ok": false, "message": "view_container target must be object"}
+	var t: Dictionary = target as Dictionary
+	var cid := str(t.get("containerId", ""))
+	var is_shelf := bool(t.get("isShelf", false))
+	if cid.is_empty():
+		_emit_view_event(character, cid, is_shelf, "failure", [], "view_container 缺少 containerId")
+		return {"ok": false, "message": "view_container 缺少 containerId"}
+	var node := _near_node(character, cid)
+	if node == null:
+		_emit_view_event(character, cid, is_shelf, "failure", [], "容器不在手边、看不见，或打不开")
+		return {"ok": false, "message": "容器不在手边、看不见，或打不开"}
+	var items := _view_container_items(node, is_shelf)
+	var label := node.effective_display_name()
+	var lines: Array[String] = []
+	for item_v in items:
+		var item: Dictionary = item_v as Dictionary
+		lines.append(str(item.get("line", "")))
+	var body := "；".join(lines) if not lines.is_empty() else "（空的）"
+	var message := "%s 里：\n%s" % [label, body]
+	_emit_view_event(character, cid, is_shelf, "success", items, "")
+	return {
+		"ok": true,
+		"message": message,
+		"result": {"containerId": cid, "label": label, "items": items, "message": message},
+	}
+
+
+static func _emit_view_event(character: Character, cid: String, is_shelf: bool, outcome: String, items: Array, error: String) -> void:
+	var data := {
+		"actorId": character.backend_character_id(),
+		"affectedCharacterIds": character.perception().voice_affected_character_ids("far"),
+		"containerId": cid,
+		"kind": "shelf" if is_shelf else "container",
+		"outcome": outcome,
+		"items": items,
+	}
+	var node: ContainerNode = null
+	if not cid.is_empty():
+		node = _near_node(character, cid)
+	if node != null:
+		data["label"] = node.effective_display_name()
+	if not error.is_empty():
+		data["error"] = error
+	character.emit_world_event("view_container", data)
+
+
+static func _view_container_items(node: ContainerNode, is_shelf: bool) -> Array:
+	var out: Array = []
+	if node == null:
+		return out
+	if node.is_infinite_source():
+		out.append({
+			"itemId": str(node.infinite_content),
+			"quantity": 1,
+			"content": str(node.infinite_content),
+			"amount": -1,
+			"line": "%s（无限）" % str(node.infinite_content),
+		})
+		return out
+	var index := 1
+	for slot_v in node.contents:
+		if typeof(slot_v) != TYPE_DICTIONARY:
+			continue
+		var slot: Dictionary = slot_v as Dictionary
+		var view := InventorySlotData.of(slot)
+		if view.is_empty():
+			continue
+		var item_id := str(slot.get("item_id", ""))
+		var quantity := int(slot.get("quantity", 0))
+		var line := "[%d] %s x%d" % [index, view.display_name(), quantity]
+		var row := {"itemId": item_id, "quantity": quantity, "index": index, "line": line}
+		var container := view.as_container()
+		if container != null and container.amount() > 0.0:
+			row["content"] = container.content_id()
+			row["amount"] = container.amount()
+			line += "（%s %.2fL）" % [container.content_id(), container.amount()]
+		if is_shelf and slot.get("listing_price_centi", null) != null:
+			var centi := int(slot.get("listing_price_centi", 0))
+			if centi > 0:
+				row["priceSilver"] = float(centi) / 100.0
+				line += " @ %.2f银" % (float(centi) / 100.0)
+		row["line"] = line
+		out.append(row)
+		index += 1
+	return out
+
+
 # 货架购买预检：从货架取带标价商品时，必须同次把足额银币付进同一货架钱包。
 # 多付不进入货架钱包，执行前把付款 transfer 裁到应付额，差额作为找零提示。
 static func _prepare_shelf_payments(character: Character, raw_transfers: Array) -> Dictionary:

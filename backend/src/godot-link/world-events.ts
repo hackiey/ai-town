@@ -88,6 +88,16 @@ export type ContainerPutTakeEventData = WorldEventDataBase & {
   moves: Array<{ kind?: string; itemId?: string; content?: string; amount?: number }>;
 };
 
+export type ViewContainerEventData = WorldEventDataBase & {
+  containerId: string;
+  label?: string;
+  kind?: "container" | "shelf";
+  outcome?: "success" | "failure";
+  items?: Array<Record<string, unknown>>;
+  message?: string;
+  error?: string;
+};
+
 export type BrewedEventData = WorldEventDataBase & {
   liters?: number;
   ceiling?: number;
@@ -137,6 +147,26 @@ export type DropItemEventData = WorldEventDataBase & {
   quantity: number;
 };
 
+export type PickUpItemEventData = WorldEventDataBase & {
+  itemId: string;
+  quantity?: number;
+  outcome?: "success" | "failure";
+  error?: string;
+};
+
+export type WriteEventData = WorldEventDataBase & {
+  itemName?: string;
+  title?: string;
+  outcome?: "success" | "failure";
+  error?: string;
+};
+
+export type ReadEventData = WorldEventDataBase & {
+  title?: string;
+  outcome?: "success" | "failure";
+  error?: string;
+};
+
 // ─── public finish (move_to_location / plan_farm_work) ───────────────
 // Emitted when actor finishes a durative action so others see "X arrived at Y".
 // `target` echoes the original ActionTarget (already canonical via actions.ts).
@@ -154,12 +184,11 @@ export type PlayerCommandEventData = WorldEventDataBase;
 
 // ─── action_failed ───────────────────────────────────────────────────
 // An actor's action was rejected (lua mechanic refused, distance check failed,
-// pre-submit validation failed…). Self-only by construction: affectedCharacterIds
-// = [actor], so observers never perceive it. Renders as a private "（未成）…" line
-// in the actor's own timeline. `action` is the original action type, `target` the
-// original ActionTarget, `error` the reject reason, `spokenText` the attempted
-// words for a failed say_to. Emitted by Godot (mechanic/distance rejects) or by
-// the backend (pre-submit failures in recordFailedAction).
+// pre-submit validation failed…). Backend pre-submit failures are actor-only
+// because no world action happened; Godot-side failures are visible to nearby
+// affected characters. Renderer shows detailed reason only to actor. `action` is
+// the original action type, `target` the original ActionTarget, `error` the reject
+// reason, `spokenText` the attempted words for a failed say_to.
 export type ActionFailedEventData = WorldEventDataBase & {
   action: string;
   target?: Record<string, unknown>;
@@ -175,8 +204,10 @@ export type WorldEventDataByType = {
   went_to_sleep: WentToSleepEventData;
   woke_up: WokeUpEventData;
   container_put_take: ContainerPutTakeEventData;
+  view_container: ViewContainerEventData;
   brewed: BrewedEventData;
   use_item: UseItemEventData;
+  pick_up_item: PickUpItemEventData;
   // Craft axis events —— 全部共用 WorkstationEventData shape。
   mine: WorkstationEventData;
   woodwork: WorkstationEventData;
@@ -192,6 +223,8 @@ export type WorldEventDataByType = {
   give: GiveEventData;
   move_to_location: PublicFinishEventData;
   plan_farm_work: PublicFinishEventData;
+  write: WriteEventData;
+  read: ReadEventData;
   player_command: PlayerCommandEventData;
   action_failed: ActionFailedEventData;
 };
@@ -209,8 +242,10 @@ const WORLD_EVENT_TYPE_MARKER: Record<WorldEventDataType, true> = {
   went_to_sleep: true,
   woke_up: true,
   container_put_take: true,
+  view_container: true,
   brewed: true,
   use_item: true,
+  pick_up_item: true,
   mine: true,
   woodwork: true,
   burn_charcoal: true,
@@ -225,6 +260,8 @@ const WORLD_EVENT_TYPE_MARKER: Record<WorldEventDataType, true> = {
   give: true,
   move_to_location: true,
   plan_farm_work: true,
+  write: true,
+  read: true,
   player_command: true,
   action_failed: true,
 };

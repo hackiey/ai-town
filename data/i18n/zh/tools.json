@@ -156,7 +156,8 @@
         "container": "目标货架或容器；必须使用 user prompt 中 # 当前附近 列出的货架 / 容器型工作台。"
       },
       "result_header": "{label} 里：",
-      "result_empty": "（空的）"
+      "result_empty": "（空的）",
+      "reason_format": "查看{label}"
     },
     "say_to": {
       "param": {

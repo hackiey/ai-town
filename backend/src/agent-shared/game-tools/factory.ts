@@ -112,7 +112,7 @@ export function createSharedGameAgentTools(options: CreateGameAgentToolsOptions)
   //   - brew：酿酒（装水酿酒桶+麦芽→发酵），无手艺门槛（品质由熟练度定）
   // 未来想加 proficiency gating 到 craft 工具时，**不要**误伤这些。
   tools.push(createPutTakeTool(options, characterId, options.currentContext, interrupts));
-  tools.push(createViewContainerTool(options.currentContext));
+  tools.push(createViewContainerTool(options, characterId, options.currentContext, interrupts));
   tools.push(createBrewTool(options, characterId, options.currentContext, interrupts));
 
   // 通信 / 交易 / 休息 / 兜底
