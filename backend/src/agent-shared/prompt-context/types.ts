@@ -110,9 +110,11 @@ export type WorkstationContext = {
   // container：内容物本身是液体容器（桶/瓶）时带液体量/发酵态，渲染层展示"水 50L / 啤酒 50L 酿造中"。
   items?: Array<{ index: number; slotIndex?: number; itemId: string; quantity: number; quality?: number; container?: { amount: number; content: string | null; fermenting?: boolean; ceiling?: number } }>;
   // 跨角色单占：非空 = 工作台正被该角色使用，他人调 use_workstation 会吃 workstation_busy。
-  // 装配时已剔除"自己"——actor 自己用着的工作台不渲染"使用中"后缀。
+  // 装配时已剔除"自己"——actor 自己用着的工作台仅靠 busy 渲染泛化"使用中"。
   // 容器恒空（容器允许多人并发翻箱）。
   currentOperatorName?: string;
+  // true = 有人在用。多占场景可能只写 busy、不写 currentOperatorName。
+  busy?: boolean;
 };
 
 export type ShelfListingContext = {
@@ -187,6 +189,8 @@ export type InteractiveSiteContext = {
   items?: Array<{ index: number; slotIndex?: number; itemId: string; quantity: number; quality?: number; container?: { amount: number; content: string | null; fermenting?: boolean; ceiling?: number } }>;
   // 跨角色单占。同 WorkstationContext.currentOperatorName：装配时已剔除自己，仅在被他人占用时填。
   currentOperatorName?: string;
+  // true = 有人在用；如果没有具体操作者名，渲染成泛化"使用中"。
+  busy?: boolean;
 };
 
 // 单条 item index entry：把 LLM 看到的 [N] 序号反解回具体 stack 的真 primary key。

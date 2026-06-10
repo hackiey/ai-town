@@ -3,6 +3,7 @@ import test from "node:test";
 import type { GameAgentContext } from "../src/agent-shared/prompt-context/types.js";
 import type { ActionLogRecord, WorldEventRecord } from "../src/godot-link/protocol.js";
 import { gameTimeSortValue, normalizeGameTime } from "../src/agent-shared/prompt-context/time.js";
+import { resolveInteractiveSite, resolveMoveTarget } from "../src/agent-shared/game-tools/targets.js";
 import { renderAgentEventsContext, renderAgentTurnContext } from "../src/runtimes/two-track-agent/prompt/context/renderer.js";
 import { renderTwoTrackAgentTurnUserMessage } from "../src/runtimes/two-track-agent/prompt/messages.js";
 
@@ -281,7 +282,139 @@ test("action turn prompt labels non-direct interactive sites as distant", () => 
   const rendered = renderAgentTurnContext(context);
 
   assert.match(rendered, /## 远处（10米）/);
+  assert.match(rendered, /1\. 【货架】：可使用：put \/ take；空货架/);
   assert.doesNotMatch(rendered, /需前往交互/);
+});
+
+test("action turn prompt wraps nearby location character and item names", () => {
+  const context = {
+    townId: "town_001",
+    characterId: "mira_blacksmith",
+    assembledAt: "2026-01-01T00:00:00.000Z",
+    relevantEventWindowHours: 8,
+    worldLore: [],
+    current: {
+      ...baseCurrentContext(),
+      currentLocation: "hale_bakery",
+      nearbyBuildings: { near: ["hale_bakery"], far: ["tavern"] },
+      nearbyCharacters: { near: [{ id: "edda_hale", status: { kind: "sleeping" } }], far: [] },
+      nearbyItems: { near: [], far: ["wood"] },
+    },
+    memory: { selfKnowledge: [], commonSense: [], skills: [], other: [], all: [] },
+    relevantEvents: [],
+    pendingEvents: [],
+    selfActionResults: [],
+  } as GameAgentContext;
+
+  const rendered = renderAgentTurnContext(context);
+
+  assert.match(rendered, /# 当前地点：\n【面包店】/);
+  assert.match(rendered, /附近（10米）：【面包店】/);
+  assert.match(rendered, /远方（50米）：【酒馆】/);
+  assert.match(rendered, /附近（3米）：【艾达·黑尔】（睡着了）/);
+  assert.match(rendered, /远处（10米）：【木材】/);
+});
+
+test("action turn prompt wraps interactive site names and marks workstation occupancy", () => {
+  const context = {
+    townId: "town_001",
+    characterId: "mira_blacksmith",
+    assembledAt: "2026-01-01T00:00:00.000Z",
+    relevantEventWindowHours: 8,
+    worldLore: [],
+    current: {
+      ...baseCurrentContext(),
+      proficiency: [{ skillId: "cooking", value: 40 }],
+      interactiveSites: [
+        {
+          id: "stove@hale_bakery",
+          displayName: "灶台",
+          ownerGroup: "hale_bakery",
+          kind: "workstation",
+          directlyInteractable: true,
+          availableActions: ["cook", "put", "take"],
+          verbs: ["bake"],
+          workstationId: "stove",
+          slotCount: 5,
+          storageUsed: 2,
+          storageSlotCount: 10,
+          currentOperatorName: "艾达·黑尔",
+          busy: true,
+        },
+        {
+          id: "workbench@hale_bakery",
+          displayName: "工作台",
+          ownerGroup: "hale_bakery",
+          kind: "workstation",
+          directlyInteractable: true,
+          availableActions: ["put", "take"],
+          verbs: [],
+          workstationId: "workbench",
+          busy: true,
+        },
+      ],
+    },
+    memory: { selfKnowledge: [], commonSense: [], skills: [], other: [], all: [] },
+    relevantEvents: [],
+    pendingEvents: [],
+    selfActionResults: [],
+  } as GameAgentContext;
+
+  const rendered = renderAgentTurnContext(context);
+
+  assert.match(rendered, /1\. 【灶台（黑尔面包店）】：可使用：cook \/ put \/ take，槽位 5，储物 2\/10（使用中：艾达·黑尔）/);
+  assert.match(rendered, /2\. 【工作台（黑尔面包店）】：可使用：put \/ take（使用中）/);
+});
+
+test("interactive site targets resolve with and without outer brackets", () => {
+  const current = {
+    ...baseCurrentContext(),
+    interactiveSites: [
+      {
+        id: "stove@hale_bakery",
+        displayName: "灶台",
+        ownerGroup: "hale_bakery",
+        kind: "workstation",
+        directlyInteractable: true,
+        availableActions: ["cook", "put", "take"],
+        workstationId: "stove",
+      },
+    ],
+  } as GameAgentContext["current"];
+
+  const filter = (site: GameAgentContext["current"]["interactiveSites"][number]) => site.kind === "workstation";
+
+  assert.equal(resolveInteractiveSite("【灶台（黑尔面包店）】", current, { filter })?.site.id, "stove@hale_bakery");
+  assert.equal(resolveInteractiveSite("灶台（黑尔面包店）", current, { filter })?.site.id, "stove@hale_bakery");
+  assert.equal(resolveInteractiveSite("灶台", current, { filter })?.site.id, "stove@hale_bakery");
+});
+
+test("move_to_location resolves bracketed interactive site targets", () => {
+  const current = {
+    ...baseCurrentContext(),
+    interactiveSites: [
+      {
+        id: "bakery_shelf_1",
+        displayName: "面包店货架",
+        ownerGroup: "hale_bakery",
+        kind: "shelf",
+        directlyInteractable: false,
+        availableActions: ["put", "take"],
+      },
+    ],
+  } as GameAgentContext["current"];
+
+  assert.deepEqual(resolveMoveTarget("【面包店货架（黑尔面包店）】", current), {
+    target: { locationId: "bakery_shelf_1" },
+    label: "【面包店货架（黑尔面包店）】",
+  });
+  assert.deepEqual(resolveMoveTarget("面包店货架（黑尔面包店）", current), {
+    target: { locationId: "bakery_shelf_1" },
+    label: "【面包店货架（黑尔面包店）】",
+  });
+  assert.deepEqual(resolveMoveTarget("【酒馆】"), { target: { locationId: "酒馆" }, label: "酒馆" });
+  assert.deepEqual(resolveMoveTarget("【鲁迪·泰特】"), { target: { characterId: "rudi_tate" }, label: "鲁迪·泰特" });
+  assert.deepEqual(resolveMoveTarget("【木材】"), { target: { itemId: "wood" }, label: "木材" });
 });
 
 test("action turn prompt separates put and take item lists", () => {
@@ -293,7 +426,7 @@ test("action turn prompt separates put and take item lists", () => {
     worldLore: [],
     current: {
       ...baseCurrentContext(),
-      backpack: ["[1] 银币 x55", "[2] 面粉 x3"],
+      backpack: ["[1] 【银币】 x55", "[2] 【面粉】 x3"],
       backpackCarryText: "1/50 kg",
     },
     memory: { selfKnowledge: [], commonSense: [], skills: [], other: [], all: [] },
@@ -306,7 +439,7 @@ test("action turn prompt separates put and take item lists", () => {
 
   assert.match(rendered, /## 可 put（从背包放出）/);
   assert.match(rendered, /put 只能使用下面“背包”里的 \[N\]/);
-  assert.match(rendered, /### 背包（负重：1\/50 kg）\n\[1\] 银币 x55\n\[2\] 面粉 x3/);
+  assert.match(rendered, /### 背包（负重：1\/50 kg）\n\[1\] 【银币】 x55\n\[2\] 【面粉】 x3/);
   assert.match(rendered, /## 可 take（拿到背包）/);
   assert.match(rendered, /无可 take 物品；当前不要调用 take。/);
   assert.ok(rendered.indexOf("## 可 put（从背包放出）") < rendered.indexOf("## 可 take（拿到背包）"));

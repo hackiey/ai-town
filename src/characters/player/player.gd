@@ -862,16 +862,91 @@ func _on_trade_completed(ok: bool, err: String, result: Dictionary, seller_label
 	_ok_owner("交易完成（%s）" % seller_label)
 
 
+# TradeRunner 在 NPC 向玩家发起交易时调用。只给手操玩家弹 UI；AI 托管玩家走
+# backend agent 的 trade_offer 事件响应，避免人和 AI 同时回应同一笔 pending。
+func notify_incoming_trade(trade: Dictionary) -> void:
+	if not RunMode.is_runtime():
+		return
+	if ai_controlled:
+		return
+	var payload := trade.duplicate(true)
+	if owner_peer_id == multiplayer.get_unique_id():
+		EventBus.incoming_trade_received.emit(payload)
+		return
+	_incoming_trade_offer_rpc.rpc_id(owner_peer_id, payload)
+
+
+@rpc("authority", "call_remote", "reliable")
+func _incoming_trade_offer_rpc(trade: Dictionary) -> void:
+	EventBus.incoming_trade_received.emit(trade)
+
+
+@rpc("any_peer", "call_remote", "reliable")
+func request_respond_trade(trade_id: String, response: String) -> void:
+	if not RunMode.is_runtime():
+		return
+	if _reject_if_not_owner("request_respond_trade"):
+		return
+	if _reject_if_ai_controlled("request_respond_trade"):
+		return
+	var tid := trade_id.strip_edges()
+	var resp := response.strip_edges()
+	if tid.is_empty():
+		_fail_owner("交易回应缺少 trade id")
+		return
+	if resp != "accept" and resp != "reject":
+		_fail_owner("交易回应无效：%s" % resp)
+		return
+	var trade := Db.find_trade_offer(tid)
+	if trade.is_empty() or str(trade.get("status", "")) != "pending":
+		_fail_owner("这笔交易已经失效")
+		return
+	if str(trade.get("to_character_id", "")) != backend_character_id():
+		_fail_owner("这笔交易不是发给你的")
+		return
+	var buyer_id := str(trade.get("from_character_id", "")).strip_edges()
+	if buyer_id.is_empty():
+		_fail_owner("交易缺少发起方")
+		return
+	var buyer_label := _trade_target_display_name(buyer_id)
+	var action_request := {
+		"id": "ui_respond_%d" % Time.get_ticks_msec(),
+		"action": "respond",
+		"target": {
+			"kind": "trade",
+			"buyerCharacterId": buyer_id,
+			"response": resp,
+		},
+	}
+	start_backend_action(action_request, func(ok: bool, err: String, result: Dictionary) -> void:
+		_on_incoming_trade_responded(ok, err, result, buyer_label, resp, tid)
+	)
+
+
+func _on_incoming_trade_responded(ok: bool, err: String, _result: Dictionary, buyer_label: String, response: String, trade_id: String) -> void:
+	if not ok:
+		_fail_owner("回应交易失败（%s）：%s" % [buyer_label, err])
+		var trade := Db.find_trade_offer(trade_id)
+		if not trade.is_empty() and str(trade.get("status", "")) == "pending":
+			notify_incoming_trade(trade)
+		return
+	if response == "accept":
+		_ok_owner("已接受 %s 的交易" % buyer_label)
+		return
+	_notify_owner("已拒绝 %s 的交易" % buyer_label, "warn")
+
+
 func _trade_target_display_name(target_id: String) -> String:
 	if target_id.is_empty():
 		return "对方"
-	for node in get_tree().get_nodes_in_group("npcs"):
-		if not (node is Character):
-			continue
-		var ch := node as Character
-		if ch.backend_character_id() == target_id:
-			var disp := ch.head_ui_display_name().strip_edges()
-			return disp if not disp.is_empty() else target_id
+	for group_name in ["npcs", "players"]:
+		for node in get_tree().get_nodes_in_group(group_name):
+			if not (node is Character):
+				continue
+			var ch := node as Character
+			if ch.backend_character_id() == target_id:
+				var disp := ch.head_ui_display_name().strip_edges()
+				return disp if not disp.is_empty() else target_id
 	return target_id
 
 
@@ -1843,7 +1918,7 @@ func _commit_craft_outcome(verb: String, workstation_id: String, sub_option: Str
 	):
 		staged_items = staged_items
 
-	var summary := WorkstationActionRunner.apply_outputs_to_character(self, result, {
+	var summary: Dictionary = WorkstationActionRunner.apply_outputs_to_character(self, result, {
 		"workstation_id": workstation_id,
 		"verb": verb,
 		"sub_option": sub_option,

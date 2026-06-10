@@ -117,6 +117,22 @@
       "line_format": "%s × %s",
       "qty_prompt_format": "%s × ? （最多 %d）"
     },
+    "incoming_trade": {
+      "title": "收到交易申请",
+      "subtitle_format": "%s 向你提出交易",
+      "section": {
+        "offer": "对方给你",
+        "request": "对方想要"
+      },
+      "button": {
+        "accept": "接受",
+        "reject": "拒绝"
+      },
+      "hint": "接受后会立刻撮合并扣除对方想要的物品；按 Esc 等同拒绝。",
+      "empty_offer": "（对方没有给出物品）",
+      "empty_request": "（对方没有要求物品）",
+      "line_format": "%s × %s"
+    },
     "inventory": {
       "title": "背包 (B 关闭)",
       "backpack_title": "背包栏",

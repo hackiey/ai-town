@@ -28,6 +28,7 @@ const GROUND_ITEM_HOVER_STATUS_SCRIPT := preload("res://src/ui/hud/ground_item_h
 const NPC_CONTEXT_MENU_SCRIPT := preload("res://src/ui/hud/npc_context_menu.gd")
 const AI_TAKEOVER_PANEL_SCRIPT := preload("res://src/ui/hud/ai_takeover_panel.gd")
 const TRADE_PANEL_SCRIPT := preload("res://src/ui/trade/trade_panel.gd")
+const INCOMING_TRADE_PANEL_SCRIPT := preload("res://src/ui/trade/incoming_trade_panel.gd")
 const WATER_DRAW_PANEL_SCRIPT := preload("res://src/ui/water_draw/water_draw_panel.gd")
 const SPLIT_PANEL_SCRIPT := preload("res://src/ui/split/split_panel.gd")
 const BREW_PANEL_SCRIPT := preload("res://src/ui/brewing/brew_panel.gd")
@@ -64,6 +65,7 @@ var _npc_hover_status: CanvasLayer = null
 var _ground_item_hover_status: GroundItemHoverStatus = null
 var _npc_context_menu: Node = null
 var _trade_panel: Node = null
+var _incoming_trade_panel: Node = null
 var _farm_proximity_active: Node = null  # client：当前最近 FarmGroup（≤ FARM_PROXIMITY_RADIUS）
 var _farm_proximity_accum: float = 0.0
 var _map_panel: MapPanel = null
@@ -294,6 +296,9 @@ func _init_client() -> void:
 	# 交易面板：右键 NPC → "提出交易" 时由 _on_npc_trade_selected 弹出。
 	_trade_panel = TRADE_PANEL_SCRIPT.new()
 	add_child(_trade_panel)
+	# 收到 NPC 发来的交易申请时弹出接受 / 拒绝面板。
+	_incoming_trade_panel = INCOMING_TRADE_PANEL_SCRIPT.new()
+	add_child(_incoming_trade_panel)
 
 	# 玩家地图面板：列出全城地点，点击直接前往。与 NPC prompt 全城地图同源。
 	_map_panel = MAP_PANEL_SCENE.instantiate()
@@ -444,6 +449,8 @@ func _bind_local_player(node: Node) -> void:
 		_farm_panel.set_player(node)
 	if _trade_panel != null:
 		_trade_panel.set_player(node)
+	if _incoming_trade_panel != null:
+		_incoming_trade_panel.set_player(node)
 	if _field_status_bubble_layer != null:
 		_field_status_bubble_layer.set_player(node)
 	if _map_panel != null:
@@ -472,6 +479,8 @@ func _on_player_despawned(node: Node) -> void:
 			_farm_panel.set_player(null)
 		if _trade_panel != null:
 			_trade_panel.set_player(null)
+		if _incoming_trade_panel != null:
+			_incoming_trade_panel.set_player(null)
 		if _field_status_bubble_layer != null:
 			_field_status_bubble_layer.set_player(null)
 

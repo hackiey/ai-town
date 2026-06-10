@@ -37,7 +37,7 @@
 |---|---|---|---|
 | 铁矿石 | `iron_mine` | `merrin_cairn` | 铁矿把头，负责铁矿石出料和挑矿 |
 | 燃料 | `charcoal_kiln` | `dain_soot` | 炭窑烧炭人，把 wood 烧成木炭供熔炉/盐锅 |
-| 木材 / 木杆 | `lumberyard` | `silas_coppice`, `garrick_ashby`, `fenn_coppice` | 三名低产量伐木工，主要供炭窑，也供木杆 |
+| 木材 / 木杆 | `lumberyard` | `silas_coppice`, `garrick_ashby`, `fenn_coppice` | 三名低产量伐木工；`chop_wood` 产 wood，木杆再用 `woodwork` 的 shaft 加工 |
 | 晾晒 / 亚麻种子 / 绳 / 纤维 | `general_store` | `cora_reed` | 杂货铺掌柜，兼管晾晒架、亚麻种子、绳和纤维供货 |
 | 冶炼 | `forge_yard` | `tilda_sparks` | 锻造场学徒，把铁矿石和木炭冶成铁锭 |
 | 成品 | `blacksmith_shop` | `owen_barclay` | 铁匠铺主匠，打铁刃并组装铁铲 |
@@ -83,7 +83,7 @@
 | 银矿 | `wilf_drake` | Wilf Drake | Peasant_Male_01 | 银矿矿工，稳手慢工，细细攒钱 |
 | 铁矿 | `merrin_cairn` | Merrin Cairn | Peasant_Female_01 | 铁矿把头，给铁匠铺供应铁矿石 |
 | 炭窑 | `dain_soot` | Dain Soot | Peasant_Male_01 | 炭窑烧炭人，给锻造场供应木炭 |
-| 伐木场 | `silas_coppice` | Silas Coppice | Peasant_Male_01 | 木料工，给铁铲链提供木材和木杆 |
+| 伐木场 | `silas_coppice` | Silas Coppice | Peasant_Male_01 | 木料工，砍木材并把合适木材削成铁铲链用木杆 |
 | 杂货店 | `cora_reed` | Cora Reed | Peasant_Female_01 | 杂货铺掌柜，给铁匠铺和伐木场供亚麻种子、绳与纤维，也管店外晾晒架 |
 | 铁匠铺 | `owen_barclay` | Owen Barclay | Peasant_Male_01 | 主匠，打铁刃并组装铁铲等工具 |
 | 锻造场 | `tilda_sparks` | Tilda Sparks | Peasant_Female_01 | 锻造学徒，负责烧炉和冶铁锭 |
@@ -93,7 +93,7 @@
 | 面包店 | `mara_hale` | Mara Hale | Peasant_Female_01 | 黑尔面包店帮工，揉面、打水、看炉 |
 | 磨坊 | `rudi_millward` | Rudi Millward | Peasant_Male_01 | 米尔沃德磨坊帮工，第二个磨坊工位 |
 | 港口磨坊 | `selma_rusk` | Selma Rusk | Peasant_Female_01 | 第二家磨坊主，给住户、客栈和酒馆供粉 |
-| 伐木场 | `garrick_ashby` | Garrick Ashby | Peasant_Male_01 | 低产量伐木工，供炭窑和木杆 |
+| 伐木场 | `garrick_ashby` | Garrick Ashby | Peasant_Male_01 | 低产量伐木工，供炭窑用木材和可加工柄料 |
 | 伐木场 | `fenn_coppice` | Fenn Coppice | Peasant_Female_01 | 低产量伐木工，负责分料和挑木 |
 | 训练场 | `keir_march` | Keir March | Peasant_Male_01 | 守卫队长，训练场四人编制之一，周薪由国库发放 |
 | 巡逻路线 | `sona_ward` | Sona Ward | Peasant_Female_01 | 镇守卫，和艾娃一起巡逻集市、面包店、酒馆和客栈 |

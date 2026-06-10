@@ -57,6 +57,8 @@
 
 ### 2.2 铁砧 anvil（verb = shape，sub_option 必选）
 
+> 铁砧 `shape` 当前只消耗 metal ingot；燃料只在 forge/fire 冶炼阶段消耗，不要在 anvil 输入里再加入 charcoal 或 wood。
+
 | sub_option | 输入 | 输出 | 难度 | 失败 |
 |---|---|---|---|---|
 | blade | metal ingot × 1 | flat_blade × 1（同材质） | 0.3 | 70% 扁了/退料 / 30% 碎了/废料 |

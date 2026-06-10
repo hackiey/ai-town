@@ -19,7 +19,7 @@
 |---|---|
 | alchemy_table | 炼金和药剂 |
 | charcoal_kiln | 烧炭 |
-| lumberyard_workstation | 伐木 |
+| lumberyard_workstation | chop，产木材 |
 | iron_mine、silver_mine、gold_mine | 采矿 |
 | mint | 铸币 |
 | treasury_vault | 国库相关 |

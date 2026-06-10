@@ -642,6 +642,7 @@ func _rebuild_anchor_index() -> void:
 	_workstation_location_ids.clear()
 	_owner_group_by_id.clear()
 	_site_meta_by_id.clear()
+	_dynamic_site_ids.clear()
 	_object_def_by_id.clear()
 	if positions_root != null:
 		for child in positions_root.get_children():
@@ -652,6 +653,24 @@ func _rebuild_anchor_index() -> void:
 		_register_waypoint_subtree(waypoints_root)
 	_register_workstations()
 	_register_farms()
+	_register_dynamic_sites_in_scene()
+
+
+func _register_dynamic_sites_in_scene() -> void:
+	if not RunMode.is_runtime():
+		return
+	var tree := get_tree()
+	if tree == null:
+		return
+	for group_name in ["npcs", "players"]:
+		for node in tree.get_nodes_in_group(group_name):
+			var character := node as Character
+			if character != null:
+				character.register_world_site()
+	for node in tree.get_nodes_in_group("ground_items"):
+		var item := node as GroundItem
+		if item != null:
+			item._register_world_site()
 
 
 # 所有 WorkstationNode 都注册为顶层 location（owner_group 仅作归属/招牌元数据）：

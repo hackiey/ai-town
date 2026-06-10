@@ -35,7 +35,9 @@
       "books": []
     },
     "smelting": {
-      "books": []
+      "books": [
+        "smelting_basics"
+      ]
     },
     "charcoal_making": {
       "books": []

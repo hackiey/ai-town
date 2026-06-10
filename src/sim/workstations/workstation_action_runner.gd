@@ -752,6 +752,10 @@ static func apply_outputs_to_storage(owner, storage_node: WorkstationNode, resul
 	return summary
 
 
+static func apply_outputs_to_character(owner, result: Dictionary, base_summary: Dictionary = {}) -> Dictionary:
+	return apply_outputs_to_storage(owner, null, result, base_summary)
+
+
 static func _sum_stack_quantities(value: Variant) -> int:
 	var total := 0
 	if value is Array:

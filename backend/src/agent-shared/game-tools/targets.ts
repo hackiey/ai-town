@@ -11,10 +11,11 @@ import {
   resolveNavigableSiteIdByName,
   resolveWorkstationIdByName,
 } from "../name-resolver/index.js";
-import { renderInteractiveSiteName } from "../entity-descriptions/site-naming.js";
+import { bracketInteractiveSiteName, renderInteractiveSiteName, renderInteractiveSiteTargetName } from "../entity-descriptions/site-naming.js";
+import { stripDisplayNameBrackets } from "../entity-descriptions/display-name-brackets.js";
 import type { AgentCurrentContext, InteractiveSiteContext, ItemIndexEntry } from "../prompt-context/types.js";
 import { craftSkipsInputs, getCraftSpec, type CraftSlug } from "./craft-registry.js";
-import { moveToCharacterPrefix, moveToItemPrefix, td } from "./i18n.js";
+import { td } from "./i18n.js";
 import type { ItemRefParam, PlanFarmWorkOpParams } from "./schemas.js";
 import type { MoveTargetError, MoveTargetResolution } from "./types.js";
 import type { PlanFarmWorkOp } from "../../godot-link/actions.js";
@@ -79,15 +80,18 @@ export function resolveInteractiveSite(
   const normalized = normalizeLocationInput(trimmed);
   for (const site of candidates) {
     const name = renderInteractiveSiteName(site);
+    const targetName = renderInteractiveSiteTargetName(site);
     const aliases = [
       name,
+      targetName,
       site.displayName,
+      bracketInteractiveSiteName(site.displayName),
       site.id,
       site.workstationId ?? "",
       site.locationId ?? "",
       // 旧 resolver 接受的两种合成形式，保留向后兼容（LLM 偶尔把 id 也括在后面）。
-      site.kind === "shelf" ? `${name} (${site.id})` : "",
-      site.kind === "workstation" && site.workstationId ? `${name} (${site.workstationId})` : "",
+      site.kind === "shelf" ? `${targetName} (${site.id})` : "",
+      site.kind === "workstation" && site.workstationId ? `${targetName} (${site.workstationId})` : "",
     ];
     if (aliases.some((alias) => alias && normalizeLocationInput(alias) === normalized)) {
       return { site, label: name };
@@ -98,43 +102,31 @@ export function resolveInteractiveSite(
 
 export function resolveMoveTarget(requestedLocation: string, currentContext?: AgentCurrentContext): MoveTargetResolution | MoveTargetError {
   const trimmed = requestedLocation.trim();
+  const unbracketed = stripDisplayNameBrackets(trimmed);
   const normalizedRequest = normalizeLocationInput(trimmed);
   const currentLocationLabel = td("common.current_location_value");
   if (["current_location", "current location", currentLocationLabel].map(normalizeLocationInput).includes(normalizedRequest)) {
     return { target: { locationId: currentLocationLabel }, label: currentLocationLabel };
   }
 
-  // 前缀 disambiguate（schema 鼓励 LLM 用这两个前缀；没用前缀时按 location 走）
-  const charPrefix = moveToCharacterPrefix();
-  if (trimmed.startsWith(charPrefix)) {
-    const raw = trimmed.slice(charPrefix.length).trim();
-    const id = resolveCharacterTargetId(raw, currentContext);
-    if (!id) {
-      return { error: t("error.unknown_character", getActiveLocale(), { character: raw }) };
-    }
-    return {
-      target: { characterId: id },
-      label: `${charPrefix}${characterName(id)}`,
-    };
-  }
-  const itemPrefix = moveToItemPrefix();
-  if (trimmed.startsWith(itemPrefix)) {
-    const raw = trimmed.slice(itemPrefix.length).trim();
-    const item = resolveItemTarget(raw, currentContext);
-    if (isMoveTargetError(item)) {
-      return item;
-    }
-    return {
-      target: { itemId: item.id },
-      label: `${itemPrefix}${item.label}`,
-    };
+  const interactiveSite = resolveInteractiveSite(trimmed, currentContext, { filter: () => true });
+  if (interactiveSite) {
+    return { target: { locationId: interactiveSite.site.id }, label: interactiveSite.label };
   }
 
-  const siteId = resolveNavigableSiteIdByName(trimmed);
+  const siteId = resolveNavigableSiteIdByName(unbracketed);
   if (siteId) {
     return { target: { locationId: siteId }, label: localizeStringValue(siteId) };
   }
-  return { target: { locationId: trimmed }, label: locationName(trimmed) };
+  const characterId = resolveCharacterTargetId(unbracketed, currentContext);
+  if (characterId) {
+    return { target: { characterId }, label: characterName(characterId) };
+  }
+  const itemId = resolveItemIdFromKnownNames(unbracketed, currentContext);
+  if (itemId) {
+    return { target: { itemId }, label: localizeStringValue(itemId) };
+  }
+  return { target: { locationId: unbracketed }, label: locationName(unbracketed) };
 }
 
 export function isMoveTargetError(value: unknown): value is MoveTargetError {
@@ -433,16 +425,17 @@ export function canonicalizeKnownTargetName(target: string | undefined, currentC
   if (!trimmed) {
     return undefined;
   }
-  const characterId = resolveCharacterTargetId(trimmed, currentContext);
+  const unbracketed = stripDisplayNameBrackets(trimmed);
+  const characterId = resolveCharacterTargetId(unbracketed, currentContext);
   if (characterId) {
     return characterId;
   }
-  const siteId = resolveNavigableSiteIdByName(trimmed);
+  const siteId = resolveNavigableSiteIdByName(unbracketed);
   if (siteId) {
     return siteId;
   }
-  const itemId = resolveItemIdFromKnownNames(trimmed, currentContext);
-  return itemId ?? trimmed;
+  const itemId = resolveItemIdFromKnownNames(unbracketed, currentContext);
+  return itemId ?? unbracketed;
 }
 
 // put / take 的统一目标解析：货架、容器型工作台与普通工作台储物都能命中。
@@ -552,16 +545,17 @@ function resolveCharacterTargetId(character: string, currentContext?: AgentCurre
   }
   const requested = normalizeNameInput(character);
   for (const entry of [...(currentContext?.nearbyCharacters.near ?? []), ...(currentContext?.nearbyCharacters.far ?? [])]) {
-    const aliases = [entry.id, characterName(entry.id)];
+    const id = resolveCharacterIdByName(entry.id) ?? entry.id;
+    const aliases = [id, characterName(id)];
     if (aliases.some((alias) => normalizeNameInput(alias) === requested)) {
-      return entry.id;
+      return id;
     }
   }
   return undefined;
 }
 
-// 用于 move_to_location 的 prefix 路径 / use_item.target / canonicalize 等"按字符串
-// 找一个 item id"的兜底（不带 index 的单一 name 解析）。具体堆叠请走 resolveItemByIndex —
+// 用于 move_to_location / use_item.target / canonicalize 等"按字符串找一个
+// item id"的兜底（不带 index 的单一 name 解析）。具体堆叠请走 resolveItemByIndex —
 // 此函数只回 itemDefId，不区分品质等 aspect。
 function resolveItemIdFromKnownNames(item: string, currentContext?: AgentCurrentContext): string | undefined {
   const direct = resolveItemIdByName(item);
@@ -586,13 +580,14 @@ function resolveItemIdFromKnownNames(item: string, currentContext?: AgentCurrent
 }
 
 function normalizeItemInput(value: string): string {
-  return value.trim().toLowerCase().replace(/\s+/g, " ");
+  return stripDisplayNameBrackets(value).trim().toLowerCase().replace(/\s+/g, " ");
 }
 
 function normalizeNameInput(value: string): string {
-  return value.trim().toLowerCase().replace(/\s*[（(][^()（）]+[)）]\s*$/u, "");
+  const withoutStatus = value.trim().replace(/\s*[（(][^()（）]+[)）]\s*$/u, "");
+  return stripDisplayNameBrackets(withoutStatus).trim().toLowerCase();
 }
 
 export function normalizeLocationInput(value: string): string {
-  return value.trim().toLowerCase().replaceAll("-", "_").replaceAll(" ", "_");
+  return stripDisplayNameBrackets(value).trim().toLowerCase().replaceAll("-", "_").replaceAll(" ", "_");
 }

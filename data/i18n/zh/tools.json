@@ -2,13 +2,11 @@
   "tool": {
     "common": {
       "current_location_value": "当前位置",
-      "move_to_character_prefix": "人物：",
-      "move_to_item_prefix": "物品：",
       "reason_description": "简短动作理由，建议不超过 80 字。只能基于上下文明示事实；不要包含背景回忆、心理独白或场景描写。",
       "do_nothing_reason_description": "本轮不执行任何行动的简短理由，建议不超过 80 字。",
       "agent_tool_reason_format": "agent 工具：{reason}",
       "runtime_pending_note": "runtime 正在执行，等待 completed/failed 回执。",
-      "item_ref_index": "所有 index 都必须来自当前「# 可取放物品（统一编号）」里实际显示的 [N]；没有显示的 index（包括 0）就是无效编号。直接照抄目标那一行的 [N]，不要自己重新编号。同名物品会分多行显示，必须同时提供 name 与 index 才能定位到具体那份堆叠。"
+      "item_ref_index": "所有 index 都必须来自当前「# 可取放物品（统一编号）」里实际显示的 [N]；没有显示的 index（包括 0）就是无效编号。直接照抄目标那一行的 [N]，不要自己重新编号。name 填同一行【】内的物品名本身，不要带【】。同名物品会分多行显示，必须同时提供 name 与 index 才能定位到具体那份堆叠。"
     },
     "tool_result": {
       "separator": "；",
@@ -74,7 +72,7 @@
     },
     "move_to_location": {
       "param": {
-        "location": "目标用以下来源中列出的名称：# 城镇地图（system prompt 中的全城地点总览，可直接前往）、# 周围地点 或 # 可交互地点&工作台&货架（含子地点）；走向远处的人物用 # 附近人物 远处（10米）行的名字；走向远处的物品用 # 附近物品 远处（10米）行的名字。填 「当前位置」 表示保持原地。禁止使用坐标。"
+        "location": "目标用以下来源中列出的名称：# 城镇地图（system prompt 中的全城地点总览，可直接前往）、# 周围地点 或 # 可交互地点&工作台&货架（含子地点；填写【】内完整名字本身，不要带【】）；走向远处的人物用 # 附近人物 远处（10米）行的名字；走向远处的物品用 # 附近物品 远处（10米）行的名字。填 「当前位置」 表示保持原地。禁止使用坐标。"
       },
       "label": "移动到地点",
       "description": "让你移动到 # 城镇地图 / # 周围地点 / # 可交互地点&工作台&货架 中列出的地点，或走向远处（10米）范围内的人物/物品。人物和物品只能选择远处列表里的目标；不要使用坐标。",
@@ -85,7 +83,7 @@
       "param": {
         "kind": "动作类型：plant 种植 / pest 除虫 / harvest 收获 / uproot 铲除（清掉占用 slot 的作物，多轮收获已结束或想替换品种时用）都按 slot 寻址；water 整片浇一次，不需要 slot_index。",
         "slot_index": "目标 slot 序号（0 起算，对应 # 当前附近农场 列表里的顺序）；water 不填。",
-        "seed": "plant 时使用的种子（{name, index}）。name 是 # 背包 中种子的显示名，index 是该行 [N] 序号。其他 kind 不填。",
+        "seed": "plant 时使用的种子（{name, index}）。name 是 # 背包 中该行【】内的种子名本身，不要带【】；index 是该行 [N] 序号。其他 kind 不填。",
         "farm": "目标农场名称；必须使用 user prompt 中 # 当前附近农场 段列出的农场名称（不在该段出现的农场行动会失败）。",
         "ops": "要按顺序执行的动作清单。角色会一个一个走过去做完，每个动作都消耗游戏时间和体力；体力不足时当前 op 失败并停止队列，中途被打断会把已完成项作为 result 回传。"
       },
@@ -104,7 +102,7 @@
       "label": "挖矿",
       "description": "在矿场（如金矿矿井、银矿矿井、铁矿矿井）挖矿产出对应矿石，背包里需有铁镐；如果矿场列在远处（10米）内，行动会包含走近并挖矿；会持续多次尝试，直到体力不够或被打断。",
       "param": {
-        "mine": "目标矿井名；必须照抄 user prompt 中 # 可交互地点&工作台&货架 段里列出的矿井名（例如「金矿矿井」，若名字带括号后缀也要一并照抄）。不要填英文 id；远处（10米）内也可以直接填写。"
+        "mine": "目标矿井名；必须照抄 user prompt 中 # 可交互地点&工作台&货架 段里【】内的矿井名本身，不要带【】；若名字内带归属括号后缀也要一并照抄。不要填英文 id；远处（10米）内也可以直接填写。"
       },
       "reason_default_format": "在 {label} 挖矿",
       "result_note": "result 含此次尝试的累计 outputs / 体力消耗 / 工具损坏情况；矿脉枯竭或体力耗尽会停止。"
@@ -113,8 +111,8 @@
       "label": "伐木",
       "description": "在伐木场砍木材，背包里需有斧头。lumberyard 填伐木台名，inputs 必填斧头；如果伐木台列在远处（10米）内，行动会包含走近并砍木。",
       "param": {
-        "lumberyard": "目标伐木台；必须照抄 user prompt 中 # 可交互地点&工作台&货架 段里列出的伐木台名（带括号后缀也一并照抄）。不要填英文 id；远处（10米）内也可以直接填写。",
-        "input_item": "从 # 背包 选择的斧头（{name, index}）；name=显示名，index=背包中该行 [N] 序号。",
+        "lumberyard": "目标伐木台；必须照抄 user prompt 中 # 可交互地点&工作台&货架 段里【】内的伐木台名本身，不要带【】；若名字内带归属括号后缀也要一并照抄。不要填英文 id；远处（10米）内也可以直接填写。",
+        "input_item": "从 # 背包 选择的斧头（{name, index}）；name=该行【】内显示名本身，不带【】；index=背包中该行 [N] 序号。",
         "inputs_array": "伐木工具清单，通常填一把铁斧。"
       },
       "reason_default_format": "在 {label} 伐木",
@@ -124,9 +122,9 @@
       "label": "木工",
       "description": "在工作台削木，只处理木工加工，不用于伐木。workstation 填工作台名，sub_option=plank/shaft，inputs 必填要削的木头。如果目标列在远处（10米）内，行动会包含走近并操作。",
       "param": {
-        "workstation": "目标工作台；必须照抄 user prompt 中 # 可交互地点&工作台&货架 段里列出的工作台名（带括号后缀也一并照抄）。不要填英文 id；远处（10米）内也可以直接填写。",
+        "workstation": "目标工作台；必须照抄 user prompt 中 # 可交互地点&工作台&货架 段里【】内的工作台名本身，不要带【】；若名字内带归属括号后缀也要一并照抄。不要填英文 id；远处（10米）内也可以直接填写。",
         "sub_option": "削木类型：plank=木板，shaft=木柄。",
-        "input_item": "从 # 背包 选择的输入木材（{name, index}）；name=显示名，index=背包中该行 [N] 序号。",
+        "input_item": "从 # 背包 选择的输入木材（{name, index}）；name=该行【】内显示名本身，不带【】；index=背包中该行 [N] 序号。",
         "inputs_array": "要削的木材清单。"
       },
       "reason_default_format": "在 {label} 做木工",
@@ -136,7 +134,7 @@
       "label": "烧炭",
       "description": "在炭窑把木材烧成木炭。inputs 必填（要烧的木材）。如果炭窑列在远处（10米）内，行动会包含走近并操作。",
       "param": {
-        "input_item": "从 # 背包 选择的木材（{name, index}）。",
+        "input_item": "从 # 背包 选择的木材（{name, index}）；name 填该行【】内显示名本身，不带【】。",
         "inputs_array": "要烧的木材清单。"
       },
       "reason_default_format": "在 {label} 烧炭",
@@ -144,11 +142,11 @@
     },
     "smelt": {
       "label": "冶炼",
-      "description": "熔炉把矿石熔成金属锭，铸币所把金属锭铸成硬币。inputs 必填，反应按 inputs 自动匹配。如果目标列在远处（10米）内，行动会包含走近并操作。",
+      "description": "熔炉把矿石熔成金属锭，铸币所把金/银矿石铸成硬币。inputs 必填，反应按 inputs 自动匹配。普通矿石冶炼一次只放 1 块矿石 + 1 份燃料；要炼多块矿石就分多次 smelt，不要把同类矿石一次塞一堆。如果目标列在远处（10米）内，行动会包含走近并操作。",
       "param": {
-        "workstation": "目标工作台；必须照抄 user prompt 中 # 可交互地点&工作台&货架 段里列出的熔炉或铸币所名（带括号后缀也一并照抄）。不要填英文 id；远处（10米）内也可以直接填写。",
-        "input_item": "从 # 背包 选择的输入材料（{name, index}）。",
-        "inputs_array": "要冶炼的矿石/金属清单。同种材料需要多个单位时重复填写。"
+        "workstation": "目标工作台；必须照抄 user prompt 中 # 可交互地点&工作台&货架 段里【】内的熔炉或铸币所名本身，不要带【】；若名字内带归属括号后缀也要一并照抄。不要填英文 id；远处（10米）内也可以直接填写。",
+        "input_item": "从 # 背包 选择的输入材料（{name, index}）；name 填该行【】内显示名本身，不带【】。",
+        "inputs_array": "要冶炼的材料清单。熔炉冶炼矿石填 1 块矿石 + 1 份燃料；铸币所填 1 块金矿石或银矿石且不加燃料；合金才按配方填写多个不同金属锭 + 燃料。不要为了批量冶炼而重复填写同类矿石。"
       },
       "reason_default_format": "在 {label} 冶炼",
       "result_note": "result 含产出和熟练度变化。"
@@ -158,7 +156,7 @@
       "description": "在铁砧把金属锭锻打成部件——sub_option=blade（扁刃/铁刃）/axe_head（斧头）/pick_head（镐头）。inputs 必填（金属锭）；不要额外加入燃料，燃料只用于 smelt/冶炼。如果铁砧列在远处（10米）内，行动会包含走近并操作。",
       "param": {
         "sub_option": "锻造部件：blade=扁刃/铁刃 / axe_head=斧头 / pick_head=镐头。",
-        "input_item": "从 # 背包 选择的输入材料（{name, index}）。",
+        "input_item": "从 # 背包 选择的输入材料（{name, index}）；name 填该行【】内显示名本身，不带【】。",
         "inputs_array": "金属锭清单；不要加入木炭或木头。同种材料需要多个单位时重复填写。"
       },
       "reason_default_format": "在 {label} 锻造",
@@ -169,7 +167,7 @@
       "description": "在工作台把零件组装成成品——sub_option=axe/knife/pick/sickle/shovel/rope。inputs 是各零件。如果工作台列在远处（10米）内，行动会包含走近并操作。",
       "param": {
         "sub_option": "成品类型：axe=斧头 / knife=刀 / pick=镐 / sickle=镰 / shovel=铲 / rope=绳。",
-        "input_item": "从 # 背包 选择的输入零件（{name, index}）。",
+        "input_item": "从 # 背包 选择的输入零件（{name, index}）；name 填该行【】内显示名本身，不带【】。",
         "inputs_array": "组装所需的零件清单。"
       },
       "reason_default_format": "在 {label} 装配",
@@ -180,7 +178,7 @@
       "description": "在炉灶烹饪。verb=bake 烤 / mix 拌煮。inputs 必填，反应按 inputs 自动匹配菜式。如果炉灶列在远处（10米）内，行动会包含走近并操作。",
       "param": {
         "verb": "烹饪方式：bake=烤 / mix=拌煮。具体菜式按 inputs 自动匹配。",
-        "input_item": "从 # 背包 选择的食材（{name, index}）。",
+        "input_item": "从 # 背包 选择的食材（{name, index}）；name 填该行【】内显示名本身，不带【】。",
         "inputs_array": "食材+燃料清单。同种材料需要多个单位时重复填写。"
       },
       "reason_default_format": "在 {label} 烹饪",
@@ -190,7 +188,7 @@
       "label": "草药炼金",
       "description": "在炼金台把草药、水、盐等材料调制成草药茶、药汤或药膏。inputs 必填，反应按输入药材自动匹配药方。如果炼金台列在远处（10米）内，行动会包含走近并操作。",
       "param": {
-        "input_item": "从 # 背包 选择的药材或辅料（{name, index}）。水通常在木桶/杯里，按背包里的水容器那一行填写。",
+        "input_item": "从 # 背包 选择的药材或辅料（{name, index}）；name 填该行【】内显示名本身，不带【】。水通常在木桶/杯里，按背包里的水容器那一行填写。",
         "inputs_array": "药材+水/盐等辅料清单。同种材料需要多个单位时重复填写。"
       },
       "reason_default_format": "在 {label} 调制草药",
@@ -200,7 +198,7 @@
       "label": "磨粉",
       "description": "在石磨把谷物磨成面粉。inputs 是谷物。如果石磨列在远处（10米）内，行动会包含走近并操作。",
       "param": {
-        "input_item": "从 # 背包 选择的谷物（{name, index}）。",
+        "input_item": "从 # 背包 选择的谷物（{name, index}）；name 填该行【】内显示名本身，不带【】。",
         "inputs_array": "要磨的谷物清单。"
       },
       "reason_default_format": "在 {label} 磨粉",
@@ -210,7 +208,7 @@
       "label": "煮盐",
       "description": "在盐田把盐水熬煮浓缩成盐。如果盐田列在远处（10米）内，行动会包含走近并操作。",
       "param": {
-        "input_item": "从 # 背包 选择的燃料（{name, index}）。",
+        "input_item": "从 # 背包 选择的燃料（{name, index}）；name 填该行【】内显示名本身，不带【】。",
         "inputs_array": "燃料（木炭或木头）。海水/卤水是盐场环境资源，不用背。"
       },
       "reason_default_format": "在 {label} 煮盐",
@@ -218,14 +216,14 @@
     },
     "put": {
       "label": "放入",
-      "description": "把背包里的物品放进附近货架、容器或工作台储物。put 不支持对人操作；to 不能填写人物名。to 填 # 可交互地点&工作台&货架 中的目标名；transfers 每条 {kind, item, amount, to_item?, price_silver?}。item 必须照抄 # 可取放物品（统一编号）里“背包”分组的 [N]。kind=item 时 amount 是个数或银币金额；kind=liquid 时 amount 是升，item 指背包里的液体容器，to_item 可指定目标里某个可盛装物品，不填则按饮品 serving_liters 转成离散份装物品放入目标。放到货架时可加 price_silver 标价。",
+      "description": "把背包里的物品放进附近货架、容器或工作台储物。put 不支持对人操作；to 不能填写人物名。to 填 # 可交互地点&工作台&货架 中【】内的目标名本身，不要带【】；transfers 每条 {kind, item, amount, to_item?, price_silver?}。item 必须照抄 # 可取放物品（统一编号）里“背包”分组的 [N]。kind=item 时 amount 是个数或银币金额；kind=liquid 时 amount 是升，item 指背包里的液体容器，to_item 可指定目标里某个可盛装物品，不填则按饮品 serving_liters 转成离散份装物品放入目标。放到货架时可加 price_silver 标价。",
       "reason_format": "把物品放进{label}",
       "param": {
-        "to": "目标货架、容器或工作台储物；不能填写人物名；必须使用 user prompt 中 # 可交互地点&工作台&货架 列出的附近目标名。",
+        "to": "目标货架、容器或工作台储物；不能填写人物名；必须使用 user prompt 中 # 可交互地点&工作台&货架 列出的附近目标名；填写【】内完整名字本身，不要带【】。",
         "transfer_kind": "item=搬离散物品；liquid=倒液体或按份装饮品",
-        "item": "要从背包放出的物品，使用 # 可取放物品（统一编号）里“背包”分组的 {name,index}",
+        "item": "要从背包放出的物品，使用 # 可取放物品（统一编号）里“背包”分组的 {name,index}；name 填该行【】内物品名本身，不带【】",
         "amount": "数量：item 按个数/银币金额，liquid 按升",
-        "to_item": "液体目标容器物，可选；使用附近货架/容器/工作台储物里的 {name,index}",
+        "to_item": "液体目标容器物，可选；使用附近货架/容器/工作台储物里的 {name,index}；name 填该行【】内物品名本身，不带【】",
         "price_silver": "放到货架时的标价；普通容器和工作台储物会忽略",
         "transfers": "放入列表"
       },
@@ -241,15 +239,15 @@
     },
     "take": {
       "label": "取出",
-      "description": "把附近地面、货架、容器或工作台储物里的物品拿到背包。take 不支持对人操作；from 不能填写人物名。from 填“附近地面”，或填 # 可交互地点&工作台&货架 中的目标名；transfers 每条 {kind, item?, amount, to_item?}。item 必须照抄 # 可取放物品（统一编号）里附近地面/货架/容器/工作台储物分组的 [N]；从水井打水时 kind=liquid、from 填水井、item 可省略，to_item 指背包里的木桶。take 货架上的带标价商品会自动从钱包扣钱并付给货架。",
+      "description": "把附近地面、货架、容器或工作台储物里的物品拿到背包。take 不支持对人操作；from 不能填写人物名。from 填“附近地面”，或填 # 可交互地点&工作台&货架 中【】内的目标名本身，不要带【】；transfers 每条 {kind, item?, amount, to_item?}。item 必须照抄 # 可取放物品（统一编号）里附近地面/货架/容器/工作台储物分组的 [N]；从水井打水时 kind=liquid、from 填水井、item 可省略，to_item 指背包里的木桶。take 货架上的带标价商品会自动从钱包扣钱并付给货架。",
       "reason_format": "从{label}取物品",
       "ground_target": "附近地面",
       "param": {
-        "from": "来源；不能填写人物名；填“附近地面”，或填 user prompt 中 # 可交互地点&工作台&货架 列出的附近货架、容器、工作台储物或水井目标名。",
+        "from": "来源；不能填写人物名；填“附近地面”，或填 user prompt 中 # 可交互地点&工作台&货架 列出的附近货架、容器、工作台储物或水井目标名；填写【】内完整名字本身，不要带【】。",
         "transfer_kind": "item=拿离散物品；liquid=倒液体或按份取出饮品",
-        "item": "要拿的物品；使用 # 可取放物品（统一编号）里附近地面或附近储物分组的 {name,index}。水井取水可省略。",
+        "item": "要拿的物品；使用 # 可取放物品（统一编号）里附近地面或附近储物分组的 {name,index}；name 填该行【】内物品名本身，不带【】。水井取水可省略。",
         "amount": "数量：item 按个数/银币金额，liquid 按升",
-        "to_item": "液体要倒进的背包容器物，可选；使用背包里的 {name,index}",
+        "to_item": "液体要倒进的背包容器物，可选；使用背包里的 {name,index}；name 填该行【】内物品名本身，不带【】",
         "price_silver": "take 不使用此字段",
         "transfers": "取出列表"
       },
@@ -294,25 +292,25 @@
     },
     "use_item": {
       "param": {
-        "item": "# 背包 列表中的物品名称（中文显示名），item.name 与 # 背包 中该行 [N] 后的名字一致。不能使用附近地面物品或未在背包中的物品。",
+        "item": "# 背包 列表中的物品；item.name 填该行【】内名字本身，不带【】；item.index 填该行 [N]。不能使用附近地面物品或未在背包中的物品。",
         "target": "上下文中的可选目标；作用于自己时填「自己」，也可以是角色、物体、物品或地点。"
       },
       "label": "使用物品",
-      "description": "只能使用当前 user prompt 的 # 背包 中列出的物品；不能直接使用附近地面物品、装备/持有但不在背包中的物品，或未在上下文中明示的物品。item 用 {name, index} 格式，index 是 # 背包 列表里该行行首 [N] 序号；同名不同品质的物品会分多行，必须用 index 区分。可以作用于上下文中的目标；作用于自己时 target 填「自己」。",
+      "description": "只能使用当前 user prompt 的 # 背包 中列出的物品；不能直接使用附近地面物品、装备/持有但不在背包中的物品，或未在上下文中明示的物品。item 用 {name, index} 格式，name 填该行【】内名字本身，不带【】，index 是 # 背包 列表里该行行首 [N] 序号；同名不同品质的物品会分多行，必须用 index 区分。可以作用于上下文中的目标；作用于自己时 target 填「自己」。",
       "reason_default_format": "使用 {item}"
     },
     "drop_item": {
       "param": {
-        "item": "# 背包 列表中的物品名称（中文显示名），item.name 与该行 [N] 后的名字一致。",
+        "item": "# 背包 列表中的物品；item.name 填该行【】内名字本身，不带【】；item.index 填该行 [N]。",
         "quantity": "本次丢下的数量；不填默认 1。同一栈想丢部分留部分时传 N，留下 (stackCount - N) 在栈里。"
       },
       "label": "丢下物品",
-      "description": "在你当前所在地点丢下背包中的物品。item 用 {name, index} 格式，index 是 # 背包 列表里该行行首 [N] 序号；同名不同品质的物品会分多行，必须用 index 区分要丢哪一栈。quantity 可选，默认 1；一栈多份想留一部分就传具体数量。\n注意：drop_item 只把物品扔在脚下的地面，不会送到任何人手里；想把东西交给身边的人请用 offer 工具（request 留空就是单向赠送，对方即时收到）。",
+      "description": "在你当前所在地点丢下背包中的物品。item 用 {name, index} 格式，name 填该行【】内名字本身，不带【】，index 是 # 背包 列表里该行行首 [N] 序号；同名不同品质的物品会分多行，必须用 index 区分要丢哪一栈。quantity 可选，默认 1；一栈多份想留一部分就传具体数量。\n注意：drop_item 只把物品扔在脚下的地面，不会送到任何人手里；想把东西交给身边的人请用 offer 工具（request 留空就是单向赠送，对方即时收到）。",
       "reason_format": "丢下 {item}"
     },
     "trade_line": {
       "param": {
-        "offer_item": "# 背包 列表中的物品名称（中文显示名）。你拿出来给对方的物品，必须用 {name, index} 指定背包中具体那份堆叠（同名不同品质 / 不同新鲜度会分多行）。",
+        "offer_item": "# 背包 列表中的物品。你拿出来给对方的物品，必须用 {name, index} 指定背包中具体那份堆叠；name 填该行【】内名字本身，不带【】（同名不同品质 / 不同新鲜度会分多行）。",
         "request_item": "你想从对方换到的物品名（中文显示名或英文 slug 均可）。对方背包对你不可见，所以只填 name 即可；成交时对方会从自己背包按名字履约。",
         "count": "数量。普通物品必须为正整数；silver_coin / gold_coin 允许小数（精度 0.01，对应银币剪开找零）。例：要付 0.75 银就写 {item:{name:\"silver_coin\", index:N}, count:0.75}，不要写 75。"
       },
@@ -324,7 +322,7 @@
     "offer": {
       "param": {
         "character": "接收方角色名。必须是 # 附近角色 中 3 米内的人；不在场或在远处需先 move_to_location 走近。",
-        "offer": "你拿出来的物品 [{item, count}, ...]，每项 item 走 # 背包 {name, index} 索引（name 用列表里看到的中文名），count 是数量。钱包里的银币直接列在 # 背包 顶部，照普通物品引用即可。count 对银币支持小数 0.01（0.75 = 0.75 银）；想付金币按 1 金=10 银 自己换算，例如付 1 金 = count: 10。\n你也可以把自家货架上挂着的货直接拿出来 offer（不必先收回背包）：只要你本人站在自家货架 3 米内，写上货名即可（背包里没有这件时，index 填 # 我的货架 里看到的该货序号），成交时会直接从货架 listing 上扣减。",
+        "offer": "你拿出来的物品 [{item, count}, ...]，每项 item 走 # 背包 {name, index} 索引（name 填该行【】内名字本身，不带【】），count 是数量。钱包里的银币直接列在 # 背包 顶部，照普通物品引用即可。count 对银币支持小数 0.01（0.75 = 0.75 银）；想付金币按 1 金=10 银 自己换算，例如付 1 金 = count: 10。\n你也可以把自家货架上挂着的货直接拿出来 offer（不必先收回背包）：只要你本人站在自家货架 3 米内，写上货名即可（背包里没有这件时，index 填 # 我的货架 里看到的该货序号），成交时会直接从货架 listing 上扣减。",
         "request": "你想换回的物品 [{item, count}, ...]，对方背包对你不可见所以 item 只填 name（中文或英文 slug 均可）。**留空数组 [] 就是单向赠送**——对方即时收到，不需要回应；非空就是议价交易，对方会用 respond(kind:\"trade\") 接受或拒绝。成交时对方先从自己背包履约；只要对方（货架主）本人站在自家货架 3 米内（你不必也在场），那货架上的同名上架货物也算对方可履约的库存。"
       },
       "label": "递交 / 交换",

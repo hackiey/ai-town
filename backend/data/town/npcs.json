@@ -8,7 +8,7 @@
     "mesh": "SM_Chr_Peasant_Male_01",
     "initial_wake_time": "06:08",
     "agent_models": {
-      "action": "dashscope:deepseek-v4-flash/off",
+      "action": "dashscope:deepseek-v4-flash/low",
       "thinking": "dashscope:glm-5.1"
     },
     "starting_inventory": [
@@ -84,7 +84,7 @@
   "alma_vale": {
     "name": "Alma Vale",
     "agent_models": {
-      "action": "dashscope:deepseek-v4-flash/off",
+      "action": "dashscope:deepseek-v4-flash/low",
       "thinking": "dashscope:glm-5.1"
     },
     "age": 36,
@@ -158,7 +158,7 @@
   "niko_vale": {
     "name": "Niko Vale",
     "agent_models": {
-      "action": "dashscope:deepseek-v4-flash/off",
+      "action": "dashscope:deepseek-v4-flash/low",
       "thinking": "dashscope:glm-5.1"
     },
     "age": 14,
@@ -229,7 +229,7 @@
   "elspeth_rowan": {
     "name": "Elspeth Rowan",
     "agent_models": {
-      "action": "dashscope:deepseek-v4-flash/off",
+      "action": "dashscope:deepseek-v4-flash/low",
       "thinking": "dashscope:glm-5.1"
     },
     "age": 42,
@@ -307,7 +307,7 @@
   "tavin_rowan": {
     "name": "Tavin Rowan",
     "agent_models": {
-      "action": "dashscope:deepseek-v4-flash/off",
+      "action": "dashscope:deepseek-v4-flash/low",
       "thinking": "dashscope:glm-5.1"
     },
     "age": 21,
@@ -374,7 +374,7 @@
   "lysa_rowan": {
     "name": "Lysa Rowan",
     "agent_models": {
-      "action": "dashscope:deepseek-v4-flash/off",
+      "action": "dashscope:deepseek-v4-flash/low",
       "thinking": "dashscope:glm-5.1"
     },
     "age": 17,
@@ -443,7 +443,7 @@
   "bram_holt": {
     "name": "Bram Holt",
     "agent_models": {
-      "action": "dashscope:deepseek-v4-flash/off",
+      "action": "dashscope:deepseek-v4-flash/low",
       "thinking": "dashscope:glm-5.1"
     },
     "age": 29,
@@ -511,7 +511,7 @@
   "aldric_voss": {
     "name": "Aldric Voss",
     "agent_models": {
-      "action": "dashscope:deepseek-v4-flash/off",
+      "action": "dashscope:deepseek-v4-flash/low",
       "thinking": "dashscope:glm-5.1"
     },
     "age": 51,
@@ -579,7 +579,7 @@
   "mirelle_hart": {
     "name": "Mirelle Hart",
     "agent_models": {
-      "action": "dashscope:deepseek-v4-flash/off",
+      "action": "dashscope:deepseek-v4-flash/low",
       "thinking": "dashscope:glm-5.1"
     },
     "age": 33,
@@ -647,7 +647,7 @@
   "greta_moss": {
     "name": "Greta Moss",
     "agent_models": {
-      "action": "dashscope:deepseek-v4-flash/off",
+      "action": "dashscope:deepseek-v4-flash/low",
       "thinking": "dashscope:glm-5.1"
     },
     "age": 67,
@@ -762,7 +762,7 @@
   "borin_ash": {
     "name": "Borin Ash",
     "agent_models": {
-      "action": "dashscope:deepseek-v4-flash/off",
+      "action": "dashscope:deepseek-v4-flash/low",
       "thinking": "dashscope:glm-5.1"
     },
     "age": 48,
@@ -860,7 +860,7 @@
   "harlan_dunn": {
     "name": "Harlan Dunn",
     "agent_models": {
-      "action": "dashscope:deepseek-v4-flash/off",
+      "action": "dashscope:deepseek-v4-flash/low",
       "thinking": "dashscope:glm-5.1"
     },
     "age": 47,
@@ -916,7 +916,7 @@
   "tomas_pike": {
     "name": "Tomas Pike",
     "agent_models": {
-      "action": "dashscope:deepseek-v4-flash/off",
+      "action": "dashscope:deepseek-v4-flash/low",
       "thinking": "dashscope:glm-5.1"
     },
     "age": 33,
@@ -974,7 +974,7 @@
   "wilf_drake": {
     "name": "Wilf Drake",
     "agent_models": {
-      "action": "dashscope:deepseek-v4-flash/off",
+      "action": "dashscope:deepseek-v4-flash/low",
       "thinking": "dashscope:glm-5.1"
     },
     "age": 28,
@@ -1032,7 +1032,7 @@
   "pella_moss": {
     "name": "Pella Moss",
     "agent_models": {
-      "action": "dashscope:deepseek-v4-flash/off",
+      "action": "dashscope:deepseek-v4-flash/low",
       "thinking": "dashscope:glm-5.1"
     },
     "age": 15,
@@ -1133,7 +1133,7 @@
   "jonas_millward": {
     "name": "Jonas Millward",
     "agent_models": {
-      "action": "dashscope:deepseek-v4-flash/off",
+      "action": "dashscope:deepseek-v4-flash/low",
       "thinking": "dashscope:glm-5.1"
     },
     "age": 52,
@@ -1218,7 +1218,7 @@
   "edda_hale": {
     "name": "Edda Hale",
     "agent_models": {
-      "action": "dashscope:deepseek-v4-flash/off",
+      "action": "dashscope:deepseek-v4-flash/low",
       "thinking": "dashscope:glm-5.1"
     },
     "age": 41,
@@ -1293,7 +1293,7 @@
   "magda_kerr": {
     "name": "Magda Kerr",
     "agent_models": {
-      "action": "dashscope:deepseek-v4-flash/off",
+      "action": "dashscope:deepseek-v4-flash/low",
       "thinking": "dashscope:glm-5.1"
     },
     "age": 36,
@@ -1358,7 +1358,7 @@
   "merrin_cairn": {
     "name": "Merrin Cairn",
     "agent_models": {
-      "action": "dashscope:deepseek-v4-flash/off",
+      "action": "dashscope:deepseek-v4-flash/low",
       "thinking": "dashscope:glm-5.1"
     },
     "age": 39,
@@ -1419,7 +1419,7 @@
   "garr_hollow": {
     "name": "Garr Hollow",
     "agent_models": {
-      "action": "dashscope:deepseek-v4-flash/off",
+      "action": "dashscope:deepseek-v4-flash/low",
       "thinking": "dashscope:glm-5.1"
     },
     "age": 34,
@@ -1515,7 +1515,7 @@
   "edda_vance": {
     "name": "Edda Vance",
     "agent_models": {
-      "action": "dashscope:deepseek-v4-flash/off",
+      "action": "dashscope:deepseek-v4-flash/low",
       "thinking": "dashscope:glm-5.1"
     },
     "age": 31,
@@ -1589,7 +1589,7 @@
   "silas_coppice": {
     "name": "Silas Coppice",
     "agent_models": {
-      "action": "dashscope:deepseek-v4-flash/off",
+      "action": "dashscope:deepseek-v4-flash/low",
       "thinking": "dashscope:glm-5.1"
     },
     "age": 34,
@@ -1656,7 +1656,7 @@
   "cora_reed": {
     "name": "Cora Reed",
     "agent_models": {
-      "action": "dashscope:deepseek-v4-flash/off",
+      "action": "dashscope:deepseek-v4-flash/low",
       "thinking": "dashscope:glm-5.1"
     },
     "age": 46,
@@ -1721,7 +1721,7 @@
   "owen_barclay": {
     "name": "Owen Barclay",
     "agent_models": {
-      "action": "dashscope:deepseek-v4-flash/off",
+      "action": "dashscope:deepseek-v4-flash/low",
       "thinking": "dashscope:glm-5.1"
     },
     "age": 44,
@@ -1800,7 +1800,7 @@
   "tilda_sparks": {
     "name": "Tilda Sparks",
     "agent_models": {
-      "action": "dashscope:deepseek-v4-flash/off",
+      "action": "dashscope:deepseek-v4-flash/low",
       "thinking": "dashscope:glm-5.1"
     },
     "age": 22,
@@ -1876,7 +1876,7 @@
   "mara_hale": {
     "name": "Mara Hale",
     "agent_models": {
-      "action": "dashscope:deepseek-v4-flash/off",
+      "action": "dashscope:deepseek-v4-flash/low",
       "thinking": "dashscope:glm-5.1"
     },
     "age": 19,
@@ -1941,7 +1941,7 @@
   "rudi_tate": {
     "name": "Rudi Tate",
     "agent_models": {
-      "action": "dashscope:deepseek-v4-flash/off",
+      "action": "dashscope:deepseek-v4-flash/low",
       "thinking": "dashscope:glm-5.1"
     },
     "age": 24,
@@ -1999,7 +1999,7 @@
   "selma_millward": {
     "name": "Selma Millward",
     "agent_models": {
-      "action": "dashscope:deepseek-v4-flash/off",
+      "action": "dashscope:deepseek-v4-flash/low",
       "thinking": "dashscope:glm-5.1"
     },
     "age": 50,
@@ -2071,7 +2071,7 @@
   "keir_march": {
     "name": "Keir March",
     "agent_models": {
-      "action": "dashscope:deepseek-v4-flash/off",
+      "action": "dashscope:deepseek-v4-flash/low",
       "thinking": "dashscope:glm-5.1"
     },
     "age": 40,
@@ -2127,7 +2127,7 @@
   "sona_ward": {
     "name": "Sona Ward",
     "agent_models": {
-      "action": "dashscope:deepseek-v4-flash/off",
+      "action": "dashscope:deepseek-v4-flash/low",
       "thinking": "dashscope:glm-5.1"
     },
     "age": 29,
@@ -2180,7 +2180,7 @@
   "garret_pell": {
     "name": "Garret Pell",
     "agent_models": {
-      "action": "dashscope:deepseek-v4-flash/off",
+      "action": "dashscope:deepseek-v4-flash/low",
       "thinking": "dashscope:glm-5.1"
     },
     "age": 23,
@@ -2235,7 +2235,7 @@
   "iva_stone": {
     "name": "Iva Stone",
     "agent_models": {
-      "action": "dashscope:deepseek-v4-flash/off",
+      "action": "dashscope:deepseek-v4-flash/low",
       "thinking": "dashscope:glm-5.1"
     },
     "age": 35,
@@ -2290,7 +2290,7 @@
   "osric_bell": {
     "name": "Osric Bell",
     "agent_models": {
-      "action": "dashscope:deepseek-v4-flash/off",
+      "action": "dashscope:deepseek-v4-flash/low",
       "thinking": "dashscope:glm-5.1"
     },
     "age": 43,
@@ -2347,7 +2347,7 @@
   "maeve_coop": {
     "name": "Maeve Coop",
     "agent_models": {
-      "action": "dashscope:deepseek-v4-flash/off",
+      "action": "dashscope:deepseek-v4-flash/low",
       "thinking": "dashscope:glm-5.1"
     },
     "age": 32,
@@ -2403,7 +2403,7 @@
   "garron_potter": {
     "name": "Garron Potter",
     "agent_models": {
-      "action": "dashscope:deepseek-v4-flash/off",
+      "action": "dashscope:deepseek-v4-flash/low",
       "thinking": "dashscope:glm-5.1"
     },
     "age": 37,
@@ -2489,7 +2489,7 @@
   "nell_millward": {
     "name": "Nell Millward",
     "agent_models": {
-      "action": "dashscope:deepseek-v4-flash/off",
+      "action": "dashscope:deepseek-v4-flash/low",
       "thinking": "dashscope:glm-5.1"
     },
     "age": 28,
@@ -2577,7 +2577,7 @@
   "iona_brine": {
     "name": "Iona Brine",
     "agent_models": {
-      "action": "dashscope:deepseek-v4-flash/off",
+      "action": "dashscope:deepseek-v4-flash/low",
       "thinking": "dashscope:glm-5.1"
     },
     "age": 45,
@@ -2634,7 +2634,7 @@
   "brenna_vail": {
     "name": "Brenna Vail",
     "agent_models": {
-      "action": "dashscope:deepseek-v4-flash/off",
+      "action": "dashscope:deepseek-v4-flash/low",
       "thinking": "dashscope:glm-5.1"
     },
     "age": 27,
@@ -2687,7 +2687,7 @@
   "rolan_teague": {
     "name": "Rolan Teague",
     "agent_models": {
-      "action": "dashscope:deepseek-v4-flash/off",
+      "action": "dashscope:deepseek-v4-flash/low",
       "thinking": "dashscope:glm-5.1"
     },
     "age": 34,
@@ -2740,7 +2740,7 @@
   "merek_gate": {
     "name": "Merek Gate",
     "agent_models": {
-      "action": "dashscope:deepseek-v4-flash/off",
+      "action": "dashscope:deepseek-v4-flash/low",
       "thinking": "dashscope:glm-5.1"
     },
     "age": 46,
@@ -2796,7 +2796,7 @@
   "oswin_locke": {
     "name": "Oswin Locke",
     "agent_models": {
-      "action": "dashscope:deepseek-v4-flash/off",
+      "action": "dashscope:deepseek-v4-flash/low",
       "thinking": "dashscope:glm-5.1"
     },
     "age": 52,
@@ -2849,7 +2849,7 @@
   "vera_clay": {
     "name": "Vera Clay",
     "agent_models": {
-      "action": "dashscope:deepseek-v4-flash/off",
+      "action": "dashscope:deepseek-v4-flash/low",
       "thinking": "dashscope:glm-5.1"
     },
     "age": 41,
@@ -2905,7 +2905,7 @@
   "tobin_reeve": {
     "name": "Tobin Reeve",
     "agent_models": {
-      "action": "dashscope:deepseek-v4-flash/off",
+      "action": "dashscope:deepseek-v4-flash/low",
       "thinking": "dashscope:glm-5.1"
     },
     "age": 29,
@@ -2961,7 +2961,7 @@
   "hugh_marrow": {
     "name": "Hugh Marrow",
     "agent_models": {
-      "action": "dashscope:deepseek-v4-flash/off",
+      "action": "dashscope:deepseek-v4-flash/low",
       "thinking": "dashscope:glm-5.1"
     },
     "age": 43,
@@ -3017,7 +3017,7 @@
   "hilda_fenwick": {
     "name": "Hilda Fenwick",
     "agent_models": {
-      "action": "dashscope:deepseek-v4-flash/off",
+      "action": "dashscope:deepseek-v4-flash/low",
       "thinking": "dashscope:glm-5.1"
     },
     "age": 39,
@@ -3074,7 +3074,7 @@
   "perrin_weft": {
     "name": "Perrin Weft",
     "agent_models": {
-      "action": "dashscope:deepseek-v4-flash/off",
+      "action": "dashscope:deepseek-v4-flash/low",
       "thinking": "dashscope:glm-5.1"
     },
     "age": 26,
@@ -3124,7 +3124,7 @@
   "milo_fallow": {
     "name": "Milo Fallow",
     "agent_models": {
-      "action": "dashscope:deepseek-v4-flash/off",
+      "action": "dashscope:deepseek-v4-flash/low",
       "thinking": "dashscope:glm-5.1"
     },
     "age": 24,
@@ -3180,7 +3180,7 @@
   "tessa_coop": {
     "name": "Tessa Coop",
     "agent_models": {
-      "action": "dashscope:deepseek-v4-flash/off",
+      "action": "dashscope:deepseek-v4-flash/low",
       "thinking": "dashscope:glm-5.1"
     },
     "age": 19,

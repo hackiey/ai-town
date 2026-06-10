@@ -87,6 +87,22 @@ test("take resolves nearby ground items", () => {
   }]);
 });
 
+test("take accepts bracketed names for compatibility", () => {
+  const ctx = putTakeContext();
+
+  const wire = buildTakeWire({
+    from: "【酒馆柜台（酒馆）】",
+    transfers: [{
+      kind: "item",
+      amount: 1,
+      item: { name: "【麦芽酒】", index: 2 },
+    }],
+  }, ctx);
+
+  assert.equal(wire[0].itemId, "beer");
+  assert.deepEqual(wire[0].from, { where: "node", containerId: "tavern_bar_shelf@tavern", slotIndex: 0, isShelf: true });
+});
+
 test("non-owner shelf context hides shelf wallet index", () => {
   const db = createShelfDb();
   try {

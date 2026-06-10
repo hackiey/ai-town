@@ -30,6 +30,10 @@ signal character_spoke(character_id: String, text: String, volume: String, targe
 # 都转成这条信号 → 聊天 log 渲染成系统行。level: "info" | "success" | "warn" | "error"。
 signal notification_posted(text: String, level: String)
 
+# NPC / 其他角色向本地玩家发起议价交易时，server 通过 Player RPC 推到 owner client，
+# 再由接收端转成这条信号；IncomingTradePanel 订阅并弹出接受/拒绝 UI。
+signal incoming_trade_received(trade: Dictionary)
+
 # 工作站交互（client only）：本地玩家进/出 workstation 的 Area3D 时由 workstation.gd 触发。
 # 由 ActionPanel 监听决定"E 键当前能开哪个工作站"。
 # 设计：docs/architecture/crafting-interaction.md §2.2

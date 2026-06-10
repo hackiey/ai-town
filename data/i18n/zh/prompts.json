@@ -62,7 +62,7 @@
         "playing_role_format": "# 你是 {name}"
       },
       "transferable_items": {
-        "usage": "说明：所有工具里的 item.index 都只照抄这里实际显示的 [N]；name 和 index 必须来自同一行。分组标题不参与编号，编号全局唯一。远处目标不展示物品，先移动靠近。",
+        "usage": "说明：所有工具里的 item.index 都只照抄这里实际显示的 [N]；name 填同一行【】内的物品名本身，不要带【】；name 和 index 必须来自同一行。分组标题不参与编号，编号全局唯一。远处目标不展示物品，先移动靠近。",
         "put_section": "可 put（从背包放出）",
         "put_usage": "put 只能使用下面“背包”里的 [N]；不要用 take 拿背包物品。",
         "take_section": "可 take（拿到背包）",
@@ -163,7 +163,8 @@
         "items_format": "里有 {items}",
         "items_locked": "里有什么（未持钥匙看不到）",
         "items_empty": "里空",
-        "in_use_by_format": "（使用中：{operator}）"
+        "in_use_by_format": "（使用中：{operator}）",
+        "in_use_format": "（使用中）"
       },
       "interactive_site": {
         "direct_heading": "附近",
@@ -443,7 +444,11 @@
           "active_work_line_format": "- {action}{targetSuffix}（状态={status}）{progressSuffix}",
           "active_work_target_format": " {target}",
           "active_work_progress_format": "；进度：{progress}",
-          "active_work_note": "这些事还没做完，仍在继续。",
+          "active_work_draw_water_action": "打水",
+          "active_work_draw_water_action_format": "正在从{target}打水；水会在完成回执后进桶，完成前即使背包仍显示空桶也不要再次打水",
+          "active_work_pour_liquid_action": "倒液体",
+          "active_work_item_action_format": "{action} {item}",
+          "active_work_note": "这些事还没做完，仍在后台继续；当前背包/地点快照可能还没反映完成结果，不要重复提交同一个动作。",
           "action_notice_prompt": "你之前一边处理其他事情、一边继续执行的行动现在有了结果。先阅读行动完成提醒，再决定是否需要继续对话或安排下一步。",
           "action_notice_continuation": "这是之前已经告知过“仍在进行中”的行动结果。不要重复提交已经完成的工作；如果仍需要回应别人，可以继续用 say_to。"
         }

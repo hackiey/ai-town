@@ -70,7 +70,7 @@
 ---
 
 ### C2. 玩家本人看不到自己的熟练度【原 #13】
-**问题**：DB / `character.get_proficiency_table` 已通用，Player 也读得到。但游戏 UI 里玩家本人没有任何窗口看到"我木工到了多少"。LLM 看得到（prompt context），玩家本人反而看不到。
+**问题**：DB / `character.get_proficiency_table` 已通用，Player 也读得到。但游戏 UI 里玩家本人没有任何窗口看到"我伐木/木工到了多少"。LLM 看得到（prompt context），玩家本人反而看不到。
 
 **做法**：在 character_attributes 面板（已存在）旁边加一个"手艺"标签页，复用 backend 的 tier 文案。
 

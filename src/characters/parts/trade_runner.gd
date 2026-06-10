@@ -115,6 +115,7 @@ func trade_create(seller_id: String, offer: Array, request: Array) -> Dictionary
 	# 选择性打断：若卖家正在 move_to_location，让对方腿停下来正面交易请求；其他身体动作
 	# （农事/工作台/睡觉/idle）不动，由对方 LLM 自决。
 	_interrupt_seller_walk_for_offer(seller_id, buyer_id)
+	_notify_player_seller_of_offer(seller_node, trade)
 	return {
 		"ok": true,
 		"trade_id": str(trade.get("trade_id", "")),
@@ -521,6 +522,14 @@ func _interrupt_seller_walk_for_offer(seller_id: String, buyer_id: String) -> vo
 	if seller_runner == null:
 		return
 	seller_runner.interrupt_walk("被 %s 的交易请求打断" % buyer_id)
+
+
+func _notify_player_seller_of_offer(seller: Character, trade: Dictionary) -> void:
+	if seller == null:
+		return
+	if not seller.has_method("notify_incoming_trade"):
+		return
+	seller.call("notify_incoming_trade", trade)
 
 
 # Wire contract: backend/src/godot-link/actions.ts. offer.characterId = seller (request 非空时);

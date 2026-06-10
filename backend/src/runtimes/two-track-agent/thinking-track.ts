@@ -7,7 +7,7 @@
 //   这样能避免和 action 轨在 (townId, characterId, agentKind) 唯一键上冲突。
 // - 只暴露长期记忆 update_memory 和收尾 write_working_memory。LLM 调 write_working_memory
 //   就把内容存进 runtime_storage，tool 自己 return 结束信号；我们读到 store 完成后 abort 当前 turn，省 token。
-// - 并发去重：requestThink 在 running 时只更新 queuedReason；当前 turn finally 检查并起一轮。
+// - 并发去重：requestThink 在 running 时把 reason 放入去重队列；当前 turn finally 检查并起下一轮。
 
 import { Agent, type AgentEvent, type AgentMessage, type AgentTool, type AgentToolResult } from "@mariozechner/pi-agent-core";
 import { Type, type Static } from "@mariozechner/pi-ai";
@@ -26,6 +26,7 @@ import {
   usageCostUsd,
   usageTokenCount,
 } from "../../agent-shared/utils/agent-message.js";
+import { gameTimeTotalMinutes } from "../../agent-shared/utils/game-time.js";
 import { createTwoTrackUpdateMemoryTool } from "./memory-tool.js";
 import { AgentContextBuilder } from "./prompt/context/builder.js";
 import {
@@ -41,7 +42,7 @@ import {
 } from "./prompt/context/renderer.js";
 import { formatGameTime } from "../../agent-shared/prompt-context/time.js";
 import { getActiveLocale, t } from "../../i18n/index.js";
-import type { WorkingMemorySnapshot } from "../../agent-shared/prompt-context/types.js";
+import type { AgentCurrentContext, WorkingMemorySnapshot } from "../../agent-shared/prompt-context/types.js";
 import type { PiAgentRuntimeLogger } from "./runtime.js";
 import { WORKING_MEMORY_STORAGE_KEY, readWorkingMemoryFromStorage } from "./runtime.js";
 
@@ -88,12 +89,13 @@ function createWriteWorkingMemorySchema() {
 export class ThinkingTrackSession {
   private readonly intervalGameMinutes: number;
   private latestObservedGameTime?: GameTimeSnapshot;
+  private latestObservedGameMinute?: number;
   private nextThinkGameMinute?: number;
   private running = false;
-  private queuedReason?: string;
+  private queuedReasons: string[] = [];
   private currentAgent?: Agent;
   // 当前 in-flight runOnce 的 promise wrapper。runThinkBlocking 用它判断是否要先等当前轮结束。
-  // requestThink 在 running 时只塞 queuedReason 直接返回，不暴露给外部 await——保持原 fire-and-forget 语义；
+  // requestThink 在 running 时只塞 queuedReasons 直接返回，不暴露给外部 await——保持原 fire-and-forget 语义；
   // 只有 runThinkBlocking 显式走 currentRun 才"必须等到我自己跑完"。
   private currentRun?: Promise<void>;
   private readonly contextBuilder = new AgentContextBuilder();
@@ -106,8 +108,11 @@ export class ThinkingTrackSession {
   get characterId(): string { return this.options.characterId; }
 
   observeGameTime(gameTime: GameTimeSnapshot | undefined): void {
-    if (!gameTime) return;
+    const minute = gameTimeTotalMinutes(gameTime);
+    if (minute == null) return;
+    if (this.latestObservedGameMinute != null && minute < this.latestObservedGameMinute) return;
     this.latestObservedGameTime = gameTime;
+    this.latestObservedGameMinute = minute;
   }
 
   // 由 PiAgentRuntime.onGameTime 派发。返回前推进时钟；若到达 nextThinkGameMinute → 请求一次 think。
@@ -126,8 +131,8 @@ export class ThinkingTrackSession {
 
   async requestThink(reason: string): Promise<void> {
     if (this.running) {
-      // 跑中再来：只记最早 reason，避免事件 burst 时排队过深。已经在跑就够新了。
-      if (!this.queuedReason) this.queuedReason = reason;
+      // 跑中再来：排队但按 reason 去重，既不吞掉后续事件，也避免同类 burst 无限堆积。
+      this.enqueueQueuedReason(reason);
       return;
     }
     await this.runWithLock(reason);
@@ -135,9 +140,8 @@ export class ThinkingTrackSession {
 
   async requestThinkIfTimelineBacklog(): Promise<void> {
     if (this.running) return;
-    const current = await this.options.ctx.getCurrentContext();
+    const current = await this.currentContextFromHost();
     if (!current) return;
-    this.observeGameTime(current.gameTime);
     const previousMemory = await readWorkingMemoryFromStorage(this.options.ctx.storage());
     const context = await this.contextBuilder.build({
       ctx: this.options.ctx,
@@ -179,8 +183,7 @@ export class ThinkingTrackSession {
         this.running = false;
         this.currentAgent = undefined;
         this.currentRun = undefined;
-        const queued = this.queuedReason;
-        this.queuedReason = undefined;
+        const queued = this.queuedReasons.shift();
         if (queued) {
           // 用 queueMicrotask 拆栈，避免同步递归导致栈深。
           queueMicrotask(() => { void this.requestThink(queued); });
@@ -196,7 +199,7 @@ export class ThinkingTrackSession {
   }
 
   private async runOnce(reason: string): Promise<void> {
-    const current = await this.options.ctx.getCurrentContext();
+    const current = await this.currentContextFromHost();
     if (!current) {
       this.options.logger?.info({
         townId: this.options.townId,
@@ -205,8 +208,6 @@ export class ThinkingTrackSession {
       }, "thinking track skipped: no perception manifest");
       return;
     }
-    this.observeGameTime(current.gameTime);
-
     const previousMemory = await readWorkingMemoryFromStorage(this.options.ctx.storage());
 
     const context = await this.contextBuilder.build({
@@ -403,6 +404,27 @@ export class ThinkingTrackSession {
     }
 
     if (runError) throw runError;
+  }
+
+  private enqueueQueuedReason(reason: string): void {
+    if (this.queuedReasons.includes(reason)) return;
+    this.queuedReasons.push(reason);
+  }
+
+  private async currentContextFromHost(): Promise<AgentCurrentContext | undefined> {
+    const fromManifest = await this.options.ctx.getCurrentContext();
+    if (!fromManifest) return undefined;
+    this.observeGameTime(fromManifest.gameTime);
+    this.alignCurrentGameTime(fromManifest);
+    return fromManifest;
+  }
+
+  private alignCurrentGameTime(current: AgentCurrentContext): void {
+    if (!this.latestObservedGameTime) return;
+    const latestMinute = gameTimeTotalMinutes(this.latestObservedGameTime);
+    const currentMinute = gameTimeTotalMinutes(current.gameTime);
+    if (latestMinute == null || (currentMinute != null && latestMinute < currentMinute)) return;
+    current.gameTime = this.latestObservedGameTime;
   }
 }
 

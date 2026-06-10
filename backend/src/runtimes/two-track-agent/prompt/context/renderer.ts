@@ -17,6 +17,7 @@ import {
   renderProficiencySection,
   renderTownMap,
 } from "../../../../agent-shared/prompt-context/sections.js";
+import { bracketDisplayName } from "../../../../agent-shared/entity-descriptions/display-name-brackets.js";
 import { characterDisplayName, characterName, localizeText, locationDescription } from "../../../../agent-shared/name-resolver/index.js";
 import { getFactBoundaryRules } from "../../../../agent-shared/entity-descriptions/lore.js";
 import { getSkillForBook } from "../../../../agent-shared/entity-descriptions/skill-catalog.js";
@@ -625,7 +626,7 @@ function renderBackpackSectionTitle(current: AgentCurrentContext, locale: Locale
 }
 
 function renderCharacterIdentity(characterId: string): string {
-  return characterName(characterId);
+  return bracketDisplayName(characterName(characterId));
 }
 
 function appendSection(sections: string[], title: string, body: string): void {

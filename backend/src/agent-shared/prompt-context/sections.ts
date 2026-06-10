@@ -8,6 +8,7 @@ import { craftForSkillId, craftForWorkstationVerb, skillIdForCraft } from "../ga
 import { characterName, localizeText, locationName, locationDescription, locationDirection, locationAccess } from "../name-resolver/index.js";
 import { workstationName, workstationDescription } from "../name-resolver/workstation.js";
 import { locationDescriptors, type LocationDescriptor } from "../name-resolver/source-data.js";
+import { bracketDisplayName } from "../entity-descriptions/display-name-brackets.js";
 import { renderInteractiveSiteName } from "../entity-descriptions/site-naming.js";
 import { getReactionsForCraft, type ReactionMeta } from "../../services/world-state/reaction-catalog.js";
 import type {
@@ -208,7 +209,8 @@ function collectSiteClauses(
     const storage = site.unlocked
       ? `储物 ${site.items?.length ?? 0}/${site.slotCount ?? "?"}`
       : t("prompt.context.workstation.items_locked", locale);
-    return [tools, lock, storage].filter((c) => c.length > 0);
+    const inUse = renderInUseClause(site, locale);
+    return [tools, lock, storage, inUse].filter((c) => c.length > 0);
   }
 
   // craft / direct 工作台：verbs 反查 craft 工具名，按 NPC 是否有 skill 标"（你不会）"。
@@ -220,11 +222,16 @@ function collectSiteClauses(
   const storage = site.storageSlotCount != null
     ? `，储物 ${site.storageUsed ?? 0}/${site.storageSlotCount}`
     : "";
-  const inUse = site.currentOperatorName
-    ? t("prompt.context.workstation.in_use_by_format", locale, { operator: site.currentOperatorName })
-    : "";
+  const inUse = renderInUseClause(site, locale);
   const head = `${tools}${slot}${storage}${inUse}`.replace(/^[，,；;]+/, "");
   return head ? [head] : [];
+}
+
+function renderInUseClause(site: InteractiveSiteContext, locale: Locale): string {
+  if (site.currentOperatorName) {
+    return t("prompt.context.workstation.in_use_by_format", locale, { operator: site.currentOperatorName });
+  }
+  return site.busy ? t("prompt.context.workstation.in_use_format", locale) : "";
 }
 
 // workstation verbs → craft tool 名集合（去重保序）。
@@ -313,13 +320,13 @@ function renderCharacterDistanceBandLines(
 }
 
 function displayContextEntry(entry: string, kind: "location" | "character" | "item"): string {
-  if (kind === "location") return locationName(entry);
-  if (kind === "character") return characterName(entry);
-  return localizeText(entry);
+  if (kind === "location") return bracketDisplayName(locationName(entry));
+  if (kind === "character") return bracketDisplayName(characterName(entry));
+  return bracketDisplayName(localizeText(entry));
 }
 
 function displayCharacterContextEntry(entry: CharacterContextEntry, locale: Locale): string {
-  const name = characterName(entry.id);
+  const name = bracketDisplayName(characterName(entry.id));
   const label = formatCharacterStatusLabel(entry.status, locale);
   if (!label) return name;
   return `${name}（${label}）`;
@@ -388,7 +395,7 @@ function renderTownMapLocation(
   locale: Locale,
 ): string {
   const dir = locationDirection(id, locale);
-  let head = `- **${locationName(id, undefined, locale)}**`;
+  let head = `- **${bracketDisplayName(locationName(id, undefined, locale))}**`;
   if (dir) head += `（${dir}）`;
   const body = [locationDescription(id, locale), locationAccess(id, locale)].filter(Boolean).join("");
   const headLine = body ? `${head}：${body}` : head;
@@ -408,10 +415,10 @@ function renderTownMapChildren(
     // 描述按 def 取工作台描述。move_to_location 用这个完整名字。
     const at = cid.indexOf("@");
     if (at > 0) {
-      return { name: locationName(cid, undefined, locale), desc: workstationDescription(cid.slice(0, at), locale) ?? "" };
+      return { name: bracketDisplayName(locationName(cid, undefined, locale)), desc: workstationDescription(cid.slice(0, at), locale) ?? "" };
     }
     const isLocation = Object.prototype.hasOwnProperty.call(descriptors, cid);
-    const name = isLocation ? locationName(cid, undefined, locale) : workstationName(cid);
+    const name = bracketDisplayName(isLocation ? locationName(cid, undefined, locale) : workstationName(cid));
     const desc = (isLocation ? locationDescription(cid, locale) : workstationDescription(cid, locale)) ?? "";
     return { name, desc };
   });
@@ -452,5 +459,5 @@ function renderLocationDistanceBandLines(
 // 漏成原始串进 prompt。aliasOverride 仍传，但 locationName 会忽略等于 id 的脏值。
 export function displayLocationContextEntry(entry: string, current: AgentCurrentContext): string {
   const override = current.visibleLocations.find((location) => location.id === entry)?.alias;
-  return locationName(entry, override);
+  return bracketDisplayName(locationName(entry, override));
 }

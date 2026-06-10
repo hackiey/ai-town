@@ -119,6 +119,22 @@
       "wallet_take": "Withdraw silver",
       "wallet_put_title": "Deposit silver",
       "wallet_take_title": "Withdraw silver"
+    },
+    "incoming_trade": {
+      "title": "Trade Request",
+      "subtitle_format": "%s proposed a trade",
+      "section": {
+        "offer": "They offer",
+        "request": "They want"
+      },
+      "button": {
+        "accept": "Accept",
+        "reject": "Reject"
+      },
+      "hint": "Accepting settles the trade immediately and removes the requested items from you. Esc rejects.",
+      "empty_offer": "(They offer nothing)",
+      "empty_request": "(They request nothing)",
+      "line_format": "%s x %s"
     }
   }
 }

@@ -27,6 +27,7 @@ import { getActiveLocale, t, type Locale } from "../../i18n/index.js";
 import { syncPlayerNameCacheFromDb } from "../name-resolver/player-name-cache.js";
 import { characterAttributeName } from "../name-resolver/index.js";
 import { refreshSiteCatalog } from "../name-resolver/site-catalog.js";
+import { bracketDisplayName } from "../entity-descriptions/display-name-brackets.js";
 import { getCraftSpec, listCraftSlugs, type CraftSlug } from "../game-tools/craft-registry.js";
 import { gameTimeFromRecord } from "./time.js";
 import type {
@@ -182,9 +183,9 @@ export function assembleAgentContextFromManifest(
     if (gc.band !== "near") continue;
     const name = names.item(gc.itemId);
     const contentStr = gc.amount > 0 && gc.content
-      ? `（${names.item(gc.content)} ${formatAmount(gc.amount)}）`
+      ? `（${bracketDisplayName(names.item(gc.content))} ${formatAmount(gc.amount)}）`
       : "（空）";
-    nearbyItemsRender.context.near.push(`[0] ${name}${contentStr}`);
+    nearbyItemsRender.context.near.push(`[0] ${bracketDisplayName(name)}${contentStr}`);
     const e: ItemIndexEntry = { itemDefId: gc.itemId, groundItemId: gc.instanceId };
     if (gc.amount > 0 && gc.content) e.containerContent = gc.content;
     nearbyItemsRender.entries.push(e);
@@ -384,12 +385,9 @@ function bandCharacterRefs(
   const near: CharacterContextEntry[] = [];
   const far: CharacterContextEntry[] = [];
   for (const ref of refs) {
-    // entry.id 改成已解析的中文名；renderer 那边 displayContextEntry 仍会再过一道 locationName
-    // / catalog，找不到就显示这个名字，名字一致性由本 resolver 兜底。
-    const displayId = names.character(ref.id) || ref.id;
     const p = presence.get(ref.id);
     const status = formatPresenceStatus(p, names);
-    const entry: CharacterContextEntry = status ? { id: displayId, status } : { id: displayId };
+    const entry: CharacterContextEntry = status ? { id: ref.id, status } : { id: ref.id };
     // direct 不适用 character，归入 near。
     (ref.band === "far" ? far : near).push(entry);
   }
@@ -487,7 +485,7 @@ function farmViewToContext(farm: FarmView, names: DisplayNameResolver, character
     if (tooWet) tags.push("过湿");
     if (tags.length === 0) tags.push("正常");
     // variety displayName 优先 catalog（hardcoded zh），其次 resolver（i18n / sqlite 兜底），最后 id。
-    const displayName = variety?.displayName || names.item(plot.varietyId) || plot.varietyId;
+    const displayName = bracketDisplayName(variety?.displayName || names.item(plot.varietyId) || plot.varietyId);
     const stageText = cropStageDisplayName(plot.varietyId, stage);
     slots.push({
       index: i,
@@ -593,6 +591,7 @@ function workstationViewToContext(
     storageUsed: storage?.used,
     storageSlotCount: storage?.capacity,
     currentOperatorName: occupiedByOther ? names.character(ws.currentOperatorId!) : undefined,
+    busy: ws.busy,
   };
 }
 
@@ -661,7 +660,7 @@ function buildShelfContexts(
       listings.push({
         index: 1,
         itemId: "silver_coin",
-        displayName: names.item("silver_coin"),
+        displayName: bracketDisplayName(names.item("silver_coin")),
         quantity: view.walletCenti / 100,
         priceCenti: 0,
         priceSilver: 0,
@@ -695,7 +694,7 @@ function shelfRowToListingContext(r: InventoryItemRow, names: DisplayNameResolve
     index,
     slotIndex: r.slotIndex,
     itemId: r.itemDefId,
-    displayName: names.item(r.itemDefId),
+    displayName: bracketDisplayName(names.item(r.itemDefId)),
     quantity: r.stackCount,
     priceCenti,
     priceSilver,
@@ -783,13 +782,13 @@ function buildStorageItemGroup(args: {
   const lines = [...rendered.lines];
   const entries = [...rendered.entries];
   if (args.walletCenti > 0) {
-    lines.unshift(`[1] ${args.names.item("silver_coin")} x${formatAmount(args.walletCenti / 100)}`);
+    lines.unshift(`[1] ${bracketDisplayName(args.names.item("silver_coin"))} x${formatAmount(args.walletCenti / 100)}`);
     entries.unshift({ itemDefId: "silver_coin" });
     for (let i = 1; i < lines.length; i++) {
       lines[i] = lines[i].replace(/^\[\d+\]/, `[${i + 1}]`);
     }
   }
-  return { id: args.id, displayName: args.displayName, lines, entries };
+  return { id: args.id, displayName: bracketDisplayName(args.displayName), lines, entries };
 }
 
 function stripStorageEntries(group: BuiltStorageItemGroup): StorageItemGroup {
@@ -838,6 +837,7 @@ function buildInteractiveSites(
     unlocked: ws.unlocked,
     items: ws.items,
     currentOperatorName: ws.currentOperatorName,
+    busy: ws.busy,
   }));
   const shelfSites: InteractiveSiteContext[] = shelves.map((shelf, index) => ({
     id: shelf.id,
@@ -845,6 +845,7 @@ function buildInteractiveSites(
     displayName: shelf.displayName || names.location(shelf.id) || `shelf_${index + 1}`,
     kind: "shelf",
     directlyInteractable: shelf.directlyInteractable ?? true,
+    ownerGroup: shelf.ownerGroup,
     availableActions: ["put", "take"],
   }));
   return [...farmSites, ...workstationSites, ...shelfSites];
@@ -899,7 +900,7 @@ function renderInventoryEntries(
   const entries: ItemIndexEntry[] = [];
   filtered.forEach((r, idx) => {
     const indexLabel = idx + 1;
-    const head = `[${indexLabel}] ${names.item(r.itemDefId)} x${r.stackCount}`;
+    const head = `[${indexLabel}] ${bracketDisplayName(names.item(r.itemDefId))} x${r.stackCount}`;
     const parts: string[] = [];
     const def = itemDefs.get(r.itemDefId);
     // tags 给 LLM 看分类信息（tool/metal、food/cooked、liquid_container、currency 等）。
@@ -936,7 +937,7 @@ function renderInventoryEntries(
       const capText = formatAmount(capacity);
       if (amountNum > 0 && typeof content === "string" && content.length > 0) {
         const fermNote = r.container?.fermenting ? `，酿造中（品质上限${r.container.ceiling ?? "?"}）` : "";
-        parts.push(`容量：${names.item(content)} ${formatAmount(amountNum)}/${capText}${fermNote}`);
+        parts.push(`容量：${bracketDisplayName(names.item(content))} ${formatAmount(amountNum)}/${capText}${fermNote}`);
       } else {
         parts.push(`容量：空 0/${capText}`);
       }
@@ -969,7 +970,7 @@ function prependWalletEntriesToBackpack(
   const walletLines = [
     t("prompt.context.inventory.wallet.silver_line_format", locale, {
       index: 1,
-      name: names.item("silver_coin"),
+      name: bracketDisplayName(names.item("silver_coin")),
       amount: formatAmount(walletCenti / 100),
     }),
   ];
@@ -998,10 +999,10 @@ function renderPerceivedItems(
   const entries: ItemIndexEntry[] = [];
   for (const ref of refs) {
     if (ref.band === "far") {
-      far.push(names.item(ref.id));
+      far.push(bracketDisplayName(names.item(ref.id)));
     } else {
       const indexLabel = entries.length + 1;
-      near.push(`[${indexLabel}] ${names.item(ref.id)}`);
+      near.push(`[${indexLabel}] ${bracketDisplayName(names.item(ref.id))}`);
       entries.push({ itemDefId: ref.id });
     }
   }
