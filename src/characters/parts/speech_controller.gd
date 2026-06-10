@@ -95,7 +95,8 @@ func emit_say(text: String, volume: String, target_character_id: String = "") ->
 func handle_remote_speech(text: String, volume: String, target_character_id: String, affected_character_ids: PackedStringArray) -> void:
 	if not _local_player_hears(affected_character_ids):
 		return
-	_character.head_status().show_speech_bubble(text)
+	var duration := _character.head_status().show_speech_bubble(text)
+	_character.play_speech_animation(duration)
 	EventBus.character_spoke.emit(_character.backend_character_id(), text, volume, target_character_id, affected_character_ids)
 
 

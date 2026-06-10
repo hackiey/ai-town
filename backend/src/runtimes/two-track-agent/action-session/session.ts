@@ -854,11 +854,6 @@ function reasonForClassification(classification: EventClassification): TurnReaso
   return reasonForClassifications([classification]);
 }
 
-// 兜底：上游字段写的是 nameZh / alias / 大小写不规范 slug 时，归一回内部 slug。
-function normalizeCharacterId(value: string): string {
-  return resolveCharacterIdByName(value) ?? value;
-}
-
 function isDoNothingToolResult(value: unknown): boolean {
   const result = objectValue(value);
   const details = objectValue(result?.details);

@@ -46,6 +46,7 @@ var _step_lift_remaining: float = 0.0   # 还要往上抬多少米
 # 醉酒走路踉跄：每 ~0.5s 掷一次，命中则原地停顿 ~0.6s（drunk 专属，生病不触发）。
 var _drunk_stumble_timer: float = 0.0
 var _drunk_stumble_check: float = 0.0
+var _speech_anim_token: int = 0
 const STEP_LIFT_DURATION := 0.12        # 抬起总时长（秒）
 # 标记当前 backend command 是 plan_farm_work（用 farm queue 实现）。Queue drain 时
 # 调用 _on_farm_queue_completed → 这里识别后把 summary 作为 result 回传给 backend ack。
@@ -452,6 +453,20 @@ func _enter_idle() -> void:
 
 func _current_anim_state() -> String:
 	return anim_state
+
+
+func play_speech_animation(duration: float) -> void:
+	if anim == null or duration <= 0.0 or not is_inside_tree():
+		return
+	var anim_name := CharacterVisualSetup.speech_animation_name(visible_mesh)
+	if not anim.has_animation(anim_name):
+		return
+	_speech_anim_token += 1
+	var token := _speech_anim_token
+	anim.play(anim_name, 0.0)
+	await get_tree().create_timer(duration).timeout
+	if token == _speech_anim_token and is_inside_tree():
+		_apply_anim_state(anim_state)
 
 
 func _default_sleep_needed_hours() -> float:

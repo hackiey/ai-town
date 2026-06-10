@@ -84,12 +84,12 @@ func attempt_cost() -> Dictionary:
 
 
 # 一次挖矿尝试：lua 用 math.random() < p 决定。计数永远写。
-# work_impair：醉酒/生病时临时压低有效命中率（不写回矿脉 currentP），同采矿熟练度一处口径。
+# work_impair 是 0..100 的醉酒/生病强度；currentP 是 0..1 概率，不能直接相减。
 func try_yield(mine_id: String, work_impair: float = 0.0) -> bool:
 	mine_id = mine_id_for_workstation(mine_id)
 	if Db.get_mine_state(mine_id).is_empty():
 		return false
-	var p: float = maxf(0.0, current_p(mine_id) - work_impair)
+	var p: float = clampf(current_p(mine_id) * Impairment.yield_mult(work_impair), 0.0, 1.0)
 	var result := MechanicHost.invoke("mining", "on_attempt", { "current_p": p })
 	var rv: Variant = result.get("return_value")
 	var success: bool = bool(rv) if (rv is bool) else false

@@ -87,13 +87,20 @@ func _unregister_world_site() -> void:
 	world.unregister_dynamic_site(TownWorld.ground_item_site_id(db_id), marker)
 
 
-# Spawner / hydrate 调。slot 会被深拷贝，原 dict 不动。label 由 _ready 统一刷（入树后
-# @onready 才解析），所以这里只写纯数据，不碰 _quantity_label。
+# Spawner / hydrate / slot 转化调。slot 会被深拷贝，原 dict 不动；若已入树且
+# item_id 变化，同步刷新动态 site 的 def_id，保证 AI 能按新模板 id 找到它。
 func setup(slot: Dictionary) -> void:
+	var old_item_id := item_id
+	var next_item_id := String(slot.get("item_id", ""))
+	var item_changed := is_inside_tree() and not old_item_id.is_empty() and not next_item_id.is_empty() and old_item_id != next_item_id
+	if item_changed:
+		_unregister_world_site()
 	slot_data = slot.duplicate(true)
-	item_id = String(slot.get("item_id", ""))
+	item_id = next_item_id
 	if is_node_ready():
 		_refresh_quantity_label()
+	if item_changed:
+		_register_world_site()
 
 
 func _refresh_quantity_label() -> void:

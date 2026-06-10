@@ -47,12 +47,11 @@ export async function submitAction(
   options: SubmitActionOptions = {},
 ): Promise<ActionLogRecord> {
   const now = new Date().toISOString();
-  const characterId = normalizeCharacterId(input.characterId);
   const target = input.target ?? {};
   const record: ActionLogRecord = {
     id: createMessageId("action"),
     townId: input.townId,
-    characterId,
+    characterId: input.characterId,
     action: input.action,
     target,
     reason: input.reason,
@@ -77,11 +76,10 @@ export async function submitAction(
 // 失败按时间合并进事件时间线，但不会污染 world_events。
 export function recordFailedAction(db: AppDb, input: SubmitActionInput, error: string): ActionLogRecord {
   const now = new Date().toISOString();
-  const characterId = normalizeCharacterId(input.characterId);
   const record: ActionLogRecord = {
     id: createMessageId("action"),
     townId: input.townId,
-    characterId,
+    characterId: input.characterId,
     action: input.action,
     target: input.target ?? {},
     reason: input.reason,
@@ -326,15 +324,11 @@ function requestCancelOpenActionForCharacter(
   }
 }
 
-function normalizeCharacterId(value: string): string {
-  return value;
-}
-
 function toActionSubmissionPayload(record: ActionLogRecord): ActionSubmission {
   return {
     id: record.id,
     townId: record.townId,
-    characterId: normalizeCharacterId(record.characterId),
+    characterId: record.characterId,
     action: record.action,
     target: record.target,
     reason: record.reason,

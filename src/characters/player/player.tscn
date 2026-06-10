@@ -1,10 +1,14 @@
-[gd_scene load_steps=9 format=3 uid="uid://bplayer3d0001"]
+[gd_scene load_steps=13 format=3 uid="uid://bplayer3d0001"]
 
 [ext_resource type="Script" path="res://src/characters/player/player.gd" id="1_player"]
 [ext_resource type="Script" uid="uid://mhnkxhoheim8" path="res://src/world/site_marker.gd" id="site_marker_script"]
 [ext_resource type="PackedScene" uid="uid://celevj4es5c3m" path="res://third-party/polygon-fantasy-kingdom/Assets/PolygonFantasyKingdom/Models/FantasyKingdom_Characters.fbx" id="2_fbx"]
 [ext_resource type="Animation" path="res://assets/animations/idle.res" id="3_idle"]
 [ext_resource type="Animation" path="res://assets/animations/walking.res" id="4_walk"]
+[ext_resource type="Animation" path="res://assets/animations/speak_male_01.res" id="5_speak_male_01"]
+[ext_resource type="Animation" path="res://assets/animations/speak_male_02.res" id="6_speak_male_02"]
+[ext_resource type="Animation" path="res://assets/animations/speak_female_01.res" id="7_speak_female_01"]
+[ext_resource type="Animation" path="res://assets/animations/speak_female_02.res" id="8_speak_female_02"]
 
 [sub_resource type="CapsuleShape3D" id="CapsuleShape_player"]
 radius = 0.24
@@ -12,8 +16,12 @@ height = 1.44
 
 [sub_resource type="AnimationLibrary" id="AnimationLibrary_main"]
 _data = {
-&"Idle": ExtResource("3_idle"),
-&"Walking": ExtResource("4_walk"),
+	&"Idle": ExtResource("3_idle"),
+	&"SpeakFemale1": ExtResource("7_speak_female_01"),
+	&"SpeakFemale2": ExtResource("8_speak_female_02"),
+	&"SpeakMale1": ExtResource("5_speak_male_01"),
+	&"SpeakMale2": ExtResource("6_speak_male_02"),
+	&"Walking": ExtResource("4_walk"),
 }
 
 [sub_resource type="SceneReplicationConfig" id="SceneReplicationConfig_player"]

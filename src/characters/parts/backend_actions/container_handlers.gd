@@ -520,7 +520,7 @@ static func _resolve_liquid_endpoint(character: Character, ep_v: Variant) -> Dic
 				return {"ok": false, "message": _msg("error.container.ground_missing")}
 			var gslot: Dictionary = gi.slot_data
 			var gcommit := func() -> void:
-				gi.slot_data = gslot
+				gi.setup(gslot)
 				Db.save_ground_item(gi.db_id, gi.item_id, gi.global_position, gslot)
 			return {"ok": true, "slot": gslot, "commit": gcommit, "label": gi.display_name()}
 	return {"ok": false, "message": _fmt("error.endpoint.unknown_format", [where])}

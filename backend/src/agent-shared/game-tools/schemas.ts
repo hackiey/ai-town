@@ -1,5 +1,5 @@
 import { StringEnum, Type, type Static } from "@mariozechner/pi-ai";
-import { getCraftSpec, type CraftSlug } from "./craft-registry.js";
+import { getCraftSpec } from "./craft-registry.js";
 import { td, toolReasonDescription } from "./i18n.js";
 
 // 历史上这些 schema 会把附近角色 / 工作台 / 货架等动态名字烤进 enum，每次感知变化都让

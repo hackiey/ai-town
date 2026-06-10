@@ -122,11 +122,11 @@ export function assembleAgentContextFromManifest(
     used: c.contents.filter((r) => r.itemDefId && r.stackCount > 0).length,
     capacity: c.slotCount,
   }]));
-  const workstationCtxs = workstationViews.map((ws) => workstationViewToContext(ws, groupIds, names, workstationBands, characterId, workstationStorageStats.get(ws.workstationNodeId)));
+  const workstationCtxs = workstationViews.map((ws) => workstationViewToContext(ws, names, workstationBands, characterId, workstationStorageStats.get(ws.workstationNodeId)));
   // containerCtxs 同时算出 containerItemIndex（容器内容 [N] → slotIndex 映射）。
   const containerItemIndex: Record<string, ItemIndexEntry[]> = {};
   const containerCtxs = standaloneContainerViews.map((c) => {
-    const built = containerViewToWorkstationContext(c, inventoryRows, groupIds, names, workstationBands);
+    const built = containerViewToWorkstationContext(c, inventoryRows, names, workstationBands);
     if (built.entries.length > 0) containerItemIndex[c.containerId] = built.entries;
     return built.context;
   });
@@ -569,7 +569,6 @@ function foldSlotDetails(slots: FarmSlotContext[]): string {
 
 function workstationViewToContext(
   ws: WorkstationView,
-  characterGroupIds: string[],
   names: DisplayNameResolver,
   bands: Map<string, PerceptionBand>,
   selfCharacterId: string,
@@ -599,7 +598,7 @@ function workstationViewToContext(
 // items 仅在 actor 持锁（或无锁）时填充；否则空数组表达"看得到容器但不知道里面"。
 // 输出 entries（容器内容的 [N] → {itemDefId, slotIndex} 映射）供工具反查；
 // 容器锁住时 entries 也为空。
-function containerViewToWorkstationContext(c: ContainerView, actorInventoryRows: InventoryItemRow[], characterGroupIds: string[], names: DisplayNameResolver, bands: Map<string, PerceptionBand>): { context: WorkstationContext; entries: ItemIndexEntry[] } {
+function containerViewToWorkstationContext(c: ContainerView, actorInventoryRows: InventoryItemRow[], names: DisplayNameResolver, bands: Map<string, PerceptionBand>): { context: WorkstationContext; entries: ItemIndexEntry[] } {
   const locked = !!c.lockItemId;
   const unlocked = !locked || actorInventoryRows.some((r) => r.itemDefId === c.lockItemId && r.stackCount > 0);
   const items: NonNullable<WorkstationContext["items"]> = [];

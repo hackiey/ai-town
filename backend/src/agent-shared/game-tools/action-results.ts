@@ -208,25 +208,6 @@ function targetItemLabel(target: Record<string, unknown> | string, displayTarget
   return item ? localizeStringValue(item) : stripToolTargetPrefix(renderToolTarget(target));
 }
 
-function inspectContainerSummary(result: Record<string, unknown> | undefined): string {
-  const snapshot = objectField(result, ["snapshot"]);
-  const items = recordListValue(snapshot?.items ?? result?.items);
-  if (items.length === 0) {
-    return td("action.summary.container.empty");
-  }
-  return td("action.summary.container.items_format", { items: items.map(containerItemLabel).join(td("action.list_separator")) });
-}
-
-function containerItemLabel(entry: Record<string, unknown>): string {
-  const item = stringField(entry, ["itemId", "item_id", "item"]);
-  const quantity = numberField(entry, ["quantity", "qty", "count"]);
-  const quality = numberField(entry, ["quality"]);
-  const base = item ? localizeStringValue(item) : JSON.stringify(localizeValue(entry));
-  const quantityText = quantity == null ? "" : ` x${quantity}`;
-  const qualityText = quality == null ? "" : td("action.summary.container.quality_format", { quality });
-  return `${base}${quantityText}${qualityText}`;
-}
-
 // respond 目前只覆盖 kind=trade（accept/reject 交易）。未来扩 kind 时按 target.kind 分支。
 function respondSummary(result: Record<string, unknown> | undefined, target: Record<string, unknown> | string): string {
   const response = stringField(result ?? {}, ["response"])
@@ -257,19 +238,6 @@ function numberField(record: Record<string, unknown>, keys: string[]): number | 
     const value = record[key];
     if (typeof value === "number" && Number.isFinite(value)) {
       return value;
-    }
-  }
-  return undefined;
-}
-
-function objectField(record: Record<string, unknown> | undefined, keys: string[]): Record<string, unknown> | undefined {
-  if (!record) {
-    return undefined;
-  }
-  for (const key of keys) {
-    const value = record[key];
-    if (value && typeof value === "object" && !Array.isArray(value)) {
-      return value as Record<string, unknown>;
     }
   }
   return undefined;

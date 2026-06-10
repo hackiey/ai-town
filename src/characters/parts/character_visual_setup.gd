@@ -40,3 +40,11 @@ static func patch_animation_tracks(anim: AnimationPlayer) -> void:
 				var p := a.track_get_path(ti)
 				if p.get_subname_count() > 0 and String(p.get_subname(0)) == "Hips":
 					a.remove_track(ti)
+
+
+static func speech_animation_name(mesh_name: String) -> String:
+	var female := mesh_name.to_lower().find("female") >= 0
+	var names: Array[String] = ["SpeakMale1", "SpeakMale2"]
+	if female:
+		names = ["SpeakFemale1", "SpeakFemale2"]
+	return names[randi() % names.size()]

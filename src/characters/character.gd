@@ -332,6 +332,10 @@ func _current_anim_state() -> String:
 	return ""
 
 
+func play_speech_animation(_duration: float) -> void:
+	pass
+
+
 # alive 翻转后子类的物理善后（NavMesh 移除、RPC 停发、动画切死亡）。
 # Character 基类是 no-op；NPC / Player 后续按需 override。
 func _on_alive_changed() -> void:

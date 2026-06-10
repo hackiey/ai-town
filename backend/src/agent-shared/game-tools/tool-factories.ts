@@ -1,6 +1,5 @@
 import type { AgentTool, AgentToolResult, AgentToolUpdateCallback } from "@mariozechner/pi-agent-core";
 import type { GameTimeSnapshot } from "../../godot-link/protocol.js";
-import { getActiveLocale, t } from "../../i18n/index.js";
 import { localizeStringValue, resolveCharacterIdByName } from "../name-resolver/index.js";
 import type { AgentCurrentContext, ItemIndexEntry } from "../prompt-context/types.js";
 import { sayToThrottleMs } from "../say-to-throttle.js";
@@ -775,21 +774,6 @@ function resolveLiquidSourceEndpoint(ep: TransferEndpointParam, ctx?: AgentCurre
     throw new Error(td("brew.error.liquid_source_specific_item_format", { label: site.label }));
   }
   throw new Error(td("brew.error.liquid_endpoint_required"));
-}
-
-// 液体目标可以是具体液体容器，也可以是背包/容器/货架本身。
-// 后者由 Godot 端把桶装液体按 serving_liters 转成离散 drink item（如 beer）。
-function resolveLiquidDestinationEndpoint(ep: TransferEndpointParam, ctx?: AgentCurrentContext): ContainerEndpoint {
-  if (ep.item) {
-    return resolveContainerItemEndpoint(ep, ctx, td("brew.error.liquid_container_invalid"));
-  }
-  if (ep.container) {
-    const site = resolveContainerOrShelfTarget(ep.container, ctx);
-    if (isMoveTargetError(site)) throw new Error(site.error);
-    if (site.id === "well") throw new Error(td("brew.error.liquid_destination_well"));
-    return { where: "node", containerId: site.id, isShelf: site.kind === "shelf" };
-  }
-  return { where: "backpack" };
 }
 
 function resolveContainerItemEndpoint(ep: TransferEndpointParam, ctx: AgentCurrentContext | undefined, fallbackError: string): ContainerEndpoint {

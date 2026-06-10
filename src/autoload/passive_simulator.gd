@@ -93,6 +93,7 @@ func _fire(r: Dictionary, now_sec: float) -> void:
 		if gi == null:
 			continue
 		if _process_slot(r, gi.slot_data, PackedStringArray(), now_hours):
+			gi.setup(gi.slot_data)
 			Db.save_ground_item(gi.db_id, gi.item_id, gi.global_position, gi.slot_data)
 
 

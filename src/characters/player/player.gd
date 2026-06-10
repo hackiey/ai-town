@@ -89,6 +89,7 @@ var staged_items: Array = []
 
 var _step_assist_cooldown: float = 0.0
 var _step_lift_remaining: float = 0.0   # 还要往上抬多少米
+var _speech_anim_token: int = 0
 const STEP_LIFT_DURATION := 0.12        # 抬起总时长（秒）
 
 
@@ -195,6 +196,20 @@ func _patch_animation_tracks() -> void:
 
 func _current_anim_state() -> String:
 	return anim_state
+
+
+func play_speech_animation(duration: float) -> void:
+	if anim == null or duration <= 0.0 or not is_inside_tree():
+		return
+	var anim_name := CharacterVisualSetup.speech_animation_name(visible_mesh)
+	if not anim.has_animation(anim_name):
+		return
+	_speech_anim_token += 1
+	var token := _speech_anim_token
+	anim.play(anim_name, 0.0)
+	await get_tree().create_timer(duration).timeout
+	if token == _speech_anim_token and is_inside_tree():
+		_apply_anim_state(anim_state)
 
 
 func _default_sleep_needed_hours() -> float:

@@ -143,16 +143,17 @@ func apply_remote_thinking(active: bool) -> void:
 
 # ─── speech bubble ─────────────────────────────────────
 
-func show_speech_bubble(text: String) -> void:
+func show_speech_bubble(text: String) -> float:
 	_speech_text = text.strip_edges()
 	if _speech_text.is_empty():
 		_speech_bubble_remaining = 0.0
 		_update_process_state()
-		return
+		return 0.0
 	var dynamic_hold := _speech_units(_speech_text) / _SPEECH_BUBBLE_UNITS_PER_SEC
 	var hold := maxf(character.speech_bubble_hold_sec, dynamic_hold)
 	_speech_bubble_remaining = hold + character.speech_bubble_fade_sec
 	_update_process_state()
+	return _speech_bubble_remaining
 
 
 func _speech_units(text: String) -> float:

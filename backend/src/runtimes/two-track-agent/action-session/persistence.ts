@@ -41,9 +41,7 @@ export type SessionPersistenceOptions = {
 };
 
 // 管 agent_sessions 行 + agent_sessions_messages 队列追加。
-// AgentSession record 在 ensure() 时缓存，append/updateUsage 后更新。
 export class SessionPersistence {
-  private session?: AgentSessionRecord;
   private persistQueue: Promise<void> = Promise.resolve();
 
   constructor(private readonly options: SessionPersistenceOptions) {}
@@ -53,14 +51,12 @@ export class SessionPersistence {
   }
 
   async ensureSession(): Promise<AgentSessionRecord> {
-    const session = await this.options.ctx.sessions().ensure({
+    return await this.options.ctx.sessions().ensure({
       id: this.sessionId(),
       townId: this.options.townId,
       characterId: this.options.characterId,
       agentKind: this.options.agentKind,
     });
-    this.session = session;
-    return session;
   }
 
   // 等当前 append 队列排空。turn 入口在 build context 前调，确保 seq 顺序与 history 装配看到的一致。
@@ -88,7 +84,7 @@ export class SessionPersistence {
   private async persistMessage(message: AgentMessage, snapshot: PersistAgentMessageSnapshot): Promise<void> {
     const session = await this.ensureSession();
     const id = createMessageId("agent_msg");
-    const updated = await this.options.ctx.sessions().appendMessage({
+    await this.options.ctx.sessions().appendMessage({
       id,
       sessionId: session.id,
       townId: this.options.townId,
@@ -105,14 +101,12 @@ export class SessionPersistence {
     });
     const usage = assistantUsage(message);
     if (usage) {
-      this.session = await this.options.ctx.sessions().updateUsage({
+      await this.options.ctx.sessions().updateUsage({
         sessionId: session.id,
         usage,
         tokenCount: usageTokenCount(usage),
         costUsd: usageCostUsd(usage),
       });
-      return;
     }
-    this.session = updated;
   }
 }
