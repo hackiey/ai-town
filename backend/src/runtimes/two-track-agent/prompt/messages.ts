@@ -15,7 +15,11 @@ const PLAYER_COMMAND_EVENT_TYPE = "player_command";
 
 export function buildTwoTrackAgentBaseSystemPrompt(): string {
   const locale = getActiveLocale();
-  return `${t("prompt.agent.two_track.system", locale)}\n${t("prompt.agent.two_track.output_language_instruction", locale)}`;
+  return [
+    t("prompt.agent.two_track.system", locale),
+    t("prompt.agent.two_track.embodiment_instruction", locale),
+    t("prompt.agent.two_track.output_language_instruction", locale),
+  ].join("\n");
 }
 
 export function buildTwoTrackAgentTurnSystemPrompt(context: GameAgentContext): string {
@@ -48,12 +52,11 @@ export function renderTwoTrackAgentTurnUserMessage(
   const locale = getActiveLocale();
   const trimmedContext = contextWithoutPlayerCommands(context);
   const sections: (string | undefined)[] = [];
-  // user message 顺序：近期事件时间线 → working_memory → 现状（位置/属性/...）。
-  // 时间轴语义：先铺最近一段时间发生的事，再放 NPC 自己消化后的工作记忆，最后是当前世界快照。
-  // 事件段拆出来单独渲染，方便夹住 working_memory；working_memory 由 thinking 轨每 15 game-min 刷一次，
-  // 仍只挂在 user message（不放 system），避免污染 prompt cache。
-  sections.push(renderAgentEventsContext(trimmedContext));
+  // user message 顺序：working_memory → 原文事件分段 → 现状（位置/属性/...）。
+  // working_memory 是截至 compactedThrough 的总结；事件段仍保留完整原文，分清已总结细节与新发生事件。
+  // working_memory 仍只挂在 user message（不放 system），避免污染 prompt cache。
   sections.push(renderTwoTrackAgentWorkingMemoryBlock(context));
+  sections.push(renderAgentEventsContext(trimmedContext));
   sections.push(renderAgentTurnContext(trimmedContext));
   // active_work + tool_choice_hint 绑定：只有手上有活在跑时才出现，提醒 LLM 别随手调工具打断。
   // 空时整块跳过，避免每 turn 都塞「没活在跑」噪声 + 保持 prompt cache 稳定。

@@ -85,14 +85,14 @@
       "label": "移动到地点",
       "description": "让你移动到 # 城镇地图 / # 周围地点 / # 可交互地点&工作台&货架 中列出的地点，或走向远处（10米）范围内的人物/物品。人物和物品只能选择远处列表里的目标；不要使用坐标。",
       "reason_default_format": "前往 {label}",
-      "result_note": "Godot runtime 已返回移动终态；下一轮 context 会基于最新位置重新构造。"
+      "result_note": "移动已经完成；下一轮处境会基于最新位置重新构造。"
     },
     "plan_farm_work": {
       "param": {
         "kind": "动作类型：plant 种植 / pest 除虫 / harvest 收获 / uproot 铲除（清掉占用 slot 的作物，多轮收获已结束或想替换品种时用）都按 slot 寻址；water 整片浇一次，不需要 slot_index。",
         "slot_index": "目标 slot 序号（0 起算，对应 # 当前附近农场 列表里的顺序）；water 不填。",
         "seed": "plant 时使用的种子（{name, index}）。name 是 # 背包 中种子的显示名，index 是该行 [N] 序号。其他 kind 不填。",
-        "farm": "目标农场名称；必须使用 user prompt 中 # 当前附近农场 段列出的农场名称（不在该段出现的农场调用会被 Godot 拒掉）。",
+        "farm": "目标农场名称；必须使用 user prompt 中 # 当前附近农场 段列出的农场名称（不在该段出现的农场行动会失败）。",
         "ops": "要按顺序执行的动作清单。角色会一个一个走过去做完，每个动作都消耗游戏时间和体力；体力不足时当前 op 失败并停止队列，中途被打断会把已完成项作为 result 回传。"
       },
       "label": "规划农事",
@@ -108,18 +108,18 @@
     },
     "mine": {
       "label": "挖矿",
-      "description": "需要站在矿场附近（如金矿矿井、银矿矿井、铁矿矿井）。在矿场挖矿产出对应矿石，背包里需有铁镐；会持续多次尝试，直到体力不够或被打断。",
+      "description": "在矿场（如金矿矿井、银矿矿井、铁矿矿井）挖矿产出对应矿石，背包里需有铁镐；如果矿场列在远处（10米）内，行动会包含走近并挖矿；会持续多次尝试，直到体力不够或被打断。",
       "param": {
-        "mine": "目标矿井名；必须照抄 user prompt 中 # 当前附近工作台 段里列出的矿井名（例如「金矿矿井」，若名字带括号后缀也要一并照抄）。不要填英文 id。角色不在附近时调用会失败。"
+        "mine": "目标矿井名；必须照抄 user prompt 中 # 可交互地点&工作台&货架 段里列出的矿井名（例如「金矿矿井」，若名字带括号后缀也要一并照抄）。不要填英文 id；远处（10米）内也可以直接填写。"
       },
       "reason_default_format": "在 {label} 挖矿",
       "result_note": "result 含此次尝试的累计 outputs / 体力消耗 / 工具损坏情况；矿脉枯竭或体力耗尽会停止。"
     },
     "woodwork": {
       "label": "木工",
-      "description": "需要在伐木场或工作台附近。在伐木场砍木材（workstation 填伐木场名，不需 inputs）；在工作台削木（workstation 填工作台名 + sub_option=plank/shaft，inputs 必填要削的木头）。",
+      "description": "在伐木场砍木材（workstation 填伐木场名，不需 inputs）；在工作台削木（workstation 填工作台名 + sub_option=plank/shaft，inputs 必填要削的木头）。如果目标列在远处（10米）内，行动会包含走近并操作。",
       "param": {
-        "workstation": "目标工作台；必须照抄 user prompt 中 # 当前附近工作台 段里列出的伐木场或工作台名（带括号后缀也一并照抄）。不要填英文 id。角色不在附近时调用会失败。",
+        "workstation": "目标工作台；必须照抄 user prompt 中 # 可交互地点&工作台&货架 段里列出的伐木场或工作台名（带括号后缀也一并照抄）。不要填英文 id；远处（10米）内也可以直接填写。",
         "sub_option": "在 workbench 削木时必填：plank=木板，shaft=木柄。",
         "input_item": "从 # 背包 选择的输入材料（{name, index}）；name=显示名，index=背包中该行 [N] 序号。",
         "inputs_array": "削木时的材料清单。lumberyard 砍伐不需要填。"
@@ -129,7 +129,7 @@
     },
     "burn_charcoal": {
       "label": "烧炭",
-      "description": "需要在炭窑附近。把木材烧成木炭。inputs 必填（要烧的木材）。",
+      "description": "在炭窑把木材烧成木炭。inputs 必填（要烧的木材）。如果炭窑列在远处（10米）内，行动会包含走近并操作。",
       "param": {
         "input_item": "从 # 背包 选择的木材（{name, index}）。",
         "inputs_array": "要烧的木材清单。"
@@ -139,9 +139,9 @@
     },
     "smelt": {
       "label": "冶炼",
-      "description": "需要在熔炉或铸币所附近。熔炉把矿石熔成金属锭，铸币所把金属锭铸成硬币。inputs 必填，反应按 inputs 自动匹配。",
+      "description": "熔炉把矿石熔成金属锭，铸币所把金属锭铸成硬币。inputs 必填，反应按 inputs 自动匹配。如果目标列在远处（10米）内，行动会包含走近并操作。",
       "param": {
-        "workstation": "目标工作台；必须照抄 user prompt 中 # 当前附近工作台 段里列出的熔炉或铸币所名（带括号后缀也一并照抄）。不要填英文 id。角色不在附近时调用会失败。",
+        "workstation": "目标工作台；必须照抄 user prompt 中 # 可交互地点&工作台&货架 段里列出的熔炉或铸币所名（带括号后缀也一并照抄）。不要填英文 id；远处（10米）内也可以直接填写。",
         "input_item": "从 # 背包 选择的输入材料（{name, index}）。",
         "inputs_array": "要冶炼的矿石/金属清单。同种材料需要多个单位时重复填写。"
       },
@@ -150,7 +150,7 @@
     },
     "smith": {
       "label": "锻造",
-      "description": "需要在铁砧附近。把金属锭锻打成部件——sub_option=blade（刀片）/axe_head（斧头）/pick_head（镐头）。inputs 必填（金属锭 + 燃料）。",
+      "description": "在铁砧把金属锭锻打成部件——sub_option=blade（刀片）/axe_head（斧头）/pick_head（镐头）。inputs 必填（金属锭 + 燃料）。如果铁砧列在远处（10米）内，行动会包含走近并操作。",
       "param": {
         "sub_option": "锻造部件：blade=刀片 / axe_head=斧头 / pick_head=镐头。",
         "input_item": "从 # 背包 选择的输入材料（{name, index}）。",
@@ -161,7 +161,7 @@
     },
     "assemble": {
       "label": "装配",
-      "description": "需要在工作台附近。把零件组装成成品——sub_option=axe/knife/pick/sickle/shovel/rope。inputs 是各零件。",
+      "description": "在工作台把零件组装成成品——sub_option=axe/knife/pick/sickle/shovel/rope。inputs 是各零件。如果工作台列在远处（10米）内，行动会包含走近并操作。",
       "param": {
         "sub_option": "成品类型：axe=斧头 / knife=刀 / pick=镐 / sickle=镰 / shovel=铲 / rope=绳。",
         "input_item": "从 # 背包 选择的输入零件（{name, index}）。",
@@ -172,7 +172,7 @@
     },
     "cook": {
       "label": "烹饪",
-      "description": "需要在炉灶附近。verb=bake 烤 / mix 拌煮。inputs 必填，反应按 inputs 自动匹配菜式。",
+      "description": "在炉灶烹饪。verb=bake 烤 / mix 拌煮。inputs 必填，反应按 inputs 自动匹配菜式。如果炉灶列在远处（10米）内，行动会包含走近并操作。",
       "param": {
         "verb": "烹饪方式：bake=烤 / mix=拌煮。具体菜式按 inputs 自动匹配。",
         "input_item": "从 # 背包 选择的食材（{name, index}）。",
@@ -183,7 +183,7 @@
     },
     "alchemy": {
       "label": "草药炼金",
-      "description": "需要在炼金台附近。把草药、水、盐等材料调制成草药茶、药汤或药膏。inputs 必填，反应按输入药材自动匹配药方。",
+      "description": "在炼金台把草药、水、盐等材料调制成草药茶、药汤或药膏。inputs 必填，反应按输入药材自动匹配药方。如果炼金台列在远处（10米）内，行动会包含走近并操作。",
       "param": {
         "input_item": "从 # 背包 选择的药材或辅料（{name, index}）。水通常在木桶/杯里，按背包里的水容器那一行填写。",
         "inputs_array": "药材+水/盐等辅料清单。同种材料需要多个单位时重复填写。"
@@ -193,7 +193,7 @@
     },
     "mill_grain": {
       "label": "磨粉",
-      "description": "需要在石磨附近。把谷物磨成面粉。inputs 是谷物。",
+      "description": "在石磨把谷物磨成面粉。inputs 是谷物。如果石磨列在远处（10米）内，行动会包含走近并操作。",
       "param": {
         "input_item": "从 # 背包 选择的谷物（{name, index}）。",
         "inputs_array": "要磨的谷物清单。"
@@ -203,7 +203,7 @@
     },
     "boil_salt": {
       "label": "煮盐",
-      "description": "需要在盐田附近。把盐水熬煮浓缩成盐。",
+      "description": "在盐田把盐水熬煮浓缩成盐。如果盐田列在远处（10米）内，行动会包含走近并操作。",
       "param": {
         "input_item": "从 # 背包 选择的燃料（{name, index}）。",
         "inputs_array": "燃料（木炭或木头）。海水/卤水是盐场环境资源，不用背。"
@@ -213,14 +213,14 @@
     },
     "put_take": {
       "label": "存取（货架/容器/水井）",
-      "description": "在任意两个容器之间搬东西。transfers 是一串搬运，每条 {kind, amount, from, to}：kind=item 搬离散物品（amount=个数；silver_coin/gold_coin 按钱包金额，可写 1.25 这类小数银）；kind=liquid 倒液体（amount=升，混合时品质按量加权平均）。from / to 是 endpoint——container 填 # 当前附近 列出的容器名（仓库 / 货架 / 酿酒桶 / 水井），省略 container = 你自己的背包；item 填 {name, index} 指向该 endpoint 里要搬的那件（离散物、容器钱包里的银币，或木桶 / 杯这类容器物）。倒水：from.container 填水井（无限水源，from 不用填 item）、to 指你背包里的木桶。取桶装酒：from.item 指酒桶/酿酒桶，to 可省略 item 直接填背包或货架，系统会按饮品的 serving_liters 把液体转成离散物品（例如 0.5 升 beer → 1 份 beer）；存货架时可在该条加 price_silver 标价。\n从货架 take 带标价商品时，必须在同一次 put_take 里把足额 silver_coin 从你的钱包 put 到该货架；多给会自动找零，少给会失败并返回“你给的钱不够”。钱币都存在钱包里，不占背包/货架/仓库槽位。\n货架人人可存取；上锁的容器需要背包里有对应钥匙。",
+      "description": "在任意两个容器之间搬东西。transfers 是一串搬运，每条 {kind, amount, from, to}：kind=item 搬离散物品（amount=个数；silver_coin/gold_coin 按钱包金额，可写 1.25 这类小数银）；kind=liquid 倒液体（amount=升，混合时品质按量加权平均）。from / to 是 endpoint——container 填 # 可交互地点&工作台&货架 中列出的容器名（仓库 / 货架 / 酿酒桶 / 水井），省略 container = 你自己的背包；远处（10米）内的单个容器目标也可以直接填写，行动会包含走近并操作；item 填 {name, index} 指向该 endpoint 里要搬的那件（离散物、容器钱包里的银币，或木桶 / 杯这类容器物）。如果 endpoint 写了 container，item.index 使用该容器 / 货架查看结果里的局部 [N]；没写 container 时才使用全场唯一 [N]。倒水：from.container 填水井（无限水源，from 不用填 item）、to 指你背包里的木桶。取桶装酒：from.item 指酒桶/酿酒桶，to 可省略 item 直接填背包或货架，系统会按饮品的 serving_liters 把液体转成离散物品（例如 0.5 升 beer → 1 份 beer）；存货架时可在该条加 price_silver 标价。\n从货架 take 带标价商品时，必须在同一次 put_take 里把足额 silver_coin 从你的钱包 put 到该货架；多给会自动找零，少给会失败并返回“你给的钱不够”。钱币都存在钱包里，不占背包/货架/仓库槽位；只有货架所属 group 或 god 能看到和取走货架钱包。\n货架人人可存取商品；上锁的容器需要背包里有对应钥匙。",
       "reason_format": "搬运物品",
       "display_target": "搬运",
       "error_empty": "至少要指定一条 transfers。",
       "param": {
-        "endpoint_container": "附近容器名（仓库/水井/货架等）。省略=你自己的背包。",
+        "endpoint_container": "# 可交互地点&工作台&货架 中列出的容器名（仓库/水井/货架等）；远处（10米）内也可以直接填写。省略=你自己的背包。",
         "endpoint_item_name": "容器物/离散物的名字",
-        "endpoint_item_index": "同名多件时的序号（从 1 起）",
+        "endpoint_item_index": "如果同一 endpoint 写了 container，就填该容器/货架查看结果里的局部 [N]；否则填全场唯一 [N]。name 和 index 必须对应同一行。",
         "transfer_kind": "item=搬离散物品；liquid=倒液体或按份取出饮品（按升）",
         "transfer_amount": "数量：item 按个数，liquid 按升",
         "transfer_price_silver": "存货架时的标价",
@@ -244,9 +244,9 @@
     },
     "view_container": {
       "label": "查看（货架/容器）",
-      "description": "查看货架或容器里有什么。货架会额外显示每件商品的标价。container 指定目标（必须在附近）。",
+      "description": "查看货架或容器里有什么。货架会额外显示每件商品的标价。远处（10米）内的目标也可以直接填写，行动会包含走近并查看。",
       "param": {
-        "container": "目标货架或容器；必须使用 user prompt 中 # 当前附近 列出的货架 / 容器型工作台。"
+        "container": "目标货架或容器；必须使用 user prompt 中 # 可交互地点&工作台&货架 列出的货架 / 容器型工作台。"
       },
       "result_header": "{label} 里：",
       "result_empty": "（空的）",
@@ -254,7 +254,7 @@
     },
     "say_to": {
       "param": {
-        "character": "要直接说话的目标角色名称；必须使用 user prompt 中 # 附近人物 段列出的角色名（含 near 和远处行）。目标必须在 volume 允许的距离内，否则 Godot 会拒掉。",
+        "character": "要直接说话的目标角色名称；必须使用 user prompt 中 # 附近人物 段列出的角色名（含 near 和远处行）。目标必须在 volume 允许的距离内，否则行动会失败。",
         "text": "你实际对目标说出口的一两句话，建议不超过 40 字。不要包含动作、旁白、心理描写、环境描写或引号外叙述。",
         "volume": "near 只能传达给 near 距离内目标；far 可以传达给 near/far 距离内目标。周围其他角色仍可能听到。"
       },
@@ -278,7 +278,7 @@
         "quantity": "本次拾取的数量；不填默认 1。地上一堆同类物品想一次全拿就传 N。"
       },
       "label": "拾取物品",
-      "description": "拾取地上的物品，加入背包。item 用 {name, index} 格式，index 对应 # 附近物品 中 near（3米）行行首 [N] 序号。far 行不带 [N] 不能拾取，先 move_to_location 走近。quantity 可选，默认 1；地面 perception 不暴露 instance id，同 itemDefId 多份按 Godot 距离 / 默认规则选实例。",
+      "description": "拾取地上的物品，加入背包。item 用 {name, index} 格式，index 对应 # 附近物品 中 near（3米）行行首 [N] 序号。far 行不带 [N] 不能拾取，先 move_to_location 走近。quantity 可选，默认 1；地面同类物品有多份时，会按距离 / 默认规则选实例。",
       "reason_format": "拾取 {item}"
     },
     "drop_item": {

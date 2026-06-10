@@ -1,18 +1,10 @@
 export const DEBUG_AGENT_MAIN_MODULE = String.raw`
 import { createAnalyticsView } from "./analytics.js";
+import * as characterTimeline from "./character-timeline.js";
 import { renderDetailBody, renderDetailError, renderDetailHeader, renderDetailLoading, renderDetailPlaceholder, renderThinkingDetail } from "./detail.js";
 import { renderGroupFilterPop, renderNpcFilterPop, renderTopbarInfo } from "./filters.js";
-import { applyAgentRunFilterPayload, createDebugAgentApp, rebuildMetadataIndex, pruneSelectionSet, saveAgentRunFilter, setAgentRunCharacterEnabled } from "./shared.js";
-import {
-  captureTimelineViewport,
-  hideTooltip,
-  renderTimeline,
-  restoreTimelineViewport,
-  rerenderTimelinePreserveViewport,
-  setTimelineZoomIndex,
-  showTooltip,
-  updateTimelineZoomUi,
-} from "./timeline.js";
+import { applyAgentRunFilterPayload, createDebugAgentApp, makeCharacterKey, rebuildMetadataIndex, pruneSelectionSet, saveAgentRunFilter, setAgentRunCharacterEnabled } from "./shared.js";
+import * as sharedTimeline from "./timeline.js";
 import { formatGameDayLabel, gameDayIndex } from "./time.js";
 
 function renderGameDayFilterOptions(app) {
@@ -42,6 +34,8 @@ function renderGameDayFilterOptions(app) {
 
 const app = createDebugAgentApp();
 const analytics = createAnalyticsView(app);
+const isCharacterTimelinePage = !!app.$("character-list");
+const timeline = isCharacterTimelinePage ? characterTimeline : sharedTimeline;
 let currentView = "timeline";
 
 analytics.setJumpHandler((payload) => {
@@ -70,9 +64,10 @@ function switchView(view) {
 }
 
 function renderTimelineWithSelection() {
-  renderTimeline(app, {
+  timeline.renderTimeline(app, {
     onSelectTurn: selectTurn,
     onSelectThinking: selectThinking,
+    onSelectCharacter: selectCharacter,
     onAgentRunToggle: (characterId, enabled) => {
       setAgentRunCharacterEnabled(app, characterId, enabled);
       void saveAgentRunFilter(app);
@@ -121,7 +116,7 @@ function computeSince() {
 
 async function loadTurns(options) {
   const preserveViewport = !!(options && options.preserveViewport);
-  const viewport = preserveViewport ? captureTimelineViewport(app) : null;
+  const viewport = preserveViewport ? timeline.captureTimelineViewport(app) : null;
   const [turnsRes, thinkingRes] = await Promise.all([
     fetch(buildTurnsUrl()).then((response) => response.json()),
     fetch(buildThinkingTurnsUrl()).then((response) => response.json()).catch(() => ({ thinkingTurns: [] })),
@@ -137,11 +132,11 @@ async function loadTurns(options) {
   pruneSelectionSet(app.state.selectedGroupIds, app.state.groups.map((item) => item.groupId));
 
   renderTopbarInfo(app);
-  renderNpcFilterPop(app, { onChange: () => { void loadTurns(); } });
-  renderGroupFilterPop(app, { onChange: () => { void loadTurns(); } });
+  if (app.$("npc-filter-pop")) renderNpcFilterPop(app, { onChange: () => { void loadTurns(); } });
+  if (app.$("group-filter-pop")) renderGroupFilterPop(app, { onChange: () => { void loadTurns(); } });
   renderGameDayFilterOptions(app);
   renderTimelineWithSelection();
-  restoreTimelineViewport(app, viewport);
+  timeline.restoreTimelineViewport(app, viewport);
   if (currentView === "analytics") void analytics.load();
 }
 
@@ -166,6 +161,21 @@ function updatePinnedSession(sessionId, seq) {
 
 function clearPinnedSession() {
   updatePinnedSession("", null);
+}
+
+function selectCharacter(character) {
+  if (!isCharacterTimelinePage || !character) return;
+  app.state.selectedCharacterKey = makeCharacterKey(character.townId, character.characterId);
+  app.state.selectedTurn = null;
+  app.state.selectedThinking = null;
+  clearPinnedSession();
+  renderTimelineWithSelection();
+  renderDetailPlaceholder(app, "点击中间时间轴上的 turn 查看详情");
+}
+
+function selectCharacterForItem(item) {
+  if (!isCharacterTimelinePage || !item) return;
+  app.state.selectedCharacterKey = makeCharacterKey(item.townId, item.characterId);
 }
 
 function findLatestTurnInSession(sessionId) {
@@ -218,6 +228,7 @@ async function restorePinnedSessionSelection(options) {
   const turn = (pinnedSeq != null && findTurnContainingSeq(app.state.pinnedSessionId, pinnedSeq))
     || findLatestTurnInSession(app.state.pinnedSessionId);
   if (!turn) return false;
+  selectCharacterForItem(turn);
   await selectTurn(turn);
   if (options && options.scrollIntoView) scrollTurnIntoView(turn);
   if (pinnedSeq != null) scrollMessageIntoView(pinnedSeq);
@@ -292,6 +303,7 @@ async function loadAllSessionMessages(sessionId, session) {
 }
 
 async function selectTurn(turn) {
+  selectCharacterForItem(turn);
   app.state.selectedTurn = turn;
   app.state.selectedThinking = null;
   // 若已 pin 了一个 seq 且这个 turn 包含它，保留；否则清掉，避免把上一次的 seq 带到无关 turn 上
@@ -303,7 +315,7 @@ async function selectTurn(turn) {
     ? existingSeq
     : null;
   updatePinnedSession(turn.sessionId, preserveSeq);
-  rerenderTimelinePreserveViewport(app, renderTimelineWithSelection);
+  timeline.rerenderTimelinePreserveViewport(app, renderTimelineWithSelection);
   renderDetailHeader(app, turn, { onDelete: () => deleteSession(turn) });
   renderDetailLoading(app, "加载 turn 消息与 session 索引…");
 
@@ -328,18 +340,19 @@ async function selectTurn(turn) {
   }
 
   renderDetailBody(app, turn, session, messagesRes, promptMemoryRes, {
-    showTooltip: (event, html) => showTooltip(app, event, html),
-    hideTooltip: () => hideTooltip(app),
+    showTooltip: (event, html) => timeline.showTooltip(app, event, html),
+    hideTooltip: () => timeline.hideTooltip(app),
   }, {
     memory: memoryRes,
   });
 }
 
 async function selectThinking(thinking) {
+  selectCharacterForItem(thinking);
   app.state.selectedTurn = null;
   app.state.selectedThinking = thinking;
   clearPinnedSession();
-  rerenderTimelinePreserveViewport(app, renderTimelineWithSelection);
+  timeline.rerenderTimelinePreserveViewport(app, renderTimelineWithSelection);
   renderDetailLoading(app, "加载 thinking 详情…");
   const detailRes = await fetch("/debug/api/thinking-turns/" + encodeURIComponent(thinking.id))
     .then((response) => response.json())
@@ -404,8 +417,8 @@ app.$("refresh-btn").addEventListener("click", async () => {
   if (currentView === "analytics") void analytics.refresh();
 });
 
-app.$("tab-timeline").addEventListener("click", () => switchView("timeline"));
-app.$("tab-analytics").addEventListener("click", () => switchView("analytics"));
+if (app.$("tab-timeline")) app.$("tab-timeline").addEventListener("click", () => switchView("timeline"));
+if (app.$("tab-analytics")) app.$("tab-analytics").addEventListener("click", () => switchView("analytics"));
 
 let townFilterTimer = null;
 app.$("filter-town").addEventListener("input", (event) => {
@@ -423,39 +436,41 @@ app.$("time-range").addEventListener("change", (event) => {
 
 app.$("game-day-filter").addEventListener("change", (event) => {
   app.state.selectedGameDay = event.target.value || "";
-  rerenderTimelinePreserveViewport(app, renderTimelineWithSelection);
+  timeline.rerenderTimelinePreserveViewport(app, renderTimelineWithSelection);
 });
 
-app.$("timeline-zoom").addEventListener("input", (event) => {
-  setTimelineZoomIndex(app, renderTimelineWithSelection, Number(event.target.value));
+if (app.$("timeline-zoom")) app.$("timeline-zoom").addEventListener("input", (event) => {
+  timeline.setTimelineZoomIndex(app, renderTimelineWithSelection, Number(event.target.value));
 });
-app.$("timeline-zoom-out").addEventListener("click", () => {
-  setTimelineZoomIndex(app, renderTimelineWithSelection, app.state.timelineZoomIndex - 1);
+if (app.$("timeline-zoom-out")) app.$("timeline-zoom-out").addEventListener("click", () => {
+  timeline.setTimelineZoomIndex(app, renderTimelineWithSelection, app.state.timelineZoomIndex - 1);
 });
-app.$("timeline-zoom-in").addEventListener("click", () => {
-  setTimelineZoomIndex(app, renderTimelineWithSelection, app.state.timelineZoomIndex + 1);
+if (app.$("timeline-zoom-in")) app.$("timeline-zoom-in").addEventListener("click", () => {
+  timeline.setTimelineZoomIndex(app, renderTimelineWithSelection, app.state.timelineZoomIndex + 1);
 });
-app.$("timeline-zoom-reset").addEventListener("click", () => {
-  setTimelineZoomIndex(app, renderTimelineWithSelection, 0);
+if (app.$("timeline-zoom-reset")) app.$("timeline-zoom-reset").addEventListener("click", () => {
+  timeline.setTimelineZoomIndex(app, renderTimelineWithSelection, 0);
 });
 
-app.$("npc-filter-btn").addEventListener("click", (event) => {
+if (app.$("npc-filter-btn")) app.$("npc-filter-btn").addEventListener("click", (event) => {
   event.stopPropagation();
   app.$("npc-filter-pop").classList.toggle("open");
-  app.$("group-filter-pop").classList.remove("open");
+  const groupPop = app.$("group-filter-pop");
+  if (groupPop) groupPop.classList.remove("open");
 });
-app.$("group-filter-btn").addEventListener("click", (event) => {
+if (app.$("group-filter-btn")) app.$("group-filter-btn").addEventListener("click", (event) => {
   event.stopPropagation();
   app.$("group-filter-pop").classList.toggle("open");
-  app.$("npc-filter-pop").classList.remove("open");
+  const npcPop = app.$("npc-filter-pop");
+  if (npcPop) npcPop.classList.remove("open");
 });
 document.addEventListener("click", (event) => {
   const npcPop = app.$("npc-filter-pop");
   const groupPop = app.$("group-filter-pop");
-  if (!npcPop.contains(event.target) && event.target !== app.$("npc-filter-btn")) {
+  if (npcPop && !npcPop.contains(event.target) && event.target !== app.$("npc-filter-btn")) {
     npcPop.classList.remove("open");
   }
-  if (!groupPop.contains(event.target) && event.target !== app.$("group-filter-btn")) {
+  if (groupPop && !groupPop.contains(event.target) && event.target !== app.$("group-filter-btn")) {
     groupPop.classList.remove("open");
   }
 });
@@ -480,7 +495,7 @@ app.$("timeline-wrap").addEventListener("wheel", (event) => {
   if (!(event.ctrlKey || event.metaKey)) return;
   event.preventDefault();
   if (event.deltaY === 0) return;
-  setTimelineZoomIndex(
+  timeline.setTimelineZoomIndex(
     app,
     renderTimelineWithSelection,
     app.state.timelineZoomIndex + (event.deltaY < 0 ? 1 : -1),
@@ -490,11 +505,11 @@ app.$("timeline-wrap").addEventListener("wheel", (event) => {
 
 window.addEventListener("resize", () => {
   if (app.state.turns.length > 0) {
-    rerenderTimelinePreserveViewport(app, renderTimelineWithSelection);
+    timeline.rerenderTimelinePreserveViewport(app, renderTimelineWithSelection);
   }
 });
 
-updateTimelineZoomUi(app);
+timeline.updateTimelineZoomUi(app);
 void loadAgentRunFilter()
   .then(() => loadTurns())
   .then(() => restorePinnedSessionSelection({ scrollIntoView: true }));

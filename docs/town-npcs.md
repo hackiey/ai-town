@@ -109,7 +109,7 @@
 | 牧场 | `tessa_coop` | Tessa Coop | Peasant_Female_01 | 鸡舍和幼畜帮工，负责收蛋、补饲料和病鸡隔离 |
 | 肉铺 | `hugh_marrow` | Hugh Marrow | Peasant_Male_01 | 肉铺屠夫，屠宰并售卖生肉 |
 | 酒馆 | `garron_potter` | Garron Potter | Peasant_Male_01 | 酒馆掌火人，处理熟肉和热食 |
-| 酒馆 | `nell_savor` | Nell Savor | Peasant_Female_01 | 酒馆调味帮工，负责蛋饼、菜汤、分餐和听消息 |
+| 酒馆 | `nell_millward` | Nell Millward | Peasant_Female_01 | 酒馆调味帮工，磨坊主的女儿，脾气冲嘴刀子但护人紧 |
 | 客栈 | `vera_clay` | Vera Clay | Peasant_Female_01 | 客栈掌柜，接待外来商队、过路客和信使 |
 | 客栈 | `tobin_reeve` | Tobin Reeve | Peasant_Male_01 | 商队账房，登记进口货、住宿账和商队消息 |
 | 裁缝 | `hilda_fenwick` | Hilda Fenwick | Peasant_Female_01 | 裁缝铺主裁，负责衣服、被褥和缝补 |

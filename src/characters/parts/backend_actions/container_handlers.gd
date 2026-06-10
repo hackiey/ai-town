@@ -56,6 +56,9 @@ static func run_put_take_now(character: Character, action_request: Dictionary) -
 			res = _do_item(character, tr, lines)
 		if bool(res.get("ok", false)):
 			moves.append(res)
+		else:
+			var failed_message := _msg("tool.tool_result.separator").join(lines) if not lines.is_empty() else _msg("error.put_take.no_moves")
+			return {"ok": false, "message": failed_message, "result": {"moves": moves}}
 
 	if moves.is_empty():
 		return {"ok": false, "message": _msg("tool.tool_result.separator").join(lines) if not lines.is_empty() else _msg("error.put_take.no_moves")}
@@ -91,7 +94,7 @@ static func run_view_container(character: Character, action_request: Dictionary)
 		var err_unavailable := _msg("error.view_container.unavailable")
 		_emit_view_event(character, cid, is_shelf, "failure", [], err_unavailable)
 		return {"ok": false, "message": err_unavailable}
-	var items := _view_container_items(node, is_shelf)
+	var items := _view_container_items(character, node, is_shelf)
 	var label := node.effective_display_name()
 	var lines: Array[String] = []
 	for item_v in items:
@@ -126,7 +129,7 @@ static func _emit_view_event(character: Character, cid: String, is_shelf: bool, 
 	character.emit_world_event("view_container", data)
 
 
-static func _view_container_items(node: ContainerNode, is_shelf: bool) -> Array:
+static func _view_container_items(character: Character, node: ContainerNode, is_shelf: bool) -> Array:
 	var out: Array = []
 	if node == null:
 		return out
@@ -140,6 +143,16 @@ static func _view_container_items(node: ContainerNode, is_shelf: bool) -> Array:
 		})
 		return out
 	var index := 1
+	if int(node.wallet_centi) > 0 and (not is_shelf or _can_access_node_owner_group(character, node)):
+		var wallet_amount := float(node.wallet_centi) / 100.0
+		var wallet_line := "[%d] %s x%s" % [index, character.localize_item_name("silver_coin"), _format_amount(wallet_amount)]
+		out.append({
+			"itemId": "silver_coin",
+			"quantity": wallet_amount,
+			"index": index,
+			"line": wallet_line,
+		})
+		index += 1
 	for slot_v in node.contents:
 		if typeof(slot_v) != TYPE_DICTIONARY:
 			continue
@@ -501,6 +514,9 @@ static func _take_from_node(character: Character, cid: String, item_id: String, 
 		return {}
 	var unit_centi := CharacterInventory.currency_item_centi(item_id)
 	if unit_centi > 0:
+		if is_shelf and not _can_access_node_owner_group(character, node):
+			lines.append(_fmt("error.container.access_denied_format", [node.effective_display_name()]))
+			return {}
 		var centi := _currency_transfer_centi(item_id, amount)
 		if centi <= 0:
 			return {}
@@ -690,6 +706,23 @@ static func _format_amount(value: float) -> String:
 	if absf(value - roundf(value)) < 0.0001:
 		return "%d" % int(roundf(value))
 	return "%.2f" % value
+
+
+static func _can_access_node_owner_group(character: Character, node: ContainerNode) -> bool:
+	var owner_group := _owner_group_for_node(node)
+	return Access.can_be_used_by(character, owner_group)
+
+
+static func _owner_group_for_node(node: ContainerNode) -> String:
+	if node == null:
+		return ""
+	var tree := node.get_tree()
+	if tree != null:
+		var world := tree.get_first_node_in_group("town_world")
+		if world != null and world.has_method("owner_group_for"):
+			return str(world.owner_group_for(node.effective_container_id()))
+	var identity := node.world_object_identity()
+	return identity.owner_group.strip_edges() if identity != null else ""
 
 
 static func _as_dict_array(value: Variant) -> Array[Dictionary]:

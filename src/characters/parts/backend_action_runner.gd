@@ -41,6 +41,8 @@ var _action_target: Variant = {}
 # fast tool（say_to / respond）派发期间置真：它们与 body 动作并发，不该让自己发出的事件
 # 蹭到 body 动作的 _action_id。详见 current_emit_action_id() + send_world_event 盖戳。
 var _in_fast_tool: bool = false
+# 工具目标在 10 米内但不在手边时，runner 先内部走近，再继续执行原 action_request。
+var _pending_after_approach: Dictionary = {}
 
 
 func _init(owner: Character) -> void:
@@ -113,6 +115,8 @@ func start(action_request: Dictionary, completion: Callable) -> void:
 	_action_id = str(action_request.get("id", ""))
 	_completion = completion
 	_log_npc_action(_action_id, _action_name, _action_target, "start")
+	if _start_approach_if_needed(action_request):
+		return
 	# 工作台 craft actions 全部走同一 dispatcher。
 	if Crafts.is_action(action):
 		_active = true
@@ -168,6 +172,16 @@ func interrupt_walk(reason: String) -> bool:
 	return true
 
 
+# 角色移动状态机确认到达时调用。普通 move_to_location 在这里完成；内部靠近则继续执行原工具。
+func on_action_walk_finished() -> void:
+	if _pending_after_approach.is_empty():
+		finish(true, "", {})
+		return
+	var pending := _pending_after_approach.duplicate(true)
+	_pending_after_approach = {}
+	_dispatch_after_approach(pending)
+
+
 # Cancel 入口：校验 id → 委托子系统 cancel → 兜底走 walk cancel → 清状态。
 # 返回 "" = 成功；非空 = error。NPC plan_farm_work 在外层（NPC.cancel_backend_action）单独处理。
 # Cancel 不 fire _completion —— BackendRuntimeClient 自己 ack。
@@ -213,6 +227,7 @@ func finish(ok: bool, error: String = "", result: Dictionary = {}, emit_failed: 
 	_action_id = ""
 	_action_name = ""
 	_action_target = {}
+	_pending_after_approach = {}
 	var final_result := _with_action_changes(result)
 	_pre_action_snapshot = {}
 	_log_npc_action(finished_action_id, finished_action, finished_target, "completed" if ok else "failed", final_result, error)
@@ -276,6 +291,7 @@ func _clear_lifecycle() -> void:
 	_action_id = ""
 	_action_name = ""
 	_action_target = {}
+	_pending_after_approach = {}
 	_completion = Callable()
 
 
@@ -300,6 +316,146 @@ func _preempt_if_active() -> void:
 		character.trade_runner().preempt()
 	# 被本人下达的新 action_request 抢占，不是可反应失败 → 不发 action_failed。
 	finish(false, "preempted by new action_request", {}, false)
+
+
+func _start_approach_if_needed(action_request: Dictionary) -> bool:
+	var approach := _approach_target_for_action(action_request)
+	if approach.is_empty():
+		return false
+	if not bool(approach.get("ok", true)):
+		finish(false, str(approach.get("message", "target is not nearby")), {})
+		return true
+	if not bool(approach.get("needed", false)):
+		return false
+	var position_v: Variant = approach.get("position", null)
+	if not (position_v is Vector3):
+		finish(false, "approach target has no position", {})
+		return true
+	var position := position_v as Vector3
+	_pending_after_approach = action_request.duplicate(true)
+	character.trade_runner().cancel_incoming_offers_as_seller("seller_left")
+	var err := _start_walk(
+		_action_id,
+		position,
+		float(approach.get("arrival_distance", character.walk().default_arrival_distance()))
+	)
+	if not err.is_empty():
+		_pending_after_approach = {}
+		finish(false, err, {})
+	return true
+
+
+func _dispatch_after_approach(action_request: Dictionary) -> void:
+	var action := str(action_request.get("action", ""))
+	if Crafts.is_action(action):
+		_active = true
+		var ws_err := character.workstation_actions().start_from_action(action_request)
+		if not ws_err.is_empty():
+			finish(false, ws_err, {})
+		return
+	if _is_instant_action(action):
+		_complete_instant_action(action_request)
+		return
+	finish(false, "unsupported action after approach: %s" % action, {})
+
+
+func _approach_target_for_action(action_request: Dictionary) -> Dictionary:
+	var action := str(action_request.get("action", ""))
+	if Crafts.is_action(action):
+		return character.workstation_actions().approach_target_for_action(action_request)
+	match action:
+		"view_container":
+			return _container_approach_for_view(action_request)
+		"put_take_container":
+			return _container_approach_for_put_take(action_request)
+		_:
+			return {}
+
+
+func _container_approach_for_view(action_request: Dictionary) -> Dictionary:
+	var target: Variant = action_request.get("target", {})
+	if typeof(target) != TYPE_DICTIONARY:
+		return {}
+	var cid := str((target as Dictionary).get("containerId", "")).strip_edges()
+	return _container_approach_for_id(cid)
+
+
+func _container_approach_for_put_take(action_request: Dictionary) -> Dictionary:
+	var target: Variant = action_request.get("target", {})
+	if typeof(target) != TYPE_DICTIONARY:
+		return {}
+	var transfers_v: Variant = (target as Dictionary).get("transfers", [])
+	if typeof(transfers_v) != TYPE_ARRAY:
+		return {}
+	var seen := {}
+	var needed: Array = []
+	for tr_v in (transfers_v as Array):
+		if typeof(tr_v) != TYPE_DICTIONARY:
+			continue
+		var tr := tr_v as Dictionary
+		var from_res := _append_container_endpoint_approach(tr.get("from", {}), seen, needed)
+		if not bool(from_res.get("ok", true)):
+			return from_res
+		var to_res := _append_container_endpoint_approach(tr.get("to", {}), seen, needed)
+		if not bool(to_res.get("ok", true)):
+			return to_res
+	if seen.size() > 1:
+		return {"ok": true, "needed": false}
+	if needed.size() == 1:
+		return needed[0] as Dictionary
+	return {"ok": true, "needed": false}
+
+
+func _append_container_endpoint_approach(endpoint_v: Variant, seen: Dictionary, needed: Array) -> Dictionary:
+	if typeof(endpoint_v) != TYPE_DICTIONARY:
+		return {"ok": true}
+	var ep := endpoint_v as Dictionary
+	var where := str(ep.get("where", ""))
+	if where != "node" and where != "well":
+		return {"ok": true}
+	var cid := str(ep.get("containerId", "")).strip_edges()
+	if cid.is_empty() and where == "well":
+		cid = "well"
+	if cid.is_empty() or seen.has(cid):
+		return {"ok": true}
+	seen[cid] = true
+	var approach := _container_approach_for_id(cid)
+	if approach.is_empty():
+		return {"ok": true}
+	if not bool(approach.get("ok", true)):
+		return approach
+	if bool(approach.get("needed", false)):
+		needed.append(approach)
+	return {"ok": true}
+
+
+func _container_approach_for_id(container_id: String) -> Dictionary:
+	var cid := container_id.strip_edges()
+	if cid.is_empty() or Containers == null:
+		return {}
+	var node := Containers.find_container_node_near(cid, character.global_position)
+	if node == null or not is_instance_valid(node):
+		return {}
+	var direct_r := SiteMarker.interaction_radius_of(node)
+	var d_sq := character.global_position.distance_squared_to(node.global_position)
+	if d_sq <= direct_r * direct_r:
+		return {"ok": true, "needed": false}
+	var visible_r := CharacterPerception.INTERACTIVE_SHELF_VISIBLE_RADIUS if (node is ShelfNode or node.is_in_group("shelves")) else CharacterPerception.INTERACTIVE_CONTAINER_VISIBLE_RADIUS
+	if d_sq > visible_r * visible_r:
+		return {"ok": false, "message": "%s 不在附近" % node.effective_display_name()}
+	return {
+		"ok": true,
+		"needed": true,
+		"position": node.approach_world_position(),
+		"arrival_distance": _container_arrival_radius(node),
+	}
+
+
+func _container_arrival_radius(node: ContainerNode) -> float:
+	var marker := node.get_node_or_null("SiteMarker") as SiteMarker
+	if marker != null:
+		return marker.eff_arrival_radius()
+	return character.walk().default_arrival_distance()
 
 
 func _start_move_to_location(action_request: Dictionary) -> String:
@@ -429,6 +585,9 @@ func _complete_instant_action(action_request: Dictionary) -> void:
 		return
 	var result_v: Variant = structured.get("result", {})
 	var result: Dictionary = result_v as Dictionary if typeof(result_v) == TYPE_DICTIONARY else {}
+	var message := str(structured.get("message", ""))
+	if not message.is_empty() and not result.has("message"):
+		result["message"] = message
 	finish(true, "", result)
 
 

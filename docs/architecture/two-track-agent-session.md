@@ -42,7 +42,7 @@ PiAgentRuntime (per town)
 | 输出 | tool call → action_log → Godot | `memory:*` KV 变更 + working_memory KV upsert |
 | 是否中断 | 可 release 慢工具等待 / abort 当前 LLM call；事件进入下一次 fresh context | 不可中断（同 NPC 串行；fire-and-forget 启动） |
 
-**为什么 thinking 不持久化**：每次 thinking turn 都从当前 perception manifest、长期 Memory、上一份 working_memory、未总结 timeline 重新构造 prompt；不需要再带 message 历史。还能避免和 action session 在 `(townId, characterId, agentKind)` 唯一键上冲突。
+**为什么 thinking 不持久化**：每次 thinking turn 都从当前 perception manifest、长期 Memory、上一份 working_memory、working memory 之后的新 timeline 重新构造 prompt；不需要再带 message 历史。还能避免和 action session 在 `(townId, characterId, agentKind)` 唯一键上冲突。
 
 ### 2.2 Working memory 传递
 
@@ -51,6 +51,7 @@ runtime_storage 表（per-character KV）：
   key = "working_memory"
   value = {
     content: string,        // thinking 轨用中文写的 brief（一般几段）
+    emotionalState?: string, // 本轮推演出的短期心境 / 情绪张力 / 心理倾向
     updatedAt: string,      // ISO 时间
     triggerReason?: string, // "scheduled" / "event:say_to:..." / "event:woke_up:think-first"
     gameTime?: GameTimeSnapshot,
@@ -59,8 +60,9 @@ runtime_storage 表（per-character KV）：
 ```
 
 - 写：`ThinkingTrackSession` 的 `write_working_memory` tool 执行时 upsert。`storage.set()` 同步 sqlite 事务，单次 JSON value。
-- 读：`ActionTrackSession.runCurrentTurn` 每次 LLM call 入口调 `readWorkingMemoryFromStorage()`，注入 `GameAgentContext.workingMemory`，渲染到 turn user prompt 的 `# 工作记忆` section（夹在近期事件时间线和现状块之间）。
+- 读：`ActionTrackSession.runCurrentTurn` 每次 LLM call 入口调 `readWorkingMemoryFromStorage()`，注入 `GameAgentContext.workingMemory`，渲染到 turn user prompt 的 `# 工作记忆` section，放在原文事件分段之前。
 - 缺失时整节省略——首次启动 / 全新角色 working_memory 没写，action 仍能跑。
+- `working_memory` 是短期记忆，每次 thinking 可覆写；可复用教训、稳定偏好、关系变化、自我认知变化、长期目标和反复出现的情绪模式必须写入长期 `memory:*`，不要只靠 working memory 延续。
 
 System prompt 自递归避免：thinking 自己不把"上一份 working_memory" 注入自己的 system prompt——而是放到 user message 里显式说"上一份是这样的，请更新"。否则 thinking 看着自己写的东西再写一遍，容易陷入回声。
 
@@ -118,7 +120,7 @@ session(npc).onEvent(event)
 
 **路径 B（significant for thinking）**：`spoken_to_directly` / 交易提议事件 / player 喊话 / always-interrupting 事件——异步触发 thinking 提前重写 working_memory；action 不等它，按自己节奏跑。下次 action turn 入口才会用上更新后的 brief。
 
-**路径 C（普通）**：仅入 pendingEvents / 触发 action turn；若不是 significant event，则只在未总结 timeline 超过阈值时触发 thinking backlog 压缩。
+**路径 C（普通）**：仅入 pendingEvents / 触发 action turn；若不是 significant event，则只在 working memory 之后的新 timeline 超过阈值时触发 thinking backlog 压缩。
 
 ### 2.4 Action 轨的 turn 调度
 
@@ -144,11 +146,11 @@ runTurnLoop():
 3. `currentContext = await ctx.getCurrentContext()` （perception manifest + SELECT sqlite）
 4. `workingMemory = await readWorkingMemoryFromStorage()`
 5. `context = contextBuilder.build({ ctx, current, pendingEvents: iterationEvents, workingMemory })`
-6. 若未总结 timeline 超过 30 条，fire-and-forget 请求 thinking backlog 压缩
+6. 若 working memory 之后的新 timeline 超过 30 条，fire-and-forget 请求 thinking backlog 总结
 7. 重建 tools（按当前 currentContext 动态生成）
 8. messages = `assembleMessagesForModel(...)`（只含 pinned Memory user message；历史 transcript 不回喂）
 9. systemPrompt = `buildTwoTrackAgentTurnSystemPrompt(context)`
-10. 渲染 user prompt：近期事件（尚未总结）→ 工作记忆 → 现状 → 当前触发
+10. 渲染 user prompt：工作记忆 → 原文事件分段（已总结细节 / 新发生事件）→ 现状 → 当前触发
 11. `agent.prompt(userPrompt)`；若本次执行了 tool，turn_end 后 abort pi-agent-core 续航，回到本层重新装配下一次 LLM call
 12. user message 落库后 `removeConsumedPendingEvents(pendingEvents, iterationEvents)` 按 id trim
 
@@ -162,7 +164,7 @@ Action 轨不让 pi-agent-core 在同一上下文里无限 `continue`。一条 a
   - `do_nothing` 成功 → stop loop + `agent.abort()`（防 do_nothing 循环）
 - 收到 `turn_end` 且本次 LLM call 执行过 tool → queueMicrotask abort，下一轮重装 context
 
-backend 预提交/解析失败只写 actor-private failed `action_log`，不写 `world_events`，并会在下一轮「近期事件（尚未总结）」时间线中显示。
+backend 预提交/解析失败只写 actor-private failed `action_log`，不写 `world_events`。如果发生在当前 working memory 之后，会在下一轮「工作记忆之后新发生的事件」中显示；被后续 working memory 覆盖后，仍保留在「已在工作记忆中总结过，仅供核对细节」段。
 
 ### 2.6 模型配置：per-NPC 强制
 
@@ -193,7 +195,7 @@ Action 轨用 `agent_sessions` / `agent_session_messages` 表（agentKind 列区
 
 - `action-session/persistence.ts` —— ensureSession / append queue / usage 累计 / debug snapshot 持久化
 - `action-session/messages.ts` —— `assembleMessagesForModel`：只返回 pinned Memory user message；历史 transcript 不回喂 LLM
-- timeline 压缩由 Thinking 轨通过 `working_memory.compactedThrough` 处理：Action prompt 只显示尚未总结的 timeline entries，Thinking 保留最近 10 条原文并压缩更早部分。
+- timeline 总结由 Thinking 轨通过 `working_memory.compactedThrough` 标记覆盖范围：Thinking 每轮总结 `compactedThrough` 之后的全部 timeline entries；Action prompt 保留完整原文，并按“已在工作记忆中总结过，仅供核对细节”和“工作记忆之后新发生的事件”分段。
 
 Thinking 轨 **不入** `agent_sessions`——每次 turn 重建 Agent，无需 message 历史。
 
@@ -265,7 +267,7 @@ backend/src/runtimes/two-track-agent/
 
 **Thinking 轨 entry**（`thinking-track.ts`）：
 - `requestThink(reason)` — fire-and-forget；已在跑就只更 `queuedReason`
-- `requestThinkIfTimelineBacklog()` — 未总结 timeline entries 超过阈值时触发 backlog 压缩
+- `requestThinkIfTimelineBacklog()` — working memory 之后的新 timeline entries 超过阈值时触发 backlog 总结
 - `runThinkBlocking(reason)` — think-first 用：等当前 in-flight 跑完，再串行跑自己这一轮（绝不抢占）
 - `onGameTime(gameMinute, gameTime)` — `nextThinkGameMinute` 到了 → `requestThink("scheduled")`
 

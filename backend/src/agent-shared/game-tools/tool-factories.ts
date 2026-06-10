@@ -73,12 +73,13 @@ import {
   normalizeWorkstationActionInputs,
   resolveContainerOrShelfTarget,
   resolveCraftWorkstation,
+  resolveFlatItemByIndex,
   resolveItemByIndex,
-  resolveFlatEntry,
   resolveItemTarget,
   resolveMoveTarget,
   resolveOptionalKnownTargetName,
   resolvePlanFarm,
+  resolveScopedItemByIndex,
   resolveSpeechTarget,
   resolveTradeTarget,
 } from "./targets.js";
@@ -548,25 +549,7 @@ export function createPutTakeTool(
     parameters: createPutTakeSchema(),
     execute: async (_toolCallId, rawArgs, signal, onUpdate) => {
       const args = rawArgs as PutTakeParams;
-      const wire: TransferWire[] = [];
-      for (const tr of args.transfers ?? []) {
-        if (tr.kind === "liquid") {
-          const from = resolveLiquidSourceEndpoint(tr.from, currentContext);
-          const to = resolveLiquidDestinationEndpoint(tr.to, currentContext);
-          if (to.isShelf && tr.price_silver != null) to.priceCenti = Math.round(tr.price_silver * 100);
-          wire.push({ kind: "liquid", amount: tr.amount, from, to });
-        } else {
-          // 离散：from.item 是全局编号，定位要搬的物（itemId + 来源位置）。
-          if (!tr.from.item) throw new Error(td("put_take.error.discrete_missing_item"));
-          const e = resolveFlatEntry(tr.from.item.index, currentContext);
-          if (!e) throw new Error(td("put_take.error.flat_item_invalid"));
-          const from = entryToEndpoint(e);
-          const to = containerNameToEndpoint(tr.to, currentContext);
-          if (to.isShelf && tr.price_silver != null) to.priceCenti = Math.round(tr.price_silver * 100);
-          const amount = CURRENCY_ITEM_IDS.has(e.itemDefId) ? tr.amount : Math.round(tr.amount);
-          wire.push({ kind: "item", itemId: e.itemDefId, amount, from, to });
-        }
-      }
+      const wire = buildPutTakeWire(args, currentContext);
       if (wire.length === 0) throw new Error(td("put_take.error_empty"));
       return submitToolAction(
         runtime.actions,
@@ -578,6 +561,49 @@ export function createPutTakeTool(
       );
     },
   };
+}
+
+export function buildPutTakeWire(args: PutTakeParams, currentContext?: AgentCurrentContext): TransferWire[] {
+  const wire: TransferWire[] = [];
+  for (const tr of args.transfers ?? []) {
+    if (tr.kind === "liquid") {
+      const from = resolveLiquidSourceEndpoint(tr.from, currentContext);
+      const to = resolveLiquidDestinationEndpoint(tr.to, currentContext);
+      if (to.isShelf && tr.price_silver != null) to.priceCenti = Math.round(tr.price_silver * 100);
+      wire.push({ kind: "liquid", amount: tr.amount, from, to });
+    } else {
+      const source = resolveItemSourceEndpoint(tr.from, currentContext);
+      const to = containerNameToEndpoint(tr.to, currentContext);
+      if (to.isShelf && tr.price_silver != null) to.priceCenti = Math.round(tr.price_silver * 100);
+      const amount = CURRENCY_ITEM_IDS.has(source.itemId) ? tr.amount : Math.round(tr.amount);
+      wire.push({ kind: "item", itemId: source.itemId, amount, from: source.endpoint, to });
+    }
+  }
+  return wire;
+}
+
+type ResolvedPutTakeSource = {
+  itemId: string;
+  endpoint: ContainerEndpoint;
+};
+
+function resolveItemSourceEndpoint(ep: TransferEndpointParam, ctx?: AgentCurrentContext): ResolvedPutTakeSource {
+  if (!ep.item) throw new Error(td("put_take.error.discrete_missing_item"));
+  if (ep.container) {
+    const site = resolveContainerOrShelfTarget(ep.container, ctx);
+    if (isMoveTargetError(site)) throw new Error(site.error);
+    const scoped = site.kind === "shelf"
+      ? resolveScopedItemByIndex(ep.item, { kind: "shelf", shelfId: site.id }, ctx)
+      : resolveScopedItemByIndex(ep.item, { kind: "container", containerId: site.id }, ctx);
+    if (isMoveTargetError(scoped)) throw new Error(scoped.error);
+    return {
+      itemId: scoped.id,
+      endpoint: { where: "node", containerId: site.id, slotIndex: scoped.slotIndex, isShelf: site.kind === "shelf" },
+    };
+  }
+  const flat = resolveFlatItemByIndex(ep.item, ctx);
+  if (isMoveTargetError(flat)) throw new Error(flat.error);
+  return { itemId: flat.id, endpoint: entryToEndpoint(flat.entry) };
 }
 
 // 一个扁平条目 → wire endpoint（按它所在的 scope 定位）。
@@ -596,9 +622,7 @@ function entryToEndpoint(e: ItemIndexEntry): ContainerEndpoint {
 // 来源必须是具体液体容器 item（桶/酿酒桶/杯），或水井这类无限液体源。
 function resolveLiquidSourceEndpoint(ep: TransferEndpointParam, ctx?: AgentCurrentContext): ContainerEndpoint {
   if (ep.item) {
-    const e = resolveFlatEntry(ep.item.index, ctx);
-    if (!e) throw new Error(td("put_take.error.liquid_container_invalid"));
-    return entryToEndpoint(e);
+    return resolveContainerItemEndpoint(ep, ctx, td("put_take.error.liquid_container_invalid"));
   }
   if (ep.container) {
     const site = resolveContainerOrShelfTarget(ep.container, ctx);
@@ -613,9 +637,7 @@ function resolveLiquidSourceEndpoint(ep: TransferEndpointParam, ctx?: AgentCurre
 // 后者由 Godot 端把桶装液体按 serving_liters 转成离散 drink item（如 beer）。
 function resolveLiquidDestinationEndpoint(ep: TransferEndpointParam, ctx?: AgentCurrentContext): ContainerEndpoint {
   if (ep.item) {
-    const e = resolveFlatEntry(ep.item.index, ctx);
-    if (!e) throw new Error(td("put_take.error.liquid_container_invalid"));
-    return entryToEndpoint(e);
+    return resolveContainerItemEndpoint(ep, ctx, td("put_take.error.liquid_container_invalid"));
   }
   if (ep.container) {
     const site = resolveContainerOrShelfTarget(ep.container, ctx);
@@ -624,6 +646,22 @@ function resolveLiquidDestinationEndpoint(ep: TransferEndpointParam, ctx?: Agent
     return { where: "node", containerId: site.id, isShelf: site.kind === "shelf" };
   }
   return { where: "backpack" };
+}
+
+function resolveContainerItemEndpoint(ep: TransferEndpointParam, ctx: AgentCurrentContext | undefined, fallbackError: string): ContainerEndpoint {
+  if (!ep.item) throw new Error(fallbackError);
+  if (ep.container) {
+    const site = resolveContainerOrShelfTarget(ep.container, ctx);
+    if (isMoveTargetError(site)) throw new Error(site.error);
+    const scoped = site.kind === "shelf"
+      ? resolveScopedItemByIndex(ep.item, { kind: "shelf", shelfId: site.id }, ctx)
+      : resolveScopedItemByIndex(ep.item, { kind: "container", containerId: site.id }, ctx);
+    if (isMoveTargetError(scoped)) throw new Error(scoped.error);
+    return { where: "node", containerId: site.id, slotIndex: scoped.slotIndex, isShelf: site.kind === "shelf" };
+  }
+  const flat = resolveFlatItemByIndex(ep.item, ctx);
+  if (isMoveTargetError(flat)) throw new Error(flat.error);
+  return entryToEndpoint(flat.entry);
 }
 
 // 离散搬运的"目标"endpoint：container 名 → node；没给 = 背包。

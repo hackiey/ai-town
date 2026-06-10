@@ -123,6 +123,37 @@ func nearby_snapshots(max_distance: float = Containers.INTERACTION_RADIUS) -> Ar
 	return out
 
 
+# craft action 的内部靠近目标解析。这里只回答“是否需要先走到工作台旁边”，不校验材料、配方、体力等动作条件；
+# 那些仍由 start_from_action 在真正开始工作时统一裁决。
+func approach_target_for_action(action_request: Dictionary) -> Dictionary:
+	var target: Variant = action_request.get("target", {})
+	if typeof(target) != TYPE_DICTIONARY:
+		return {}
+	var t: Dictionary = target as Dictionary
+	var workstation_id: String = str(t.get("workstationId", "")).strip_edges()
+	if workstation_id.is_empty():
+		return {}
+	var resolved: Dictionary = _find_workstation_for_approach(workstation_id)
+	var ws_node: WorkstationNode = resolved.get("node", null)
+	if ws_node == null:
+		var reason := str(resolved.get("reason", "not_found"))
+		if reason == "not_nearby":
+			return {"ok": false, "message": "%s 不在附近" % _ws_display_name(workstation_id)}
+		if reason == "access_denied":
+			return {"ok": false, "message": "%s 不归你管，无权使用" % _ws_display_name(workstation_id)}
+		return {}
+	var direct_r: float = SiteMarker.interaction_radius_of(ws_node)
+	var d_sq: float = character.global_position.distance_squared_to(ws_node.global_position)
+	if d_sq <= direct_r * direct_r:
+		return {"ok": true, "needed": false}
+	return {
+		"ok": true,
+		"needed": true,
+		"position": ws_node.approach_world_position(),
+		"arrival_distance": _arrival_radius_of(ws_node),
+	}
+
+
 func start_from_action(action_request: Dictionary) -> String:
 	assert(RunMode.is_runtime(), "WorkstationActionRunner.start_from_action must run on server")
 	if not _active.is_empty():
@@ -793,6 +824,56 @@ func _find_workstation(workstation_id: String) -> Dictionary:
 	if not in_range_any:
 		return {"node": null, "reason": "not_nearby"}
 	return {"node": null, "reason": "access_denied"}
+
+
+# 自动靠近用：匹配同一套工作台别名，但允许目标在工作台可见范围内、直接交互范围外。
+func _find_workstation_for_approach(workstation_id: String) -> Dictionary:
+	var requested: String = _normalize_input(workstation_id)
+	var matched_any: bool = false
+	var visible_any: bool = false
+	var best: WorkstationNode = null
+	var best_sq: float = INF
+	var visible_r: float = CharacterPerception.INTERACTIVE_WORKSTATION_VISIBLE_RADIUS
+	for n in character.get_tree().get_nodes_in_group("workstations"):
+		if not n is WorkstationNode:
+			continue
+		var ws: WorkstationNode = n as WorkstationNode
+		var aliases: Array[String] = [
+			_workstation_logical_id(ws),
+			String(ws.world_object_def_id()),
+			String(ws.display_name),
+		]
+		var matches: bool = false
+		for alias in aliases:
+			if _normalize_input(alias) == requested:
+				matches = true
+				break
+		if not matches:
+			continue
+		matched_any = true
+		var d: float = character.global_position.distance_squared_to(ws.global_position)
+		if d > visible_r * visible_r:
+			continue
+		visible_any = true
+		if ws.has_method("can_be_used_by") and not ws.can_be_used_by(character):
+			continue
+		if d <= best_sq:
+			best = ws
+			best_sq = d
+	if best != null:
+		return {"node": best, "reason": ""}
+	if not matched_any:
+		return {"node": null, "reason": "not_found"}
+	if not visible_any:
+		return {"node": null, "reason": "not_nearby"}
+	return {"node": null, "reason": "access_denied"}
+
+
+func _arrival_radius_of(ws_node: WorkstationNode) -> float:
+	var marker := ws_node.get_node_or_null("SiteMarker") as SiteMarker
+	if marker != null:
+		return marker.eff_arrival_radius()
+	return character.walk().default_arrival_distance()
 
 
 func _input_names_from_target(value: Variant) -> PackedStringArray:

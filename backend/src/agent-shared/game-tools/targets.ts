@@ -220,6 +220,10 @@ export type ResolvedItemRef = {
   listingId?: string;
 };
 
+export type ResolvedIndexedItemRef = ResolvedItemRef & {
+  entry: ItemIndexEntry;
+};
+
 // 统一扁平编号反查：globalIndex（从 1 顺序往后，全场唯一）→ entry。
 // 不在乎 scope —— 这正是"统一 index"的意义：一个号定位任意背包/地面/容器里的东西。
 export function resolveFlatEntry(
@@ -229,6 +233,55 @@ export function resolveFlatEntry(
   const flat = currentContext?.itemIndex?.flat;
   if (!flat || !Number.isInteger(index) || (index as number) < 1 || (index as number) > flat.length) return undefined;
   return flat[(index as number) - 1];
+}
+
+export function resolveFlatItemByIndex(
+  ref: ItemRefParam | undefined,
+  currentContext?: AgentCurrentContext,
+): ResolvedIndexedItemRef | MoveTargetError {
+  const invalid = validateItemRef(ref);
+  if (invalid) return invalid;
+  const flat = currentContext?.itemIndex?.flat;
+  const index = ref!.index;
+  if (!flat || flat.length === 0) {
+    return { error: t("error.item_index_out_of_range", getActiveLocale(), { list: td("item_ref.list.interactive"), index, size: 0 }) };
+  }
+  if (index > flat.length) {
+    return { error: t("error.item_index_out_of_range", getActiveLocale(), { list: td("item_ref.list.interactive"), index, size: flat.length }) };
+  }
+  const entry = flat[index - 1];
+  const resolved = resolveFromEntry(entry, ref!.name.trim(), td("item_ref.list.interactive"), index);
+  if (isMoveTargetError(resolved)) return resolved;
+  return { ...resolved, entry };
+}
+
+export function resolveScopedItemByIndex(
+  ref: ItemRefParam | undefined,
+  list: ScopedItemRefList,
+  currentContext?: AgentCurrentContext,
+): ResolvedIndexedItemRef | MoveTargetError {
+  const invalid = validateItemRef(ref);
+  if (invalid) return invalid;
+  const entries = pickEntries(list, currentContext);
+  const listLabel = itemRefListLabel(list);
+  const index = ref!.index;
+  if (index > entries.length) {
+    return { error: t("error.item_index_out_of_range", getActiveLocale(), { list: listLabel, index, size: entries.length }) };
+  }
+  const entry = entries[index - 1];
+  if (!entry) {
+    return { error: t("error.item_index_out_of_range", getActiveLocale(), { list: listLabel, index, size: entries.length }) };
+  }
+  const resolved = resolveFromEntry(entry, ref!.name.trim(), listLabel, index);
+  if (isMoveTargetError(resolved)) return resolved;
+  return { ...resolved, entry };
+}
+
+function validateItemRef(ref: ItemRefParam | undefined): MoveTargetError | undefined {
+  if (!ref || !ref.name?.trim() || !Number.isInteger(ref.index) || ref.index < 1) {
+    return { error: t("error.unknown_item", getActiveLocale(), { item: ref?.name?.trim() ?? "" }) };
+  }
+  return undefined;
 }
 
 function resolveFromEntry(entry: ItemIndexEntry, requestedName: string, listLabel: string, index: number): ResolvedItemRef | MoveTargetError {
@@ -257,35 +310,32 @@ export function resolveItemByIndex(
   list: ItemRefList | ScopedItemRefList,
   currentContext?: AgentCurrentContext,
 ): ResolvedItemRef | MoveTargetError {
-  if (!ref || !ref.name?.trim() || !Number.isInteger(ref.index) || ref.index < 1) {
-    return { error: t("error.unknown_item", getActiveLocale(), { item: ref?.name?.trim() ?? "" }) };
-  }
-  const requestedName = ref.name.trim();
+  const invalid = validateItemRef(ref);
+  if (invalid) return invalid;
+  const checkedRef = ref!;
+  const requestedName = checkedRef.name.trim();
   // 统一扁平编号优先：ref.index 是全局号，跨 scope 反查。scope 提示忽略。
   const flat = currentContext?.itemIndex?.flat;
   if (flat && flat.length > 0) {
-    if (ref.index > flat.length) {
-      return { error: t("error.item_index_out_of_range", getActiveLocale(), { list: td("item_ref.list.interactive"), index: ref.index, size: flat.length }) };
-    }
-    return resolveFromEntry(flat[ref.index - 1], requestedName, td("item_ref.list.interactive"), ref.index);
+    return resolveFlatItemByIndex(checkedRef, currentContext);
   }
   const entries = pickEntries(list, currentContext);
   const listLabel = itemRefListLabel(list);
-  if (ref.index > entries.length) {
+  if (checkedRef.index > entries.length) {
     return {
       error: t("error.item_index_out_of_range", getActiveLocale(), {
         list: listLabel,
-        index: ref.index,
+        index: checkedRef.index,
         size: entries.length,
       }),
     };
   }
-  const entry = entries[ref.index - 1];
+  const entry = entries[checkedRef.index - 1];
   if (!entry) {
     return {
       error: t("error.item_index_out_of_range", getActiveLocale(), {
         list: listLabel,
-        index: ref.index,
+        index: checkedRef.index,
         size: entries.length,
       }),
     };
@@ -306,7 +356,7 @@ export function resolveItemByIndex(
     return {
       error: t("error.item_index_name_mismatch", getActiveLocale(), {
         list: listLabel,
-        index: ref.index,
+        index: checkedRef.index,
         actualName,
         requestedName,
       }),

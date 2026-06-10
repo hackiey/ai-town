@@ -32,7 +32,6 @@ import {
   buildAgentTimelineEntries,
   filterTimelineEntriesAfterCursor,
   latestTimelineCursor,
-  RAW_TIMELINE_TAIL_KEEP,
   renderAgentMemoryPinnedUserMessage,
   renderAgentSystemContext,
   renderAgentTimelineEntries,
@@ -75,6 +74,10 @@ function createWriteWorkingMemorySchema() {
       maxLength: WORKING_MEMORY_MAX_LENGTH,
       description: t("prompt.agent.thinking_track.write_tool.param.content", locale),
     }),
+    emotional_state: Type.Optional(Type.String({
+      maxLength: 1000,
+      description: t("prompt.agent.thinking_track.write_tool.param.emotional_state", locale),
+    })),
     intent: Type.Optional(Type.String({
       maxLength: 200,
       description: t("prompt.agent.thinking_track.write_tool.param.intent", locale),
@@ -216,11 +219,10 @@ export class ThinkingTrackSession {
 
     const timelineEntries = buildAgentTimelineEntries(context);
     const uncompactedEntries = filterTimelineEntriesAfterCursor(timelineEntries, previousMemory?.compactedThrough);
-    const compactionPlan = splitTimelineForCompaction(uncompactedEntries);
-    const nextCompactedThrough = latestTimelineCursor(compactionPlan.toCompact) ?? previousMemory?.compactedThrough;
+    const nextCompactedThrough = latestTimelineCursor(uncompactedEntries) ?? previousMemory?.compactedThrough;
 
     const systemPrompt = renderThinkingSystemPrompt(context);
-    const userPrompt = renderThinkingUserPrompt(reason, previousMemory, context, compactionPlan);
+    const userPrompt = renderThinkingUserPrompt(reason, previousMemory, context, uncompactedEntries);
     // 长期 Memory 抽到 system 之外，作为消息序列里第一条 pinned user message。
     // 与 action 轨同样的理由：update_memory 改它只让 messages 段 cache 失效，
     // 不连累 system/tools。空时跳过这条预置。
@@ -228,6 +230,7 @@ export class ThinkingTrackSession {
     const initialMessages: AgentMessage[] = memoryPin ? [userMessage(memoryPin)] : [];
 
     let writtenContent: string | undefined;
+    let writtenEmotionalState: string | undefined;
     let writtenIntent: string | undefined;
     let assistantMessage: AgentMessage | undefined;
     const startGameTime = this.latestObservedGameTime;
@@ -242,6 +245,7 @@ export class ThinkingTrackSession {
       parameters: createWriteWorkingMemorySchema(),
       execute: async (_id: string, args: WriteWorkingMemoryParams): Promise<AgentToolResult<{ ok: true }>> => {
         writtenContent = args.content.trim();
+        writtenEmotionalState = typeof args.emotional_state === "string" ? args.emotional_state.trim() || undefined : undefined;
         writtenIntent = typeof args.intent === "string" ? args.intent.trim() || undefined : undefined;
         return {
           content: [{ type: "text", text: t("prompt.agent.thinking_track.write_tool.result", locale) }],
@@ -325,6 +329,9 @@ export class ThinkingTrackSession {
         updatedAt: now,
         triggerReason: writtenIntent ? `${reason}: ${writtenIntent}` : reason,
       };
+      if (writtenEmotionalState) {
+        snapshot.emotionalState = writtenEmotionalState;
+      }
       if (this.latestObservedGameTime) {
         snapshot.gameTime = this.latestObservedGameTime as unknown as Record<string, unknown>;
       }
@@ -414,22 +421,23 @@ function errorMessage(error: unknown): string {
 function renderThinkingSystemPrompt(context: ReturnType<AgentContextBuilder["build"]> extends Promise<infer T> ? T : never): string {
   const locale = getActiveLocale();
   const header = t("prompt.agent.thinking_track.system", locale);
-  const compaction = t("prompt.agent.thinking_track.compaction_system", locale, { count: RAW_TIMELINE_TAIL_KEEP });
-  return `${header}\n\n${compaction}\n\n${renderAgentSystemContext(context)}`;
+  const emotionMemory = t("prompt.agent.thinking_track.emotion_memory_instruction", locale);
+  const compaction = t("prompt.agent.thinking_track.compaction_system", locale);
+  return `${header}\n\n${emotionMemory}\n\n${compaction}\n\n${renderAgentSystemContext(context)}`;
 }
 
 function renderThinkingUserPrompt(
   reason: string,
   previous: WorkingMemorySnapshot | undefined,
   context: ReturnType<AgentContextBuilder["build"]> extends Promise<infer T> ? T : never,
-  compactionPlan: TimelineCompactionPlan,
+  uncompactedEntries: AgentTimelineEntry[],
 ): string {
   const parts: string[] = [];
 
   // 角色感知（位置 / 属性 / 周围 / 背包 / 当前时间）放进 user message——
   // 跨 turn 会变，不适合进 system prompt 的 cache 段；同时跟 action 轨布局一致。
   // renderAgentTurnContext 已经不渲染事件（事件由 renderAgentEventsContext 单独负责），
-  // 这里只用现状块即可；未总结时间线由下面按 compactedThrough 游标切分。
+  // 这里只用现状块即可；working memory 之后的新时间线由下面按 compactedThrough 游标切分。
   const locale = getActiveLocale();
 
   parts.push(renderAgentTurnContext(context));
@@ -443,33 +451,13 @@ function renderThinkingUserPrompt(
     parts.push(t("prompt.agent.thinking_track.user.previous_memory_empty", locale));
   }
 
-  const toCompactBody = compactionPlan.toCompact.length > 0
-    ? renderAgentTimelineEntries(compactionPlan.toCompact, context, locale)
+  const toCompactBody = uncompactedEntries.length > 0
+    ? renderAgentTimelineEntries(uncompactedEntries, context, locale)
     : t("prompt.agent.thinking_track.user.events_to_compact_empty", locale);
   parts.push(`${t("prompt.agent.thinking_track.user.events_to_compact_header", locale)}\n${toCompactBody}`);
 
-  const rawTailBody = compactionPlan.rawTail.length > 0
-    ? renderAgentTimelineEntries(compactionPlan.rawTail, context, locale)
-    : t("prompt.agent.thinking_track.user.events_raw_tail_empty", locale);
-  parts.push(`${t("prompt.agent.thinking_track.user.events_raw_tail_header", locale, { count: RAW_TIMELINE_TAIL_KEEP })}\n${rawTailBody}`);
-
   parts.push(t("prompt.agent.thinking_track.user.closing_instruction", locale));
   return parts.join("\n\n");
-}
-
-type TimelineCompactionPlan = {
-  toCompact: AgentTimelineEntry[];
-  rawTail: AgentTimelineEntry[];
-};
-
-function splitTimelineForCompaction(entries: AgentTimelineEntry[]): TimelineCompactionPlan {
-  if (entries.length <= RAW_TIMELINE_TAIL_KEEP) {
-    return { toCompact: [], rawTail: entries };
-  }
-  return {
-    toCompact: entries.slice(0, entries.length - RAW_TIMELINE_TAIL_KEEP),
-    rawTail: entries.slice(-RAW_TIMELINE_TAIL_KEEP),
-  };
 }
 
 // stableHash 错峰 1~interval-1，避免所有 NPC 在同一游戏分钟集中跑 thinking turn。

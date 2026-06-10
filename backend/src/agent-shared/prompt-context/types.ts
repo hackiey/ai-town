@@ -134,6 +134,7 @@ export type ShelfListingContext = {
 export type ShelfContext = {
   id: string;
   locationId?: string;
+  ownerGroup?: string;
   displayName?: string;
   directlyInteractable?: boolean;
   slotCount?: number;
@@ -278,6 +279,7 @@ export type PromptMemorySections = {
 // 不是所有 agent 都用——only two-track 这类有 thinking 轨的会填。
 export type WorkingMemorySnapshot = {
   content: string;
+  emotionalState?: string;
   updatedAt: string;
   gameTime?: GameTimeSnapshot;
   triggerReason?: string;

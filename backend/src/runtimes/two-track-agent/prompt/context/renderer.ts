@@ -31,8 +31,8 @@ import {
   type NormalizedGameTime,
 } from "../../../../agent-shared/prompt-context/time.js";
 
-export const RAW_TIMELINE_TAIL_KEEP = 10;
 export const UNSUMMARIZED_TIMELINE_TRIGGER_COUNT = 30;
+const COVERED_TIMELINE_DETAIL_LIMIT = 10;
 
 export function renderAgentContext(context: GameAgentContext): string {
   return [
@@ -95,26 +95,58 @@ function renderWorkingMemory(memory: WorkingMemorySnapshot, locale: Locale): str
     reason: memory.triggerReason ?? "scheduled",
   });
   const body = memory.content.trim();
+  const emotionalState = memory.emotionalState?.trim();
   if (!body) {
     return t("prompt.context.label.working_memory_empty", locale);
   }
-  return `${meta}\n\n${body}`;
+  const emotionalLine = emotionalState
+    ? t("prompt.context.label.working_memory_emotional_state_format", locale, { state: emotionalState })
+    : undefined;
+  return [meta, emotionalLine, body].filter(Boolean).join("\n\n");
 }
 
 // 事件段：world event + backend 内部失败 action 按时间合并成一条 actor-private 时间线。
-// 从 renderAgentTurnContext 拆出，方便 messages.ts 在事件块和「现状」块之间插入
-// working_memory（user message 顺序：近期事件 → working_memory → 现状）。
+// Action prompt 保留完整原文事件；working_memory 只决定哪些事件已总结、哪些是新发生。
 export function renderAgentEventsContext(context: GameAgentContext): string {
   const sections: string[] = [];
   const locale = getActiveLocale();
-  const entries = filterTimelineEntriesAfterCursor(
-    buildAgentTimelineEntries(context),
-    context.workingMemory?.compactedThrough,
+  const entries = buildAgentTimelineEntries(context);
+  const compactedThrough = context.workingMemory?.compactedThrough;
+
+  if (!context.workingMemory) {
+    appendSection(
+      sections,
+      t("prompt.context.label.recent_events_without_memory_format", locale, { hours: formatHours(context.relevantEventWindowHours) }),
+      renderAgentTimelineEntries(entries, context, locale),
+    );
+    return sections.join("\n\n");
+  }
+
+  if (!compactedThrough) {
+    appendSection(
+      sections,
+      t("prompt.context.label.recent_events_memory_scope_unknown_format", locale, { hours: formatHours(context.relevantEventWindowHours) }),
+      renderAgentTimelineEntries(entries, context, locale),
+    );
+    return sections.join("\n\n");
+  }
+
+  const coveredEntries = lastTimelineEntries(
+    filterTimelineEntriesAtOrBeforeCursor(entries, compactedThrough),
+    COVERED_TIMELINE_DETAIL_LIMIT,
+  );
+  const newEntries = filterTimelineEntriesAfterCursor(entries, compactedThrough);
+  appendSection(
+    sections,
+    t("prompt.context.label.recent_events_covered_by_memory_format", locale, {
+      count: COVERED_TIMELINE_DETAIL_LIMIT,
+    }),
+    renderAgentTimelineEntries(coveredEntries, context, locale),
   );
   appendSection(
     sections,
-    t("prompt.context.label.recent_events_format", locale, { hours: formatHours(context.relevantEventWindowHours) }),
-    renderAgentTimelineEntries(entries, context, locale),
+    t("prompt.context.label.events_after_working_memory", locale),
+    renderAgentTimelineEntries(newEntries, context, locale),
   );
   return sections.join("\n\n");
 }
@@ -330,6 +362,11 @@ export function filterTimelineEntriesAfterCursor(entries: AgentTimelineEntry[], 
   return entries.filter((entry) => compareTimelineCursors(entry.cursor, cursor) > 0);
 }
 
+export function filterTimelineEntriesAtOrBeforeCursor(entries: AgentTimelineEntry[], cursor: TimelineCursor | undefined): AgentTimelineEntry[] {
+  if (!cursor) return [];
+  return entries.filter((entry) => compareTimelineCursors(entry.cursor, cursor) <= 0);
+}
+
 export function countUncompactedTimelineEntries(context: GameAgentContext): number {
   return filterTimelineEntriesAfterCursor(buildAgentTimelineEntries(context), context.workingMemory?.compactedThrough).length;
 }
@@ -538,6 +575,10 @@ function renderCharacterIdentity(characterId: string): string {
 
 function appendSection(sections: string[], title: string, body: string): void {
   sections.push(`# ${title}\n${body}`);
+}
+
+function lastTimelineEntries<T>(entries: T[], limit: number): T[] {
+  return entries.length <= limit ? entries : entries.slice(-limit);
 }
 
 function formatHours(hours: number): string {

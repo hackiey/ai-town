@@ -1,5 +1,6 @@
 import type { FastifyInstance } from "fastify";
 import { DEBUG_AGENT_ANALYTICS_MODULE } from "./assets/analytics.js";
+import { DEBUG_AGENT_CHARACTER_TIMELINE_MODULE } from "./assets/character-timeline.js";
 import { DEBUG_AGENT_DETAIL_MODULE } from "./assets/detail.js";
 import { DEBUG_AGENT_FILTERS_MODULE } from "./assets/filters.js";
 import { DEBUG_AGENT_MAIN_MODULE } from "./assets/main.js";
@@ -41,6 +42,11 @@ const DEBUG_AGENT_ASSETS: DebugAgentAsset[] = [
     path: "/debug/assets/timeline.js",
     contentType: "text/javascript; charset=utf-8",
     body: DEBUG_AGENT_TIMELINE_MODULE,
+  },
+  {
+    path: "/debug/assets/character-timeline.js",
+    contentType: "text/javascript; charset=utf-8",
+    body: DEBUG_AGENT_CHARACTER_TIMELINE_MODULE,
   },
   {
     path: "/debug/assets/session-view.js",

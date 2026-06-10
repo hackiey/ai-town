@@ -358,10 +358,10 @@ const NPC_WEEKLY_WAGES: Dict<{ silverPerWeek: number; role: string; payerGroupId
   oswin_locke:   { silverPerWeek:  70, role: "soldier",              payerGroupId: "royal_treasury" },
 };
 
-// 矿石→银币 rate (在 npcs.json prompts 里硬编码，这里维护 mirror)。
+// 王室矿工计件工资：矿石→银币 rate（与 skills.json / npcs.json 的发薪记忆保持一致）。
 const ORE_RATES: Dict<number> = {
-  silver_ore: 0.5,
-  gold_ore:   1.0,
+  silver_ore: 1,
+  gold_ore:   2,
 };
 
 const GUARD_REPRESENTATIVE_ID = "sona_ward"; // 普通卫兵作为 I1/I2/I3 的基准
@@ -375,6 +375,8 @@ const ECONOMY = {
   foodSafetyFactor: 1.0,
   facilityHoursPerDay: 8,
   workerStaminaBudgetPerDay: 180,
+  mineAttemptIntervalSeconds: 600,
+  mineAttemptStaminaCost: 6,
   laborSilverPerGameHour: 2.5,
   minimumCraftLaborSilver: 0.1,
   cropCareYieldMultiplier: 0.8,
@@ -554,7 +556,7 @@ const SECTORS: SectorConfig[] = [
   // 农业：3 个田主 group + 2 个教会 group + general_store 种亚麻。primary_agriculture 是"汇总虚拟 sector"用来对接田租计算。
   { id: "primary_agriculture", name: "primary agriculture", groupId: "farm_groups", workerIds: [], productItemIds: ["wheat", "tomato_fruit"], taxRate: 0, rentPerDay: 0, spoilageRate: 0.04 },
   // 磨坊
-  { id: "milling", name: "milling", groupId: "millward_mill", workerIds: ["jonas_millward", "rudi_tate", "selma_millward"], productItemIds: ["flour"], taxRate: 0.08, rentPerDay: 4, spoilageRate: 0.01 },
+  { id: "milling", name: "milling", groupId: "millward_mill", workerIds: ["jonas_millward", "rudi_tate", "selma_millward"], productItemIds: ["flour", "malt"], taxRate: 0.08, rentPerDay: 4, spoilageRate: 0.01 },
   // 面包房
   { id: "hale_bakery", name: "hale_bakery", groupId: "hale_bakery", workerIds: ["edda_hale", "mara_hale"], productItemIds: ["bread"], taxRate: 0.10, rentPerDay: 3, spoilageRate: 0.06 },
   // 畜牧
@@ -562,7 +564,7 @@ const SECTORS: SectorConfig[] = [
   // 屠夫
   { id: "butcher", name: "butcher", groupId: "butcher", workerIds: ["hugh_marrow"], productItemIds: ["raw_meat"], taxRate: 0.08, rentPerDay: 1, spoilageRate: 0.05 },
   // 酒馆 / 食堂 — 也能烤面包（有 stove），是 bakery 的补充
-  { id: "tavern", name: "tavern", groupId: "tavern", workerIds: ["garron_potter", "nell_savor"], productItemIds: ["bread", "cooked_meat", "omelet", "veg_stew", "cured_stew", "cured_meat", "cured_omelet", "berry_jam"], taxRate: 0.08, rentPerDay: 2, spoilageRate: 0.07 },
+  { id: "tavern", name: "tavern", groupId: "tavern", workerIds: ["garron_potter", "nell_millward"], productItemIds: ["bread", "cooked_meat", "omelet", "veg_stew", "cured_stew", "cured_meat", "cured_omelet", "berry_jam"], taxRate: 0.08, rentPerDay: 2, spoilageRate: 0.07 },
   // 铁匠铺 (主铺): iron tools + ingot + 副业卖炭
   { id: "blacksmith_shop", name: "blacksmith_shop", groupId: "blacksmith_shop", workerIds: ["owen_barclay", "tilda_sparks"], productItemIds: ["iron_ingot", "iron_blade", "iron_axe_head", "iron_pick_head", "iron_pick", "iron_shovel", "sickle", "iron_axe", "iron_knife", "charcoal"], taxRate: 0.08, rentPerDay: 2, spoilageRate: 0 },
   // 锻造院 (第二铁工铺): 同样能产铁器 + 卖炭
@@ -847,10 +849,10 @@ function planRoyalMines(catalog: Catalog, state: ModelState): MinePlanRow[] {
   for (const [mineId, perHour] of Object.entries(catalog.mineTargets)) {
     const itemId = ECONOMY.mineOutputItems[mineId] ?? "";
     if (!itemId) continue;
-    const targetQty = perHour * 24;
+    const targetQty = perHour * ECONOMY.facilityHoursPerDay;
     const workerIds = ECONOMY.mineWorkers[mineId] ?? [];
-    const staminaCap = workerIds.length * ECONOMY.workerStaminaBudgetPerDay / 10;
-    const timeCap = workerIds.length * ECONOMY.facilityHoursPerDay * 3600 / 300;
+    const staminaCap = workerIds.length * ECONOMY.workerStaminaBudgetPerDay / ECONOMY.mineAttemptStaminaCost;
+    const timeCap = workerIds.length * ECONOMY.facilityHoursPerDay * 3600 / ECONOMY.mineAttemptIntervalSeconds;
     const outputQty = Math.min(targetQty, staminaCap, timeCap);
     const wageRate = catalog.runtimeWages.oreRates[itemId] ?? ECONOMY.mineWageRates[itemId] ?? 0;
     const wageTotal = outputQty * wageRate;
@@ -859,9 +861,9 @@ function planRoyalMines(catalog: Catalog, state: ModelState): MinePlanRow[] {
       sectorId: "royal_mines",
       activity: `dig:${mineId}`,
       workerCount: workerIds.length,
-      requiredHours: outputQty * 300 / 3600,
-      requiredStamina: outputQty * 10,
-      source: "src/autoload/mines.gd target + runtime wage policy",
+      requiredHours: timeCap * ECONOMY.mineAttemptIntervalSeconds / 3600,
+      requiredStamina: timeCap * ECONOMY.mineAttemptStaminaCost,
+      source: "src/autoload/mines.gd fixed p + seeded wage memory",
     });
     rows.push({
       mineId,
@@ -937,7 +939,7 @@ function computeWageRows(catalog: Catalog, mineRows: MinePlanRow[]): WageRow[] {
         payerGroupId: "royal_treasury",
         payerSectorId: "royal_mines",
         silverPerDay: mine.wageTotal * (weights[index] ?? 1) / Math.max(1, weightTotal),
-        source: "magda_kerr offer: ore rate from backend_action_runner.gd",
+        source: "magda_kerr offer: ore rate from seeded wage memory",
         status: catalog.runtimeWages.minerIds.includes(id) ? "implemented" : "design_only",
       });
     });
@@ -1469,16 +1471,16 @@ function validateContracts(catalog: Catalog, model: EconomyModel): ContractCheck
 
   // I4: 国库周净流 / 周总出 ∈ ±5%
   const weeklyWages = Object.values(NPC_WEEKLY_WAGES).reduce((s, w) => s + w.silverPerWeek, 0);
-  // 矿工日结：silver_mine 36 ore/day × 0.5 + gold_mine 12 × 1.0 = 30/day
-  const silverMineDaily = (catalog.mineTargets.silver_mine ?? 1.5) * 24;
-  const goldMineDaily = (catalog.mineTargets.gold_mine ?? 0.5) * 24;
+  // 矿工日结：silver_mine 28.8 ore/day × 1 + gold_mine 9.6 × 2 = 48/day（8h 预期）。
+  const silverMineDaily = (catalog.mineTargets.silver_mine ?? 3.6) * ECONOMY.facilityHoursPerDay;
+  const goldMineDaily = (catalog.mineTargets.gold_mine ?? 1.2) * ECONOMY.facilityHoursPerDay;
   const minerWeeklyPayout = (silverMineDaily * (ORE_RATES.silver_ore ?? 0) + goldMineDaily * (ORE_RATES.gold_ore ?? 0)) * 7;
   const apprenticeWeekly = ECONOMY.apprenticeWages.reduce((s, w) => s + w.silverPerDay * 7, 0);
   const treasuryWeeklyExpense = weeklyWages + minerWeeklyPayout + apprenticeWeekly;
   // 收入：rent (固定 405/周) + minting profit
   const businessRentWeekly = 405; // 北墙96+灰石96+磨坊53+畜牧80+铁矿80（npcs.json Magda 第 1219 行）
-  const silverMintProfitWeekly = silverMineDaily * (priceOf(prices, "silver_coin") - (ORE_RATES.silver_ore ?? 0)) * 7;
-  const goldMintProfitWeekly = goldMineDaily * (priceOf(prices, "gold_coin") - (ORE_RATES.gold_ore ?? 0)) * 7;
+  const silverMintProfitWeekly = silverMineDaily * (priceOf(prices, "silver_ore") - (ORE_RATES.silver_ore ?? 0)) * 7;
+  const goldMintProfitWeekly = goldMineDaily * (priceOf(prices, "gold_ore") - (ORE_RATES.gold_ore ?? 0)) * 7;
   const treasuryWeeklyIncome = businessRentWeekly + silverMintProfitWeekly + goldMintProfitWeekly;
   const treasuryNet = treasuryWeeklyIncome - treasuryWeeklyExpense;
   const i4Ratio = treasuryWeeklyExpense > 0 ? treasuryNet / treasuryWeeklyExpense : 0;
@@ -1547,7 +1549,7 @@ function renderReport(catalog: Catalog, model: EconomyModel): string {
   report.push("- This is a daily design model: production, demand, capacity, wages, taxes/rent, and group capture. It does not simulate inventories or stock coverage.");
   report.push("- Resources are planned top-down from the actual NPC food basket and capital maintenance, then checked against farms, facilities, worker stamina, and payroll.");
   report.push("- Primary agriculture pays fixed land rent from taxable FarmSlot count: 1 silver/slot/week to royal_treasury, with church land exempt and no percentage harvest tax.");
-  report.push("- Miner, guard, and Magda wages are read from runtime wage code; apprentice stipends are explicit design assumptions until encoded in gameplay.");
+  report.push("- Miner wages are modeled from seeded wage memory; guard and Magda weekly wages mirror NPC data; apprentice stipends are explicit design assumptions until encoded in gameplay.");
   report.push("- Sector retained cash is not personal wealth. Group capture separates retained business cash, owner labor draw, NPC wages, and tax/rent receipts.");
   report.push("");
   renderContractsSection(report, catalog, model);
@@ -2102,9 +2104,15 @@ function loadNpcData(): Map<string, NpcDefinition> {
 
 function loadMineTargets(): Dict<number> {
   const raw = readProjectFile("src/autoload/mines.gd");
-  const block = raw.match(/const _SEED: Dictionary = \{([\s\S]*?)\n\}/)?.[1] ?? "";
+  const block = raw.match(/const _FIXED_P: Dictionary = \{([\s\S]*?)\n\}/)?.[1] ?? "";
   const out: Dict<number> = {};
-  for (const match of block.matchAll(/"([^"]+)"\s*:\s*([0-9.]+)/g)) out[match[1] ?? ""] = Number(match[2] ?? 0);
+  const attemptsPerHour = 3600 / ECONOMY.mineAttemptIntervalSeconds;
+  for (const match of block.matchAll(/"([^"]+)"\s*:\s*([0-9.]+)/g)) {
+    const mineId = match[1] ?? "";
+    const successProbability = Number(match[2] ?? 0);
+    const workers = ECONOMY.mineWorkers[mineId]?.length ?? 1;
+    out[mineId] = successProbability * attemptsPerHour * workers;
+  }
   return out;
 }
 

@@ -124,7 +124,7 @@ export function assembleAgentContextFromManifest(
   const nearbyWorkstations = [...workstationCtxs, ...containerCtxs];
   // buildShelfContexts 同时落 shelfItemIndex（货架内容 [N] → slotIndex 映射，put_take take 反查）。
   const shelfItemIndex: Record<string, ItemIndexEntry[]> = {};
-  const nearbyShelvesBuilt = buildShelfContexts(nearbyShelfViews, names, shelfBands);
+  const nearbyShelvesBuilt = buildShelfContexts(nearbyShelfViews, names, shelfBands, groupIds);
   for (const built of nearbyShelvesBuilt) {
     if (built.entries.length > 0) shelfItemIndex[built.context.id] = built.entries;
   }
@@ -627,12 +627,14 @@ function buildShelfContexts(
   views: ShelfView[],
   names: DisplayNameResolver,
   bands: Map<string, PerceptionBand>,
+  characterGroupIds: string[],
 ): Array<{ context: ShelfContext; entries: ItemIndexEntry[] }> {
   return views.map((view) => {
     const rows = view.contents.filter((r) => r.itemDefId && r.stackCount > 0);
     const entries: ItemIndexEntry[] = [];
     const listings: ShelfListingContext[] = [];
-    if (view.walletCenti > 0) {
+    const canSeeWallet = isOwnedSiteAccessibleToGroups(view.ownerGroup, characterGroupIds);
+    if (canSeeWallet && view.walletCenti > 0) {
       entries.push({ itemDefId: "silver_coin" });
       listings.push({
         index: 1,
@@ -652,6 +654,7 @@ function buildShelfContexts(
       context: {
         id: view.shelfId,
         locationId: view.locationId ?? view.shelfId,
+        ownerGroup: view.ownerGroup,
         displayName: names.location(view.shelfId),
         directlyInteractable: bands.get(view.shelfId) === "direct",
         slotCount: view.slotCount,

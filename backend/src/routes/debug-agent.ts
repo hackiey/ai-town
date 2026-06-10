@@ -20,6 +20,7 @@ import {
 } from "./debug-agent/helpers.js";
 import { registerDebugAgentAssetRoutes } from "./debug-agent/assets.js";
 import { toolAnalyticsRoutes } from "./debug-agent/analytics.js";
+import { DEBUG_CHARACTER_HTML } from "./debug-agent/character-page.js";
 import { DEBUG_HTML } from "./debug-agent/page.js";
 import type { GameTimeSnapshot } from "../godot-link/protocol.js";
 
@@ -311,6 +312,11 @@ export const debugAgentRoutes: FastifyPluginAsync = async (app) => {
   app.get("/debug", async (_request, reply) => {
     reply.type("text/html; charset=utf-8");
     return DEBUG_HTML;
+  });
+
+  app.get("/debug/characters", async (_request, reply) => {
+    reply.type("text/html; charset=utf-8");
+    return DEBUG_CHARACTER_HTML;
   });
 
   app.get("/debug/api/agent-run-filter", async () => {
@@ -720,6 +726,11 @@ export const debugAgentRoutes: FastifyPluginAsync = async (app) => {
         workingMemory: workingMemory
           ? {
               content: typeof workingMemory.content === "string" ? workingMemory.content : "",
+              emotionalState: typeof workingMemory.emotionalState === "string"
+                ? workingMemory.emotionalState
+                : typeof workingMemory.emotional_state === "string"
+                  ? workingMemory.emotional_state
+                  : null,
               updatedAt: typeof workingMemory.updatedAt === "string"
                 ? workingMemory.updatedAt
                 : (workingRow?.updatedAt ?? null),

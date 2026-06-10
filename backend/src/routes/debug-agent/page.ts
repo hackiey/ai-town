@@ -11,6 +11,7 @@ export const DEBUG_HTML = String.raw`<!doctype html>
     <div class="view-tabs">
       <button id="tab-timeline" class="view-tab active" data-view="timeline">时间轴</button>
       <button id="tab-analytics" class="view-tab" data-view="analytics">工具分析</button>
+      <a class="view-tab" href="/debug/characters">角色三列</a>
     </div>
     <input id="filter-town" placeholder="townId..." style="width:140px" />
     <div class="npc-filter">

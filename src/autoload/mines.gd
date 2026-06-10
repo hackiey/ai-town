@@ -7,9 +7,9 @@ extends Node
 # mine_id (= location id) → 每次挥镐固定产出概率。
 # swing 间隔 10 game-min（mining.lua ATTEMPT_INTERVAL_SECONDS），一次 dig action 6 swing。
 # 当前经济目标：
-#   gold_mine   0.2 × 6 × 10h × 1 工人 ≈ 12 ore/day
-#   silver_mine 0.3 × 6 × 10h × 2 工人 ≈ 36 ore/day
-#   iron_mine   0.5 × 6 × 10h × 1 工人 ≈ 30 ore/day
+#   gold_mine   0.2 × 6 × 8h × 1 工人 ≈ 9.6 ore/day
+#   silver_mine 0.3 × 6 × 8h × 2 工人 ≈ 28.8 ore/day
+#   iron_mine   0.5 × 6 × 8h × 1 工人 ≈ 24 ore/day
 const _FIXED_P: Dictionary = {
 	"gold_mine":   0.2,
 	"silver_mine": 0.3,

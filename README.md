@@ -17,7 +17,7 @@ AI Town is a **playable AI town** built with Godot + TypeScript: a hand-built me
 Reacting fast and reasoning deeply pull in opposite directions: an LLM call on every step is accurate but slow and expensive, while pure reaction drifts, repeats failures, and recovers poorly. So each NPC runs **two independent LLM sessions at once**:
 
 - a **reactive track** — low latency, no extended thinking, full game toolset — that wakes on events and turns them straight into in-world actions, and
-- a **strategic track** — extended reasoning — that periodically summarizes unsummarized events, plans, and writes a short working-memory brief.
+- a **strategic track** — extended reasoning — that periodically summarizes events that happened after the current working memory, plans, and writes a short working-memory brief.
 
 The reactive track reads that brief and carries the plan forward cheaply, re-invoking the strategic track only at meaningful events or after enough time passes. The result is an NPC that acts within seconds yet still thinks deeply in the background — without the abort-and-restart machinery a single combined session would need on every event.
 

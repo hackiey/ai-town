@@ -365,10 +365,12 @@ func _physics_process(delta: float) -> void:
 				if bool(advance.get("finished", false)):
 					velocity.x = 0.0; velocity.z = 0.0
 					w.clear_final_distance()
-					# 农事队列接管时不要 finish backend command —— queue tick 会进入 working
-					if backend_actions().is_active() and not farm_actions().is_processing_op():
-						backend_actions().finish(true, "", {})
+					var should_finish_backend := backend_actions().is_active() and not farm_actions().is_processing_op()
 					_enter_idle()
+					# 农事队列接管时不要 finish backend command —— queue tick 会进入 working。
+					# 其他走路动作交给 runner 判断：普通移动完成，内部靠近则继续原工具。
+					if should_finish_backend:
+						backend_actions().on_action_walk_finished()
 				else:
 					nav.set_target_position(advance["next_target"] as Vector3)
 					velocity.x = 0.0; velocity.z = 0.0

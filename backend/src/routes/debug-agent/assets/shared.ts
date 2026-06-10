@@ -15,6 +15,7 @@ export function createDebugAgentApp() {
       selectedGameDay: "",
       selectedTurn: null,
       selectedThinking: null,
+      selectedCharacterKey: "",
       thinkingTurns: [],
       pinnedSessionId: initialHashParams.get("session") || "",
       pinnedMessageSeq: (() => {

@@ -46,9 +46,9 @@ export { renderEventSummary } from "./context/renderer.js";
 export {
   buildAgentTimelineEntries,
   countUncompactedTimelineEntries,
+  filterTimelineEntriesAtOrBeforeCursor,
   filterTimelineEntriesAfterCursor,
   latestTimelineCursor,
-  RAW_TIMELINE_TAIL_KEEP,
   renderAgentContext,
   renderAgentEventsContext,
   renderAgentTimelineEntries,

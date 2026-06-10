@@ -725,6 +725,13 @@ function buildMemoryView(memoryView) {
       + (working.triggerReason ? '<span class="pill">reason=' + escapeHtml(working.triggerReason) + "</span> " : "")
       + (working.gameTime ? '<span class="pill">' + escapeHtml(formatGameTime(working.gameTime, { short: true })) + "</span>" : "");
     section.appendChild(metaLine);
+    if (working.emotionalState) {
+      const emotional = document.createElement("div");
+      emotional.className = "meta";
+      emotional.style.marginBottom = "6px";
+      emotional.textContent = "心境：" + working.emotionalState;
+      section.appendChild(emotional);
+    }
     const pre = document.createElement("pre");
     pre.textContent = working.content;
     section.appendChild(pre);

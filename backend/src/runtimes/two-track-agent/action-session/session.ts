@@ -96,11 +96,16 @@ export async function readWorkingMemoryFromStorage(storage: RuntimeStorage): Pro
   const rec = objectValue(raw);
   if (!rec) return undefined;
   const content = typeof rec.content === "string" ? rec.content : "";
+  const emotionalState = typeof rec.emotionalState === "string"
+    ? rec.emotionalState
+    : typeof rec.emotional_state === "string"
+      ? rec.emotional_state
+      : undefined;
   const updatedAt = typeof rec.updatedAt === "string" ? rec.updatedAt : new Date().toISOString();
   const triggerReason = typeof rec.triggerReason === "string" ? rec.triggerReason : undefined;
   const gameTime = objectValue(rec.gameTime) as GameTimeSnapshot | undefined;
   const compactedThrough = parseTimelineCursor(rec.compactedThrough);
-  return { content, updatedAt, triggerReason, gameTime, compactedThrough };
+  return { content, emotionalState, updatedAt, triggerReason, gameTime, compactedThrough };
 }
 
 function parseTimelineCursor(value: unknown): TimelineCursor | undefined {

@@ -251,11 +251,11 @@ func _physics_process(delta: float) -> void:
 				velocity.z = 0.0
 				_has_target = false
 				w.clear_final_distance()
-				if backend_actions().is_active():
-					backend_actions().finish(true, "", {})
 				anim_state = "idle"
 				# 走到位 → 位姿稳定，写一次 character_states
 				state_io().persist()
+				if backend_actions().is_active():
+					backend_actions().on_action_walk_finished()
 			else:
 				nav.set_target_position(advance["next_target"] as Vector3)
 				velocity.x = 0.0
