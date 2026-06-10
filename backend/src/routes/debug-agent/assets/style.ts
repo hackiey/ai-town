@@ -552,6 +552,11 @@ export const DEBUG_AGENT_PAGE_STYLE = String.raw`
   .analytics-focus { display: inline-flex; gap: 6px; align-items: center; padding: 2px 8px; background: var(--bg-3); border: 1px solid var(--accent); border-radius: 4px; font-size: 11px; color: var(--text); }
   .analytics-focus strong { color: var(--accent); }
   .analytics-focus button { padding: 0 6px; font-size: 11px; }
+  .analytics-subtoolbar { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: 10px; }
+  .analytics-subtoolbar label { color: var(--muted); font-size: 11px; display: flex; gap: 4px; align-items: center; }
+  .analytics-subtoolbar .grow { flex: 1; }
+  .analytics-pagination { display: flex; justify-content: flex-end; gap: 8px; align-items: center; padding-top: 8px; }
+  .analytics-pagination .meta { color: var(--muted); font-size: 11px; margin-right: auto; }
 
   /* === analytics body === */
   .analytics-body { flex: 1; overflow: auto; padding: 12px; }
@@ -574,6 +579,7 @@ export const DEBUG_AGENT_PAGE_STYLE = String.raw`
   .analytics-table .cell-num { text-align: right; font-variant-numeric: tabular-nums; }
   .analytics-table .cell-error { color: var(--error); font-weight: 600; }
   .analytics-table .cell-bar { width: 160px; }
+  .analytics-table .cell-time { color: var(--text); white-space: nowrap; font-variant-numeric: tabular-nums; }
   .analytics-table .cell-name { color: var(--text); }
   .analytics-table .cell-id { color: var(--muted); font-size: 10px; }
   .analytics-table .cell-excerpt { color: var(--muted); font-size: 11px; max-width: 600px; }
@@ -595,6 +601,11 @@ export const DEBUG_AGENT_PAGE_STYLE = String.raw`
   /* === error row === */
   .analytics-error-row:hover { background: rgba(255,255,255,0.03); }
   .error-jump { padding: 2px 8px; font-size: 11px; }
+
+  /* === call detail row === */
+  .analytics-call-row:hover { background: rgba(255,255,255,0.03); }
+  .analytics-call-row.failed { background: rgba(255, 118, 118, 0.04); }
+  .call-jump { padding: 2px 8px; font-size: 11px; }
 
   /* === time buckets === */
   .time-buckets { display: flex; gap: 2px; align-items: flex-end; height: 140px; overflow-x: auto; padding: 4px 0; }

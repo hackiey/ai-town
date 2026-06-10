@@ -4,7 +4,7 @@ extends ContainerNode
 # 货架 = 无锁的容器。继承 ContainerNode 的 proximity / approach / slot 库存 / 注册到 Containers。
 # 货架与容器的唯一区别：
 #   1. 永不上锁（WorldObjectIdentity.lock_item_id 留空）→ 人人可存取。
-#   2. 槽位可带 listing_price_centi 标价；put_take 直接取带标价商品时会校验货架钱包付款。
+#   2. 槽位可带 listing_price_centi 标价；take 直接取带标价商品时会校验货架钱包付款。
 #   3. 显示名走 WorldObjectIdentity.def_id 对应的 workstation i18n。
 
 const _SHELF_DISPLAY_NAME := "货架"

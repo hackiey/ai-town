@@ -150,7 +150,7 @@ const _GAME_WORLD_SCHEMA: Array[String] = [
 
 	# item_instances: 背包 / 装备 / 容器（含货架）/ 预留地面物品。ownerKind 用
 	# 'character'（背包）和 'container'（容器+货架统一），ownerKind='world' 列预留给后续地面玩法。
-	# listingPriceCenti: 货架陈列标价（centi 银），null = 普通容器/未定价。put_take 取货时按标价校验货架钱包付款。
+	# listingPriceCenti: 货架陈列标价（centi 银），null = 普通容器/未定价。take 取货时按标价校验货架钱包付款。
 	#
 	# Schema 三层（见 project_item_state_architecture）：
 	#   reaction 涌现身份（generate 冻结）：shapeType / tags / materials / physicsProps
@@ -546,6 +546,7 @@ func _open() -> void:
 	_ensure_npc_character_states_seeded(RunMode.town_id)
 	_backfill_configured_npc_body_attributes(RunMode.town_id)
 	_ensure_proficiency_seeded(RunMode.town_id)
+	_backfill_lumbering_from_woodworking(RunMode.town_id)
 	# Hydrate caches：把 character_states / item_instances / farm_states / farm_plots
 	# 整表 SELECT 进内存 dict，等各 scene 节点 _ready 时 take_* / all_* 拿走。
 	_hydrate_caches(RunMode.town_id)
@@ -808,6 +809,19 @@ func _ensure_proficiency_seeded(town_id: String) -> void:
 			]
 			if not _db.query(sql):
 				push_warning("[Db] proficiency seed failed for %s.%s: %s" % [npc_id, skill_id, _db.error_message])
+
+
+# woodwork 曾同时覆盖伐木和木工。拆出 lumbering 后，老存档没有新行会导致
+# chop_wood 工具不暴露；只复制缺失行，不覆盖已经独立成长过的 lumbering。
+func _backfill_lumbering_from_woodworking(town_id: String) -> void:
+	if _db == null or town_id.is_empty():
+		return
+	var now := Time.get_datetime_string_from_system(true)
+	var sql := "INSERT OR IGNORE INTO npc_proficiency (townId, characterId, skillId, value, updatedAt) SELECT townId, characterId, 'lumbering', value, '%s' FROM npc_proficiency WHERE townId = '%s' AND skillId = 'woodworking'" % [
+		_esc(now), _esc(town_id),
+	]
+	if not _db.query(sql):
+		push_warning("[Db] lumbering proficiency backfill failed: %s" % _db.error_message)
 
 
 # 返回某角色当前的全部熟练度 {skill_id: value}。无行 → 空 dict（公式按 0 处理 = 生手）。

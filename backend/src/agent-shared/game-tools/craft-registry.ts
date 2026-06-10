@@ -34,7 +34,7 @@ export type CraftSpec = {
   operations: ReadonlyArray<CraftOperation>;
   workstations: ReadonlyArray<string>;
   verbs: ReadonlyArray<string>;
-  // 所有 operations 的 verb 相同时填这个；多 verb craft（cook、smelt、woodwork）为 undefined。
+  // 所有 operations 的 verb 相同时填这个；多 verb craft（cook、smelt）为 undefined。
   fixedVerb?: string;
   subOptions?: ReadonlyArray<string>;
   fixedSubOption?: string;

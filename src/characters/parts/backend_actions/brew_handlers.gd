@@ -9,7 +9,7 @@ extends RefCounted
 # 共用本函数(服务端权威)。
 #
 # action_request: { target = { barrel = Endpoint }, recipe = <reaction_id, 可选> }
-#   Endpoint 同 put_take(backpack/node 里的酿酒桶 slot);recipe 省略 → DEFAULT_RECIPE。
+#   Endpoint 指 backpack/node 里的酿酒桶 slot；recipe 省略 → DEFAULT_RECIPE。
 
 const DEFAULT_RECIPE := "ferment_beer"
 

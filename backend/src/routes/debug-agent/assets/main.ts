@@ -2,7 +2,7 @@ export const DEBUG_AGENT_MAIN_MODULE = String.raw`
 import { createAnalyticsView } from "./analytics.js";
 import * as characterTimeline from "./character-timeline.js";
 import { renderDetailBody, renderDetailError, renderDetailHeader, renderDetailLoading, renderDetailPlaceholder, renderThinkingDetail } from "./detail.js";
-import { renderGroupFilterPop, renderNpcFilterPop, renderTopbarInfo } from "./filters.js";
+import { renderGroupFilterPop, renderTopbarInfo } from "./filters.js";
 import { applyAgentRunFilterPayload, createDebugAgentApp, makeCharacterKey, rebuildMetadataIndex, pruneSelectionSet, saveAgentRunFilter, setAgentRunCharacterEnabled } from "./shared.js";
 import * as sharedTimeline from "./timeline.js";
 import { formatGameDayLabel, gameDayIndex } from "./time.js";
@@ -132,7 +132,6 @@ async function loadTurns(options) {
   pruneSelectionSet(app.state.selectedGroupIds, app.state.groups.map((item) => item.groupId));
 
   renderTopbarInfo(app);
-  if (app.$("npc-filter-pop")) renderNpcFilterPop(app, { onChange: () => { void loadTurns(); } });
   if (app.$("group-filter-pop")) renderGroupFilterPop(app, { onChange: () => { void loadTurns(); } });
   renderGameDayFilterOptions(app);
   renderTimelineWithSelection();
@@ -420,15 +419,6 @@ app.$("refresh-btn").addEventListener("click", async () => {
 if (app.$("tab-timeline")) app.$("tab-timeline").addEventListener("click", () => switchView("timeline"));
 if (app.$("tab-analytics")) app.$("tab-analytics").addEventListener("click", () => switchView("analytics"));
 
-let townFilterTimer = null;
-app.$("filter-town").addEventListener("input", (event) => {
-  clearTimeout(townFilterTimer);
-  townFilterTimer = setTimeout(() => {
-    app.state.townFilter = event.target.value.trim();
-    void loadTurns();
-  }, 250);
-});
-
 app.$("time-range").addEventListener("change", (event) => {
   app.state.timeRangePreset = event.target.value;
   void loadTurns();
@@ -452,43 +442,18 @@ if (app.$("timeline-zoom-reset")) app.$("timeline-zoom-reset").addEventListener(
   timeline.setTimelineZoomIndex(app, renderTimelineWithSelection, 0);
 });
 
-if (app.$("npc-filter-btn")) app.$("npc-filter-btn").addEventListener("click", (event) => {
-  event.stopPropagation();
-  app.$("npc-filter-pop").classList.toggle("open");
-  const groupPop = app.$("group-filter-pop");
-  if (groupPop) groupPop.classList.remove("open");
-});
 if (app.$("group-filter-btn")) app.$("group-filter-btn").addEventListener("click", (event) => {
   event.stopPropagation();
   app.$("group-filter-pop").classList.toggle("open");
-  const npcPop = app.$("npc-filter-pop");
-  if (npcPop) npcPop.classList.remove("open");
 });
 document.addEventListener("click", (event) => {
-  const npcPop = app.$("npc-filter-pop");
   const groupPop = app.$("group-filter-pop");
-  if (npcPop && !npcPop.contains(event.target) && event.target !== app.$("npc-filter-btn")) {
-    npcPop.classList.remove("open");
-  }
   if (groupPop && !groupPop.contains(event.target) && event.target !== app.$("group-filter-btn")) {
     groupPop.classList.remove("open");
   }
 });
 
 app.$("clear-all").addEventListener("click", () => { void clearAllAgentData(); });
-
-app.$("auto-refresh").addEventListener("change", (event) => {
-  if (app.state.autoTimer) {
-    clearInterval(app.state.autoTimer);
-    app.state.autoTimer = null;
-  }
-  if (event.target.checked) {
-    app.state.autoTimer = setInterval(async () => {
-      await loadTurns({ preserveViewport: true });
-      await restorePinnedSessionSelection();
-    }, 5000);
-  }
-});
 
 app.$("timeline-wrap").addEventListener("wheel", (event) => {
   if (!(event.target instanceof Element) || !event.target.closest(".timeline-scroller, .timeline-labels")) return;

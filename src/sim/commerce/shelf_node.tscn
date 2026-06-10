@@ -1,56 +1,55 @@
-[gd_scene load_steps=5 format=3 uid="uid://dxtak3npqr4tj"]
+[gd_scene format=3 uid="uid://dxtak3npqr4tj"]
 
 [ext_resource type="Script" uid="uid://bjmhudqo5tste" path="res://src/sim/commerce/shelf_node.gd" id="1_script"]
 [ext_resource type="Script" uid="uid://mhnkxhoheim8" path="res://src/world/site_marker.gd" id="site_marker_script"]
-[ext_resource type="Script" path="res://src/world/world_object_identity.gd" id="world_identity_script"]
+[ext_resource type="Script" uid="uid://7688s6yo4bii" path="res://src/world/world_object_identity.gd" id="world_identity_script"]
 
 [sub_resource type="CylinderShape3D" id="CylinderShape_proximity"]
 radius = 3.0
-height = 2.0
 
-[node name="ShelfNode" type="Node3D"]
+[node name="ShelfNode" type="Node3D" unique_id=100196982]
 script = ExtResource("1_script")
 
-[node name="WorldObjectIdentity" type="Node" parent="."]
+[node name="WorldObjectIdentity" type="Node" parent="." unique_id=1680195200]
 script = ExtResource("world_identity_script")
 kind = "shelf"
-map_registration = "local"
 capabilities = PackedStringArray("move", "container", "shop")
+group_gated_capabilities = PackedStringArray()
 
-[node name="Title" type="Label3D" parent="."]
+[node name="Title" type="Label3D" parent="." unique_id=407393975]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.2, 0)
+pixel_size = 0.012
 billboard = 1
 no_depth_test = true
-pixel_size = 0.012
+modulate = Color(1, 1, 0.85, 1)
 text = "货架"
 font_size = 40
 outline_size = 8
-modulate = Color(1, 1, 0.85, 1)
 
-[node name="Area3D" type="Area3D" parent="."]
+[node name="Area3D" type="Area3D" parent="." unique_id=2031760195]
 collision_layer = 32
 collision_mask = 2
 
-[node name="CollisionShape3D" type="CollisionShape3D" parent="Area3D"]
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Area3D" unique_id=105238196]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 0)
 shape = SubResource("CylinderShape_proximity")
 
-[node name="Prompt" type="Label3D" parent="."]
+[node name="Prompt" type="Label3D" parent="." unique_id=2038036434]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.9, 0)
+pixel_size = 0.006
 billboard = 1
 no_depth_test = true
-pixel_size = 0.006
+modulate = Color(0.9, 0.9, 0.7, 1)
 text = "按 E 查看"
 font_size = 28
 outline_size = 6
-modulate = Color(0.9, 0.9, 0.7, 1)
 
-[node name="SiteMarker" type="Marker3D" parent="."]
+[node name="SiteMarker" type="Marker3D" parent="." unique_id=233875371]
 script = ExtResource("site_marker_script")
+arrival_radius = 0.6
 visible_near_radius = 3.0
 visible_far_radius = 10.0
 direct_interaction_radius = 3.0
-arrival_radius = 1.0
 
-[node name="Approach" type="Marker3D" parent="SiteMarker"]
+[node name="Approach" type="Marker3D" parent="SiteMarker" unique_id=700098324]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 1.2)

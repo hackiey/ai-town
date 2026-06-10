@@ -47,6 +47,15 @@ var prompt_text: String:
 
 @export var tint_color: Color = Color(0, 0, 0, 0)    # alpha=0 → 用 .tscn 默认棕色
 
+# 普通工作台也带一组共享储物格：NPC 会从灶台取吃的、从炭窑取炭；制作产物默认落在这里。
+# ContainerNode/ShelfNode 继承同一套字段，但通过 _runtime_groups() 额外进入 "containers" 供玩家 UI 使用。
+@export_range(1, 999, 1) var slot_count: int = 10
+var contents: Array[Dictionary] = []
+var wallet_centi: int = 0
+@export var passive_tags: PackedStringArray = PackedStringArray()
+@export var infinite_content: String = ""
+@export var infinite_quality: int = 100
+
 @onready var _area: Area3D = get_node_or_null("Area3D")
 @onready var _label: Label3D = get_node_or_null("Prompt")
 @onready var _title: Label3D = get_node_or_null("Title")
@@ -116,6 +125,8 @@ func _ready() -> void:
 		return
 	for g in _runtime_groups():
 		add_to_group(g)
+	if Containers != null and Containers.has_method("register_container"):
+		Containers.register_container(self)
 	if _area == null:
 		push_warning("Workstation %s 缺少 Area3D 子节点" % name)
 		return
@@ -212,6 +223,30 @@ func _runtime_groups() -> PackedStringArray:
 	return PackedStringArray(["workstations"])
 
 
+func effective_container_id() -> String:
+	return world_object_id()
+
+
+func effective_display_name() -> String:
+	return display_name
+
+
+func has_passive_tag(tag: String) -> bool:
+	return passive_tags.has(tag)
+
+
+func is_infinite_source() -> bool:
+	return not infinite_content.strip_edges().is_empty()
+
+
+func can_be_opened_by(character: Node) -> bool:
+	return can_actually_use(character)
+
+
+func requires_key() -> bool:
+	return is_locked()
+
+
 # 工作台对所有人可用：现实里谁都能用别人的工作台，被赶走是社交反应（反应层处理），
 # 不是硬权限闸门。group 不再作为使用门槛。锁（lock_item_id/钥匙）维度仍生效，见 is_unlocked_by。
 # owner_group 保留仅供招牌 flavor 文案，不闸门。
@@ -297,6 +332,10 @@ func release(operator_id: String) -> void:
 
 
 func _exit_tree() -> void:
+	if Engine.is_editor_hint():
+		return
+	if Containers != null and Containers.has_method("unregister_container"):
+		Containers.unregister_container(self)
 	# 节点销毁防泄漏：仍有 occupant 就清 DB 镜像，避免重启前 backend perception 看到孤行 busy=1。
 	if not _current_operators.is_empty():
 		_current_operators.clear()

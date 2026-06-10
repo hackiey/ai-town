@@ -12,7 +12,6 @@ export const DEBUG_CHARACTER_HTML = String.raw`<!doctype html>
       <a class="view-tab" href="/debug">总时间轴</a>
       <button id="tab-timeline" class="view-tab active" data-view="timeline">角色三列</button>
     </div>
-    <input id="filter-town" placeholder="townId..." style="width:140px" />
     <div class="npc-filter">
       <button id="group-filter-btn" class="npc-filter-btn">Group: 全部</button>
       <div id="group-filter-pop" class="npc-filter-pop"></div>
@@ -31,7 +30,6 @@ export const DEBUG_CHARACTER_HTML = String.raw`<!doctype html>
         <option value="">全部</option>
       </select>
     </label>
-    <label><input type="checkbox" id="auto-refresh" /> 5s 自动刷新</label>
     <span class="grow"></span>
     <span id="turns-info" class="meta" style="color:var(--muted);font-size:11px"></span>
     <button id="refresh-btn" title="Reload">↻</button>

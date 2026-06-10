@@ -3,8 +3,8 @@ extends Node
 const INTERACTION_RADIUS := 3.0
 const _CONTAINERS_JSON_REL := "backend/data/town/containers.json"
 
-var _containers_by_id: Dictionary = {}      # container_id -> Array[ContainerNode]（多锚点：6 口井共享 "well"）
-# 内容真值在 ContainerNode.contents（节点属性，server 内存权威 + 同步给 client）。
+var _containers_by_id: Dictionary = {}      # container_id -> Array[WorkstationNode]（多锚点：6 口井共享 "well"）
+# 内容真值在 WorkstationNode.contents（节点属性，server 内存权威 + 同步给 client）。
 # 这里不再缓存内容；所有读写都走 node.contents，DB 仅写穿持久化。
 var _config_cache: Dictionary = {}          # container_id -> {starting_inventory: [...]}; lazy-loaded
 var _config_loaded: bool = false
@@ -26,7 +26,7 @@ func _ready() -> void:
 
 # ─── Registration ────────────────────────────────────────────────────
 
-func register_container(node: ContainerNode) -> void:
+func register_container(node: WorkstationNode) -> void:
 	if node == null:
 		return
 	var cid := node.effective_container_id()
@@ -51,7 +51,7 @@ func register_container(node: ContainerNode) -> void:
 		_apply_starting_inventory_if_first_boot(node)
 
 
-func unregister_container(node: ContainerNode) -> void:
+func unregister_container(node: WorkstationNode) -> void:
 	if node == null:
 		return
 	var cid := node.effective_container_id()
@@ -70,7 +70,7 @@ func _valid_nodes(cid: String) -> Array:
 	var nodes: Array = _containers_by_id.get(cid, [])
 	var out: Array = []
 	for v in nodes:
-		if v is ContainerNode and is_instance_valid(v):
+		if v is WorkstationNode and is_instance_valid(v):
 			out.append(v)
 	if out.size() != nodes.size():
 		if out.is_empty():
@@ -90,7 +90,7 @@ func _all_nodes() -> Array:
 
 # 内容 / 系统操作用：返回该 id 任一有效节点（水井内容无差，取第一个即可）。
 # 距离校验请改用 find_container_node_near。
-func find_container_node(container_id: String) -> ContainerNode:
+func find_container_node(container_id: String) -> WorkstationNode:
 	var wanted := container_id.strip_edges()
 	if wanted.is_empty():
 		return null
@@ -100,22 +100,22 @@ func find_container_node(container_id: String) -> ContainerNode:
 
 # 多锚点距离校验用：同 id 多节点（水井 6 口）返回离 from 最近的；单节点容器即返回它本身。
 # proximity 必须走这个——按单一注册节点算距离会让其余水井全部判"太远"。
-func find_container_node_near(container_id: String, from: Vector3) -> ContainerNode:
+func find_container_node_near(container_id: String, from: Vector3) -> WorkstationNode:
 	var wanted := container_id.strip_edges()
 	if wanted.is_empty():
 		return null
-	var best: ContainerNode = null
+	var best: WorkstationNode = null
 	var best_sq := INF
 	for c in _valid_nodes(wanted):
-		var d: float = from.distance_squared_to((c as ContainerNode).global_position)
+		var d: float = from.distance_squared_to((c as WorkstationNode).global_position)
 		if d < best_sq:
 			best_sq = d
-			best = c as ContainerNode
+			best = c as WorkstationNode
 	return best
 
 
 # 容许 LLM 用 id（"treasury_vault"）或 i18n 名（"领主国库"）找到容器。
-func find_container_by_name(name_or_id: String) -> ContainerNode:
+func find_container_by_name(name_or_id: String) -> WorkstationNode:
 	var node := find_container_node(name_or_id)
 	if node != null:
 		return node
@@ -123,10 +123,8 @@ func find_container_by_name(name_or_id: String) -> ContainerNode:
 	if normalized.is_empty():
 		return null
 	for c in _all_nodes():
-		var cn := c as ContainerNode
+		var cn := c as WorkstationNode
 		if cn.effective_display_name().to_lower() == normalized:
-			return cn
-		if cn.container_name.strip_edges().to_lower() == normalized:
 			return cn
 	return null
 
@@ -142,7 +140,7 @@ func nearby_snapshots_for(character: Character, max_distance: float = INTERACTIO
 		# 可见性 = 物理距离；access 不再过滤掉条目。
 		# _snapshot_for 已包含 can_be_used 字段表达 group 权限。
 		# 水井多锚点：6 口各自按距离判断，离得近的那口才进 snapshot。
-		if character.global_position.distance_squared_to((node as ContainerNode).global_position) > max_sq:
+		if character.global_position.distance_squared_to((node as WorkstationNode).global_position) > max_sq:
 			continue
 		out.append(_snapshot_for(node, character))
 	return out
@@ -153,14 +151,14 @@ func unlockable_snapshots_for(character: Character) -> Array[Dictionary]:
 		return []
 	var out: Array[Dictionary] = []
 	for node in _all_nodes():
-		if not (node as ContainerNode).can_be_opened_by(character):
+		if not (node as WorkstationNode).can_be_opened_by(character):
 			continue
 		out.append(_snapshot_for(node, character))
 	return out
 
 
 # ─── Operations ──────────────────────────────────────────────────────
-# Actor-facing 存取走 ContainerHandlers.run_put_take（GDScript，含货币钱包↔coin 物品转换）。
+# Actor-facing 存取走 ContainerHandlers.run_container_transfer（GDScript，含货币钱包↔coin 物品转换）。
 # 这里的 system_* 路径供 Mints / Mines / Wages 等 autoload 跳过 access check 使用。
 
 # 系统级 deposit — 跳过靠近 / 钥匙检查。Mines / Mints / Wages 等 autoload 用。
@@ -254,7 +252,7 @@ func wallet_spend_centi(container_id: String, centi: int) -> bool:
 
 # 解析 container_id 或 i18n 名 + 校验 actor 访问权限。lua mechanic 调用前的预备工作；
 # 把 GDScript 端的 distance / 钥匙逻辑收口到一处，container.lua 只读 access_ok / access_reason。
-# 返回: { ok: bool, node: ContainerNode?, message: String, container_id: String, container_name: String }
+# 返回: { ok: bool, node: WorkstationNode?, message: String, container_id: String, container_name: String }
 func resolve_for_actor(actor: Character, name_or_id: String) -> Dictionary:
 	if actor == null:
 		return { "ok": false, "node": null, "message": _msg("error.container.actor_missing"), "container_id": "", "container_name": name_or_id }
@@ -275,11 +273,11 @@ func resolve_for_actor(actor: Character, name_or_id: String) -> Dictionary:
 
 # ─── InventoryAdapter API（lua affect 套件用，跳过 access 检查）─────────
 # 这些方法不做距离 / 钥匙校验 —— 那是 lua mechanic 调用方该在 ctx 里准备好的事。
-# Adapter 把 ContainerNode 包成 InventoryAdapter，由 effects 端调。
+# Adapter 把 WorkstationNode 包成 InventoryAdapter，由 effects 端调。
 
 # runtime 上确保 node.contents 已按 slot_count 灌好（register 时已做，这里兜底乱序）。
 # client 不做（Db 不开；contents 由同步填）。
-func _ensure_hydrated(node: ContainerNode) -> void:
+func _ensure_hydrated(node: WorkstationNode) -> void:
 	if not RunMode.is_runtime():
 		return
 	if node.contents.size() != node.slot_count:
@@ -288,13 +286,13 @@ func _ensure_hydrated(node: ContainerNode) -> void:
 
 # 写 node.contents（运行时内存权威）。所有改 contents 的路径都经这里。
 # 不再做同步快照——client 显示走 Player.view_slots（分页，见 player.gd）。
-func _set_contents(node: ContainerNode, slots: Array[Dictionary]) -> void:
+func _set_contents(node: WorkstationNode, slots: Array[Dictionary]) -> void:
 	node.contents = slots
 
 
 # server-only reader（lua adapter + Player._recompute_view 分页用）。client 不调
 # （面板读 Player.view_slots）。
-func adapter_slots(node: ContainerNode) -> Array:
+func adapter_slots(node: WorkstationNode) -> Array:
 	if node == null:
 		return []
 	_ensure_hydrated(node)
@@ -303,7 +301,7 @@ func adapter_slots(node: ContainerNode) -> Array:
 
 # 按 query 扣 qty。query 同 InventoryAdapter schema {item_id?, slot_index?, content_id?, min_quality?}。
 # 内部直改 node.contents + Db.save_container_slot 持久，末尾重写 node.contents 触发同步。
-func adapter_take(node: ContainerNode, query: Dictionary, qty: int) -> Dictionary:
+func adapter_take(node: WorkstationNode, query: Dictionary, qty: int) -> Dictionary:
 	var stacks: Array = []
 	if node == null or qty <= 0:
 		return { "taken_qty": 0, "stacks": stacks }
@@ -354,7 +352,7 @@ func adapter_take(node: ContainerNode, query: Dictionary, qty: int) -> Dictionar
 	return { "taken_qty": qty - remaining, "stacks": stacks }
 
 
-func adapter_place(node: ContainerNode, stacks: Array) -> Dictionary:
+func adapter_place(node: WorkstationNode, stacks: Array) -> Dictionary:
 	if node == null or stacks.is_empty():
 		return { "placed_qty": 0, "leftover": [] }
 	var before_qty := 0
@@ -374,14 +372,58 @@ func adapter_place(node: ContainerNode, stacks: Array) -> Dictionary:
 				non_currency.append(stack)
 	if non_currency.is_empty():
 		return { "placed_qty": currency_qty, "leftover": [] }
+	if not _can_place_stacks_into_container(node, non_currency):
+		return { "placed_qty": currency_qty, "leftover": non_currency }
 	var result := _place_stacks_into_container(node, non_currency)
 	if bool(result.get("ok", false)):
 		return { "placed_qty": before_qty, "leftover": [] }
-	# 失败：result 里没暴露具体 leftover，保守按"全部 leftover"返回；caller rollback 即可
 	return { "placed_qty": currency_qty, "leftover": non_currency }
 
 
-func adapter_set_slot(node: ContainerNode, slot_index: int, fields: Dictionary) -> bool:
+func _can_place_stacks_into_container(node: WorkstationNode, stacks: Array) -> bool:
+	if node == null:
+		return false
+	_ensure_hydrated(node)
+	var slots: Array[Dictionary] = []
+	for slot in node.contents:
+		slots.append((slot as Dictionary).duplicate(true))
+	for stack_v in stacks:
+		if typeof(stack_v) != TYPE_DICTIONARY:
+			continue
+		var stack: Dictionary = (stack_v as Dictionary).duplicate(true)
+		InventorySlotData.normalize(stack)
+		var stack_max := _stack_max_for(stack)
+		var remaining := int(stack.get("quantity", 0))
+		if remaining <= 0:
+			continue
+		for i in slots.size():
+			if remaining <= 0:
+				break
+			var slot := slots[i]
+			if InventorySlotData.of(slot).is_empty():
+				continue
+			if not InventorySlotData.of(slot).equals_stackable_with(InventorySlotData.of(stack)):
+				continue
+			var room := stack_max - int(slot.get("quantity", 0))
+			if room <= 0:
+				continue
+			var put := mini(room, remaining)
+			slot["quantity"] = int(slot.get("quantity", 0)) + put
+			slots[i] = slot
+			remaining -= put
+		while remaining > 0:
+			var idx := _find_empty_slot(slots)
+			if idx < 0:
+				return false
+			var chunk := mini(remaining, stack_max)
+			var placed := stack.duplicate(true)
+			placed["quantity"] = chunk
+			slots[idx] = placed
+			remaining -= chunk
+	return true
+
+
+func adapter_set_slot(node: WorkstationNode, slot_index: int, fields: Dictionary) -> bool:
 	if node == null:
 		return false
 	var cid := node.effective_container_id()
@@ -403,9 +445,9 @@ func adapter_set_slot(node: ContainerNode, slot_index: int, fields: Dictionary) 
 
 
 # 给容器内某物品的所有槽位盖上货架标价（centi 银）。price_centi <= 0 → 清除标价。
-# put_take 存货到货架时调用：按物品统一定价，避免 merge 后槽位 index 漂移。仅货架有意义，
+# put 存货到货架时调用：按物品统一定价，避免 merge 后槽位 index 漂移。仅货架有意义，
 # 普通容器调用也无害（标价只是展示）。
-func set_price_for_item(node: ContainerNode, item_id: String, price_centi: int) -> void:
+func set_price_for_item(node: WorkstationNode, item_id: String, price_centi: int) -> void:
 	if node == null:
 		return
 	var needle := item_id.strip_edges()
@@ -427,7 +469,7 @@ func set_price_for_item(node: ContainerNode, item_id: String, price_centi: int) 
 	_set_contents(node, slots)
 
 
-func _check_access(character: Character, node: ContainerNode) -> Dictionary:
+func _check_access(character: Character, node: WorkstationNode) -> Dictionary:
 	if not node.can_be_used_by(character):
 		return {"ok": false, "message": _fmt("error.container.access_denied_format", [node.effective_display_name()])}
 	if not _is_character_near(character, node):
@@ -441,7 +483,7 @@ func _check_access(character: Character, node: ContainerNode) -> Dictionary:
 	return {"ok": true}
 
 
-func _is_character_near(character: Character, node: ContainerNode) -> bool:
+func _is_character_near(character: Character, node: WorkstationNode) -> bool:
 	if character == null or node == null:
 		return false
 	# 可交互距离 = 容器自己 SiteMarker 的半径（逐对象，玩家/NPC 统一）。
@@ -449,7 +491,7 @@ func _is_character_near(character: Character, node: ContainerNode) -> bool:
 	return character.global_position.distance_squared_to(node.global_position) <= r * r
 
 
-func _hydrate_contents(node: ContainerNode) -> void:
+func _hydrate_contents(node: WorkstationNode) -> void:
 	var container_id := node.effective_container_id()
 	var slot_count := node.slot_count
 	var slots: Array[Dictionary] = []
@@ -460,18 +502,18 @@ func _hydrate_contents(node: ContainerNode) -> void:
 		var idx := int(k)
 		if idx < 0 or idx >= slot_count:
 			continue
-			slots[idx] = InventorySlotData.normalize(persisted[k] as Dictionary)
+		slots[idx] = InventorySlotData.normalize(persisted[k] as Dictionary)
 	_set_contents(node, slots)
 
 
-func _hydrate_wallet(node: ContainerNode) -> void:
+func _hydrate_wallet(node: WorkstationNode) -> void:
 	if node == null:
 		return
 	var container_id := node.effective_container_id()
 	node.wallet_centi = Db.get_container_wallet_centi(container_id)
 
 
-func _snapshot_for(node: ContainerNode, viewer: Character) -> Dictionary:
+func _snapshot_for(node: WorkstationNode, viewer: Character) -> Dictionary:
 	var cid := node.effective_container_id()
 	var can_see := node.can_be_used_by(viewer)
 	var unlocked := node.is_unlocked_by(viewer)
@@ -493,7 +535,7 @@ func _snapshot_for(node: ContainerNode, viewer: Character) -> Dictionary:
 
 
 # 富槽位列表（含 slot_index + 液体/发酵字段），给 backend 寻址容器内的 item 与液体。
-func detailed_items_for(node: ContainerNode) -> Array:
+func detailed_items_for(node: WorkstationNode) -> Array:
 	var out: Array = []
 	var slots: Array[Dictionary] = node.contents
 	for i in slots.size():
@@ -514,7 +556,7 @@ func detailed_items_for(node: ContainerNode) -> Array:
 	return out
 
 
-func _list_items(node: ContainerNode) -> Array:
+func _list_items(node: WorkstationNode) -> Array:
 	var out: Array = []
 	for slot_v in node.contents:
 		var slot: Dictionary = slot_v as Dictionary
@@ -533,7 +575,7 @@ func _list_items(node: ContainerNode) -> Array:
 	return out
 
 
-func _extract_from_container(node: ContainerNode, item_name: String, quantity: int) -> Dictionary:
+func _extract_from_container(node: WorkstationNode, item_name: String, quantity: int) -> Dictionary:
 	var cid := node.effective_container_id()
 	_ensure_hydrated(node)
 	var slots: Array[Dictionary] = node.contents
@@ -584,7 +626,7 @@ func _extract_from_container(node: ContainerNode, item_name: String, quantity: i
 	return {"ok": true, "stacks": extracted}
 
 
-func _place_stacks_into_container(node: ContainerNode, stacks: Array) -> Dictionary:
+func _place_stacks_into_container(node: WorkstationNode, stacks: Array) -> Dictionary:
 	var cid := node.effective_container_id()
 	_ensure_hydrated(node)
 	var slots: Array[Dictionary] = node.contents
@@ -698,7 +740,7 @@ func _prune_orphan_storage() -> void:
 
 # 第一次 boot 时把 backend/data/town/containers.json 里的 starting_inventory 灌进去。
 # 已 seed 过的容器（即便被清空）不再补——只一次。
-func _apply_starting_inventory_if_first_boot(node: ContainerNode) -> void:
+func _apply_starting_inventory_if_first_boot(node: WorkstationNode) -> void:
 	var cid := node.effective_container_id()
 	if Db.has_seeded_container(cid):
 		return

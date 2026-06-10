@@ -445,29 +445,30 @@ export function canonicalizeKnownTargetName(target: string | undefined, currentC
   return itemId ?? trimmed;
 }
 
-// put_take / view_container 的统一目标解析：货架（kind=shelf）与容器（kind=workstation +
-// interactionMode=container）都能命中。返回 kind 让 caller 决定 take 物品的 scope。
+// put / take 的统一目标解析：货架、容器型工作台与普通工作台储物都能命中。
+// 返回 kind 让 caller 决定节点是否是货架。
 export function resolveContainerOrShelfTarget(
   requested: string | undefined,
   currentContext?: AgentCurrentContext,
-): { id: string; label: string; kind: "container" | "shelf" } | MoveTargetError {
+): { id: string; label: string; kind: "container" | "shelf" | "workstation"; directlyInteractable: boolean } | MoveTargetError {
   if (!requested?.trim()) {
     return { error: t("error.unknown_container", getActiveLocale(), { container: "" }) };
   }
   const match = resolveInteractiveSite(requested, currentContext, {
-    filter: (s) => s.kind === "shelf" || (s.kind === "workstation" && s.interactionMode === "container"),
+    filter: (s) => s.kind === "shelf" || s.kind === "workstation",
   });
   if (match) {
     return {
       id: match.site.id,
       label: match.label,
-      kind: match.site.kind === "shelf" ? "shelf" : "container",
+      kind: match.site.kind === "shelf" ? "shelf" : match.site.interactionMode === "container" ? "container" : "workstation",
+      directlyInteractable: match.site.directlyInteractable,
     };
   }
   // 不在感知内也尝试名字 → container id 反查（让 Godot 后续判定 not_nearby）。
   const containerId = resolveContainerIdByName(requested.trim());
   if (containerId) {
-    return { id: containerId, label: localizeStringValue(containerId), kind: "container" };
+    return { id: containerId, label: localizeStringValue(containerId) ?? containerId, kind: "container", directlyInteractable: false };
   }
   return { error: t("error.unknown_container", getActiveLocale(), { container: requested.trim() }) };
 }
@@ -507,7 +508,7 @@ export function resolveCraftWorkstation(
   return { error: t("error.use_workstation_unknown_workstation", getActiveLocale(), { workstation: trimmed }) };
 }
 
-// 12 个 axis tool 的 inputs 解析归一：把 LLM 给的 {name, index}[] 反查成 (itemId, slotIndex)[]。
+// axis tool 的 inputs 解析归一：把 LLM 给的 {name, index}[] 反查成 (itemId, slotIndex)[]。
 // 矿场（mine）特殊：不需要 inputs（mining 工具会从背包自动取 pick）。
 export function normalizeWorkstationActionInputs(
   axis: CraftSlug,

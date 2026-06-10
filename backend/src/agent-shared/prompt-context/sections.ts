@@ -168,7 +168,7 @@ function renderInteractiveSiteLines(
 // 格式：`{displayName}{ownerSuffix}：可使用：{tools}{slot}{lock/items}{inUse}`
 //   - tools = workstation verbs 反查 craft 工具名（mine / smith 等），
 //     不会的 craft 末尾挂"（你不会）"；NPC 看到 anvil 就知道它能用来 smith，但自己不会做
-//   - 容器型（含晾架 / 水井）走 put_take / view_container
+//   - 容器型（含晾架 / 水井）走 put / take
 //   - 货架 / 田走 availableActions 直接当工具名
 //   - noAccess：隐去 tools 行，仅显示招牌后缀；目前主要用于农田权限，工作台 owner_group
 //     只作为归属/招牌信息，不作为硬使用门槛
@@ -200,24 +200,15 @@ function collectSiteClauses(
 
   // kind === "workstation"
   if (site.interactionMode === "container") {
-    // 容器型工作台（含晾架 / 国库）：存取走 put_take + view_container，永远 always-expose（无 skill 闸）。
-    const tools = noAccess ? "" : `${t("prompt.context.workstation.tools_prefix", locale)}put_take / view_container`;
+    // 容器型工作台（含晾架 / 国库）：存取走 put + take，永远 always-expose（无 skill 闸）。
+    const tools = noAccess ? "" : `${t("prompt.context.workstation.tools_prefix", locale)}put / take`;
     const lock = site.locked
       ? t("prompt.context.workstation.lock_format", locale, { key: site.lockItemId ?? "?" })
       : t("prompt.context.workstation.lock_open", locale);
-    const items = site.unlocked && site.items && site.items.length > 0
-      ? t("prompt.context.workstation.items_format", locale, { items: site.items.map((i) => {
-          // 内容物是装着液体的容器（仓库里的酒桶/木桶）→ 标出液体量 + 发酵态，
-          // 否则 NPC 只看到 "酿酒桶×1" 不知道里面有没有水/酒、酿没酿好。
-          const liq = i.container && i.container.amount > 0 && i.container.content
-            ? `（${localizeText(i.container.content)} ${i.container.amount}L${i.container.fermenting ? `·酿造中(上限${i.container.ceiling ?? "?"})` : ""}）`
-            : "";
-          return `[${i.index}] ${localizeText(i.itemId)}×${i.quantity}${liq}`;
-        }).join(", ") })
-      : site.locked && !site.unlocked
-        ? t("prompt.context.workstation.items_locked", locale)
-        : t("prompt.context.workstation.items_empty", locale);
-    return [tools, lock, items].filter((c) => c.length > 0);
+    const storage = site.unlocked
+      ? `储物 ${site.items?.length ?? 0}/${site.slotCount ?? "?"}`
+      : t("prompt.context.workstation.items_locked", locale);
+    return [tools, lock, storage].filter((c) => c.length > 0);
   }
 
   // craft / direct 工作台：verbs 反查 craft 工具名，按 NPC 是否有 skill 标"（你不会）"。
@@ -226,10 +217,13 @@ function collectSiteClauses(
   const slot = site.slotCount != null
     ? t("prompt.context.workstation.slot_count_format", locale, { n: site.slotCount })
     : "";
+  const storage = site.storageSlotCount != null
+    ? `，储物 ${site.storageUsed ?? 0}/${site.storageSlotCount}`
+    : "";
   const inUse = site.currentOperatorName
     ? t("prompt.context.workstation.in_use_by_format", locale, { operator: site.currentOperatorName })
     : "";
-  const head = `${tools}${slot}${inUse}`.replace(/^[，,；;]+/, "");
+  const head = `${tools}${slot}${storage}${inUse}`.replace(/^[，,；;]+/, "");
   return head ? [head] : [];
 }
 
@@ -251,13 +245,15 @@ function renderCraftToolsClause(
     seen.add(craft);
     crafts.push(craft);
   }
-  if (crafts.length === 0) return "";
   const cantSuffix = t("prompt.context.workstation.cant_use_suffix", locale);
-  const rendered = crafts.map((slug) => {
+  const renderedCrafts = crafts.map((slug) => {
     const skillId = skillIdForCraft(slug);
     const knows = skillId === "" || knownSkillIds.has(skillId);
     return knows ? slug : `${slug}${cantSuffix}`;
-  }).join(" / ");
+  });
+  const storageActions = (site.availableActions ?? []).filter((action) => action === "put" || action === "take");
+  const rendered = [...renderedCrafts, ...storageActions].join(" / ");
+  if (!rendered) return "";
   return `${t("prompt.context.workstation.tools_prefix", locale)}${rendered}`;
 }
 

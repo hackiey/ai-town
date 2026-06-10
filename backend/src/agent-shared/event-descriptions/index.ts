@@ -13,7 +13,7 @@ import type { Locale } from "../../i18n/index.js";
 import { SAY_TO_ACTION } from "../../godot-link/actions.js";
 import type { WorldEventRecord } from "../../godot-link/protocol.js";
 import { renderActionFailedEventLine } from "./action-failed.js";
-import { renderContainerPutTakeEventLine, renderViewContainerEventLine } from "./container.js";
+import { renderContainerTransferEventLine } from "./container.js";
 import { renderFallbackEventLine } from "./fallback.js";
 import { renderPlanFarmWorkEventLine } from "./farm.js";
 import {
@@ -23,7 +23,7 @@ import {
   renderWaterCropEventLine,
 } from "./farming.js";
 import { renderGiveEventLine } from "./give.js";
-import { renderDropItemEventLine, renderPickUpItemEventLine, renderReadEventLine, renderUseItemEventLine, renderWriteEventLine } from "./item.js";
+import { renderDropItemEventLine, renderReadEventLine, renderUseItemEventLine, renderWriteEventLine } from "./item.js";
 import { renderMoveToLocationEventLine } from "./move.js";
 import { renderSayToEventLine } from "./say.js";
 import { renderWentToSleepEventLine, renderWokeUpEventLine } from "./sleep.js";
@@ -38,13 +38,12 @@ const RENDERERS: Record<string, EventLineRenderer> = {
   trade_response: renderTradeResponseEventLine,
   went_to_sleep: renderWentToSleepEventLine,
   woke_up: renderWokeUpEventLine,
-  container_put_take: renderContainerPutTakeEventLine,
-  view_container: renderViewContainerEventLine,
+  container_transfer: renderContainerTransferEventLine,
   use_item: renderUseItemEventLine,
-  pick_up_item: renderPickUpItemEventLine,
   // Craft axis events 全部走同一个 workstation 渲染器（事件数据 shape 相同）。
   // 见 docs/proficiency_system.md + agent-shared/game-tools/craft-registry.ts。
   mine: renderUseWorkstationEventLine,
+  chop_wood: renderUseWorkstationEventLine,
   woodwork: renderUseWorkstationEventLine,
   burn_charcoal: renderUseWorkstationEventLine,
   smelt: renderUseWorkstationEventLine,

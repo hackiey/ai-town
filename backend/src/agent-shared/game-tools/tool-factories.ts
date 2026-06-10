@@ -1,7 +1,7 @@
 import type { AgentTool, AgentToolResult, AgentToolUpdateCallback } from "@mariozechner/pi-agent-core";
 import type { GameTimeSnapshot } from "../../godot-link/protocol.js";
 import { getActiveLocale, t } from "../../i18n/index.js";
-import { localizeStringValue } from "../name-resolver/index.js";
+import { localizeStringValue, resolveCharacterIdByName } from "../name-resolver/index.js";
 import type { AgentCurrentContext, ItemIndexEntry } from "../prompt-context/types.js";
 import { sayToThrottleMs } from "../say-to-throttle.js";
 import { td } from "./i18n.js";
@@ -16,23 +16,23 @@ import {
   createAlchemySchema,
   createBoilSaltSchema,
   createBurnCharcoalSchema,
+  createChopWoodSchema,
   createCookSchema,
   createItemSchema,
   createMillGrainSchema,
   createMineSchema,
   createMoveToLocationSchema,
   createPlanFarmWorkSchema,
-  createPutTakeSchema,
+  createPutSchema,
+  createTakeSchema,
   createBrewSchema,
   createSayToSchema,
   createSmeltSchema,
   createSmithSchema,
-  createViewContainerSchema,
   createWoodworkSchema,
   doNothingSchema,
   dropItemSchema,
   offerSchema,
-  pickUpItemSchema,
   readSchema,
   respondSchema,
   sleepSchema,
@@ -42,6 +42,7 @@ import {
   type AlchemyParams,
   type BoilSaltParams,
   type BurnCharcoalParams,
+  type ChopWoodParams,
   type CookParams,
   type CreateItemParams,
   type DoNothingParams,
@@ -51,10 +52,10 @@ import {
   type MineParams,
   type MoveToLocationParams,
   type OfferParams,
-  type PickUpItemParams,
   type PlanFarmWorkParams,
-  type PutTakeParams,
+  type PutParams,
   type BrewParams,
+  type TakeParams,
   type TransferEndpointParam,
   type ReadParams,
   type RespondParams,
@@ -63,7 +64,6 @@ import {
   type SmeltParams,
   type SmithParams,
   type UseItemParams,
-  type ViewContainerParams,
   type WoodworkParams,
   type WriteParams,
 } from "./schemas.js";
@@ -123,7 +123,7 @@ function farmOpDurationMinutes(kind: PlanFarmWorkParams["ops"][number]["kind"]):
   }
 }
 
-function putTakeTimeoutMs(wire: TransferWire[]): number | undefined {
+function containerTransferTimeoutMs(wire: TransferWire[]): number | undefined {
   const wellLiters = wire.reduce((sum, tr) => {
     if (tr.kind !== "liquid" || tr.from.where !== "well") return sum;
     return sum + Math.max(0, tr.amount);
@@ -234,7 +234,7 @@ function mineActionTimeoutMs(workstationId: string): number | undefined {
   return undefined;
 }
 
-// 10 个 production axis 共享的执行体：装配 WorkstationActionTarget + submitToolAction。
+// production axis 共享的执行体：装配 WorkstationActionTarget + submitToolAction。
 async function runAxisCraftAction(opts: {
   axis: CraftSlug;
   runtime: ToolRuntime;
@@ -307,6 +307,31 @@ export function createMineTool(
   };
 }
 
+export function createChopWoodTool(
+  runtime: ToolRuntime,
+  characterId: string,
+  currentContext?: AgentCurrentContext,
+  interrupts?: AgentToolInterrupts,
+): AgentTool<any, CharacterActionToolDetails> {
+  const gameTime = currentContext?.gameTime;
+  return {
+    label: td("chop_wood.label"),
+    name: "chop_wood",
+    description: td("chop_wood.description"),
+    parameters: createChopWoodSchema(),
+    execute: async (_toolCallId, rawArgs, signal, onUpdate) => {
+      const args = rawArgs as ChopWoodParams;
+      const workstation = resolveCraftWorkstation("chop_wood", args.lumberyard, currentContext);
+      if (isMoveTargetError(workstation)) throw new Error(workstation.error);
+      return runAxisCraftAction({
+        axis: "chop_wood", runtime, characterId, currentContext, gameTime, signal, onUpdate, interrupts,
+        workstation, verb: getCraftSpec("chop_wood").fixedVerb!, subOption: "", inputs: args.inputs,
+        reason: args.reason,
+      });
+    },
+  };
+}
+
 export function createWoodworkTool(
   runtime: ToolRuntime,
   characterId: string,
@@ -323,10 +348,9 @@ export function createWoodworkTool(
       const args = rawArgs as WoodworkParams;
       const workstation = resolveCraftWorkstation("woodwork", args.workstation, currentContext);
       if (isMoveTargetError(workstation)) throw new Error(workstation.error);
-      const verb = verbForWorkstation("woodwork", workstation.id)!;
       return runAxisCraftAction({
         axis: "woodwork", runtime, characterId, currentContext, gameTime, signal, onUpdate, interrupts,
-        workstation, verb, subOption: args.sub_option?.trim() ?? "", inputs: args.inputs,
+        workstation, verb: getCraftSpec("woodwork").fixedVerb!, subOption: args.sub_option.trim(), inputs: args.inputs,
         reason: args.reason,
       });
     },
@@ -532,10 +556,8 @@ export function createBoilSaltTool(
   };
 }
 
-// put_take —— 货架/容器统一存取：一次调用同时存入(put)+取出(take)，批量。
-// put 项从背包取（resolve backpack 索引）；take 项从容器/货架取（按 kind 选 scope）。
-// price_silver 仅货架的 put 项有意义（上架标价）。单个 wire action put_take_container。
-export function createPutTakeTool(
+// put / take —— 只允许“背包 <-> 一个附近储物目标”。物品编号永远来自统一全局 [N]。
+export function createPutTool(
   runtime: ToolRuntime,
   characterId: string,
   currentContext?: AgentCurrentContext,
@@ -543,37 +565,68 @@ export function createPutTakeTool(
 ): AgentTool<any, CharacterActionToolDetails> {
   const gameTime = currentContext?.gameTime;
   return {
-    label: td("put_take.label"),
-    name: "put_take",
-    description: td("put_take.description"),
-    parameters: createPutTakeSchema(),
+    label: td("put.label"),
+    name: "put",
+    description: td("put.description"),
+    parameters: createPutSchema(),
     execute: async (_toolCallId, rawArgs, signal, onUpdate) => {
-      const args = rawArgs as PutTakeParams;
-      const wire = buildPutTakeWire(args, currentContext);
-      if (wire.length === 0) throw new Error(td("put_take.error_empty"));
+      const args = rawArgs as PutParams;
+      const wire = buildPutWire(args, currentContext);
       return submitToolAction(
         runtime.actions,
         characterId,
-        "put_take_container",
+        "put",
         { transfers: wire },
-        args.reason ?? td("put_take.reason_format", { label: td("put_take.display_target") }),
-        { toolName: "put_take", displayTarget: td("put_take.display_target"), gameTime, signal, timeoutMs: putTakeTimeoutMs(wire), onUpdate, interrupts },
+        args.reason ?? td("put.reason_format", { label: args.to }),
+        { toolName: "put", displayTarget: args.to, gameTime, signal, timeoutMs: containerTransferTimeoutMs(wire), onUpdate, interrupts },
       );
     },
   };
 }
 
-export function buildPutTakeWire(args: PutTakeParams, currentContext?: AgentCurrentContext): TransferWire[] {
+export function createTakeTool(
+  runtime: ToolRuntime,
+  characterId: string,
+  currentContext?: AgentCurrentContext,
+  interrupts?: AgentToolInterrupts,
+): AgentTool<any, CharacterActionToolDetails> {
+  const gameTime = currentContext?.gameTime;
+  return {
+    label: td("take.label"),
+    name: "take",
+    description: td("take.description"),
+    parameters: createTakeSchema(),
+    execute: async (_toolCallId, rawArgs, signal, onUpdate) => {
+      const args = rawArgs as TakeParams;
+      const wire = buildTakeWire(args, currentContext);
+      return submitToolAction(
+        runtime.actions,
+        characterId,
+        "take",
+        { transfers: wire },
+        args.reason ?? td("take.reason_format", { label: args.from }),
+        { toolName: "take", displayTarget: args.from, gameTime, signal, timeoutMs: containerTransferTimeoutMs(wire), onUpdate, interrupts },
+      );
+    },
+  };
+}
+
+export function buildPutWire(args: PutParams, currentContext?: AgentCurrentContext): TransferWire[] {
+  const target = resolveStorageTarget(args.to, currentContext, "put");
+  if (target.id === "well") throw new Error(td("put.error.destination_well"));
   const wire: TransferWire[] = [];
   for (const tr of args.transfers ?? []) {
     if (tr.kind === "liquid") {
-      const from = resolveLiquidSourceEndpoint(tr.from, currentContext);
-      const to = resolveLiquidDestinationEndpoint(tr.to, currentContext);
+      const source = resolveBackpackItemEndpoint(tr.item, currentContext, "put");
+      const to = tr.to_item
+        ? resolveTargetStorageItemEndpoint(tr.to_item, target, currentContext, "put")
+        : storageTargetToEndpoint(target);
       if (to.isShelf && tr.price_silver != null) to.priceCenti = Math.round(tr.price_silver * 100);
-      wire.push({ kind: "liquid", amount: tr.amount, from, to });
+      if (to.where === "well") throw new Error(td("put.error.destination_well"));
+      wire.push({ kind: "liquid", amount: tr.amount, from: source.endpoint, to });
     } else {
-      const source = resolveItemSourceEndpoint(tr.from, currentContext);
-      const to = containerNameToEndpoint(tr.to, currentContext);
+      const source = resolveBackpackItemEndpoint(tr.item, currentContext, "put");
+      const to = storageTargetToEndpoint(target);
       if (to.isShelf && tr.price_silver != null) to.priceCenti = Math.round(tr.price_silver * 100);
       const amount = CURRENCY_ITEM_IDS.has(source.itemId) ? tr.amount : Math.round(tr.amount);
       wire.push({ kind: "item", itemId: source.itemId, amount, from: source.endpoint, to });
@@ -582,67 +635,158 @@ export function buildPutTakeWire(args: PutTakeParams, currentContext?: AgentCurr
   return wire;
 }
 
-type ResolvedPutTakeSource = {
+export function buildTakeWire(args: TakeParams, currentContext?: AgentCurrentContext): TransferWire[] {
+  const target = resolveStorageTarget(args.from, currentContext, "take");
+  const wire: TransferWire[] = [];
+  for (const tr of args.transfers ?? []) {
+    if (tr.kind === "liquid") {
+      const from = target.id === "well" && !tr.item
+        ? { where: "well", containerId: "well" } as ContainerEndpoint
+        : target.kind === "ground"
+          ? resolveGroundItemEndpoint(tr.item, currentContext, "take").endpoint
+        : resolveTargetStorageItemEndpoint(tr.item, target, currentContext, "take");
+      const to = tr.to_item
+        ? resolveBackpackItemEndpoint(tr.to_item, currentContext, "take").endpoint
+        : { where: "backpack" } as ContainerEndpoint;
+      wire.push({ kind: "liquid", amount: tr.amount, from, to });
+    } else {
+      const resolved = target.kind === "ground"
+        ? resolveGroundItemEndpoint(tr.item, currentContext, "take")
+        : resolveStorageItemForTarget(tr.item, target, currentContext, "take");
+      const source = resolved.endpoint;
+      const itemId = resolved.itemId;
+      const amount = CURRENCY_ITEM_IDS.has(itemId) ? tr.amount : Math.round(tr.amount);
+      wire.push({ kind: "item", itemId, amount, from: source, to: { where: "backpack" } });
+    }
+  }
+  return wire;
+}
+
+type ResolvedStorageItem = {
   itemId: string;
   endpoint: ContainerEndpoint;
+  entry: ItemIndexEntry;
 };
 
-function resolveItemSourceEndpoint(ep: TransferEndpointParam, ctx?: AgentCurrentContext): ResolvedPutTakeSource {
-  if (!ep.item) throw new Error(td("put_take.error.discrete_missing_item"));
-  if (ep.container) {
-    const site = resolveContainerOrShelfTarget(ep.container, ctx);
-    if (isMoveTargetError(site)) throw new Error(site.error);
-    const scoped = site.kind === "shelf"
-      ? resolveScopedItemByIndex(ep.item, { kind: "shelf", shelfId: site.id }, ctx)
-      : resolveScopedItemByIndex(ep.item, { kind: "container", containerId: site.id }, ctx);
-    if (isMoveTargetError(scoped)) throw new Error(scoped.error);
-    return {
-      itemId: scoped.id,
-      endpoint: { where: "node", containerId: site.id, slotIndex: scoped.slotIndex, isShelf: site.kind === "shelf" },
-    };
+type ResolvedStorageTarget = { id: string; label: string; kind: "container" | "shelf" | "workstation" | "ground" };
+
+function resolveStorageTarget(name: string, ctx: AgentCurrentContext | undefined, tool: "put" | "take"): ResolvedStorageTarget {
+  if (tool === "take" && isNearbyGroundTarget(name)) {
+    return { id: "__nearby_ground", label: td("take.ground_target"), kind: "ground" };
   }
-  const flat = resolveFlatItemByIndex(ep.item, ctx);
+  if (resolveCharacterIdByName(name)) {
+    throw new Error(td(`${tool}.error.person_target`, { label: name.trim() }));
+  }
+  const site = resolveContainerOrShelfTarget(name, ctx);
+  if (isMoveTargetError(site)) throw new Error(site.error);
+  if (!site.directlyInteractable) throw new Error(td(`${tool}.error.target_not_nearby`, { label: site.label }));
+  return site;
+}
+
+function isNearbyGroundTarget(name: string | undefined): boolean {
+  const normalized = (name ?? "").trim().toLowerCase().replace(/\s+/g, "");
+  return ["附近地面", "地面", "nearbyground", "ground"].includes(normalized);
+}
+
+function resolveFlatStorageItem(ref: ItemRefParam | undefined, ctx: AgentCurrentContext | undefined, tool: "put" | "take"): ResolvedStorageItem {
+  if (!ref) throw new Error(td(`${tool}.error.missing_item`));
+  const flat = resolveFlatItemByIndex(ref, ctx);
   if (isMoveTargetError(flat)) throw new Error(flat.error);
-  return { itemId: flat.id, endpoint: entryToEndpoint(flat.entry) };
+  return { itemId: flat.id, endpoint: entryToEndpoint(flat.entry), entry: flat.entry };
+}
+
+function resolveBackpackItemEndpoint(ref: ItemRefParam | undefined, ctx: AgentCurrentContext | undefined, tool: "put" | "take"): ResolvedStorageItem {
+  const resolved = resolveFlatStorageItem(ref, ctx, tool);
+  if (resolved.entry.scope !== "backpack") {
+    throw new Error(td(`${tool}.error.item_not_backpack`));
+  }
+  return resolved;
+}
+
+function resolveTargetStorageItemEndpoint(
+  ref: ItemRefParam | undefined,
+  target: ResolvedStorageTarget,
+  ctx: AgentCurrentContext | undefined,
+  tool: "put" | "take",
+): ContainerEndpoint {
+  const resolved = resolveFlatStorageItem(ref, ctx, tool);
+  if (!isStorageScope(resolved.entry.scope)) {
+    throw new Error(td(`${tool}.error.item_not_storage`));
+  }
+  if (resolved.entry.containerId !== target.id) {
+    throw new Error(td(`${tool}.error.item_not_in_target`, { label: target.label }));
+  }
+  return resolved.endpoint;
+}
+
+function resolveStorageItemForTarget(
+  ref: ItemRefParam | undefined,
+  target: ResolvedStorageTarget,
+  ctx: AgentCurrentContext | undefined,
+  tool: "put" | "take",
+): ResolvedStorageItem {
+  const resolved = resolveFlatStorageItem(ref, ctx, tool);
+  if (!isStorageScope(resolved.entry.scope)) {
+    throw new Error(td(`${tool}.error.item_not_storage`));
+  }
+  if (resolved.entry.containerId !== target.id) {
+    throw new Error(td(`${tool}.error.item_not_in_target`, { label: target.label }));
+  }
+  return resolved;
+}
+
+function resolveGroundItemEndpoint(ref: ItemRefParam | undefined, ctx: AgentCurrentContext | undefined, tool: "take"): ResolvedStorageItem {
+  const resolved = resolveFlatStorageItem(ref, ctx, tool);
+  if (resolved.entry.scope !== "nearby") {
+    throw new Error(td("take.error.item_not_ground"));
+  }
+  return resolved;
+}
+
+function isStorageScope(scope: ItemIndexEntry["scope"]): boolean {
+  return scope === "container" || scope === "shelf" || scope === "workstation_storage";
 }
 
 // 一个扁平条目 → wire endpoint（按它所在的 scope 定位）。
 function entryToEndpoint(e: ItemIndexEntry): ContainerEndpoint {
-  if (e.scope === "container" || e.scope === "shelf") {
+  if (e.scope === "container" || e.scope === "shelf" || e.scope === "workstation_storage") {
     return { where: "node", containerId: e.containerId, slotIndex: e.slotIndex, isShelf: e.scope === "shelf" };
   }
   if (e.scope === "nearby") {
-    if (e.groundItemId) return { where: "ground", groundItemId: e.groundItemId };
-    throw new Error(td("put_take.error.ground_item_not_container"));
+    return e.groundItemId ? { where: "ground", groundItemId: e.groundItemId } : { where: "ground" };
   }
   return { where: "backpack", slotIndex: e.slotIndex };
+}
+
+function storageTargetToEndpoint(target: ResolvedStorageTarget): ContainerEndpoint {
+  return { where: "node", containerId: target.id, isShelf: target.kind === "shelf" };
 }
 
 // 把 transfer endpoint 解析成液体来源 endpoint。
 // 来源必须是具体液体容器 item（桶/酿酒桶/杯），或水井这类无限液体源。
 function resolveLiquidSourceEndpoint(ep: TransferEndpointParam, ctx?: AgentCurrentContext): ContainerEndpoint {
   if (ep.item) {
-    return resolveContainerItemEndpoint(ep, ctx, td("put_take.error.liquid_container_invalid"));
+    return resolveContainerItemEndpoint(ep, ctx, td("brew.error.liquid_container_invalid"));
   }
   if (ep.container) {
     const site = resolveContainerOrShelfTarget(ep.container, ctx);
     if (isMoveTargetError(site)) throw new Error(site.error);
     if (site.id === "well") return { where: "well", containerId: site.id };
-    throw new Error(td("put_take.error.liquid_source_specific_item_format", { label: site.label }));
+    throw new Error(td("brew.error.liquid_source_specific_item_format", { label: site.label }));
   }
-  throw new Error(td("put_take.error.liquid_endpoint_required"));
+  throw new Error(td("brew.error.liquid_endpoint_required"));
 }
 
 // 液体目标可以是具体液体容器，也可以是背包/容器/货架本身。
 // 后者由 Godot 端把桶装液体按 serving_liters 转成离散 drink item（如 beer）。
 function resolveLiquidDestinationEndpoint(ep: TransferEndpointParam, ctx?: AgentCurrentContext): ContainerEndpoint {
   if (ep.item) {
-    return resolveContainerItemEndpoint(ep, ctx, td("put_take.error.liquid_container_invalid"));
+    return resolveContainerItemEndpoint(ep, ctx, td("brew.error.liquid_container_invalid"));
   }
   if (ep.container) {
     const site = resolveContainerOrShelfTarget(ep.container, ctx);
     if (isMoveTargetError(site)) throw new Error(site.error);
-    if (site.id === "well") throw new Error(td("put_take.error.liquid_destination_well"));
+    if (site.id === "well") throw new Error(td("brew.error.liquid_destination_well"));
     return { where: "node", containerId: site.id, isShelf: site.kind === "shelf" };
   }
   return { where: "backpack" };
@@ -662,44 +806,6 @@ function resolveContainerItemEndpoint(ep: TransferEndpointParam, ctx: AgentCurre
   const flat = resolveFlatItemByIndex(ep.item, ctx);
   if (isMoveTargetError(flat)) throw new Error(flat.error);
   return entryToEndpoint(flat.entry);
-}
-
-// 离散搬运的"目标"endpoint：container 名 → node；没给 = 背包。
-function containerNameToEndpoint(ep: TransferEndpointParam, ctx?: AgentCurrentContext): ContainerEndpoint {
-  if (!ep.container) return { where: "backpack" };
-  const site = resolveContainerOrShelfTarget(ep.container, ctx);
-  if (isMoveTargetError(site)) throw new Error(site.error);
-  return { where: "node", containerId: site.id, isShelf: site.kind === "shelf" };
-}
-
-// view_container —— 查看货架/容器内容。外界可感知，必须走 Godot action + world_event；
-// 容器内容作为 actor 私有 action result 返回，旁观者只看到“查看了容器”。
-export function createViewContainerTool(
-  runtime: ToolRuntime,
-  characterId: string,
-  currentContext?: AgentCurrentContext,
-  interrupts?: AgentToolInterrupts,
-): AgentTool<any, CharacterActionToolDetails> {
-  const gameTime = currentContext?.gameTime;
-  return {
-    label: td("view_container.label"),
-    name: "view_container",
-    description: td("view_container.description"),
-    parameters: createViewContainerSchema(),
-    execute: async (_toolCallId, rawArgs, signal, onUpdate) => {
-      const args = rawArgs as ViewContainerParams;
-      const site = resolveContainerOrShelfTarget(args.container, currentContext);
-      if (isMoveTargetError(site)) throw new Error(site.error);
-      return submitToolAction(
-        runtime.actions,
-        characterId,
-        "view_container",
-        { containerId: site.id, isShelf: site.kind === "shelf" },
-        td("view_container.reason_format", { label: site.label }),
-        { toolName: "view_container", displayTarget: site.label, gameTime, signal, onUpdate, interrupts },
-      );
-    },
-  };
 }
 
 // 酿酒 —— 装水的酿酒桶 + 背包麦芽 → 发酵中的酒。Godot BrewHandlers 执行。
@@ -804,39 +910,6 @@ export function createUseItemTool(
         },
         args.reason ?? td("use_item.reason_default_format", { item: item.label }),
         { displayTarget: target ? `${item.label} -> ${localizeStringValue(target)}` : item.label, gameTime, signal, onUpdate, interrupts },
-      );
-    },
-  };
-}
-
-export function createPickUpItemTool(
-  runtime: ToolRuntime,
-  characterId: string,
-  currentContext?: AgentCurrentContext,
-  gameTime?: GameTimeSnapshot,
-  interrupts?: AgentToolInterrupts,
-): AgentTool<typeof pickUpItemSchema, CharacterActionToolDetails> {
-  return {
-    label: td("pick_up_item.label"),
-    name: "pick_up_item",
-    description: td("pick_up_item.description"),
-    parameters: pickUpItemSchema,
-    execute: async (_toolCallId: string, args: PickUpItemParams, signal, onUpdate) => {
-      const item = resolveItemByIndex(args.item, "nearby", currentContext);
-      if (isMoveTargetError(item)) {
-        throw new Error(item.error);
-      }
-      return submitToolAction(
-        runtime.actions,
-        characterId,
-        "pick_up_item",
-        // nearby perception 不带 instance id；Godot 按距离/默认规则选实例。quantity 缺省 1。
-        {
-          itemId: item.id,
-          ...(args.quantity != null ? { quantity: args.quantity } : {}),
-        },
-        td("pick_up_item.reason_format", { item: item.label }),
-        { displayTarget: item.label, gameTime, signal, onUpdate, interrupts },
       );
     },
   };
@@ -1009,7 +1082,7 @@ export function createSleepTool(
   };
 }
 
-// 容器存取的 LLM 工具是 createPutTakeTool / createViewContainerTool（上方）。
+// 容器存取的 LLM 工具是 createPutTool / createTakeTool（上方）。
 // verb=take/put/inspect。三个 Godot action_kind 仍独立（deposit_to_container / withdraw_from_container
 // / inspect_container），由 createUseContainerTool 内部按 verb 分发。
 

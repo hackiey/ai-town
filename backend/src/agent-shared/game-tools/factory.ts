@@ -9,6 +9,7 @@ import {
   createAlchemyTool,
   createBoilSaltTool,
   createBurnCharcoalTool,
+  createChopWoodTool,
   createCookTool,
   createCreateItemTool,
   createDoNothingTool,
@@ -18,17 +19,16 @@ import {
   createMineTool,
   createMoveToLocationTool,
   createOfferTool,
-  createPickUpItemTool,
   createPlanFarmWorkTool,
-  createPutTakeTool,
+  createPutTool,
   createReadTool,
   createRespondTool,
   createSayToTool,
   createSleepTool,
   createSmeltTool,
   createSmithTool,
+  createTakeTool,
   createUseItemTool,
-  createViewContainerTool,
   createWoodworkTool,
   createWriteTool,
 } from "./tool-factories.js";
@@ -45,6 +45,7 @@ type AxisToolFactory = (
 
 const AXIS_TOOL_FACTORIES: Record<CraftSlug, AxisToolFactory> = {
   mine: createMineTool,
+  chop_wood: createChopWoodTool,
   woodwork: createWoodworkTool,
   burn_charcoal: createBurnCharcoalTool,
   smelt: createSmeltTool,
@@ -93,7 +94,6 @@ export function createSharedGameAgentTools(options: CreateGameAgentToolsOptions)
     createMoveToLocationTool(options, characterId, options.currentContext, interrupts),
     createSayToTool(options, characterId, options.currentContext, interrupts),
     createUseItemTool(options, characterId, options.currentContext, gameTime, interrupts),
-    createPickUpItemTool(options, characterId, options.currentContext, gameTime, interrupts),
     createDropItemTool(options, characterId, options.currentContext, gameTime, interrupts),
   ];
 
@@ -107,12 +107,11 @@ export function createSharedGameAgentTools(options: CreateGameAgentToolsOptions)
   }
 
   // 通用交互工具（不归 craft，无 proficiency 门槛）：
-  //   - put_take：货架/容器统一存取（存入+取出合一），全员可用
-  //   - view_container：查看货架/容器内容（货架带标价），全员可用
+  //   - put/take：背包与附近货架/容器/工作台储物之间存取，全员可用
   //   - brew：酿酒（装水酿酒桶+麦芽→发酵），无手艺门槛（品质由熟练度定）
   // 未来想加 proficiency gating 到 craft 工具时，**不要**误伤这些。
-  tools.push(createPutTakeTool(options, characterId, options.currentContext, interrupts));
-  tools.push(createViewContainerTool(options, characterId, options.currentContext, interrupts));
+  tools.push(createPutTool(options, characterId, options.currentContext, interrupts));
+  tools.push(createTakeTool(options, characterId, options.currentContext, interrupts));
   tools.push(createBrewTool(options, characterId, options.currentContext, interrupts));
 
   // 通信 / 交易 / 休息 / 兜底

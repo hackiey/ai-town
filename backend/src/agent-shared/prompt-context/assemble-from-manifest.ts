@@ -42,6 +42,7 @@ import type {
   ProficiencyEntry,
   ShelfContext,
   ShelfListingContext,
+  StorageItemGroup,
   VisibleLocationContext,
   WorkstationContext,
 } from "./types.js";
@@ -113,16 +114,23 @@ export function assembleAgentContextFromManifest(
   // 可见性由 perception manifest 决定，backend 不再二次过滤；owner_group 只用于
   // 给每条 snapshot 标 `accessible` 字段（LLM 判断"能不能用"）。
   const nearbyFarms = farmViews.map((farm) => farmViewToContext(farm, names, groupIds, farmBands));
-  const workstationCtxs = workstationViews.map((ws) => workstationViewToContext(ws, groupIds, names, workstationBands, characterId));
+  const workstationViewIds = new Set(workstationViews.map((ws) => ws.workstationNodeId));
+  const workstationStorageViews = containerViews.filter((c) => workstationViewIds.has(c.containerId));
+  const standaloneContainerViews = containerViews.filter((c) => !workstationViewIds.has(c.containerId));
+  const workstationStorageStats = new Map(workstationStorageViews.map((c) => [c.containerId, {
+    used: c.contents.filter((r) => r.itemDefId && r.stackCount > 0).length,
+    capacity: c.slotCount,
+  }]));
+  const workstationCtxs = workstationViews.map((ws) => workstationViewToContext(ws, groupIds, names, workstationBands, characterId, workstationStorageStats.get(ws.workstationNodeId)));
   // containerCtxs 同时算出 containerItemIndex（容器内容 [N] → slotIndex 映射）。
   const containerItemIndex: Record<string, ItemIndexEntry[]> = {};
-  const containerCtxs = containerViews.map((c) => {
+  const containerCtxs = standaloneContainerViews.map((c) => {
     const built = containerViewToWorkstationContext(c, inventoryRows, groupIds, names, workstationBands);
     if (built.entries.length > 0) containerItemIndex[c.containerId] = built.entries;
     return built.context;
   });
   const nearbyWorkstations = [...workstationCtxs, ...containerCtxs];
-  // buildShelfContexts 同时落 shelfItemIndex（货架内容 [N] → slotIndex 映射，put_take take 反查）。
+  // buildShelfContexts 同时落 shelfItemIndex（货架内容 [N] → slotIndex 映射）。
   const shelfItemIndex: Record<string, ItemIndexEntry[]> = {};
   const nearbyShelvesBuilt = buildShelfContexts(nearbyShelfViews, names, shelfBands, groupIds);
   for (const built of nearbyShelvesBuilt) {
@@ -143,7 +151,12 @@ export function assembleAgentContextFromManifest(
   }));
   // itemDefs 仍要用 —— 名字走 resolver，但 staticJson（capacity 等模板级值）+
   // baseEffects 默认效果是 item_defs 表独有信息，instance 自己没写时作 fallback。
-  const itemDefs = getItemDefsByIds(db, townId, inventoryRows.map((r) => r.itemDefId));
+  const storageRows = [
+    ...standaloneContainerViews.flatMap((c) => c.contents),
+    ...workstationStorageViews.flatMap((c) => c.contents),
+    ...nearbyShelfViews.flatMap((s) => s.contents),
+  ];
+  const itemDefs = getItemDefsByIds(db, townId, [...inventoryRows, ...storageRows].map((r) => r.itemDefId));
   const inventoryRender = renderInventoryEntries(inventoryRows.filter((r) => r.slotIndex < 0), itemDefs, names);  // 装备槽（GD 端约定 slotIndex<0）
   const rawBackpackRender = renderInventoryEntries(inventoryRows.filter((r) => r.slotIndex >= 0), itemDefs, names);
   // 钱包余额作为虚拟背包行注入头部（[N] 银币），让 LLM 用统一 {name, index} 引用钱包。
@@ -152,8 +165,19 @@ export function assembleAgentContextFromManifest(
   // entry.containerContent，resolver 在 name mismatch 时会兜底匹配（"水"≈ 木桶里的 water），
   // 返回 {id: water, slotIndex: 木桶的 slotIndex}，Godot 端验证后从该桶倒水。
   const backpackRender = prependWalletEntriesToBackpack(rawBackpackRender, selfState?.walletCenti ?? 0, names);
+  const nearbyStorageBuilt = buildNearbyStorageItemSections({
+    shelves: nearbyShelfViews,
+    containers: standaloneContainerViews,
+    workstationStorage: workstationStorageViews,
+    inventoryRows,
+    groupIds,
+    itemDefs,
+    names,
+    shelfBands,
+    workstationBands,
+  });
   const nearbyItemsRender = renderPerceivedItems(manifest.perceivedItems, names);
-  // 附近地面液体容器（掉落的桶）拼进 nearby 段：带 groundItemId，put_take 可取/存液体。
+  // 附近地面液体容器（掉落的桶）拼进 nearby 段：带 groundItemId，供液体工具寻址。
   for (const gc of manifest.perceivedGroundContainers ?? []) {
     if (gc.band !== "near") continue;
     const name = names.item(gc.itemId);
@@ -190,36 +214,24 @@ export function assembleAgentContextFromManifest(
     flat.push(e);
     g++;
   });
-  // 容器内容：WorkstationContext.items[].index 与 containerItemIndex[id] 一一对应。
-  for (const ctx of containerCtxs) {
-    const entries = containerItemIndex[ctx.id];
-    if (!entries || !ctx.items) continue;
-    ctx.items.forEach((it, i) => {
-      const e = entries[i];
-      if (!e) return;
-      e.globalIndex = g;
-      e.scope = "container";
-      e.containerId = ctx.id;
-      it.index = g;
-      flat.push(e);
-      g++;
-    });
-  }
-  // 货架 listings：ShelfContext.listings[].index 与 shelfItemIndex[id] 一一对应。
-  for (const built of nearbyShelvesBuilt) {
-    const entries = shelfItemIndex[built.context.id];
-    if (!entries) continue;
-    built.context.listings.forEach((l, i) => {
-      const e = entries[i];
-      if (!e) return;
-      e.globalIndex = g;
-      e.scope = "shelf";
-      e.containerId = built.context.id;
-      l.index = g;
-      flat.push(e);
-      g++;
-    });
-  }
+  const renumberStorageGroups = (
+    groups: Array<StorageItemGroup & { entries: ItemIndexEntry[] }>,
+    scope: "container" | "shelf" | "workstation_storage",
+  ) => {
+    for (const group of groups) {
+      group.entries.forEach((e, i) => {
+        e.globalIndex = g;
+        e.scope = scope;
+        e.containerId = group.id;
+        group.lines[i] = group.lines[i].replace(/^\[\d+\]/, `[${g}]`);
+        flat.push(e);
+        g++;
+      });
+    }
+  };
+  renumberStorageGroups(nearbyStorageBuilt.shelfGroups, "shelf");
+  renumberStorageGroups(nearbyStorageBuilt.containerGroups, "container");
+  renumberStorageGroups(nearbyStorageBuilt.workstationGroups, "workstation_storage");
 
   return {
     currentLocation: manifest.selfLocationId || "unknown",
@@ -235,10 +247,11 @@ export function assembleAgentContextFromManifest(
     })),
     nearbyBuildings: bandRefsToContext(manifest.perceivedLocations, (id) => id),
     nearbyCharacters: bandCharacterRefs(manifest.perceivedCharacters, presenceById, names),
-    nearbyItems: nearbyItemsRender.context,
+    nearbyItems: { near: [], far: nearbyItemsRender.context.far },
     nearbyFarms,
     nearbyWorkstations,
     nearbyShelves,
+    nearbyStorageItems: { ...nearbyStorageBuilt.sections, ground: nearbyItemsRender.context.near },
     groups: groupIds,
     interactiveSites: buildInteractiveSites(nearbyFarms, nearbyWorkstations, nearbyShelves, names),
     inventory: inventoryRender.lines,
@@ -556,7 +569,14 @@ function foldSlotDetails(slots: FarmSlotContext[]): string {
 }
 
 
-function workstationViewToContext(ws: WorkstationView, characterGroupIds: string[], names: DisplayNameResolver, bands: Map<string, PerceptionBand>, selfCharacterId: string): WorkstationContext {
+function workstationViewToContext(
+  ws: WorkstationView,
+  characterGroupIds: string[],
+  names: DisplayNameResolver,
+  bands: Map<string, PerceptionBand>,
+  selfCharacterId: string,
+  storage?: { used: number; capacity: number },
+): WorkstationContext {
   // 自己用着的工作台不渲染"使用中"提示——LLM 已经知道自己在干嘛，避免冗余噪音。
   const occupiedByOther = ws.currentOperatorId && ws.currentOperatorId !== selfCharacterId;
   return {
@@ -570,13 +590,15 @@ function workstationViewToContext(ws: WorkstationView, characterGroupIds: string
     interactionMode: ws.interactionMode,
     verbs: ws.verbs,
     slotCount: ws.slotCount,
+    storageUsed: storage?.used,
+    storageSlotCount: storage?.capacity,
     currentOperatorName: occupiedByOther ? names.character(ws.currentOperatorId!) : undefined,
   };
 }
 
 // ContainerView → WorkstationContext。容器是 WorkstationNode 子类，对 LLM 统一暴露成"工作台"。
 // items 仅在 actor 持锁（或无锁）时填充；否则空数组表达"看得到容器但不知道里面"。
-// 输出 entries（容器内容的 [N] → {itemDefId, slotIndex} 映射）供 put_take 反查；
+// 输出 entries（容器内容的 [N] → {itemDefId, slotIndex} 映射）供工具反查；
 // 容器锁住时 entries 也为空。
 function containerViewToWorkstationContext(c: ContainerView, actorInventoryRows: InventoryItemRow[], characterGroupIds: string[], names: DisplayNameResolver, bands: Map<string, PerceptionBand>): { context: WorkstationContext; entries: ItemIndexEntry[] } {
   const locked = !!c.lockItemId;
@@ -684,6 +706,101 @@ function shelfRowToListingContext(r: InventoryItemRow, names: DisplayNameResolve
   };
 }
 
+type BuiltStorageItemGroup = StorageItemGroup & { entries: ItemIndexEntry[] };
+
+function buildNearbyStorageItemSections(args: {
+  shelves: ShelfView[];
+  containers: ContainerView[];
+  workstationStorage: ContainerView[];
+  inventoryRows: InventoryItemRow[];
+  groupIds: string[];
+  itemDefs: Map<string, ItemDefView>;
+  names: DisplayNameResolver;
+  shelfBands: Map<string, PerceptionBand>;
+  workstationBands: Map<string, PerceptionBand>;
+}): {
+  sections: { shelves: StorageItemGroup[]; containers: StorageItemGroup[]; workstations: StorageItemGroup[] };
+  shelfGroups: BuiltStorageItemGroup[];
+  containerGroups: BuiltStorageItemGroup[];
+  workstationGroups: BuiltStorageItemGroup[];
+} {
+  const shelfGroups = args.shelves
+    .filter((shelf) => args.shelfBands.get(shelf.shelfId) === "direct")
+    .map((shelf) => buildStorageItemGroup({
+      id: shelf.shelfId,
+      displayName: args.names.location(shelf.shelfId),
+      rows: shelf.contents,
+      walletCenti: isOwnedSiteAccessibleToGroups(shelf.ownerGroup, args.groupIds) ? shelf.walletCenti : 0,
+      itemDefs: args.itemDefs,
+      names: args.names,
+    }))
+    .filter((group) => group.lines.length > 0);
+  const containerGroups = args.containers
+    .filter((container) => args.workstationBands.get(container.containerId) === "direct")
+    .filter((container) => canOpenContainerView(container, args.inventoryRows))
+    .map((container) => buildStorageItemGroup({
+      id: container.containerId,
+      displayName: args.names.location(container.containerId),
+      rows: container.contents,
+      walletCenti: container.walletCenti,
+      itemDefs: args.itemDefs,
+      names: args.names,
+    }))
+    .filter((group) => group.lines.length > 0);
+  const workstationGroups = args.workstationStorage
+    .filter((container) => args.workstationBands.get(container.containerId) === "direct")
+    .filter((container) => canOpenContainerView(container, args.inventoryRows))
+    .map((container) => buildStorageItemGroup({
+      id: container.containerId,
+      displayName: args.names.location(container.containerId),
+      rows: container.contents,
+      walletCenti: container.walletCenti,
+      itemDefs: args.itemDefs,
+      names: args.names,
+    }))
+    .filter((group) => group.lines.length > 0);
+  return {
+    sections: {
+      shelves: shelfGroups.map(stripStorageEntries),
+      containers: containerGroups.map(stripStorageEntries),
+      workstations: workstationGroups.map(stripStorageEntries),
+    },
+    shelfGroups,
+    containerGroups,
+    workstationGroups,
+  };
+}
+
+function buildStorageItemGroup(args: {
+  id: string;
+  displayName: string;
+  rows: InventoryItemRow[];
+  walletCenti: number;
+  itemDefs: Map<string, ItemDefView>;
+  names: DisplayNameResolver;
+}): BuiltStorageItemGroup {
+  const rendered = renderInventoryEntries(args.rows, args.itemDefs, args.names);
+  const lines = [...rendered.lines];
+  const entries = [...rendered.entries];
+  if (args.walletCenti > 0) {
+    lines.unshift(`[1] ${args.names.item("silver_coin")} x${formatAmount(args.walletCenti / 100)}`);
+    entries.unshift({ itemDefId: "silver_coin" });
+    for (let i = 1; i < lines.length; i++) {
+      lines[i] = lines[i].replace(/^\[\d+\]/, `[${i + 1}]`);
+    }
+  }
+  return { id: args.id, displayName: args.displayName, lines, entries };
+}
+
+function stripStorageEntries(group: BuiltStorageItemGroup): StorageItemGroup {
+  return { id: group.id, displayName: group.displayName, lines: group.lines };
+}
+
+function canOpenContainerView(container: ContainerView, actorInventoryRows: InventoryItemRow[]): boolean {
+  const key = container.lockItemId?.trim();
+  return !key || actorInventoryRows.some((row) => row.itemDefId === key && row.stackCount > 0);
+}
+
 function buildInteractiveSites(
   farms: FarmContext[],
   workstations: WorkstationContext[],
@@ -714,6 +831,8 @@ function buildInteractiveSites(
     workstationId: ws.workstationId,
     interactionMode: ws.interactionMode,
     slotCount: ws.slotCount,
+    storageSlotCount: ws.storageSlotCount,
+    storageUsed: ws.storageUsed,
     lockItemId: ws.lockItemId,
     locked: ws.locked,
     unlocked: ws.unlocked,
@@ -726,7 +845,7 @@ function buildInteractiveSites(
     displayName: shelf.displayName || names.location(shelf.id) || `shelf_${index + 1}`,
     kind: "shelf",
     directlyInteractable: shelf.directlyInteractable ?? true,
-    availableActions: ["view_container", "put_take"],
+    availableActions: ["put", "take"],
   }));
   return [...farmSites, ...workstationSites, ...shelfSites];
 }
@@ -740,16 +859,16 @@ function defIdFromObjectId(objectId: string): string {
 // 写进 SQLite *.ownerGroup。空字符串/undefined = 公用。仅用于给 snapshot 标 `accessible`
 // 字段（"能不能用"），不参与可见性 —— 可见性由 perception manifest 决定。
 // 工作台 → 该工作台对应的 axis tool 名（用于 InteractiveSiteContext.availableActions
-// 给 LLM 当"这里能用什么工具"的提示）。容器型（含水井）走 put_take / view_container；
+// 给 LLM 当"这里能用什么工具"的提示）。容器型（含水井）走 put / take；
 // 其他按 .workstations 反查到对应 axis slug。一个工作台可能落到多个 axis
 // （workbench 既能 woodwork 又能 assemble），全部列出来。找不到映射时给空数组。
 function availableActionsForWorkstation(workstationId: string, interactionMode?: string): string[] {
-  if (interactionMode === "container") return ["put_take", "view_container"];
+  if (interactionMode === "container") return ["put", "take"];
   const crafts: CraftSlug[] = [];
   for (const slug of listCraftSlugs()) {
     if (getCraftSpec(slug).workstations.includes(workstationId)) crafts.push(slug);
   }
-  return crafts;
+  return [...crafts, "put", "take"];
 }
 
 function isOwnedSiteAccessibleToGroups(ownerGroup: string | undefined, characterGroupIds: string[]): boolean {
@@ -794,8 +913,11 @@ function renderInventoryEntries(
     const effects = r.displayedEffects ?? r.baseEffects ?? def?.baseEffects ?? null;
     const effectsLine = formatEffectsLine(effects, names);
     if (effectsLine) parts.push(effectsLine);
-    if (typeof r.quality === "number" && r.quality < 100) {
+    if (typeof r.quality === "number") {
       parts.push(`品质${r.quality}`);
+    }
+    if (typeof r.durability === "number") {
+      parts.push(`耐久${formatAmount(r.durability)}`);
     }
     // freshness 是可变 aspect；只有食物等 reaction 写了这列才有，工具/货币 NULL。
     // tier=5 = 满分不噪声；<5 才显示。
@@ -818,6 +940,9 @@ function renderInventoryEntries(
       } else {
         parts.push(`容量：空 0/${capText}`);
       }
+    }
+    if (typeof r.listingPriceCenti === "number" && r.listingPriceCenti > 0) {
+      parts.push(`@ ${formatAmount(r.listingPriceCenti / 100)}银`);
     }
     lines.push(parts.length > 0 ? `${head}（${parts.join(" · ")}）` : head);
     // containerContent 给 resolver 兜底用（liquid_container 装的 water/brine/...），
@@ -860,11 +985,10 @@ function prependWalletEntriesToBackpack(
   };
 }
 
-// 附近物品列表：只对 near 行编 [N]（与 itemIndex.nearby 对齐），far 行只显示名字。
-// 这样 pick_up_item 用的 index 不会出现"指向远处那栏"的情况，resolver 出错就是真的越界。
+// 附近地面物品列表：只对 near 行编 [N]（与 itemIndex.nearby 对齐），far 行只显示名字。
+// near 行会渲染进 # 可取放物品 / 附近地面，供 take 使用；far 行留在环境感知里，不能直接拿。
 // PerceivedRef.id 是 itemDefId（template slug），perception manifest 不带 instance id；
-// 同 itemDefId 的多份地上物在 near 段会渲染成多行同名 [1]/[2]，但发到 Godot 只有 itemId，
-// Godot 端按距离 / 默认规则选实例（[N] 在拾取时主要是 LLM 心智一致性，不能真正区分实例）。
+// 同 itemDefId 的多份地上物在 near 段会渲染成多行同名 [1]/[2]，Godot 端按距离 / 默认规则选实例。
 function renderPerceivedItems(
   refs: PerceivedRef[],
   names: DisplayNameResolver,

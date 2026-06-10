@@ -95,6 +95,8 @@ export type WorkstationContext = {
   interactionMode?: string;
   verbs: string[];
   slotCount?: number;
+  storageSlotCount?: number;
+  storageUsed?: number;
   // 容器型 workstation (interactionMode="container") 专属：
   // - lockItemId：上锁 item id；空/缺省 = 未锁
   // - locked：lockItemId 非空时为 true
@@ -115,7 +117,7 @@ export type WorkstationContext = {
 
 export type ShelfListingContext = {
   // index = LLM 看到的 [N] 序号（与 itemIndex.shelves[shelfId] 对齐）；
-  // slotIndex = 货架（容器）槽位真 id，put_take take 走 wire 给 Godot。
+  // slotIndex = 货架（容器）槽位真 id，take 走 wire 给 Godot。
   index?: number;
   slotIndex?: number;
   itemId?: string;
@@ -138,8 +140,23 @@ export type ShelfContext = {
   displayName?: string;
   directlyInteractable?: boolean;
   slotCount?: number;
+  storageSlotCount?: number;
+  storageUsed?: number;
   interactionRadiusMeters?: number;
   listings: ShelfListingContext[];
+};
+
+export type StorageItemGroup = {
+  id: string;
+  displayName: string;
+  lines: string[];
+};
+
+export type NearbyStorageItemSections = {
+  ground: string[];
+  shelves: StorageItemGroup[];
+  containers: StorageItemGroup[];
+  workstations: StorageItemGroup[];
 };
 
 export type InteractiveSiteContext = {
@@ -159,6 +176,8 @@ export type InteractiveSiteContext = {
   workstationId?: string;
   interactionMode?: string;
   slotCount?: number;
+  storageSlotCount?: number;
+  storageUsed?: number;
   lockItemId?: string;
   locked?: boolean;
   unlocked?: boolean;
@@ -180,11 +199,11 @@ export type ItemIndexEntry = {
   slotIndex?: number;
   listingId?: string;
   // 统一扁平编号（从 1 顺序往后，全场唯一）。assemble 后一遍 post-pass 写入；
-  // resolver 按 globalIndex 反查；scope/containerId 让 put_take 知道这件东西在哪。
+  // resolver 按 globalIndex 反查；scope/containerId 让 put/take 知道这件东西在哪。
   globalIndex?: number;
-  scope?: "backpack" | "equipment" | "nearby" | "container" | "shelf";
+  scope?: "backpack" | "equipment" | "nearby" | "container" | "shelf" | "workstation_storage";
   containerId?: string;
-  // 地面物品实例 id（ownerKind='world' 的 item_instances.id）。让 put_take 能寻址地上的桶。
+  // 地面物品实例 id（ownerKind='world' 的 item_instances.id）。让液体工具能寻址地上的桶。
   groundItemId?: string;
   // 液体容器装的内容 id（如 wood_bucket 里的 "water"）。resolver 在 name mismatch 时
   // 用这个兜底——LLM 写 {name:"水", index:<木桶>} 可以解析成 {id:"water", slotIndex:桶}，
@@ -233,6 +252,7 @@ export type AgentCurrentContext = {
   nearbyFarms: FarmContext[];
   nearbyWorkstations: WorkstationContext[];
   nearbyShelves: ShelfContext[];
+  nearbyStorageItems: NearbyStorageItemSections;
   interactiveSites: InteractiveSiteContext[];
   inventory: string[];
   backpack: string[];

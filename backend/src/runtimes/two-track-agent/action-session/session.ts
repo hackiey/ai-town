@@ -417,7 +417,8 @@ export class ActionTrackSession {
     if (details && typeof details.actionId === "string" && details.actionId) {
       return false; // Godot 已落行
     }
-    const error = formatContentText(objectValue(result)?.content) ?? `${toolName} failed`;
+    const rawError = formatContentText(objectValue(result)?.content) ?? `${toolName} failed`;
+    const error = humanizeToolFailure(toolName, rawError, args) ?? rawError;
     try {
       this.options.ctx.actions().recordFailed({
         characterId: this.options.characterId,
@@ -630,16 +631,18 @@ export class ActionTrackSession {
     // 断开 pi-agent-core 续航的 abort 不在这里发——放到 turn_end（整条 assistant message 的所有 tool 都跑完之后），
     // 否则同一条 message 内 LLM emit 多个 tool 时，第二个 tool 会被前一个 tool 的 microtask abort 误伤
     // （pi-agent-core sequential 循环在 tool 之间不查 signal，第二个 tool 已进 waitForTerminal 才看到 abort）。
-    // 10 个 axis tool 共享 workstation 结果模板
+    // axis tool 共享 workstation 结果模板
     // （toolResultDetails / target shape 完全一致，渲染逻辑无差别）。
     const toolName = context.toolCall.name;
     const isWorkstationTool = isKnownCraft(toolName);
     const overrideText = isWorkstationTool
       ? renderUseWorkstationToolResultPrompt(context)
       : undefined;
+    const resultText = formatContentText(context.result.content) ?? "";
+    const failureText = humanizeToolFailure(toolName, resultText, extractToolCallArgs(context.toolCall));
     const noticesText = await this.consumeQueuedActionNoticesText("同时完成的行动");
-    if (!overrideText && !noticesText) return undefined;
-    const baseText = overrideText ?? formatContentText(context.result.content) ?? "";
+    if (!overrideText && !failureText && !noticesText) return undefined;
+    const baseText = overrideText ?? failureText ?? resultText;
     return {
       content: [{ type: "text", text: [baseText, noticesText].filter(Boolean).join("\n\n") }],
     };
@@ -874,6 +877,98 @@ function isDoNothingToolResult(value: unknown): boolean {
   const result = objectValue(value);
   const details = objectValue(result?.details);
   return details?.didNothing === true;
+}
+
+function humanizeToolFailure(toolName: string, rawError: string, args: unknown): string | undefined {
+  const messages: string[] = [];
+  const locale = getActiveLocale();
+  const argsObject = preSubmitArgsObject(args);
+
+  if (toolName === "put" || toolName === "take") {
+    const targetKey = toolName === "put" ? "to" : "from";
+    const target = typeof argsObject[targetKey] === "string" ? argsObject[targetKey].trim() : "";
+    if (target && resolveCharacterIdByName(target)) {
+      pushUnique(messages, t(`tool.${toolName}.error.person_target`, locale, { label: target }));
+    }
+  }
+
+  for (const index of extractMissingIndexValues(rawError)) {
+    pushUnique(messages, missingIndexMessage(index));
+  }
+
+  if (isIndexValidationFailure(rawError)) {
+    for (const index of collectInvalidIndexValues(argsObject)) {
+      pushUnique(messages, missingIndexMessage(index));
+    }
+  }
+
+  return messages.length > 0 ? messages.join("\n") : undefined;
+}
+
+function extractToolCallArgs(toolCall: unknown): unknown {
+  const record = objectValue(toolCall);
+  if (!record) return undefined;
+  const fn = objectValue(record.function);
+  return record.args ?? record.arguments ?? record.input ?? fn?.arguments;
+}
+
+function extractMissingIndexValues(rawError: string): number[] {
+  const values: number[] = [];
+  for (const match of rawError.matchAll(/没有 index:\s*(-?\d+(?:\.\d+)?)/g)) {
+    values.push(Number(match[1]));
+  }
+  for (const match of rawError.matchAll(/没有第\s*(-?\d+(?:\.\d+)?)\s*行/g)) {
+    values.push(Number(match[1]));
+  }
+  return uniqueFiniteNumbers(values);
+}
+
+function isIndexValidationFailure(rawError: string): boolean {
+  return /\bindex\b/i.test(rawError) && /(must be >= 1|minimum|最小|至少|Validation failed)/i.test(rawError);
+}
+
+function collectInvalidIndexValues(value: unknown): number[] {
+  const values: number[] = [];
+  const visit = (entry: unknown, key?: string) => {
+    if (key === "index") {
+      const index = numericIndexValue(entry);
+      if (index != null && index < 1) values.push(index);
+    }
+    if (Array.isArray(entry)) {
+      for (const child of entry) visit(child);
+      return;
+    }
+    const record = objectValue(entry);
+    if (!record) return;
+    for (const [childKey, child] of Object.entries(record)) {
+      visit(child, childKey);
+    }
+  };
+  visit(value);
+  return uniqueFiniteNumbers(values);
+}
+
+function numericIndexValue(value: unknown): number | undefined {
+  if (typeof value === "number" && Number.isFinite(value)) return value;
+  if (typeof value === "string" && /^-?\d+(?:\.\d+)?$/.test(value.trim())) return Number(value);
+  return undefined;
+}
+
+function missingIndexMessage(index: number): string {
+  return `没有 index: ${String(index)}。请使用当前「# 可取放物品（统一编号）」里实际显示的 [N]。`;
+}
+
+function uniqueFiniteNumbers(values: number[]): number[] {
+  const unique: number[] = [];
+  for (const value of values) {
+    if (!Number.isFinite(value) || unique.includes(value)) continue;
+    unique.push(value);
+  }
+  return unique;
+}
+
+function pushUnique(values: string[], value: string): void {
+  if (!values.includes(value)) values.push(value);
 }
 
 // 预提交失败补记 failed action_log 时，从原始工具入参还原 target，避免 say_to 失败行退化成

@@ -11,6 +11,7 @@
   "constitution": 50,
   "proficiency": {
     "cooking": 20,
+    "lumbering": 15,
     "woodworking": 15,
     "charcoal_making": 10,
     "mining": 10,

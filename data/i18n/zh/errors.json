@@ -23,7 +23,7 @@
     "use_workstation_unknown_workstation": "无法识别工作台：{workstation}。请使用当前附近工作台中列出的名称或合法 workstation id。",
     "unknown_character": "无法识别角色：{character}。请使用当前上下文中的角色名称或合法 character id。",
     "unknown_item": "无法识别物品：{item}。请使用当前上下文中的物品名称或合法 item id。",
-    "item_index_out_of_range": "{list} 列表里没有第 {index} 行（当前共 {size} 行）。请按 user prompt 中实际显示的 [N] 序号传入，列表可能在上一动作后发生了变化。",
+    "item_index_out_of_range": "没有 index: {index}。请使用当前「# 可取放物品（统一编号）」里实际显示的 [N]。",
     "item_index_name_mismatch": "{list} 列表里第 {index} 行是「{actualName}」，不是你指定的「{requestedName}」。检查 user prompt 中实际显示的 [N] 序号与名称是否一致，或重新选择对应的 index。",
     "unknown_farm": "无法识别农田：{farm}。请使用当前附近农场中列出的名称或合法 farm id。",
     "unknown_container": "无法识别容器：{container}。请使用合法 container id 或配置中的容器名称。",
@@ -31,9 +31,9 @@
     "unknown_shelf_listing": "无法识别货架 listing：{listing}。请使用当前货架中列出的 listing_id。",
     "unknown_target": "无法识别目标：{target}。请使用当前上下文中的角色、地点、工作台或物品名称。",
     "tool_failure_self_correcting": "工具调用失败；这条回复里的剩余工具调用已跳过，下一轮会根据失败原因自行修正",
-    "put_take": {
-      "invalid_target": "put_take target 必须是 object",
-      "empty_transfers": "put_take 没有指定 transfers",
+    "container_transfer": {
+      "invalid_target": "容器转移 target 必须是 object",
+      "empty_transfers": "没有指定 transfers",
       "no_moves": "没有可搬运的内容",
       "unsupported_transfer_format": "不支持的搬运：%s→%s"
     },
@@ -45,10 +45,6 @@
       "payment_not_enough": "你给的钱不够",
       "invalid_slot": "货架槽无效"
     },
-    "view_container": {
-      "missing_container_id": "view_container 缺少 containerId",
-      "unavailable": "容器不在手边、看不见，或打不开"
-    },
     "container": {
       "invalid_target": "目标容器无效",
       "invalid_source": "源容器无效",
@@ -56,6 +52,7 @@
       "not_nearby_format": "「%s」不在手边",
       "invalid_slot": "容器槽无效",
       "ground_missing": "地上没有这个容器",
+      "ground_item_missing_format": "附近地面没有「%s」",
       "full": "容器装不下",
       "system_deposit_invalid": "system_deposit 参数错误",
       "system_withdraw_invalid": "system_withdraw 参数错误",
@@ -91,10 +88,6 @@
     "drop_item": {
       "missing_item_id": "drop_item 缺少 itemId",
       "failed_format": "无法丢弃 %s"
-    },
-    "pick_up_item": {
-      "missing_item_id": "pick_up_item 缺少 itemId",
-      "nearby_missing_format": "附近没有 %s"
     },
     "write": {
       "missing_fields": "write 需要 itemName + title + content 三个非空字段",

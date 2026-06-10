@@ -217,7 +217,7 @@ func nearby_item_ids() -> Dictionary:
 	return { "near": near, "far": far }
 
 
-# 附近地面上的液体容器（掉落的桶等）——活容器，可被 put_take 取/存液体。
+# 附近地面上的液体容器（掉落的桶等）——活容器，可被液体转移寻址。
 # 带 instanceId(db_id) 让 backend 能寻址具体那一个。
 func nearby_ground_container_snapshots() -> Array:
 	var out: Array = []

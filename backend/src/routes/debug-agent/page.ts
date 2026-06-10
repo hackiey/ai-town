@@ -13,11 +13,6 @@ export const DEBUG_HTML = String.raw`<!doctype html>
       <button id="tab-analytics" class="view-tab" data-view="analytics">工具分析</button>
       <a class="view-tab" href="/debug/characters">角色三列</a>
     </div>
-    <input id="filter-town" placeholder="townId..." style="width:140px" />
-    <div class="npc-filter">
-      <button id="npc-filter-btn" class="npc-filter-btn">角色: 全部</button>
-      <div id="npc-filter-pop" class="npc-filter-pop"></div>
-    </div>
     <div class="npc-filter">
       <button id="group-filter-btn" class="npc-filter-btn">Group: 全部</button>
       <div id="group-filter-pop" class="npc-filter-pop"></div>
@@ -36,7 +31,6 @@ export const DEBUG_HTML = String.raw`<!doctype html>
         <option value="">全部</option>
       </select>
     </label>
-    <label><input type="checkbox" id="auto-refresh" /> 5s 自动刷新</label>
     <div class="timeline-zoom" title="Ctrl/⌘ + 滚轮也可以缩放右侧时间轴">
       <span>时间轴缩放</span>
       <button id="timeline-zoom-out" type="button" aria-label="缩小时间轴">－</button>

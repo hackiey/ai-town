@@ -2,7 +2,7 @@
 
 import { t, type Locale } from "../../i18n/index.js";
 import type { WorldEventRecord } from "../../godot-link/protocol.js";
-import type { DropItemEventData, PickUpItemEventData, ReadEventData, UseItemEventData, WriteEventData } from "../../godot-link/world-events.js";
+import type { DropItemEventData, ReadEventData, UseItemEventData, WriteEventData } from "../../godot-link/world-events.js";
 import { localizeStringValue, localizeText } from "../name-resolver/index.js";
 import { isSelfActor, renderActorLabel } from "./shared/actor-label.js";
 import { composeEventLine } from "./shared/compose.js";
@@ -38,28 +38,6 @@ export function renderDropItemEventLine(
         item,
         count,
       });
-  return composeEventLine(event, viewerId, locale, main);
-}
-
-export function renderPickUpItemEventLine(
-  event: WorldEventRecord,
-  viewerId: string,
-  locale: Locale,
-): string {
-  const data = (event.data ?? {}) as Partial<PickUpItemEventData>;
-  const item = data.itemId ? (localizeStringValue(data.itemId) ?? data.itemId) : t("prompt.context.event.item.unknown", locale);
-  const count = Number(data.quantity ?? 1);
-  const failed = data.outcome === "failure";
-  const self = isSelfActor(event.actorId, viewerId);
-  const actor = renderActorLabel(event.actorId, viewerId, locale);
-  const reason = self && data.error ? t("prompt.context.event.item.reason_format", locale, { reason: localizeText(data.error) }) : "";
-  const main = failed
-    ? (self
-        ? t("prompt.context.event.pick_up_item.failure_self_format", locale, { item, reason })
-        : t("prompt.context.event.pick_up_item.failure_other_format", locale, { actor, item }))
-    : (self
-        ? t("prompt.context.event.pick_up_item.success_self_format", locale, { item, count })
-        : t("prompt.context.event.pick_up_item.success_other_format", locale, { actor, item, count }));
   return composeEventLine(event, viewerId, locale, main);
 }
 

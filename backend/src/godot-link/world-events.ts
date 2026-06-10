@@ -82,20 +82,10 @@ export type WokeUpEventData = WorldEventDataBase & {
 };
 
 // ─── container / shelf（统一）─────────────────────────────────────────
-// put_take：一次存取动作，puts/takes 各列出移动的物品。货架与容器共用（货架=无锁容器）。
+// container_transfer：一次存取动作，moves 列出移动的物品。货架与容器共用（货架=无锁容器）。
 // 附近的人据此感知"谁往这个容器/货架存了/取了什么"。
-export type ContainerPutTakeEventData = WorldEventDataBase & {
+export type ContainerTransferEventData = WorldEventDataBase & {
   moves: Array<{ kind?: string; itemId?: string; content?: string; amount?: number }>;
-};
-
-export type ViewContainerEventData = WorldEventDataBase & {
-  containerId: string;
-  label?: string;
-  kind?: "container" | "shelf";
-  outcome?: "success" | "failure";
-  items?: Array<Record<string, unknown>>;
-  message?: string;
-  error?: string;
 };
 
 export type BrewedEventData = WorldEventDataBase & {
@@ -118,8 +108,8 @@ export type UseItemEventData = WorldEventDataBase & {
 //   2. after / delta —— 仅当 |delta| ≥ 0.5 才发。Renderer 用作"长进/突破/退步" suffix，
 //      只对 actor 自己渲染（数值成长是私密反馈）。
 //
-// 工作台手艺 axis（mine / woodwork / smelt / smith / assemble / cook / alchemy /
-// mill_grain / boil_salt / burn_charcoal）全部共用这个 shape，event 类型名只
+// 工作台手艺 axis（mine / chop_wood / woodwork / smelt / smith / assemble / cook /
+// alchemy / mill_grain / boil_salt / burn_charcoal）全部共用这个 shape，event 类型名只
 // 用来路由到对应 renderer key。详见 docs/proficiency_system.md 和 craft-registry.ts。
 //
 // 原料折损 / 退回信息不在这条 event 上 —— actor 自己在 tool_response 的
@@ -145,13 +135,6 @@ export type UseWorkstationEventData = WorkstationEventData;
 export type DropItemEventData = WorldEventDataBase & {
   itemId: string;
   quantity: number;
-};
-
-export type PickUpItemEventData = WorldEventDataBase & {
-  itemId: string;
-  quantity?: number;
-  outcome?: "success" | "failure";
-  error?: string;
 };
 
 export type WriteEventData = WorldEventDataBase & {
@@ -203,13 +186,12 @@ export type WorldEventDataByType = {
   trade_response: TradeResponseEventData;
   went_to_sleep: WentToSleepEventData;
   woke_up: WokeUpEventData;
-  container_put_take: ContainerPutTakeEventData;
-  view_container: ViewContainerEventData;
+  container_transfer: ContainerTransferEventData;
   brewed: BrewedEventData;
   use_item: UseItemEventData;
-  pick_up_item: PickUpItemEventData;
   // Craft axis events —— 全部共用 WorkstationEventData shape。
   mine: WorkstationEventData;
+  chop_wood: WorkstationEventData;
   woodwork: WorkstationEventData;
   burn_charcoal: WorkstationEventData;
   smelt: WorkstationEventData;
@@ -241,12 +223,11 @@ const WORLD_EVENT_TYPE_MARKER: Record<WorldEventDataType, true> = {
   trade_response: true,
   went_to_sleep: true,
   woke_up: true,
-  container_put_take: true,
-  view_container: true,
+  container_transfer: true,
   brewed: true,
   use_item: true,
-  pick_up_item: true,
   mine: true,
+  chop_wood: true,
   woodwork: true,
   burn_charcoal: true,
   smelt: true,

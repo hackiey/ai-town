@@ -180,7 +180,7 @@ export function renderAgentTurnContext(context: GameAgentContext): string {
     appendSection(sections, t("prompt.context.label.current_holding", locale), renderMemoryLines(context.current.inventory));
   }
 
-  appendSection(sections, renderBackpackSectionTitle(context.current, locale), renderMemoryLines(context.current.backpack));
+  appendSection(sections, t("prompt.context.label.transferable_items", locale), renderTransferableItemsSection(context.current, locale));
 
   appendSection(sections, t("prompt.context.label.current_time", locale), formatGameTime(context.current.gameTime) ?? t("error.default_unknown_age", locale));
 
@@ -192,6 +192,61 @@ function renderMemoryLines(lines: string[]): string {
     return "- none";
   }
   return lines.map((line) => `- ${line}`).join("\n");
+}
+
+function renderTransferableItemsSection(current: AgentCurrentContext, locale: Locale): string {
+  const takeParts: string[] = [];
+  appendPlainGroup(takeParts, t("prompt.context.transferable_items.nearby_ground", locale), current.nearbyStorageItems.ground, locale, 3);
+  appendStorageGroups(takeParts, t("prompt.context.transferable_items.nearby_shelves", locale), current.nearbyStorageItems.shelves, locale, 3);
+  appendStorageGroups(takeParts, t("prompt.context.transferable_items.nearby_containers", locale), current.nearbyStorageItems.containers, locale, 3);
+  appendStorageGroups(takeParts, t("prompt.context.transferable_items.nearby_workstation_storage", locale), current.nearbyStorageItems.workstations, locale, 3);
+
+  const parts: string[] = [
+    t("prompt.context.transferable_items.usage", locale),
+    "",
+    `## ${t("prompt.context.transferable_items.put_section", locale)}`,
+    t("prompt.context.transferable_items.put_usage", locale),
+    "",
+    `### ${renderBackpackSectionTitle(current, locale)}`,
+    renderPlainLines(current.backpack, locale),
+    "",
+    `## ${t("prompt.context.transferable_items.take_section", locale)}`,
+    t("prompt.context.transferable_items.take_usage", locale),
+  ];
+  if (takeParts.length === 0) {
+    parts.push("", t("prompt.context.transferable_items.take_empty", locale));
+  } else {
+    parts.push(...takeParts);
+  }
+  return parts.filter((part) => part.length > 0).join("\n");
+}
+
+function appendPlainGroup(parts: string[], title: string, lines: string[], locale: Locale, headingLevel = 2): void {
+  if (lines.length === 0) return;
+  parts.push("", `${headingPrefix(headingLevel)} ${title}`, renderPlainLines(lines, locale));
+}
+
+function appendStorageGroups(
+  parts: string[],
+  title: string,
+  groups: AgentCurrentContext["nearbyStorageItems"]["shelves"],
+  locale: Locale,
+  headingLevel = 2,
+): void {
+  if (groups.length === 0) return;
+  parts.push("", `${headingPrefix(headingLevel)} ${title}`);
+  for (const group of groups) {
+    parts.push("", `${headingPrefix(headingLevel + 1)} ${group.displayName}`, renderPlainLines(group.lines, locale));
+  }
+}
+
+function headingPrefix(level: number): string {
+  return "#".repeat(Math.max(1, level));
+}
+
+function renderPlainLines(lines: string[], locale: Locale): string {
+  if (lines.length === 0) return `- ${t("prompt.context.distance_band_none", locale)}`;
+  return lines.join("\n");
 }
 
 function renderMemorySection(context: GameAgentContext, locale: Locale): string {

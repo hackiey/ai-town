@@ -267,7 +267,7 @@ test("action turn prompt labels non-direct interactive sites as distant", () => 
           displayName: "货架",
           kind: "shelf",
           directlyInteractable: false,
-          availableActions: ["view_container", "put_take"],
+          availableActions: ["put", "take"],
           summary: "空货架",
         },
       ],
@@ -282,6 +282,34 @@ test("action turn prompt labels non-direct interactive sites as distant", () => 
 
   assert.match(rendered, /## 远处（10米）/);
   assert.doesNotMatch(rendered, /需前往交互/);
+});
+
+test("action turn prompt separates put and take item lists", () => {
+  const context = {
+    townId: "town_001",
+    characterId: "mira_blacksmith",
+    assembledAt: "2026-01-01T00:00:00.000Z",
+    relevantEventWindowHours: 8,
+    worldLore: [],
+    current: {
+      ...baseCurrentContext(),
+      backpack: ["[1] 银币 x55", "[2] 面粉 x3"],
+      backpackCarryText: "1/50 kg",
+    },
+    memory: { selfKnowledge: [], commonSense: [], skills: [], other: [], all: [] },
+    relevantEvents: [],
+    pendingEvents: [],
+    selfActionResults: [],
+  } as GameAgentContext;
+
+  const rendered = renderAgentTurnContext(context);
+
+  assert.match(rendered, /## 可 put（从背包放出）/);
+  assert.match(rendered, /put 只能使用下面“背包”里的 \[N\]/);
+  assert.match(rendered, /### 背包（负重：1\/50 kg）\n\[1\] 银币 x55\n\[2\] 面粉 x3/);
+  assert.match(rendered, /## 可 take（拿到背包）/);
+  assert.match(rendered, /无可 take 物品；当前不要调用 take。/);
+  assert.ok(rendered.indexOf("## 可 put（从背包放出）") < rendered.indexOf("## 可 take（拿到背包）"));
 });
 
 function baseCurrentContext(): GameAgentContext["current"] {
@@ -301,6 +329,7 @@ function baseCurrentContext(): GameAgentContext["current"] {
     nearbyFarms: [],
     nearbyWorkstations: [],
     nearbyShelves: [],
+    nearbyStorageItems: { ground: [], shelves: [], containers: [], workstations: [] },
     interactiveSites: [],
     inventory: [],
     backpack: [],

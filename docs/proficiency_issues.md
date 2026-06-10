@@ -70,6 +70,7 @@ NPC prompt 里只渲染了自己的 tier（"smithing: novice"），但每个 rea
 | 概念 | Tool axis | Lua `skill_id` | i18n proficiency key |
 |---|---|---|---|
 | 挖矿 | `mine` | `mining` | `skill.mining` |
+| 伐木 | `chop_wood` | `lumbering` | `skill.lumbering` |
 | 木工 | `woodwork` | `woodworking` | `skill.woodworking` |
 | 锻造 | `smith` | `smithing` | `skill.smithing` |
 | 冶炼 | `smelt` | `smelting` | `skill.smelting` |
@@ -80,7 +81,7 @@ NPC prompt 里只渲染了自己的 tier（"smithing: novice"），但每个 rea
 | 晒种 | `dry_seed` | `farming` ⚠️ | (无 skill.dry_seed) |
 | 制盐 | `boil_salt` | `salt_making` | `skill.salt_making` |
 
-10/10 都需要翻译，但没有中央 mapping 表。每个映射都是隐式约定。踩中 `[[feedback_llm_id_name_boundary]]` 的反面。
+这些轴都需要翻译，但没有中央 mapping 表。每个映射都是隐式约定。踩中 `[[feedback_llm_id_name_boundary]]` 的反面。
 
 **修法**：`axis-registry.ts` 加 `SKILL_ID_BY_AXIS`，过滤、文案、event 渲染统一查这张表。#1/#5/#6/#7/#9 都建立在这条之上。
 

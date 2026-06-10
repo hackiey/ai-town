@@ -246,7 +246,7 @@ func _list_text(values: Array[String], empty_key: String) -> String:
 	return " / ".join(values) if values.size() > 0 else tr(empty_key)
 
 
-# 手艺 tab：9 项 skill 一行一行展开。skill 名 + tier 名直接复用 prompt.context.proficiency.*
+# 手艺 tab：skill 一行一行展开。skill 名 + tier 名直接复用 prompt.context.proficiency.*
 # 这套 key —— catalog 共享 dict，前缀只是历史首发地，不重复维护两份。
 func _render_proficiency(snapshot: Dictionary) -> String:
 	var entries_v: Variant = snapshot.get("proficiency", [])

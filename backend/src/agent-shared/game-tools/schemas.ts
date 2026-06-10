@@ -81,16 +81,6 @@ function createUseItemSchema() {
   });
 }
 
-function createPickUpItemSchema() {
-  return Type.Object({
-    item: createItemRefSchema("pick_up_item.param.item"),
-    quantity: Type.Optional(Type.Integer({
-      minimum: 1,
-      description: td("pick_up_item.param.quantity"),
-    })),
-  });
-}
-
 function createDropItemSchema() {
   return Type.Object({
     item: createItemRefSchema("drop_item.param.item"),
@@ -161,12 +151,20 @@ export function createMineSchema() {
   });
 }
 
+export function createChopWoodSchema() {
+  return Type.Object({
+    lumberyard: Type.String({ minLength: 1, description: td("chop_wood.param.lumberyard") }),
+    inputs: Type.Array(createItemRefSchema("chop_wood.param.input_item"), { minItems: 1, maxItems: 8, description: td("chop_wood.param.inputs_array") }),
+    reason: Type.Optional(Type.String({ description: toolReasonDescription() })),
+  });
+}
+
 export function createWoodworkSchema() {
   const spec = getCraftSpec("woodwork");
   return Type.Object({
     workstation: Type.String({ minLength: 1, description: td("woodwork.param.workstation") }),
-    sub_option: Type.Optional(StringEnum([...spec.subOptions!], { description: td("woodwork.param.sub_option") })),
-    inputs: Type.Optional(Type.Array(createItemRefSchema("woodwork.param.input_item"), { maxItems: 8, description: td("woodwork.param.inputs_array") })),
+    sub_option: StringEnum([...spec.subOptions!], { description: td("woodwork.param.sub_option") }),
+    inputs: Type.Array(createItemRefSchema("woodwork.param.input_item"), { minItems: 1, maxItems: 8, description: td("woodwork.param.inputs_array") }),
     reason: Type.Optional(Type.String({ description: toolReasonDescription() })),
   });
 }
@@ -231,50 +229,38 @@ export function createBoilSaltSchema() {
   });
 }
 
-// put 项：从背包放进容器/货架。item.index 指向 # 背包。price_silver 仅货架有意义（上架标价）。
-function createPutTakeEntrySchema(kind: "put" | "take") {
-  if (kind === "put") {
-    return Type.Object({
-      item: createItemRefSchema("put_take.param.put_item"),
-      quantity: Type.Integer({ minimum: 1, description: td("put_take.param.put_quantity") }),
-      // 价格支持小数（1 silver = 100 centi 精度），例 0.5 = 5 分。仅货架生效，普通容器忽略。
-      price_silver: Type.Optional(Type.Number({ minimum: 0, multipleOf: 0.01, description: td("put_take.param.price_silver") })),
-    });
-  }
-  return Type.Object({
-    item: createItemRefSchema("put_take.param.take_item"),
-    quantity: Type.Integer({ minimum: 1, description: td("put_take.param.take_quantity") }),
-  });
-}
-
-// put_take：一次调用同时存入(put)+取出(take)。货架与容器统一（货架=无锁容器，多个标价）。
-// put / take 各自可为空（甚至空数组都行），但**不能同时为空**——这条由 createPutTakeTool 运行时
-// 校验报 error_empty，不在 schema 层用 minItems（否则空数组会被误判成"少于 1 项"）。
-// 容器 endpoint：container=附近容器名（仓库/水井/货架），省略=你的背包；
-// item=该 endpoint 里具体的容器物（木桶/杯/酿酒桶）或要搬的离散物（{name,index}）。
 function createTransferEndpointSchema() {
   return Type.Object({
-    container: Type.Optional(Type.String({ description: td("put_take.param.endpoint_container") })),
+    container: Type.Optional(Type.String({ description: td("brew.param.endpoint_container") })),
     item: Type.Optional(Type.Object({
-      name: Type.String({ minLength: 1, description: td("put_take.param.endpoint_item_name") }),
-      index: Type.Integer({ minimum: 1, description: td("put_take.param.endpoint_item_index") }),
+      name: Type.String({ minLength: 1, description: td("brew.param.endpoint_item_name") }),
+      index: Type.Integer({ minimum: 1, description: td("brew.param.endpoint_item_index") }),
     })),
   });
 }
 
-// put_take：一串搬运。kind=item 搬离散物（from.item=要搬的物，amount=个数）；
-// kind=liquid 倒液体（amount=升）。目标指具体液体容器时按量互倒；目标是背包/容器/货架本身时，
-// Godot 会按饮品 item 的 serving_liters 把桶装液体转成离散 drink item（如 beer）。
-// 液体源可为水井（from.container=水井，无 item）。
-export function createPutTakeSchema() {
+function createStorageTransferSchema(direction: "put" | "take") {
   return Type.Object({
-    transfers: Type.Array(Type.Object({
-      kind: StringEnum(["item", "liquid"], { description: td("put_take.param.transfer_kind") }),
-      amount: Type.Number({ minimum: 0.01, description: td("put_take.param.transfer_amount") }),
-      from: createTransferEndpointSchema(),
-      to: createTransferEndpointSchema(),
-      price_silver: Type.Optional(Type.Number({ minimum: 0, multipleOf: 0.01, description: td("put_take.param.transfer_price_silver") })),
-    }), { minItems: 1, maxItems: 16, description: td("put_take.param.transfers") }),
+    kind: StringEnum(["item", "liquid"], { description: td(`${direction}.param.transfer_kind`) }),
+    item: Type.Optional(createItemRefSchema(`${direction}.param.item`)),
+    amount: Type.Number({ minimum: 0.01, description: td(`${direction}.param.amount`) }),
+    to_item: Type.Optional(createItemRefSchema(`${direction}.param.to_item`)),
+    price_silver: Type.Optional(Type.Number({ minimum: 0, multipleOf: 0.01, description: td(`${direction}.param.price_silver`) })),
+  });
+}
+
+export function createPutSchema() {
+  return Type.Object({
+    to: Type.String({ minLength: 1, description: td("put.param.to") }),
+    transfers: Type.Array(createStorageTransferSchema("put"), { minItems: 1, maxItems: 16, description: td("put.param.transfers") }),
+    reason: Type.Optional(Type.String({ description: toolReasonDescription() })),
+  });
+}
+
+export function createTakeSchema() {
+  return Type.Object({
+    from: Type.String({ minLength: 1, description: td("take.param.from") }),
+    transfers: Type.Array(createStorageTransferSchema("take"), { minItems: 1, maxItems: 16, description: td("take.param.transfers") }),
     reason: Type.Optional(Type.String({ description: toolReasonDescription() })),
   });
 }
@@ -286,13 +272,6 @@ export function createBrewSchema() {
     reason: Type.Optional(Type.String({ description: toolReasonDescription() })),
   });
 }
-
-export function createViewContainerSchema() {
-  return Type.Object({
-    container: Type.String({ minLength: 1, description: td("view_container.param.container") }),
-  });
-}
-
 
 function createUpdateMemorySchema() {
   return Type.Object({
@@ -355,12 +334,11 @@ function createReadSchema() {
 
 // 类型从一个静态实例推导（schema 内容是 i18n，但结构稳定）
 export const useItemSchema = createUseItemSchema();
-export const pickUpItemSchema = createPickUpItemSchema();
 export const dropItemSchema = createDropItemSchema();
 export const offerSchema = createOfferSchema();
 export const respondSchema = createRespondSchema();
-export const putTakeSchema = createPutTakeSchema();
-export const viewContainerSchema = createViewContainerSchema();
+export const putSchema = createPutSchema();
+export const takeSchema = createTakeSchema();
 export const updateMemorySchema = createUpdateMemorySchema();
 export const createItemSchema = createCreateItemSchema();
 export const doNothingSchema = createDoNothingSchema();
@@ -389,7 +367,8 @@ export type PlanFarmWorkParams = {
 // axis tool 的 Params —— 见 schemas 工厂上方注释。形态严格按 schema 写明，不暴露
 // 内部 axis 实现细节（factory 在 normalize 时按 axis spec 把 workstation/verb/sub_option 填好）。
 export type MineParams = { mine: string; reason?: string };
-export type WoodworkParams = { workstation: string; sub_option?: string; inputs?: ItemRefParam[]; reason?: string };
+export type ChopWoodParams = { lumberyard: string; inputs: ItemRefParam[]; reason?: string };
+export type WoodworkParams = { workstation: string; sub_option: string; inputs: ItemRefParam[]; reason?: string };
 export type BurnCharcoalParams = { inputs: ItemRefParam[]; reason?: string };
 export type SmeltParams = { workstation: string; inputs: ItemRefParam[]; reason?: string };
 export type SmithParams = { sub_option: string; inputs: ItemRefParam[]; reason?: string };
@@ -398,24 +377,28 @@ export type CookParams = { verb: string; inputs: ItemRefParam[]; reason?: string
 export type AlchemyParams = { inputs: ItemRefParam[]; reason?: string };
 export type MillGrainParams = { inputs: ItemRefParam[]; reason?: string };
 export type BoilSaltParams = { inputs: ItemRefParam[]; reason?: string };
-export type PutTakeEntryParam = { item: ItemRefParam; quantity: number; price_silver?: number };
 export type TransferEndpointParam = { container?: string; item?: { name: string; index: number } };
-export type TransferParam = {
+export type StorageTransferParam = {
   kind: "item" | "liquid";
+  item?: ItemRefParam;
   amount: number;
-  from: TransferEndpointParam;
-  to: TransferEndpointParam;
+  to_item?: ItemRefParam;
   price_silver?: number;
 };
-export type PutTakeParams = {
-  transfers: TransferParam[];
+export type PutParams = {
+  to: string;
+  transfers: StorageTransferParam[];
+  reason?: string;
+};
+export type TakeParams = {
+  from: string;
+  transfers: StorageTransferParam[];
   reason?: string;
 };
 export type BrewParams = { barrel: TransferEndpointParam; reason?: string };
-export type ViewContainerParams = { container: string };
 // 每个 axis Params 在 tool factory 里被 normalize 成 WorkstationActionTarget 形态发给 Godot。
 export type AxisToolParams =
-  | MineParams | WoodworkParams | BurnCharcoalParams | SmeltParams | SmithParams
+  | MineParams | ChopWoodParams | WoodworkParams | BurnCharcoalParams | SmeltParams | SmithParams
   | AssembleParams | CookParams | AlchemyParams | MillGrainParams | BoilSaltParams;
 export type SayToParams = {
   character: string;
@@ -423,7 +406,6 @@ export type SayToParams = {
   volume: "near" | "far";
 };
 export type UseItemParams = Static<typeof useItemSchema>;
-export type PickUpItemParams = Static<typeof pickUpItemSchema>;
 export type DropItemParams = Static<typeof dropItemSchema>;
 export type OfferParams = Static<typeof offerSchema>;
 export type RespondParams = Static<typeof respondSchema>;

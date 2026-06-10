@@ -7,24 +7,30 @@
 [node name="FermentingBarrelNode" unique_id=537311950 instance=ExtResource("1_base")]
 script = ExtResource("2_container")
 slot_count = 3
+passive_tags = PackedStringArray()
 
-[node name="WorldObjectIdentity" parent="."]
+[node name="WorldObjectIdentity" parent="." index="0" unique_id=291000001]
 def_id = "fermenting_barrel"
 kind = "container"
 capabilities = PackedStringArray("move", "container")
+group_gated_capabilities = PackedStringArray()
 
-[node name="Mesh" parent="." index="0"]
+[node name="Mesh" parent="." index="1" unique_id=1161232324]
 visible = false
 
-[node name="Title" parent="." index="2"]
+[node name="Title" parent="." index="3" unique_id=269912459]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.4, 0)
 text = "酒桶"
 
-[node name="Prompt" parent="." index="3"]
+[node name="Prompt" parent="." index="4" unique_id=1926429612]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.05, 0)
 text = "按 E 查看"
 
-[node name="Barrel" parent="." unique_id=1963440757 instance=ExtResource("4_barrel")]
+[node name="SiteMarker" parent="." index="5" unique_id=1027835496]
+visible_near_radius = 4.0
+direct_interaction_radius = 4.0
 
-[node name="Approach" type="Marker3D" parent="SiteMarker" unique_id=449744946]
+[node name="Approach" type="Marker3D" parent="SiteMarker" index="0" unique_id=449744946]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -2.0559454, -0.40218854, -0.038802326)
+
+[node name="Barrel" parent="." index="6" unique_id=1963440757 instance=ExtResource("4_barrel")]

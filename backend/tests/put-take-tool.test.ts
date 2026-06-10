@@ -1,20 +1,20 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { buildPutTakeWire } from "../src/agent-shared/game-tools/tool-factories.js";
+import { buildPutWire, buildTakeWire } from "../src/agent-shared/game-tools/tool-factories.js";
 import { assembleAgentContextFromManifest } from "../src/agent-shared/prompt-context/assemble-from-manifest.js";
 import type { AgentCurrentContext } from "../src/agent-shared/prompt-context/types.js";
 import type { PerceptionManifestPayload } from "../src/godot-link/perception-manifest.js";
 import { createTestDb } from "./helpers/test-db.js";
 
-test("put_take resolves container item indices in that container scope", () => {
+test("take resolves storage item by global index", () => {
   const ctx = putTakeContext();
 
-  const wire = buildPutTakeWire({
+  const wire = buildTakeWire({
+    from: "酒馆柜台（酒馆）",
     transfers: [{
       kind: "item",
       amount: 1,
-      from: { container: "酒馆柜台（酒馆）", item: { name: "麦芽酒", index: 1 } },
-      to: {},
+      item: { name: "麦芽酒", index: 2 },
     }],
   }, ctx);
 
@@ -27,17 +27,64 @@ test("put_take resolves container item indices in that container scope", () => {
   }]);
 });
 
-test("put_take validates global item index name matches", () => {
+test("take rejects backpack item indices", () => {
   const ctx = putTakeContext();
 
-  assert.throws(() => buildPutTakeWire({
+  assert.throws(() => buildTakeWire({
+    from: "酒馆柜台（酒馆）",
     transfers: [{
       kind: "item",
       amount: 1,
-      from: { item: { name: "麦芽酒", index: 1 } },
-      to: {},
+      item: { name: "银币", index: 1 },
     }],
-  }, ctx), /麦芽酒|银币/);
+  }, ctx), /take|附近|storage|背包/);
+});
+
+test("put rejects character targets", () => {
+  const ctx = putTakeContext();
+
+  assert.throws(() => buildPutWire({
+    to: "艾达·黑尔",
+    transfers: [{
+      kind: "item",
+      amount: 1,
+      item: { name: "银币", index: 1 },
+    }],
+  }, ctx), /put 不支持对人操作/);
+});
+
+test("take reports missing global index", () => {
+  const ctx = putTakeContext();
+
+  assert.throws(() => buildTakeWire({
+    from: "酒馆柜台（酒馆）",
+    transfers: [{
+      kind: "item",
+      amount: 1,
+      item: { name: "麦芽酒", index: 99 },
+    }],
+  }, ctx), /没有 index: 99/);
+});
+
+test("take resolves nearby ground items", () => {
+  const ctx = putTakeContext();
+
+  const wire = buildTakeWire({
+    from: "附近地面",
+    transfers: [{
+      kind: "item",
+      amount: 2,
+      item: { name: "木材", index: 3 },
+    }],
+  }, ctx);
+
+  assert.deepEqual(wire, [{
+    kind: "item",
+    itemId: "wood",
+    amount: 2,
+    from: { where: "ground" },
+    to: { where: "backpack" },
+  }]);
 });
 
 test("non-owner shelf context hides shelf wallet index", () => {
@@ -69,12 +116,12 @@ function putTakeContext(): AgentCurrentContext {
       displayName: "酒馆柜台（酒馆）",
       kind: "shelf",
       directlyInteractable: true,
-      availableActions: ["view_container", "put_take"],
+      availableActions: ["put", "take"],
     }],
     itemIndex: {
       backpack: [],
       equipment: [],
-      nearby: [],
+      nearby: [{ itemDefId: "wood", scope: "nearby", globalIndex: 3 }],
       containers: {},
       shelves: {
         "tavern_bar_shelf@tavern": [{ itemDefId: "beer", slotIndex: 0, scope: "shelf", containerId: "tavern_bar_shelf@tavern", globalIndex: 2 }],
@@ -82,6 +129,7 @@ function putTakeContext(): AgentCurrentContext {
       flat: [
         { itemDefId: "silver_coin", scope: "backpack", globalIndex: 1 },
         { itemDefId: "beer", slotIndex: 0, scope: "shelf", containerId: "tavern_bar_shelf@tavern", globalIndex: 2 },
+        { itemDefId: "wood", scope: "nearby", globalIndex: 3 },
       ],
     },
   } as unknown as AgentCurrentContext;

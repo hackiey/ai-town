@@ -56,7 +56,7 @@ test("give ignores giver, directly interrupts recipient, and remains ambient for
 
 test("unaffected characters ignore sensory events", () => {
   assert.deepEqual(classifyEventForCharacter(event({
-    type: "container_put_take",
+    type: "container_transfer",
     actorId: "mira_blacksmith",
     data: { affectedCharacterIds: ["oren_vale"] },
   }), "tomas_miller"), { kind: "ignored" });

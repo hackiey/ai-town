@@ -348,7 +348,7 @@ reactions = {
             tags = {"wood", "fuel"},
             qty = 1,
         }}},
-        skill_id = "woodworking", difficulty = 25,
+        skill_id = "lumbering", difficulty = 25,
         stamina_cost = 6.0, duration_seconds = 600.0,
         failure_modes = {{weight = 1.0, consume_inputs = {}, return_inputs = {}, message = ""}},
         primary_input_indices = {0},
@@ -785,7 +785,7 @@ end
 -- 漏写 skill_id 的 reaction 早期就崩，不会"涨错轴 / 静默不涨" 后才被发现。
 local KNOWN_SKILLS = {
     milling=true, cooking=true, alchemy=true, mining=true, salt_making=true,
-    assembly=true, smithing=true, smelting=true, charcoal_making=true, woodworking=true,
+    assembly=true, smithing=true, smelting=true, charcoal_making=true, lumbering=true, woodworking=true,
     brewing=true,
 }
 for id, r in pairs(reactions) do

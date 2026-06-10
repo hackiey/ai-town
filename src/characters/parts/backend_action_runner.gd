@@ -364,23 +364,13 @@ func _approach_target_for_action(action_request: Dictionary) -> Dictionary:
 	if Crafts.is_action(action):
 		return character.workstation_actions().approach_target_for_action(action_request)
 	match action:
-		"view_container":
-			return _container_approach_for_view(action_request)
-		"put_take_container":
-			return _container_approach_for_put_take(action_request)
+		"put", "take":
+			return _container_approach_for_transfer(action_request)
 		_:
 			return {}
 
 
-func _container_approach_for_view(action_request: Dictionary) -> Dictionary:
-	var target: Variant = action_request.get("target", {})
-	if typeof(target) != TYPE_DICTIONARY:
-		return {}
-	var cid := str((target as Dictionary).get("containerId", "")).strip_edges()
-	return _container_approach_for_id(cid)
-
-
-func _container_approach_for_put_take(action_request: Dictionary) -> Dictionary:
+func _container_approach_for_transfer(action_request: Dictionary) -> Dictionary:
 	var target: Variant = action_request.get("target", {})
 	if typeof(target) != TYPE_DICTIONARY:
 		return {}
@@ -451,7 +441,7 @@ func _container_approach_for_id(container_id: String) -> Dictionary:
 	}
 
 
-func _container_arrival_radius(node: ContainerNode) -> float:
+func _container_arrival_radius(node: WorkstationNode) -> float:
 	var marker := node.get_node_or_null("SiteMarker") as SiteMarker
 	if marker != null:
 		return marker.eff_arrival_radius()
@@ -498,13 +488,12 @@ func _is_instant_action(action: String) -> bool:
 	return action in [
 		"say_to",
 		"use_item",
-		"pick_up_item",
 		"drop_item",
 		"offer",
 		"respond",
 		"create_item",
-		"put_take_container",
-		"view_container",
+		"put",
+		"take",
 		"brew",
 		"write",
 		"read",
@@ -551,10 +540,8 @@ func _complete_instant_action(action_request: Dictionary) -> void:
 			structured = character.trade_runner().run_offer(action_request, finish)
 		"respond":
 			structured = character.trade_runner().run_respond(action_request)
-		"put_take_container":
-			structured = ContainerHandlers.run_put_take(character, action_request, finish)
-		"view_container":
-			structured = ContainerHandlers.run_view_container(character, action_request)
+		"put", "take":
+			structured = ContainerHandlers.run_container_transfer(character, action_request, finish)
 		"brew":
 			structured = BrewHandlers.run_brew(character, action_request)
 		"write":
@@ -563,8 +550,6 @@ func _complete_instant_action(action_request: Dictionary) -> void:
 			structured = LedgerHandlers.run_read(character, action_request)
 		"drop_item":
 			structured = InventoryHandlers.run_drop_item(character, action_request)
-		"pick_up_item":
-			structured = InventoryHandlers.run_pick_up_item(character, action_request)
 		_:
 			# 历史路径：未识别 instant action，发个通用 world_event 然后 finish。
 			# 当前列表已穷举所有 _is_instant_action，正常不该走到这里。
@@ -621,7 +606,7 @@ func _emit_public_finish_event(action_id: String, action: String, target: Varian
 # - view/read/write/pick_up：handler 自己发成功/失败可感知事件（viewer-specific 渲染）。
 # 代价：这几类的"启动即失败"（没产生自有事件那种）也不会进历史，但 tool 同步返回值已即时告知。
 func _action_self_reports_failure(action: String) -> bool:
-	return Crafts.is_action(action) or action == "sleep" or action in ["view_container", "read", "write", "pick_up_item"]
+	return Crafts.is_action(action) or action == "sleep" or action in ["put", "take", "read", "write"]
 
 
 # 失败动作 → actor-only 的 action_failed 自感知事件。data.actionId 与 action_log.actionId 一致，

@@ -3,15 +3,19 @@
 [ext_resource type="PackedScene" uid="uid://dxtak3npqr4tj" path="res://src/sim/commerce/shelf_node.tscn" id="1_base"]
 [ext_resource type="PackedScene" uid="uid://co1b5rc0exiiw" path="res://third-party/polygon-fantasy-kingdom/Assets/PolygonFantasyKingdom/Prefabs/Props/SM_Prop_Market_Stall_05.tscn" id="2_stall"]
 
-[node name="GroceryShelf" instance=ExtResource("1_base")]
+[node name="GroceryShelf" unique_id=869923602 instance=ExtResource("1_base")]
 
-[node name="Title" parent="." index="0"]
+[node name="Title" parent="." index="1" unique_id=407393975]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 4.6, 0)
 
-[node name="Approach" parent="SiteMarker"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 2.2)
-
-[node name="Prompt" parent="." index="3"]
+[node name="Prompt" parent="." index="3" unique_id=2038036434]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.6, 1.6)
 
-[node name="Stall" parent="." instance=ExtResource("2_stall")]
+[node name="SiteMarker" parent="." index="4" unique_id=233875371]
+visible_near_radius = 4.0
+direct_interaction_radius = 4.0
+
+[node name="Approach" parent="SiteMarker" index="0" unique_id=700098324]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 2.2)
+
+[node name="Stall" parent="." index="5" unique_id=2143152126 instance=ExtResource("2_stall")]

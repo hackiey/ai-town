@@ -616,11 +616,10 @@ func request_pickup_item(path: NodePath) -> void:
 	var backend := get_node_or_null("/root/BackendRuntimeClient")
 	if backend != null and backend.has_method("send_world_event"):
 		var actor := backend_character_id()
-		backend.send_world_event("pick_up_item", {
+		backend.send_world_event("container_transfer", {
 			"actorId": actor,
 			"affectedCharacterIds": [actor],
-			"itemId": item_id,
-			"quantity": qty,
+			"moves": [{"kind": "item", "itemId": item_id, "amount": qty}],
 		})
 	perception().send_manifest()
 
@@ -1606,7 +1605,7 @@ func request_container_wallet_transfer(container_id: String, direction: String, 
 			wallet_add(centi)
 		_:
 			return
-	emit_world_event("container_put_take", {
+	emit_world_event("container_transfer", {
 		"actorId": backend_character_id(),
 		"affectedCharacterIds": perception().voice_affected_character_ids("far"),
 		"moves": [{"kind": "item", "itemId": "silver_coin", "amount": centi / 100.0}],
@@ -1616,7 +1615,7 @@ func request_container_wallet_transfer(container_id: String, direction: String, 
 
 
 # 玩家专用打水：从无限液体源（水井）把 amount 升灌进背包里指定的液体容器。
-# 玩家走独立 RPC + WaterDrawPanel，但提交的仍是与 NPC 等价的 put_take transfer；
+# 玩家走独立 RPC + WaterDrawPanel，但提交的仍是与 NPC 等价的 container transfer；
 # 耗时/体力/缩水结算统一由 WaterDrawRunner 处理。
 @rpc("any_peer", "call_remote", "reliable")
 func request_draw_water(container_id: String, backpack_slot_index: int, amount: float) -> void:
@@ -1634,7 +1633,7 @@ func request_draw_water(container_id: String, backpack_slot_index: int, amount: 
 			}],
 		},
 	}
-	var started: Dictionary = water_draw_actions().start_from_put_take(action_request, Callable(self, "_on_player_water_draw_completed"))
+	var started: Dictionary = water_draw_actions().start_from_container_transfer(action_request, Callable(self, "_on_player_water_draw_completed"))
 	if not bool(started.get("ok", false)):
 		_fail_owner(str(started.get("message", TranslationServer.translate("error.water_draw.failed"))))
 		return
@@ -1703,7 +1702,7 @@ func request_pour_liquid(from_container_id: String, from_slot: int, to_container
 	(to_res["commit"] as Callable).call()
 	var moved := float(result.get("moved", 0.0))
 	var content := str((to_res["slot"] as Dictionary).get("container_content", ""))
-	emit_world_event("container_put_take", {
+	emit_world_event("container_transfer", {
 		"actorId": backend_character_id(),
 		"affectedCharacterIds": perception().voice_affected_character_ids("far"),
 		"moves": [{"kind": "liquid", "content": content, "amount": moved}],

@@ -108,7 +108,7 @@
     "lumberyard_workstation": {
       "name": "伐木台",
       "prompt": "按 E 砍木（需带斧）",
-      "description": "把原木砍成木料、木杆。需带斧。"
+      "description": "在伐木场砍取木材。需带斧。"
     }
   }
 }

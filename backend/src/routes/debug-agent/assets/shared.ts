@@ -24,7 +24,6 @@ export function createDebugAgentApp() {
         const n = Number(raw);
         return Number.isFinite(n) ? n : null;
       })(),
-      autoTimer: null,
       truncated: false,
       timelineZoomIndex: 0,
       characterMetaByKey: new Map(),

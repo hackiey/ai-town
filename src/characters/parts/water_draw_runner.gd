@@ -22,10 +22,10 @@ func is_active() -> bool:
 func amount_liters_for_action(action_request: Dictionary) -> Dictionary:
 	var target: Variant = action_request.get("target", {})
 	if typeof(target) != TYPE_DICTIONARY:
-		return {"ok": false, "message": _msg("error.put_take.invalid_target")}
+		return {"ok": false, "message": _msg("error.container_transfer.invalid_target")}
 	var transfers_v: Variant = (target as Dictionary).get("transfers", [])
 	if typeof(transfers_v) != TYPE_ARRAY or (transfers_v as Array).is_empty():
-		return {"ok": false, "message": _msg("error.put_take.empty_transfers")}
+		return {"ok": false, "message": _msg("error.container_transfer.empty_transfers")}
 	var total_liters: float = 0.0
 	var transfers: Array = transfers_v as Array
 	for tr_v in transfers:
@@ -44,7 +44,7 @@ func amount_liters_for_action(action_request: Dictionary) -> Dictionary:
 	return {"ok": true, "amount_liters": total_liters}
 
 
-func start_from_put_take(action_request: Dictionary, completion: Callable) -> Dictionary:
+func start_from_container_transfer(action_request: Dictionary, completion: Callable) -> Dictionary:
 	if is_active():
 		return {"ok": false, "message": _msg("error.water_draw.busy")}
 	var amount_res: Dictionary = amount_liters_for_action(action_request)
@@ -53,7 +53,7 @@ func start_from_put_take(action_request: Dictionary, completion: Callable) -> Di
 	var amount_liters: float = float(amount_res.get("amount_liters", 0.0))
 	if amount_liters <= 0.0:
 		return {"ok": false, "message": _msg("error.water_draw.amount_positive")}
-	var precheck: Dictionary = _precheck_put_take(action_request)
+	var precheck: Dictionary = _precheck_container_transfer(action_request)
 	if not bool(precheck.get("ok", false)):
 		return precheck
 	var cost: Dictionary = resolve_draw_cost(amount_liters)
@@ -179,7 +179,7 @@ func _commit_active() -> void:
 	character.head_status().clear_override()
 	character.set("anim_state", "idle")
 	var action_request: Dictionary = active.get("action_request", {})
-	var structured: Dictionary = ContainerHandlers.run_put_take_now(character, action_request)
+	var structured: Dictionary = ContainerHandlers.run_container_transfer_now(character, action_request)
 	var completion: Callable = _completion
 	_completion = Callable()
 	if not bool(structured.get("ok", false)):
@@ -195,13 +195,13 @@ func _commit_active() -> void:
 		completion.call(true, "", result)
 
 
-func _precheck_put_take(action_request: Dictionary) -> Dictionary:
+func _precheck_container_transfer(action_request: Dictionary) -> Dictionary:
 	var target: Variant = action_request.get("target", {})
 	if typeof(target) != TYPE_DICTIONARY:
-		return {"ok": false, "message": _msg("error.put_take.invalid_target")}
+		return {"ok": false, "message": _msg("error.container_transfer.invalid_target")}
 	var transfers_v: Variant = (target as Dictionary).get("transfers", [])
 	if typeof(transfers_v) != TYPE_ARRAY:
-		return {"ok": false, "message": _msg("error.put_take.empty_transfers")}
+		return {"ok": false, "message": _msg("error.container_transfer.empty_transfers")}
 	var transfers: Array = transfers_v as Array
 	for tr_v in transfers:
 		if typeof(tr_v) != TYPE_DICTIONARY:

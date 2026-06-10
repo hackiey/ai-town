@@ -15,7 +15,8 @@
 | skill_id | 中文 | 覆盖内容 |
 |---|---|---|
 | mining | 挖矿 | 铁矿、银矿、金矿 |
-| woodworking | 木工 | 砍木、削木板、削木杆 |
+| lumbering | 伐木 | 伐木场砍木 |
+| woodworking | 木工 | 削木板、削木杆 |
 | charcoal_making | 烧炭 | 炭窑烧炭 |
 | smelting | 冶炼 | 冶炼、合金、造币 |
 | smithing | 锻造 | 打刃、斧头、镐头 |

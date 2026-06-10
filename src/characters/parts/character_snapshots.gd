@@ -105,7 +105,7 @@ func ui_profile() -> Dictionary:
 	}
 
 
-# 按 Crafts.all_skill_ids() 顺序铺 9 项；缺的 skill 填 0（=novice）。
+# 按 Crafts.all_skill_ids() 顺序铺全部技能；缺的 skill 填 0（=novice）。
 # tier 映射放在 character_panel.gd（表现层），这里只吐 raw value。
 func _proficiency_entries() -> Array[Dictionary]:
 	var table := _character.get_proficiency_table()

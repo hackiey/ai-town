@@ -108,7 +108,7 @@ func nearby_snapshots(max_distance: float = Containers.INTERACTION_RADIUS) -> Ar
 			# 容器的身份键回退到纯 effective_container_id（≠ workstation_logical_id 复合 id）。
 			# container_states 主键、Containers.system_deposit、铸币/挖矿自动入库、item ownerId
 			# 全用这个纯 id；backend assemble 拿 manifest id 去 join container_states，复合 id 会
-			# 落空 → 容器从 nearby 列表消失 → put_take "无法识别容器"。复合 id 只是
+			# 落空 → 容器从 nearby 列表消失 → put/take "无法识别容器"。复合 id 只是
 			# 真工作台为防 node.name 跨铺重名而设；容器本就有 def 级稳定 id，无需复合。
 			# 导航（move_to_location）另走 sites 表的复合 id，互不影响。
 			snap["id"] = cnode.effective_container_id()
@@ -196,16 +196,19 @@ func start_from_action(action_request: Dictionary) -> String:
 		if input_names.is_empty():
 			return _fail_before_start(ws_def.id, verb, sub_option, "missing_mining_tool", str(TranslationServer.translate("ui.mine.missing_pick_message")))
 	elif input_names.is_empty():
-		return _fail_before_start(ws_def.id, verb, sub_option, "inputs_empty", "use_workstation inputs empty")
+		return _fail_before_start(ws_def.id, verb, sub_option, "inputs_empty", "use_workstation inputs empty", input_names)
+	var input_slot_indices: Array[int] = []
+	if not is_mining:
+		input_slot_indices = _input_slot_indices_from_target(t.get("inputItemSlotIndices", []), input_names.size())
 	if input_names.size() > ws_def.slot_count:
-		return _fail_before_start(ws_def.id, verb, sub_option, "too_many_inputs", "too many inputs for %s: %d > %d" % [ws_def.id, input_names.size(), ws_def.slot_count])
-	var collected: Dictionary = _collect_inventory_inputs(input_names)
+		return _fail_before_start(ws_def.id, verb, sub_option, "too_many_inputs", "too many inputs for %s: %d > %d" % [ws_def.id, input_names.size(), ws_def.slot_count], input_names)
+	var collected: Dictionary = _collect_inventory_inputs(input_names, input_slot_indices)
 	if not bool(collected.get("ok", false)):
-		return _fail_before_start(ws_def.id, verb, sub_option, "input_resolution_failed", str(collected.get("message", _msg("error.workstation.input_resolution_failed"))))
+		return _fail_before_start(ws_def.id, verb, sub_option, "input_resolution_failed", str(collected.get("message", _msg("error.workstation.input_resolution_failed"))), input_names)
 	var instances: Array = collected.get("instances", [])
 	var result: Dictionary = Crafting.resolve(verb, ws_def.id, sub_option, instances, character.get_proficiency_table(), Impairment.work_impair(character))
 	if str(result.get("outcome", "no_match")) == "no_match":
-		return _fail_before_start(ws_def.id, verb, sub_option, "no_matching_reaction", str(result.get("message", _msg("error.workstation.no_matching_reaction"))))
+		return _fail_before_start(ws_def.id, verb, sub_option, "no_matching_reaction", str(result.get("message", _msg("error.workstation.no_matching_reaction"))), input_names)
 	var duration: float = float(result.get("duration_seconds", 0.0))
 	var label: String = craft_label(verb, ws_def.id, sub_option)
 	var mining_cost: Dictionary = Mines.attempt_cost() if is_mining else {}
@@ -214,7 +217,7 @@ func start_from_action(action_request: Dictionary) -> String:
 	# 跨角色单占——容器走 backend_action_runner 独立路径，不经过这里。
 	var operator_id: String = character.backend_character_id()
 	if not ws_node.try_acquire(operator_id, verb):
-		return _fail_before_start(ws_def.id, verb, sub_option, "workstation_busy", "%s 正被人占用，稍等再来" % ws_name)
+		return _fail_before_start(ws_def.id, verb, sub_option, "workstation_busy", "%s 正被人占用，稍等再来" % ws_name, input_names)
 	_active = {
 		"action_id": str(action_request.get("id", "")),
 		"workstation_id": ws_def.id,
@@ -646,7 +649,7 @@ func _commit_active() -> void:
 	# 由这里扣 1 点耐久；归零则报废清空。每个 op 只扣一次。
 	var broken_tools: Array[String] = _wear_tool_inputs(active.get("input_ops", []))
 
-	var summary: Dictionary = apply_outputs_to_character(character, result, {
+	var summary: Dictionary = apply_outputs_to_storage(character, active.get("workstation_node", null) as WorkstationNode, result, {
 		"workstation_id": str(active.get("workstation_id", "")),
 		"verb": str(active.get("verb", "")),
 		"sub_option": str(active.get("sub_option", "")),
@@ -702,7 +705,7 @@ func _commit_active() -> void:
 	character._on_workstation_action_completed(summary)
 
 
-static func apply_outputs_to_character(owner, result: Dictionary, base_summary: Dictionary = {}) -> Dictionary:
+static func apply_outputs_to_storage(owner, storage_node: WorkstationNode, result: Dictionary, base_summary: Dictionary = {}) -> Dictionary:
 	var outcome: String = str(result.get("outcome", "failure"))
 	var outputs: Array[String] = []
 	var leftovers: Array[String] = []
@@ -710,8 +713,17 @@ static func apply_outputs_to_character(owner, result: Dictionary, base_summary: 
 		for inst_v in result.get("outputs", []):
 			var inst: Dictionary = inst_v
 			var qty: int = int(inst.get("quantity", 1))
-			var leftover: int = int(owner.inventory_ops().add_instance(inst, qty))
-			var added: int = qty - leftover
+			var added := 0
+			var leftover := qty
+			if storage_node != null and is_instance_valid(storage_node) and Containers != null:
+				var stack := inst.duplicate(true)
+				stack["quantity"] = qty
+				var placed := Containers.adapter_place(storage_node, [stack])
+				added = int(placed.get("placed_qty", 0))
+				leftover = _sum_stack_quantities(placed.get("leftover", []))
+			else:
+				leftover = int(owner.inventory_ops().add_instance(inst, qty))
+				added = qty - leftover
 			var name: String = InventorySlotData.of(inst).display_name()
 			outputs.append("%s x%d" % [name, added])
 			if leftover > 0:
@@ -738,6 +750,15 @@ static func apply_outputs_to_character(owner, result: Dictionary, base_summary: 
 		"fail_mode_name": str(result.get("fail_mode_name", "")),
 	}, true)
 	return summary
+
+
+static func _sum_stack_quantities(value: Variant) -> int:
+	var total := 0
+	if value is Array:
+		for v in value:
+			if v is Dictionary:
+				total += int((v as Dictionary).get("quantity", 0))
+	return total
 
 
 static func consume_staged_inputs(staged_items: Array, staged_indices: PackedInt32Array, consumed_input_indices: Array) -> bool:
@@ -889,11 +910,28 @@ func _input_names_from_target(value: Variant) -> PackedStringArray:
 	return out
 
 
-func _collect_inventory_inputs(input_names: PackedStringArray) -> Dictionary:
+func _input_slot_indices_from_target(value: Variant, expected_size: int) -> Array[int]:
+	# inputItemSlotIndices mirrors inputItemIds. -1 means "no exact slot provided".
+	var out: Array[int] = []
+	for _i in expected_size:
+		out.append(-1)
+	if typeof(value) != TYPE_ARRAY:
+		return out
+	var entries: Array = value as Array
+	for i in mini(expected_size, entries.size()):
+		var entry_v: Variant = entries[i]
+		if typeof(entry_v) == TYPE_INT or typeof(entry_v) == TYPE_FLOAT:
+			out[i] = int(entry_v)
+	return out
+
+
+func _collect_inventory_inputs(input_names: PackedStringArray, input_slot_indices: Array[int] = []) -> Dictionary:
 	var instances: Array = []
 	var ops: Array = []
-	for input_name in input_names:
-		var resolved: Dictionary = _resolve_inventory_input_unit(input_name, ops)
+	for idx in input_names.size():
+		var input_name: String = input_names[idx]
+		var preferred_slot_index: int = input_slot_indices[idx] if idx < input_slot_indices.size() else -1
+		var resolved: Dictionary = _resolve_inventory_input_unit(input_name, ops, preferred_slot_index)
 		if not bool(resolved.get("ok", false)):
 			return resolved
 		instances.append(resolved.get("instance", {}))
@@ -917,7 +955,7 @@ func _release_workstation_from_active(active: Dictionary) -> void:
 		Db.set_workstation_occupants(node_id, "", "", 0)
 
 
-func _fail_before_start(workstation_id: String, verb: String, sub_option: String, reason: String, message: String) -> String:
+func _fail_before_start(workstation_id: String, verb: String, sub_option: String, reason: String, message: String, input_names: Variant = []) -> String:
 	character._on_workstation_action_completed({
 		"actionCompleted": false,
 		"ok": false,
@@ -925,6 +963,7 @@ func _fail_before_start(workstation_id: String, verb: String, sub_option: String
 		"workstation_id": workstation_id,
 		"verb": verb,
 		"sub_option": sub_option,
+		"inputs": _input_names_to_array(input_names),
 		"reason": reason,
 		"message": message,
 	})
@@ -952,7 +991,27 @@ func _slot_is_mining_tool(view: InventorySlotData) -> bool:
 	return tmpl != null and tmpl.kind == "tool" and tmpl.properties.has("can_mine")
 
 
-func _resolve_inventory_input_unit(input_name: String, selected_ops: Array) -> Dictionary:
+func _input_names_to_array(value: Variant) -> Array[String]:
+	var out: Array[String] = []
+	if typeof(value) == TYPE_PACKED_STRING_ARRAY:
+		var packed: PackedStringArray = value as PackedStringArray
+		for name_v in packed:
+			var packed_name: String = str(name_v).strip_edges()
+			if not packed_name.is_empty():
+				out.append(packed_name)
+		return out
+	if typeof(value) == TYPE_ARRAY:
+		for entry_v in (value as Array):
+			if typeof(entry_v) == TYPE_STRING:
+				var array_name: String = str(entry_v).strip_edges()
+				if not array_name.is_empty():
+					out.append(array_name)
+	return out
+
+
+func _resolve_inventory_input_unit(input_name: String, selected_ops: Array, preferred_slot_index: int = -1) -> Dictionary:
+	if preferred_slot_index >= 0:
+		return _resolve_inventory_input_unit_at_slot(input_name, selected_ops, preferred_slot_index)
 	for i in character.inventory.size():
 		var slot: Dictionary = character.inventory[i]
 		var view: InventorySlotData = InventorySlotData.of(slot)
@@ -987,6 +1046,35 @@ func _resolve_inventory_input_unit(input_name: String, selected_ops: Array) -> D
 			"op": {"type": "pour", "slot_index": i, "content_id": container.content_id()},
 		}
 	return {"ok": false, "message": _fmt("error.workstation.input_missing_format", [input_name])}
+
+
+func _resolve_inventory_input_unit_at_slot(input_name: String, selected_ops: Array, slot_index: int) -> Dictionary:
+	if slot_index < 0 or slot_index >= character.inventory.size():
+		return {"ok": false, "message": _fmt("error.workstation.backpack_slot_missing_format", [slot_index])}
+	var slot: Dictionary = character.inventory[slot_index]
+	var view: InventorySlotData = InventorySlotData.of(slot)
+	if view.is_empty():
+		return {"ok": false, "message": _fmt("error.workstation.input_changed_format", [input_name])}
+	if _slot_matches_input(view, input_name):
+		var available: int = view.quantity() - _selected_remove_count(selected_ops, slot_index)
+		if available > 0:
+			var inst: Dictionary = slot.duplicate(true)
+			inst["quantity"] = 1
+			return {
+				"ok": true,
+				"instance": inst,
+				"op": {"type": "remove", "slot_index": slot_index, "item_id": view.id()},
+			}
+	var container: ContainerAspect = view.as_container()
+	if container != null and not container.is_empty() and _content_matches_input(container.content_id(), input_name):
+		var available_liquid: int = int(floor(container.amount())) - _selected_pour_count(selected_ops, slot_index)
+		if available_liquid > 0:
+			return {
+				"ok": true,
+				"instance": poured_content_instance(slot, container.content_id()),
+				"op": {"type": "pour", "slot_index": slot_index, "content_id": container.content_id()},
+			}
+	return {"ok": false, "message": _fmt("error.workstation.input_changed_format", [input_name])}
 
 
 func _consume_inventory_inputs(consumed_input_indices: Array, input_ops: Array) -> Dictionary:

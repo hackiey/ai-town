@@ -238,7 +238,7 @@ func durability() -> Variant:
 func base_effects() -> Variant:
 	return slot.get("base_effects", null)
 
-# 货架标价（centi 银）。null = 无标价（普通容器或未定价）。put_take 取货时按它校验付款。
+# 货架标价（centi 银）。null = 无标价（普通容器或未定价）。take 取货时按它校验付款。
 func listing_price_centi() -> Variant:
 	return slot.get("listing_price_centi", null)
 

@@ -148,15 +148,15 @@ func _seed_workstation_states_to_db() -> void:
 		})
 
 
-# 把场景里 ContainerNode 的静态配置写进 Db.container_states，给 backend perception 用。
+# 把场景里可储物的 WorkstationNode/ContainerNode 静态配置写进 Db.container_states，给 backend perception 用。
 # 幂等：每次 server 启动都全量覆盖。内容物在 item_instances 表（ownerKind='container'），不在此处。
 func _seed_container_states_to_db() -> void:
 	var scene := get_tree().current_scene
 	if scene == null:
 		return
-	var nodes := scene.find_children("*", "ContainerNode", true, false)
+	var nodes := scene.find_children("*", "WorkstationNode", true, false)
 	for n in nodes:
-		var c := n as ContainerNode
+		var c := n as WorkstationNode
 		if c == null:
 			continue
 		# 货架是 ContainerNode 子类，但额外写进 shelves 表（标记 + 命名）。这里跳过，避免

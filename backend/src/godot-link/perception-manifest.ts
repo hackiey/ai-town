@@ -20,7 +20,7 @@ export type PerceivedRef = {
   band: PerceptionBand;
 };
 
-// 附近地面上的液体容器（掉落的桶）——活容器，带实例 id 供 put_take 寻址。
+// 附近地面上的液体容器（掉落的桶）——活容器，带实例 id 供液体转移寻址。
 export type GroundContainerRef = {
   instanceId: string;
   itemId: string;

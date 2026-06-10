@@ -1,7 +1,7 @@
 class_name ContainerHandlers
 extends RefCounted
 
-# 统一存取（put_take）：一串 transfers，每条把东西从一个容器搬到另一个容器。
+# 容器转移：put/take 都提交一串 transfers，每条把东西从背包和一个附近储物目标之间移动。
 # 容器 = 背包 / 附近容器 node（仓库·水井） / 地面物品 / 它们里的容器 item（桶·杯·酿酒桶）。
 #
 # transfer wire 形状（backend 已把扁平 index 解析成具体 endpoint）：
@@ -18,22 +18,22 @@ extends RefCounted
 # 靠近判定半径 = 目标对象自己 SiteMarker 的可交互距离（逐对象，玩家/NPC 同路径）。
 
 
-static func run_put_take(character: Character, action_request: Dictionary, completion: Callable = Callable()) -> Dictionary:
+static func run_container_transfer(character: Character, action_request: Dictionary, completion: Callable = Callable()) -> Dictionary:
 	var draw_amount: Dictionary = character.water_draw_actions().amount_liters_for_action(action_request)
 	if not bool(draw_amount.get("ok", false)):
 		return draw_amount
 	if float(draw_amount.get("amount_liters", 0.0)) > 0.0:
-		return character.water_draw_actions().start_from_put_take(action_request, completion)
-	return run_put_take_now(character, action_request)
+		return character.water_draw_actions().start_from_container_transfer(action_request, completion)
+	return run_container_transfer_now(character, action_request)
 
 
-static func run_put_take_now(character: Character, action_request: Dictionary) -> Dictionary:
+static func run_container_transfer_now(character: Character, action_request: Dictionary) -> Dictionary:
 	var target: Variant = action_request.get("target", {})
 	if typeof(target) != TYPE_DICTIONARY:
-		return {"ok": false, "message": _msg("error.put_take.invalid_target")}
+		return {"ok": false, "message": _msg("error.container_transfer.invalid_target")}
 	var transfers_v: Variant = (target as Dictionary).get("transfers", [])
 	if typeof(transfers_v) != TYPE_ARRAY or (transfers_v as Array).is_empty():
-		return {"ok": false, "message": _msg("error.put_take.empty_transfers")}
+		return {"ok": false, "message": _msg("error.container_transfer.empty_transfers")}
 	if Containers == null:
 		return {"ok": false, "message": "Containers autoload is unavailable"}
 	var prepared := _prepare_shelf_payments(character, transfers_v as Array)
@@ -57,15 +57,15 @@ static func run_put_take_now(character: Character, action_request: Dictionary) -
 		if bool(res.get("ok", false)):
 			moves.append(res)
 		else:
-			var failed_message := _msg("tool.tool_result.separator").join(lines) if not lines.is_empty() else _msg("error.put_take.no_moves")
+			var failed_message := _msg("tool.tool_result.separator").join(lines) if not lines.is_empty() else _msg("error.container_transfer.no_moves")
 			return {"ok": false, "message": failed_message, "result": {"moves": moves}}
 
 	if moves.is_empty():
-		return {"ok": false, "message": _msg("tool.tool_result.separator").join(lines) if not lines.is_empty() else _msg("error.put_take.no_moves")}
+		return {"ok": false, "message": _msg("tool.tool_result.separator").join(lines) if not lines.is_empty() else _msg("error.container_transfer.no_moves")}
 	if change_centi > 0:
-		lines.append(_fmt("tool.tool_result.put_take.change_format", [Money.format_silver_from_centi(change_centi)]))
+		lines.append(_fmt("tool.tool_result.container_transfer.change_format", [Money.format_silver_from_centi(change_centi)]))
 
-	character.emit_world_event("container_put_take", {
+	character.emit_world_event("container_transfer", {
 		"actorId": character.backend_character_id(),
 		"affectedCharacterIds": character.perception().voice_affected_character_ids("far"),
 		"moves": moves,
@@ -76,112 +76,7 @@ static func run_put_take_now(character: Character, action_request: Dictionary) -
 		msg_lines.append(str(l))
 	return {"ok": true, "message": "\n".join(msg_lines), "result": {"moves": moves}}
 
-
-static func run_view_container(character: Character, action_request: Dictionary) -> Dictionary:
-	var target: Variant = action_request.get("target", {})
-	if typeof(target) != TYPE_DICTIONARY:
-		_emit_view_event(character, "", false, "failure", [], "view_container target must be object")
-		return {"ok": false, "message": "view_container target must be object"}
-	var t: Dictionary = target as Dictionary
-	var cid := str(t.get("containerId", ""))
-	var is_shelf := bool(t.get("isShelf", false))
-	if cid.is_empty():
-		var err_missing := _msg("error.view_container.missing_container_id")
-		_emit_view_event(character, cid, is_shelf, "failure", [], err_missing)
-		return {"ok": false, "message": err_missing}
-	var node := _near_node(character, cid)
-	if node == null:
-		var err_unavailable := _msg("error.view_container.unavailable")
-		_emit_view_event(character, cid, is_shelf, "failure", [], err_unavailable)
-		return {"ok": false, "message": err_unavailable}
-	var items := _view_container_items(character, node, is_shelf)
-	var label := node.effective_display_name()
-	var lines: Array[String] = []
-	for item_v in items:
-		var item: Dictionary = item_v as Dictionary
-		lines.append(str(item.get("line", "")))
-	var body := _msg("tool.tool_result.separator").join(lines) if not lines.is_empty() else _msg("tool.tool_result.view_container.empty")
-	var message := _fmt("tool.tool_result.view_container.message_format", [label, body])
-	_emit_view_event(character, cid, is_shelf, "success", items, "")
-	return {
-		"ok": true,
-		"message": message,
-		"result": {"containerId": cid, "label": label, "items": items, "message": message},
-	}
-
-
-static func _emit_view_event(character: Character, cid: String, is_shelf: bool, outcome: String, items: Array, error: String) -> void:
-	var data := {
-		"actorId": character.backend_character_id(),
-		"affectedCharacterIds": character.perception().voice_affected_character_ids("far"),
-		"containerId": cid,
-		"kind": "shelf" if is_shelf else "container",
-		"outcome": outcome,
-		"items": items,
-	}
-	var node: ContainerNode = null
-	if not cid.is_empty():
-		node = _near_node(character, cid)
-	if node != null:
-		data["label"] = node.effective_display_name()
-	if not error.is_empty():
-		data["error"] = error
-	character.emit_world_event("view_container", data)
-
-
-static func _view_container_items(character: Character, node: ContainerNode, is_shelf: bool) -> Array:
-	var out: Array = []
-	if node == null:
-		return out
-	if node.is_infinite_source():
-		out.append({
-			"itemId": str(node.infinite_content),
-			"quantity": 1,
-			"content": str(node.infinite_content),
-			"amount": -1,
-			"line": _fmt("tool.tool_result.view_container.infinite_format", [str(node.infinite_content)]),
-		})
-		return out
-	var index := 1
-	if int(node.wallet_centi) > 0 and (not is_shelf or _can_access_node_owner_group(character, node)):
-		var wallet_amount := float(node.wallet_centi) / 100.0
-		var wallet_line := "[%d] %s x%s" % [index, character.localize_item_name("silver_coin"), _format_amount(wallet_amount)]
-		out.append({
-			"itemId": "silver_coin",
-			"quantity": wallet_amount,
-			"index": index,
-			"line": wallet_line,
-		})
-		index += 1
-	for slot_v in node.contents:
-		if typeof(slot_v) != TYPE_DICTIONARY:
-			continue
-		var slot: Dictionary = slot_v as Dictionary
-		var view := InventorySlotData.of(slot)
-		if view.is_empty():
-			continue
-		var item_id := str(slot.get("item_id", ""))
-		var quantity := int(slot.get("quantity", 0))
-		var line := "[%d] %s x%d" % [index, view.display_name(), quantity]
-		var row := {"itemId": item_id, "quantity": quantity, "index": index, "line": line}
-		var container := view.as_container()
-		if container != null and container.amount() > 0.0:
-			row["content"] = container.content_id()
-			row["amount"] = container.amount()
-			line += "（%s %.2fL）" % [container.content_id(), container.amount()]
-		if is_shelf and slot.get("listing_price_centi", null) != null:
-			var centi := int(slot.get("listing_price_centi", 0))
-			if centi > 0:
-				row["priceSilver"] = float(centi) / 100.0
-				line += _fmt("tool.tool_result.view_container.price_silver_format", [float(centi) / 100.0])
-		row["line"] = line
-		out.append(row)
-		index += 1
-	return out
-
-
-# 货架购买预检：从货架取带标价商品时，必须同次把足额银币付进同一货架钱包。
-# 多付不进入货架钱包，执行前把付款 transfer 裁到应付额，差额作为找零提示。
+# 货架购买预检：从货架取带标价商品时，自动从角色钱包付进同一货架钱包。
 static func _prepare_shelf_payments(character: Character, raw_transfers: Array) -> Dictionary:
 	var transfers: Array = []
 	for tr_v in raw_transfers:
@@ -190,7 +85,6 @@ static func _prepare_shelf_payments(character: Character, raw_transfers: Array) 
 		else:
 			transfers.append(tr_v)
 	var required_by_cid := {}
-	var paid_by_cid := {}
 	for tr_v in transfers:
 		if typeof(tr_v) != TYPE_DICTIONARY:
 			continue
@@ -218,90 +112,25 @@ static func _prepare_shelf_payments(character: Character, raw_transfers: Array) 
 			var price_centi_req := int(slot_req.get("listing_price_centi", 0)) if slot_req.get("listing_price_centi", null) != null else 0
 			if price_centi_req > 0:
 				required_by_cid[cid_req] = int(required_by_cid.get(cid_req, 0)) + price_centi_req * qty_req
-		elif str(from_req.get("where", "")) == "backpack" and str(to_req.get("where", "")) == "node" and bool(to_req.get("isShelf", false)) and coin_centi_req > 0:
-			var pay_cid_req := str(to_req.get("containerId", ""))
-			paid_by_cid[pay_cid_req] = int(paid_by_cid.get(pay_cid_req, 0)) + _currency_transfer_centi(item_id_req, float(tr_req.get("amount", 0.0)))
 
-	for cid_check in required_by_cid.keys():
-		if int(paid_by_cid.get(cid_check, 0)) < int(required_by_cid[cid_check]):
-			return {"ok": false, "message": _msg("error.shelf.payment_not_enough")}
 	var total_required := 0
 	for cid_total in required_by_cid.keys():
 		total_required += int(required_by_cid[cid_total])
 	if total_required > character.wallet_balance_centi():
 		return {"ok": false, "message": _msg("error.shelf.payment_not_enough")}
+	for cid_pay in required_by_cid.keys():
+		var due := int(required_by_cid[cid_pay])
+		if due <= 0:
+			continue
+		transfers.append({
+			"kind": "item",
+			"itemId": "silver_coin",
+			"amount": float(due) / 100.0,
+			"from": {"where": "backpack"},
+			"to": {"where": "node", "containerId": str(cid_pay), "isShelf": true},
+		})
 
-	var kept_by_cid := {}
-	var change_centi := 0
-	for tr_v in transfers:
-		if typeof(tr_v) != TYPE_DICTIONARY:
-			continue
-		var tr_pay := tr_v as Dictionary
-		if str(tr_pay.get("kind", "item")) != "item":
-			continue
-		var item_id_pay := str(tr_pay.get("itemId", ""))
-		var coin_centi_pay := CharacterInventory.currency_item_centi(item_id_pay)
-		if coin_centi_pay <= 0:
-			continue
-		var from_pay: Dictionary = tr_pay.get("from", {}) if typeof(tr_pay.get("from", {})) == TYPE_DICTIONARY else {}
-		var to_pay: Dictionary = tr_pay.get("to", {}) if typeof(tr_pay.get("to", {})) == TYPE_DICTIONARY else {}
-		if not (str(from_pay.get("where", "")) == "backpack" and str(to_pay.get("where", "")) == "node" and bool(to_pay.get("isShelf", false))):
-			continue
-		var cid_pay := str(to_pay.get("containerId", ""))
-		var due_pay := int(required_by_cid.get(cid_pay, 0))
-		if due_pay <= 0:
-			continue
-		var original_pay := _currency_transfer_centi(item_id_pay, float(tr_pay.get("amount", 0.0)))
-		var keep_pay := mini(original_pay, maxi(0, due_pay - int(kept_by_cid.get(cid_pay, 0))))
-		kept_by_cid[cid_pay] = int(kept_by_cid.get(cid_pay, 0)) + keep_pay
-		change_centi += original_pay - keep_pay
-		tr_pay["amount"] = float(keep_pay) / float(coin_centi_pay)
-
-	if not required_by_cid.is_empty():
-		var total_outgoing_centi := 0
-		for tr_v in transfers:
-			if typeof(tr_v) != TYPE_DICTIONARY:
-				continue
-			var tr_out := tr_v as Dictionary
-			if str(tr_out.get("kind", "item")) != "item":
-				continue
-			var item_id_out := str(tr_out.get("itemId", ""))
-			if CharacterInventory.currency_item_centi(item_id_out) <= 0:
-				continue
-			var from_out: Dictionary = tr_out.get("from", {}) if typeof(tr_out.get("from", {})) == TYPE_DICTIONARY else {}
-			if str(from_out.get("where", "")) == "backpack":
-				total_outgoing_centi += _currency_transfer_centi(item_id_out, float(tr_out.get("amount", 0.0)))
-		if total_outgoing_centi > character.wallet_balance_centi():
-			return {"ok": false, "message": _msg("error.shelf.payment_not_enough")}
-
-		var normal_transfers: Array = []
-		var purchase_payments: Array = []
-		for tr_v in transfers:
-			if typeof(tr_v) != TYPE_DICTIONARY:
-				normal_transfers.append(tr_v)
-				continue
-			var tr_sort := tr_v as Dictionary
-			var item_id_sort := str(tr_sort.get("itemId", ""))
-			var from_sort: Dictionary = tr_sort.get("from", {}) if typeof(tr_sort.get("from", {})) == TYPE_DICTIONARY else {}
-			var to_sort: Dictionary = tr_sort.get("to", {}) if typeof(tr_sort.get("to", {})) == TYPE_DICTIONARY else {}
-			var is_purchase_payment := str(tr_sort.get("kind", "item")) == "item"
-			if is_purchase_payment:
-				is_purchase_payment = CharacterInventory.currency_item_centi(item_id_sort) > 0
-			if is_purchase_payment:
-				is_purchase_payment = str(from_sort.get("where", "")) == "backpack"
-			if is_purchase_payment:
-				is_purchase_payment = str(to_sort.get("where", "")) == "node"
-			if is_purchase_payment:
-				is_purchase_payment = bool(to_sort.get("isShelf", false))
-			if is_purchase_payment:
-				is_purchase_payment = int(required_by_cid.get(str(to_sort.get("containerId", "")), 0)) > 0
-			if is_purchase_payment:
-				purchase_payments.append(tr_sort)
-			else:
-				normal_transfers.append(tr_sort)
-		transfers = normal_transfers + purchase_payments
-
-	return {"ok": true, "transfers": transfers, "change_centi": change_centi}
+	return {"ok": true, "transfers": transfers, "change_centi": 0}
 
 
 static func _currency_transfer_centi(item_id: String, amount: float) -> int:
@@ -353,7 +182,7 @@ static func _do_liquid(character: Character, tr: Dictionary, lines: Array) -> Di
 	var moved := float(result.get("moved", 0.0))
 	var content := str(dst_slot.get("container_content", ""))
 	var content_name := character.localize_item_name(content) if content != "" else _msg("tool.tool_result.liquid_fallback")
-	lines.append(_fmt("tool.tool_result.put_take.poured_format", [moved, content_name, str(to_ep.get("label", _msg("tool.tool_result.container_fallback")))]))
+	lines.append(_fmt("tool.tool_result.container_transfer.poured_format", [moved, content_name, str(to_ep.get("label", _msg("tool.tool_result.container_fallback")))]))
 	return {"ok": true, "kind": "liquid", "content": content, "amount": moved}
 
 
@@ -431,7 +260,7 @@ static func _do_liquid_to_item(character: Character, tr: Dictionary, amount: flo
 
 	_consume_liquid_from_slot(src_slot, liters)
 	(from_ep["commit"] as Callable).call()
-	lines.append(_fmt("tool.tool_result.put_take.servings_taken_format", [servings, character.localize_item_name(serving_item_id), liters]))
+	lines.append(_fmt("tool.tool_result.container_transfer.servings_taken_format", [servings, character.localize_item_name(serving_item_id), liters]))
 	return {"ok": true, "kind": "item", "itemId": serving_item_id, "amount": servings}
 
 
@@ -457,7 +286,7 @@ static func _consume_liquid_from_slot(slot: Dictionary, amount: float) -> void:
 		slot["ferment_ceiling"] = null
 
 
-static func _node_can_place_stack(node: ContainerNode, stack: Dictionary, quantity: int) -> bool:
+static func _node_can_place_stack(node: WorkstationNode, stack: Dictionary, quantity: int) -> bool:
 	if node == null or quantity <= 0:
 		return false
 	var remaining := quantity
@@ -500,10 +329,13 @@ static func _do_item(character: Character, tr: Dictionary, lines: Array) -> Dict
 	if from_where == "node" and to_where == "backpack":
 		var from_d := tr["from"] as Dictionary
 		return _take_from_node(character, str(from_d.get("containerId", "")), item_id, amount, item_name, int(from_d.get("slotIndex", -1)), bool(from_d.get("isShelf", false)), lines)
+	if from_where == "ground" and to_where == "backpack":
+		var ground_d := tr["from"] as Dictionary
+		return _take_from_ground(character, item_id, amount, item_name, str(ground_d.get("groundItemId", "")), lines)
 	if from_where == "backpack" and to_where == "node":
 		var to_d := tr["to"] as Dictionary
 		return _put_to_node(character, str(to_d.get("containerId", "")), item_id, amount, item_name, bool(to_d.get("isShelf", false)), int(to_d.get("priceCenti", -1)), lines)
-	lines.append(_fmt("error.put_take.unsupported_transfer_format", [from_where, to_where]))
+	lines.append(_fmt("error.container_transfer.unsupported_transfer_format", [from_where, to_where]))
 	return {}
 
 
@@ -525,7 +357,7 @@ static func _take_from_node(character: Character, cid: String, item_id: String, 
 			return {}
 		character.wallet_add(centi)
 		var moved_amount := float(centi) / float(unit_centi)
-		lines.append(_fmt("tool.tool_result.put_take.take_amount_format", [_format_amount(moved_amount), item_name]))
+		lines.append(_fmt("tool.tool_result.container_transfer.take_amount_format", [_format_amount(moved_amount), item_name]))
 		return {"ok": true, "kind": "item", "itemId": item_id, "amount": moved_amount}
 	var qty := int(round(amount))
 	if qty <= 0:
@@ -563,8 +395,42 @@ static func _take_from_node(character: Character, cid: String, item_id: String, 
 		Containers.adapter_place(node, rollback_stacks)
 		lines.append(_fmt("error.inventory.cannot_fit_item_format", [item_name]))
 		return {}
-	lines.append(_fmt("tool.tool_result.put_take.take_count_format", [moved, item_name]))
+	lines.append(_fmt("tool.tool_result.container_transfer.take_count_format", [moved, item_name]))
 	return {"ok": true, "kind": "item", "itemId": item_id, "amount": moved}
+
+
+static func _take_from_ground(character: Character, item_id: String, amount: float, item_name: String, ground_item_id: String, lines: Array) -> Dictionary:
+	var gi := _find_ground_item(character, ground_item_id) if not ground_item_id.is_empty() else _find_nearest_ground_item(character, item_id)
+	if gi == null:
+		lines.append(_fmt("error.container.ground_item_missing_format", [item_name]))
+		return {}
+	if str(gi.item_id) != item_id:
+		lines.append(_fmt("error.container.ground_item_missing_format", [item_name]))
+		return {}
+	var available := gi.quantity()
+	var qty := int(round(amount))
+	if qty <= 0:
+		qty = available
+	qty = mini(qty, available)
+	if qty <= 0:
+		lines.append(_fmt("error.container.ground_item_missing_format", [item_name]))
+		return {}
+	var stack: Dictionary = gi.slot_data.duplicate(true)
+	stack["quantity"] = qty
+	var recv := character.inventory_ops().receive_stacks([stack])
+	if not bool(recv.get("ok", false)):
+		lines.append(str(recv.get("message", _msg("error.inventory.full"))))
+		return {}
+	var left := available - qty
+	if left <= 0:
+		Db.delete_ground_item(gi.db_id)
+		gi.queue_free()
+	else:
+		gi.slot_data["quantity"] = left
+		gi.setup(gi.slot_data)
+		Db.save_ground_item(gi.db_id, gi.item_id, gi.global_position, gi.slot_data)
+	lines.append(_fmt("tool.tool_result.container_transfer.take_count_format", [qty, item_name]))
+	return {"ok": true, "kind": "item", "itemId": item_id, "amount": qty}
 
 
 static func _put_to_node(character: Character, cid: String, item_id: String, amount: float, item_name: String, is_shelf: bool, price_centi: int, lines: Array) -> Dictionary:
@@ -583,7 +449,7 @@ static func _put_to_node(character: Character, cid: String, item_id: String, amo
 			return {}
 		Containers.wallet_add_centi(cid, centi)
 		var moved_amount := float(centi) / float(unit_centi)
-		lines.append(_fmt("tool.tool_result.put_take.put_amount_format", [_format_amount(moved_amount), item_name]))
+		lines.append(_fmt("tool.tool_result.container_transfer.put_amount_format", [_format_amount(moved_amount), item_name]))
 		return {"ok": true, "kind": "item", "itemId": item_id, "amount": moved_amount}
 	var qty := int(round(amount))
 	if qty <= 0:
@@ -609,7 +475,7 @@ static func _put_to_node(character: Character, cid: String, item_id: String, amo
 		return {}
 	if is_shelf and price_centi >= 0:
 		Containers.set_price_for_item(node, item_id, price_centi)
-	lines.append(_fmt("tool.tool_result.put_take.put_count_format", [moved, item_name]))
+	lines.append(_fmt("tool.tool_result.container_transfer.put_count_format", [moved, item_name]))
 	return {"ok": true, "kind": "item", "itemId": item_id, "amount": moved}
 
 
@@ -668,7 +534,7 @@ static func _resolve_well(character: Character, ep: Dictionary) -> Dictionary:
 	return {"ok": true, "node": node, "content": node.infinite_content, "quality": float(node.infinite_quality)}
 
 
-static func _near_node(character: Character, cid: String) -> ContainerNode:
+static func _near_node(character: Character, cid: String) -> WorkstationNode:
 	# 多锚点（水井 6 口共享 "well"）：取离 character 最近的那个节点再判距离，
 	# 否则只有最后注册的那口能用，其余 5 口判"不在手边"。
 	var node := Containers.find_container_node_near(cid, character.global_position)
@@ -694,6 +560,21 @@ static func _find_ground_item(character: Character, db_id: String) -> GroundItem
 	return null
 
 
+static func _find_nearest_ground_item(character: Character, item_id: String) -> GroundItem:
+	var nearest: GroundItem = null
+	var best_dist_sq := INF
+	for n in character.get_tree().get_nodes_in_group("ground_items"):
+		var gi := n as GroundItem
+		if gi == null or gi.item_id != item_id:
+			continue
+		var r := SiteMarker.interaction_radius_of(gi)
+		var d_sq := character.global_position.distance_squared_to(gi.global_position)
+		if d_sq <= r * r and d_sq < best_dist_sq:
+			best_dist_sq = d_sq
+			nearest = gi
+	return nearest
+
+
 static func _sum_qty(stacks: Array) -> int:
 	var total := 0
 	for s_v in stacks:
@@ -708,12 +589,12 @@ static func _format_amount(value: float) -> String:
 	return "%.2f" % value
 
 
-static func _can_access_node_owner_group(character: Character, node: ContainerNode) -> bool:
+static func _can_access_node_owner_group(character: Character, node: WorkstationNode) -> bool:
 	var owner_group := _owner_group_for_node(node)
 	return Access.can_be_used_by(character, owner_group)
 
 
-static func _owner_group_for_node(node: ContainerNode) -> String:
+static func _owner_group_for_node(node: WorkstationNode) -> String:
 	if node == null:
 		return ""
 	var tree := node.get_tree()

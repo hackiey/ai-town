@@ -3,7 +3,8 @@
 | skill_id | 中文 | 典型工作站或动作 |
 |---|---|---|
 | mining | 挖矿 | 铁矿、银矿、金矿 |
-| woodworking | 木工 | 伐木、削木板、削木杆 |
+| lumbering | 伐木 | 伐木场砍木 |
+| woodworking | 木工 | 削木板、削木杆 |
 | charcoal_making | 烧炭 | 炭窑 |
 | smelting | 冶炼 | 熔炉、铸币 |
 | smithing | 锻造 | 铁砧 |

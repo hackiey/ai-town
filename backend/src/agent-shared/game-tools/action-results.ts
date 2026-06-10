@@ -186,10 +186,10 @@ function genericActionSummary(
     return localizeText(resultMessage);
   }
   switch (toolName) {
-    case "pick_up_item": return td("action.summary.pick_up_item_format", { item: targetItemLabel(target, displayTarget) });
     case "drop_item": return td("action.summary.drop_item_format", { item: targetItemLabel(target, displayTarget) });
     case "use_item": return td("action.summary.use_item_format", { item: targetItemLabel(target, displayTarget) });
-    case "put_take": return td("action.summary.put_take_completed");
+    case "put": return td("action.summary.put_completed");
+    case "take": return td("action.summary.take_completed");
     case "offer": return td("action.summary.offer_submitted");
     case "respond": return respondSummary(record.result, target);
     case "sleep": return sleepSummary(record.result, target);

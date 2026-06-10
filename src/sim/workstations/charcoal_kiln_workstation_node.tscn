@@ -7,32 +7,38 @@
 [ext_resource type="PackedScene" uid="uid://grfniau5mfqp" path="res://third-party/polygon-fantasy-kingdom/Assets/PolygonFantasyKingdom/Prefabs/Props/SM_Prop_Wood_Pile_03.tscn" id="4_woodpile"]
 
 [node name="CharcoalKilnWorkstationNode" unique_id=880008382 instance=ExtResource("1_base")]
+passive_tags = PackedStringArray()
 
-[node name="WorldObjectIdentity" parent="."]
+[node name="WorldObjectIdentity" parent="." index="0" unique_id=291000001]
 def_id = "charcoal_kiln"
-kind = "workstation"
-capabilities = PackedStringArray("move", "craft")
+group_gated_capabilities = PackedStringArray()
 
-[node name="Mesh" parent="." index="0"]
+[node name="Mesh" parent="." index="1" unique_id=1161232324]
 visible = false
 
-[node name="Title" parent="." index="2"]
+[node name="Title" parent="." index="3" unique_id=269912459]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.4, 0)
+text = "炭窑"
 
-[node name="Prompt" parent="." index="3"]
+[node name="Prompt" parent="." index="4" unique_id=1926429612]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2, 0)
+text = "按 E 烧炭"
 
-[node name="Chimney" parent="." unique_id=1853435444 instance=ExtResource("2_chimney")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -0.4)
+[node name="SiteMarker" parent="." index="5" unique_id=1027835496]
+visible_near_radius = 5.0
+direct_interaction_radius = 5.0
 
-[node name="CookingBlock" parent="." unique_id=1295130253 instance=ExtResource("3_cooking")]
-transform = Transform3D(-0.0041364753, 0, 0.9999914, 0, 1, 0, -0.9999914, 0, -0.0041364753, 0, 0, 1.1893244)
-
-[node name="WoodPile" parent="." unique_id=1583511461 instance=ExtResource("4_woodpile")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.04220414, -1.1920929e-07, 2.02726)
-
-[node name="Approach" type="Marker3D" parent="SiteMarker" unique_id=791026455]
+[node name="Approach" type="Marker3D" parent="SiteMarker" index="0" unique_id=791026455]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 2.8)
 
-[node name="ChimneyBase" parent="." unique_id=191202730 instance=ExtResource("2_chimney_base")]
+[node name="Chimney" parent="." index="6" unique_id=1853435444 instance=ExtResource("2_chimney")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -0.4)
+
+[node name="CookingBlock" parent="." index="7" unique_id=1295130253 instance=ExtResource("3_cooking")]
+transform = Transform3D(-0.0041364753, 0, 0.9999914, 0, 1, 0, -0.9999914, 0, -0.0041364753, 0, 0, 1.1893244)
+
+[node name="WoodPile" parent="." index="8" unique_id=1583511461 instance=ExtResource("4_woodpile")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.04220414, -1.1920929e-07, 2.02726)
+
+[node name="ChimneyBase" parent="." index="9" unique_id=191202730 instance=ExtResource("2_chimney_base")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.928638, -0.4)

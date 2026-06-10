@@ -9,11 +9,16 @@
         {"workstation": "gold_mine_workstation",   "verb": "dig"}
       ]
     },
+    "chop_wood": {
+      "skillId": "lumbering",
+      "operations": [
+        {"workstation": "lumberyard_workstation", "verb": "chop"}
+      ]
+    },
     "woodwork": {
       "skillId": "woodworking",
       "operations": [
-        {"workstation": "lumberyard_workstation", "verb": "chop"},
-        {"workstation": "workbench",              "verb": "carve"}
+        {"workstation": "workbench", "verb": "carve"}
       ],
       "subOptions": ["plank", "shaft"]
     },

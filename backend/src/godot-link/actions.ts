@@ -9,7 +9,6 @@ export const ACTION_NAMES = [
   "move_to_location",
   SAY_TO_ACTION,
   SLEEP_ACTION,
-  "pick_up_item",
   "drop_item",
   // offer：request:[] 时是单向赠送（同步转移 + 发 give 事件），
   // request 非空时是议价交易（写 trade_offers，阻塞等对方 respond）。
@@ -23,6 +22,7 @@ export const ACTION_NAMES = [
   // 每个 axis 一个 wire action，共享 WorkstationActionTarget shape；Godot 端走同一个
   // start_workstation_action() 派发。
   "mine",
+  "chop_wood",
   "woodwork",
   "burn_charcoal",
   "smelt",
@@ -37,8 +37,8 @@ export const ACTION_NAMES = [
   "harvest_crop",
   "remove_pest",
   "plan_farm_work",
-  "put_take_container",
-  "view_container",
+  "put",
+  "take",
   "brew",
   "write",
   "read",
@@ -73,9 +73,8 @@ export type SleepTarget = {
 
 // slotIndex 是 item_instances 表的真 primary key（按 ownerKind+ownerId 唯一）。
 // backend 把 LLM 给的 {name, index} 反查成 slotIndex 发过来，Godot 按 slotIndex 直接定位栈。
-// undefined = 来源没有 slotIndex（pick_up_item 等 perception 不暴露 instance id 的场景），
-// Godot 按 itemId 选最近/默认实例（旧行为）。
-// quantity = drop/pickup 的份数；缺省 = 1。
+// undefined = 来源没有 slotIndex 时，Godot 按 itemId 选默认实例。
+// quantity = drop 的份数；缺省 = 1。
 export type ItemTarget = {
   itemId: string;
   slotIndex?: number;
@@ -110,7 +109,7 @@ export type RespondTarget = {
   response: "accept" | "reject";
 };
 
-// 所有 axis action（mine / woodwork / smelt / smith / assemble / cook / ...）
+// 所有 axis action（mine / chop_wood / woodwork / smelt / smith / assemble / cook / ...）
 // 共享同一 target shape。TS 工厂根据 craft-registry 的  填好 workstationId/verb/subOption，
 // Godot 端 start_workstation_action 不区分 axis（action 名只用于事件路由 + 文案识别）。
 export type WorkstationActionTarget = {
@@ -138,8 +137,8 @@ export type PlanFarmWorkTarget = {
   ops: PlanFarmWorkOp[];
 };
 
-// put_take_container：统一搬运。一串 transfers，每条把东西从一个容器搬到另一个。
-// 容器 endpoint：背包 / 附近容器 node（仓库·水井）/ 地面物品 / 它们里的容器 item。
+// put/take：背包与一个附近储物目标之间搬运。一串 transfers，每条仍用统一 endpoint wire。
+// 容器 endpoint：背包 / 附近容器 node（仓库·货架·工作台储物·水井）/ 它们里的容器 item。
 // 液体按升加权混合品质；若 liquid.to 指背包/容器/货架本身且无 slotIndex，Godot 会按
 // drink item 的 serving_liters 把桶装液体转成离散物品（如 beer）。离散按个数（背包侧货币走钱包）。
 // Godot ContainerHandlers 执行。
@@ -160,13 +159,8 @@ export type TransferWire = {
   to: ContainerEndpoint;
 };
 
-export type PutTakeContainerTarget = {
+export type ContainerTransferTarget = {
   transfers: TransferWire[];
-};
-
-export type ViewContainerTarget = {
-  containerId: string;
-  isShelf?: boolean;
 };
 
 // brew：装水的酿酒桶 + 背包麦芽 → 发酵中的酒。barrel = 酿酒桶所在 endpoint。
@@ -200,7 +194,6 @@ export type ActionTargetByName = {
   move_to_location: MoveToLocationTarget;
   say_to: SayToTarget;
   sleep: SleepTarget;
-  pick_up_item: ItemTarget;
   drop_item: ItemTarget;
   offer: OfferTarget;
   respond: RespondTarget;
@@ -208,6 +201,7 @@ export type ActionTargetByName = {
   use_item: UseItemTarget;
   // axis actions —— 全部共用 WorkstationActionTarget shape。
   mine: WorkstationActionTarget;
+  chop_wood: WorkstationActionTarget;
   woodwork: WorkstationActionTarget;
   burn_charcoal: WorkstationActionTarget;
   smelt: WorkstationActionTarget;
@@ -222,8 +216,8 @@ export type ActionTargetByName = {
   harvest_crop: FarmingSubActionTargetUnused;
   remove_pest: FarmingSubActionTargetUnused;
   plan_farm_work: PlanFarmWorkTarget;
-  put_take_container: PutTakeContainerTarget;
-  view_container: ViewContainerTarget;
+  put: ContainerTransferTarget;
+  take: ContainerTransferTarget;
   brew: BrewTarget;
   write: WriteTarget;
   read: ReadTarget;
@@ -270,7 +264,6 @@ export type ActionResultByName = {
     heardByCharacterIds?: string[];
   };
   sleep: { wokeAt?: string; interrupted?: boolean; durationGameMinutes?: number; wakeReason?: string };
-  pick_up_item: { itemId?: string; quantity?: number };
   drop_item: { itemId?: string; quantity?: number };
   // request:[] 时 result 含 recipientCharacterId + transferred:[{itemId, requested, transferred}]；
   // request 非空时仍是 {tradeId?} 走原 trade.lua 路径。
@@ -279,6 +272,7 @@ export type ActionResultByName = {
   create_item: { itemId?: string };
   use_item: { itemId?: string; quantity?: number };
   mine: Record<string, unknown>;
+  chop_wood: Record<string, unknown>;
   woodwork: Record<string, unknown>;
   burn_charcoal: Record<string, unknown>;
   smelt: Record<string, unknown>;
@@ -293,8 +287,8 @@ export type ActionResultByName = {
   harvest_crop: Record<string, unknown>;
   remove_pest: Record<string, unknown>;
   plan_farm_work: PlanFarmWorkResult;
-  put_take_container: { moves?: Array<{ kind?: string; itemId?: string; content?: string; amount?: number }> };
-  view_container: { containerId?: string; label?: string; message?: string; items?: Array<Record<string, unknown>> };
+  put: { moves?: Array<{ kind?: string; itemId?: string; content?: string; amount?: number }> };
+  take: { moves?: Array<{ kind?: string; itemId?: string; content?: string; amount?: number }> };
   brew: { liters?: number; ceiling?: number };
   write: { itemName?: string; title?: string };
   read: { title?: string; content?: string };

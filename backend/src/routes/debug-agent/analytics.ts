@@ -7,7 +7,13 @@ import { makeCharacterLookupKey, parseIntOr, translateCatalogName } from "./help
 const DEFAULT_LIMIT = 5000;
 const MAX_LIMIT = 50000;
 const ERROR_EXCERPT_LEN = 140;
+const CALL_EXCERPT_LEN = 220;
+const DEFAULT_CALL_PAGE_SIZE = 50;
+const MAX_CALL_PAGE_SIZE = 200;
 const TOP_ERROR_LIMIT = 50;
+
+const TOOL_NAME_SQL = "COALESCE(NULLIF(TRIM(json_extract(asm.message, '$.toolName')), ''), NULLIF(TRIM(json_extract(asm.message, '$.name')), ''), 'unknown')";
+const TOOL_FAILURE_SQL = "(json_extract(asm.message, '$.isError') = 1 OR json_extract(asm.message, '$.details.status') = 'failed')";
 
 type Bucket = "hour" | "day";
 
@@ -57,6 +63,24 @@ function toolNameOf(message: Record<string, unknown>): string {
   return name && name.trim() ? name.trim() : "unknown";
 }
 
+function toolCallIdOf(message: Record<string, unknown>): string | null {
+  return stringValue(message.toolCallId)
+    ?? stringValue(message.tool_call_id)
+    ?? stringValue(message.callId)
+    ?? stringValue(message.call_id)
+    ?? null;
+}
+
+function isToolResultFailure(message: Record<string, unknown> | null | undefined): boolean {
+  if (!message) return false;
+  if (message.isError) return true;
+  const details = message.details;
+  if (details && typeof details === "object") {
+    return stringValue((details as Record<string, unknown>).status) === "failed";
+  }
+  return false;
+}
+
 function extractText(content: unknown): string {
   if (content == null) return "";
   if (typeof content === "string") return content;
@@ -84,10 +108,10 @@ function extractText(content: unknown): string {
   return String(content);
 }
 
-function normalizeExcerpt(text: string): string {
+function normalizeExcerpt(text: string, limit = ERROR_EXCERPT_LEN): string {
   const collapsed = text.replace(/\s+/g, " ").trim();
-  if (collapsed.length <= ERROR_EXCERPT_LEN) return collapsed;
-  return collapsed.slice(0, ERROR_EXCERPT_LEN) + "…";
+  if (collapsed.length <= limit) return collapsed;
+  return collapsed.slice(0, limit) + "…";
 }
 
 function gameTimeTotalMinutes(gameTime: GameTimeSnapshot | null | undefined): number | null {
@@ -115,6 +139,18 @@ interface ToolResultRow {
   createdAt: string;
   message: string;
   gameTime: string | null;
+}
+
+interface ToolCallDetailRow extends ToolResultRow {
+  totalCount?: number;
+}
+
+function parseToolResultMessage(raw: string): Record<string, unknown> {
+  try {
+    return JSON.parse(raw) as Record<string, unknown>;
+  } catch {
+    return {};
+  }
 }
 
 function buildBucketKey(
@@ -216,14 +252,9 @@ export const toolAnalyticsRoutes: FastifyPluginAsync = async (app) => {
     let totalErrors = 0;
 
     for (const row of rows) {
-      let parsed: Record<string, unknown>;
-      try {
-        parsed = JSON.parse(row.message) as Record<string, unknown>;
-      } catch {
-        parsed = {};
-      }
+      const parsed = parseToolResultMessage(row.message);
       const toolName = toolNameOf(parsed);
-      const isError = !!parsed.isError;
+      const isError = isToolResultFailure(parsed);
 
       totalCalls += 1;
       if (isError) totalErrors += 1;
@@ -377,4 +408,169 @@ export const toolAnalyticsRoutes: FastifyPluginAsync = async (app) => {
       sampledRows: rows.length,
     };
   });
+
+  app.get<{
+    Querystring: {
+      townId?: string;
+      characterIds?: string;
+      groupIds?: string;
+      since?: string;
+      until?: string;
+      tool?: string;
+      status?: string;
+      characterId?: string;
+      page?: string;
+      pageSize?: string;
+    };
+  }>("/debug/api/tool-analytics/calls", async (request, reply) => {
+    const tool = request.query.tool?.trim();
+    if (!tool) {
+      reply.code(400);
+      return { error: "tool is required" };
+    }
+
+    const townId = request.query.townId?.trim() || undefined;
+    const characterIds = (request.query.characterIds || "")
+      .split(",").map((s) => s.trim()).filter(Boolean);
+    const groupIds = (request.query.groupIds || "")
+      .split(",").map((s) => s.trim()).filter(Boolean);
+    const since = request.query.since?.trim() || undefined;
+    const until = request.query.until?.trim() || undefined;
+    const status = request.query.status === "failed" || request.query.status === "success"
+      ? request.query.status
+      : "all";
+    const characterId = request.query.characterId?.trim() || undefined;
+    const page = Math.max(1, parseIntOr(request.query.page, 1));
+    const pageSize = Math.min(
+      MAX_CALL_PAGE_SIZE,
+      Math.max(1, parseIntOr(request.query.pageSize, DEFAULT_CALL_PAGE_SIZE)),
+    );
+    const offset = (page - 1) * pageSize;
+
+    const conditions: string[] = ["asm.role = 'toolResult'", `${TOOL_NAME_SQL} = ?`];
+    const params: unknown[] = [tool];
+    if (townId) {
+      conditions.push("asm.townId = ?");
+      params.push(townId);
+    }
+    if (characterIds.length > 0) {
+      conditions.push("asm.characterId IN (" + characterIds.map(() => "?").join(",") + ")");
+      params.push(...characterIds);
+    }
+    if (groupIds.length > 0) {
+      conditions.push(
+        "EXISTS (SELECT 1 FROM character_groups cg"
+          + " WHERE cg.townId = asm.townId"
+          + " AND cg.characterId = asm.characterId"
+          + " AND cg.groupId IN (" + groupIds.map(() => "?").join(",") + "))",
+      );
+      params.push(...groupIds);
+    }
+    if (since) {
+      conditions.push("asm.createdAt >= ?");
+      params.push(since);
+    }
+    if (until) {
+      conditions.push("asm.createdAt <= ?");
+      params.push(until);
+    }
+    if (status === "failed") {
+      conditions.push(TOOL_FAILURE_SQL);
+    } else if (status === "success") {
+      conditions.push(`NOT ${TOOL_FAILURE_SQL}`);
+    }
+
+    const characterConditions = conditions.slice();
+    const characterParams = params.slice();
+
+    if (characterId) {
+      conditions.push("asm.characterId = ?");
+      params.push(characterId);
+    }
+
+    const where = "WHERE " + conditions.join(" AND ");
+    const totalRow = app.db
+      .prepare(`SELECT COUNT(*) AS total FROM agent_session_messages asm ${where}`)
+      .get(...params) as { total?: number } | undefined;
+    const total = Number(totalRow?.total ?? 0);
+
+    const rows = app.db
+      .prepare(
+        `SELECT asm.sessionId, asm.characterId, asm.townId, asm.seq, asm.createdAt, asm.message, asm.gameTime
+         FROM agent_session_messages asm
+         ${where}
+         ORDER BY asm.createdAt DESC, asm.sessionId DESC, asm.seq DESC
+         LIMIT ? OFFSET ?`,
+      )
+      .all(...params, pageSize, offset) as ToolCallDetailRow[];
+
+    const characterWhere = "WHERE " + characterConditions.join(" AND ");
+    const characterRows = app.db
+      .prepare(
+        `SELECT asm.townId, asm.characterId,
+                COUNT(*) AS totalCalls,
+                SUM(CASE WHEN ${TOOL_FAILURE_SQL} THEN 1 ELSE 0 END) AS errorCalls
+         FROM agent_session_messages asm
+         ${characterWhere}
+         GROUP BY asm.townId, asm.characterId
+         ORDER BY totalCalls DESC, asm.characterId ASC
+         LIMIT 500`,
+      )
+      .all(...characterParams) as Array<{
+        townId: string;
+        characterId: string;
+        totalCalls: number;
+        errorCalls: number | null;
+      }>;
+
+    const locale = getActiveLocale();
+    return {
+      tool,
+      status,
+      characterId: characterId ?? null,
+      page,
+      pageSize,
+      total,
+      hasPrev: page > 1,
+      hasNext: offset + rows.length < total,
+      characters: characterRows.map((row) => ({
+        townId: row.townId,
+        characterId: row.characterId,
+        displayName: translateCatalogName("npc", row.characterId, locale),
+        totalCalls: row.totalCalls,
+        errorCalls: row.errorCalls ?? 0,
+      })),
+      calls: rows.map((row) => {
+        const parsed = parseToolResultMessage(row.message);
+        const details = parsed.details && typeof parsed.details === "object"
+          ? parsed.details as Record<string, unknown>
+          : null;
+        const text = extractText(parsed.content);
+        const fallbackText = parsed.content !== undefined ? safeJsonText(parsed.content) : "";
+        const failed = isToolResultFailure(parsed);
+        return {
+          sessionId: row.sessionId,
+          characterId: row.characterId,
+          townId: row.townId,
+          displayName: translateCatalogName("npc", row.characterId, locale),
+          seq: row.seq,
+          createdAt: row.createdAt,
+          gameTime: parseJsonColumn<GameTimeSnapshot>(row.gameTime) ?? null,
+          toolName: toolNameOf(parsed),
+          toolCallId: toolCallIdOf(parsed),
+          failed,
+          status: stringValue(details?.status) ?? (failed ? "failed" : "ok"),
+          excerpt: normalizeExcerpt(text || fallbackText, CALL_EXCERPT_LEN) || "(empty)",
+        };
+      }),
+    };
+  });
 };
+
+function safeJsonText(value: unknown): string {
+  try {
+    return JSON.stringify(value);
+  } catch {
+    return String(value);
+  }
+}

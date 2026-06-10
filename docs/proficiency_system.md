@@ -126,12 +126,13 @@ gain_on_fail = -max(0, p - 70) / 60
 
 ---
 
-## 5. 技能轴（9 项）
+## 5. 技能轴
 
 | skill_id | 中文 | 涵盖 reactions |
 |---|---|---|
 | `mining` | 挖矿 | dig_iron / dig_silver / dig_gold |
-| `woodworking` | 木工（含砍伐与锯切）| chop_wood / carve_plank / carve_shaft |
+| `lumbering` | 伐木 | chop_wood |
+| `woodworking` | 木工 | carve_plank / carve_shaft |
 | `charcoal_making` | 烧炭 | kiln_burn |
 | `smelting` | 冶炼（含造币）| forge_smelt / forge_alloy / mint_gold_coin / mint_silver_coin |
 | `smithing` | 锻造 | anvil_blade / anvil_axe_head / anvil_pick_head |
@@ -157,7 +158,7 @@ gain_on_fail = -max(0, p - 70) / 60
 | dig_iron | iron_mine_workstation | mining | 15 |
 | dig_silver | silver_mine_workstation | mining | 20 |
 | dig_gold | gold_mine_workstation | mining | 30 |
-| chop_wood | lumberyard_workstation | woodworking | 25 |
+| chop_wood | lumberyard_workstation | lumbering | 25 |
 | carve_plank | workbench | woodworking | 20 |
 | carve_shaft | workbench | woodworking | 30 |
 | kiln_burn | charcoal_kiln | charcoal_making | 45 |

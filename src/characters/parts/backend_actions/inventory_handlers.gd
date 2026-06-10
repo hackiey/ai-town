@@ -1,10 +1,10 @@
 class_name InventoryHandlers
 extends RefCounted
 
-# use / drop / pick_up 三个 inventory verb 的无状态 handler。
+# use / drop 两个 inventory verb 的无状态 handler。
 # 签名统一 (character, action_request[, completion]) → Dictionary：
 #   - use_item 可能 deferred（duration>0 走 character.use_item_controller pending），需要 completion；
-#   - drop / pick_up 同步即返回，无 completion。
+#   - drop 同步即返回，无 completion。
 
 # 拾取半径不另设常量：逐个地面物品读它自己 SiteMarker 的可交互半径（与玩家同源，不分叉）。
 
@@ -37,8 +37,8 @@ static func run_use_item(character: Character, action_request: Dictionary, compl
 	return character.use_item_controller().start(action_request, slot_index, item.kind == "food", completion)
 
 
-# drop_item / pick_up：地面物品。target wire 同 actions.ts ItemTarget：{itemId, slotIndex?, quantity?}。
-# slotIndex 在 drop 用来定位多 stack 同物品里 LLM 真正想丢的那一格；pick_up_item 忽略。
+# drop_item：把背包物品放到地面。target wire 同 actions.ts ItemTarget：{itemId, slotIndex?, quantity?}。
+# slotIndex 在 drop 用来定位多 stack 同物品里 LLM 真正想丢的那一格。
 
 
 static func run_drop_item(character: Character, action_request: Dictionary) -> Dictionary:
@@ -78,64 +78,6 @@ static func run_drop_item(character: Character, action_request: Dictionary) -> D
 		"quantity": taken,
 	})
 	return {"ok": true, "result": {"itemId": item_id, "quantity": taken}}
-
-
-static func run_pick_up_item(character: Character, action_request: Dictionary) -> Dictionary:
-	var target: Variant = action_request.get("target", {})
-	if typeof(target) != TYPE_DICTIONARY:
-		_emit_pick_up_event(character, "", 0, "failure", "pick_up_item target must be object")
-		return {"ok": false, "message": "pick_up_item target must be object"}
-	var t: Dictionary = target as Dictionary
-	var item_id := str(t.get("itemId", "")).strip_edges()
-	if item_id.is_empty():
-		var err_missing := _msg("error.pick_up_item.missing_item_id")
-		_emit_pick_up_event(character, item_id, 0, "failure", err_missing)
-		return {"ok": false, "message": err_missing}
-	# 找各自拾取半径内、离我最近的同 item_id GroundItem（半径逐物品读其 SiteMarker）。
-	var nearest: GroundItem = null
-	var best_dist := INF
-	var char_pos: Vector3 = character.global_position
-	for n in character.get_tree().get_nodes_in_group("ground_items"):
-		if not (n is GroundItem):
-			continue
-		var gi: GroundItem = n
-		if gi.item_id != item_id:
-			continue
-		var d := char_pos.distance_to(gi.global_position)
-		if d <= SiteMarker.interaction_radius_of(gi) and d < best_dist:
-			best_dist = d
-			nearest = gi
-	if nearest == null:
-		var err_nearby := _fmt("error.pick_up_item.nearby_missing_format", [character.localize_item_name(item_id)])
-		_emit_pick_up_event(character, item_id, 0, "failure", err_nearby)
-		return {"ok": false, "message": err_nearby}
-	# 全有全无：用 receive_inventory_stacks 原子加，装不下时它会自己 rollback。
-	var qty := nearest.quantity()
-	var stack: Dictionary = nearest.slot_data.duplicate(true)
-	stack["quantity"] = qty
-	var stacks: Array[Dictionary] = [stack]
-	var recv := character.inventory_ops().receive_stacks(stacks)
-	if not bool(recv.get("ok", false)):
-		var err_full := str(recv.get("message", _msg("error.inventory.full")))
-		_emit_pick_up_event(character, item_id, qty, "failure", err_full)
-		return {"ok": false, "message": err_full}
-	Db.delete_ground_item(nearest.db_id)
-	nearest.queue_free()
-	_emit_pick_up_event(character, item_id, qty, "success", "")
-	return {"ok": true, "result": {"itemId": item_id, "quantity": qty}}
-
-
-static func _emit_pick_up_event(character: Character, item_id: String, quantity: int, outcome: String, error: String) -> void:
-	var data := {
-		"actorId": character.backend_character_id(),
-		"affectedCharacterIds": character.perception().voice_affected_character_ids("far"),
-		"itemId": item_id,
-		"quantity": quantity,
-		"outcome": outcome,
-	}
-	if not error.is_empty():
-		data["error"] = error
-	character.emit_world_event("pick_up_item", data)
 
 
 static func _msg(key: String) -> String:
