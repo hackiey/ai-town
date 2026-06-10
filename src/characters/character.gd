@@ -625,6 +625,10 @@ func refresh_statuses() -> void:
 	state_io().persist()
 
 
+func set_backend_thinking(active: bool, _reason: String = "", source: String = "") -> void:
+	head_status().set_thinking(active, source)
+
+
 # ─── Wallet (silver/gold currency) ────────────────────────────────────
 # 价格 / 余额都用 centi 整数；1 silver = 100 centi。
 # 显示层用 Money.format_silver_from_centi。LLM 看到的接口仍是 silver float。

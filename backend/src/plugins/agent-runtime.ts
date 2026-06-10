@@ -89,6 +89,7 @@ export const agentRuntimePlugin = fp(async (app) => {
           ctx.active,
           ctx.reason,
           ctx.agentKind,
+          ctx.source,
         );
       },
     });

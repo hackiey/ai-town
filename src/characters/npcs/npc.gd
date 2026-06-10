@@ -360,20 +360,24 @@ func _physics_process(delta: float) -> void:
 			var arrival_distance := w.active_arrival_distance(nav.target_desired_distance)
 
 			if to_target_xz.length() <= arrival_distance:
-				# 当前 corridor waypoint 到了；pop 后还有 → 切下一个，没了 → 真到达 final
-				var advance := w.advance_after_arrival()
-				if bool(advance.get("finished", false)):
+				if w.retarget_to_best_arrival_spot():
 					velocity.x = 0.0; velocity.z = 0.0
-					w.clear_final_distance()
-					var should_finish_backend := backend_actions().is_active() and not farm_actions().is_processing_op()
-					_enter_idle()
-					# 农事队列接管时不要 finish backend command —— queue tick 会进入 working。
-					# 其他走路动作交给 runner 判断：普通移动完成，内部靠近则继续原工具。
-					if should_finish_backend:
-						backend_actions().on_action_walk_finished()
 				else:
-					nav.set_target_position(advance["next_target"] as Vector3)
-					velocity.x = 0.0; velocity.z = 0.0
+					# 当前 corridor waypoint 到了；pop 后还有 → 切下一个，没了 → 真到达 final
+					var advance := w.advance_after_arrival()
+					if bool(advance.get("finished", false)):
+						velocity.x = 0.0; velocity.z = 0.0
+						w.face_arrival_center()
+						w.clear_final_distance()
+						var should_finish_backend := backend_actions().is_active() and not farm_actions().is_processing_op()
+						_enter_idle()
+						# 农事队列接管时不要 finish backend command —— queue tick 会进入 working。
+						# 其他走路动作交给 runner 判断：普通移动完成，内部靠近则继续原工具。
+						if should_finish_backend:
+							backend_actions().on_action_walk_finished()
+					else:
+						nav.set_target_position(advance["next_target"] as Vector3)
+						velocity.x = 0.0; velocity.z = 0.0
 			else:
 				# 距离 < 2m 进入"final approach"：直接瞄 target，忽略 path waypoint
 				# （末端 path 点可能偏离 target，造成方向反转）。

@@ -7,11 +7,10 @@ extends RefCounted
 # 边界：
 # - **5 个 @rpc 函数必须留在 Character Node**（Godot 限制：RefCounted 不能持 @rpc）。
 #   Character 端的 @rpc shim 只做 1 行转发：apply_remote_*。
-# - WorkstationActionRunner 现在调 `character.show_action_label_rpc.rpc(...)`，
-#   不变（RPC 入口 still on Character）。
+# - 外部动作通过 `character.head_status().push_override/clear_override` 改状态；
+#   RPC 入口 still on Character。
 # - 状态字段 + 渲染逻辑 + 文本 / 颜色都搬到这里。Character 留 facade
-#   （_push_action_label_override / _clear_action_label_override / set_backend_thinking
-#   / _sync_head_status）转发给 controller。
+#   （RPC shim / set_backend_thinking / sync_to_clients）转发给 controller。
 # - 发言优先；无发言时显示状态/动作/思考。状态气泡只显示 emoji/短标记。
 
 const _THINKING_BUBBLE_FRAMES := ["🤔", "🤔💭", "💭", "✨"]
@@ -35,6 +34,7 @@ var _speech_bubble_remaining: float = 0.0
 var _status_text: String = ""
 var _override_text: String = ""
 var _thinking: bool = false
+var _thinking_sources: Dictionary = {}
 var _thinking_frame: int = 0
 var _thinking_timer: float = 0.0
 var _status_sent_at_sec: float = -9999.0
@@ -92,9 +92,22 @@ func clear_override() -> void:
 	character.hide_action_label_rpc.rpc()
 
 
-func set_thinking(active: bool) -> void:
+func set_thinking(active: bool, source: String = "") -> void:
 	if not RunMode.is_runtime():
 		return
+	var source_key := source.strip_edges()
+	if not source_key.is_empty():
+		if active:
+			_thinking_sources[source_key] = true
+		else:
+			_thinking_sources.erase(source_key)
+		_set_thinking_active(not _thinking_sources.is_empty())
+		return
+	_thinking_sources = {}
+	_set_thinking_active(active)
+
+
+func _set_thinking_active(active: bool) -> void:
 	if _thinking == active:
 		return
 	_thinking = active
@@ -206,7 +219,7 @@ func _current_text(mode: String) -> String:
 				return ""
 			return str(_THINKING_BUBBLE_FRAMES[_thinking_frame % _THINKING_BUBBLE_FRAMES.size()])
 		"override":
-			return _work_emoji_for_text(_override_text)
+			return _override_display_text(_override_text)
 		"status":
 			return _status_display_text(_status_text)
 	return ""
@@ -237,6 +250,8 @@ func _work_emoji_for_text(text: String) -> String:
 	var normalized := text.strip_edges().to_lower()
 	if normalized.is_empty():
 		return ""
+	if _contains_any(normalized, ["炼金", "alchemy"]):
+		return "🧪"
 	if _contains_any(normalized, ["吃", "饭", "食物", "eat", "food"]):
 		return _EATING_STATUS_EMOJI
 	if _contains_any(normalized, ["浇水", "water", "well"]):
@@ -249,11 +264,33 @@ func _work_emoji_for_text(text: String) -> String:
 		return "🐛"
 	if _contains_any(normalized, ["铲除", "dig", "mine", "矿"]):
 		return "⛏️"
+	if _contains_any(normalized, ["伐木", "砍木", "chop", "lumber"]):
+		return "🪓"
+	if _contains_any(normalized, ["烘", "烤", "煮", "灶", "cook", "bake", "boil", "stove"]):
+		return "🍳"
+	if _contains_any(normalized, ["磨", "grind", "mill"]):
+		return "🌾"
+	if _contains_any(normalized, ["晾", "dry"]):
+		return "☀️"
 	if _contains_any(normalized, ["锻", "铁匠", "anvil", "forge", "hammer"]):
 		return "🔨"
 	if _contains_any(normalized, ["熔", "炉", "smelt", "furnace"]):
 		return "🔥"
 	return _WORKING_STATUS_EMOJI
+
+
+func _override_display_text(text: String) -> String:
+	var normalized := text.strip_edges()
+	if normalized.is_empty():
+		return ""
+	var emoji := _work_emoji_for_text(normalized)
+	if _is_workstation_label(normalized):
+		return "%s %s" % [emoji, normalized]
+	return emoji
+
+
+func _is_workstation_label(text: String) -> bool:
+	return text.find(" · ") >= 0 or text.find("·") >= 0
 
 
 func _contains_any(text: String, needles: Array[String]) -> bool:

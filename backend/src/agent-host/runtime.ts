@@ -138,7 +138,7 @@ export interface AgentRuntimeContext {
   actions(): AgentActionHost;
   sessions(): AgentSessionStore;
   thinkingTurns(): ThinkingTurnStore;
-  setThinkingStatus(active: boolean, reason: string, agentKind: AgentKind): Promise<void>;
+  setThinkingStatus(active: boolean, reason: string, agentKind: AgentKind, source?: string): Promise<void>;
 }
 
 export type AgentRuntimeFactory = (params: { name: string }) => AgentRuntime;

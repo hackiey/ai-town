@@ -27,7 +27,7 @@ export type AgentHostOptions = {
   recentEventRecords?: (ctx: { townId: string; characterId: string }, opts?: RecentEventRecordsOptions) => Promise<WorldEventRecord[]> | WorldEventRecord[];
   characterGroups?: (ctx: { townId: string; characterId: string }) => Promise<string[]> | string[];
   currentContext?: (ctx: { townId: string; characterId: string; manifest: PerceptionManifestPayload }) => Promise<AgentCurrentContext | null> | AgentCurrentContext | null;
-  setThinkingStatus?: (ctx: { runtimeName: string; townId: string; characterId: string; agentKind: AgentKind; active: boolean; reason: string }) => Promise<void> | void;
+  setThinkingStatus?: (ctx: { runtimeName: string; townId: string; characterId: string; agentKind: AgentKind; active: boolean; reason: string; source?: string }) => Promise<void> | void;
 };
 
 export class AgentHost {
@@ -45,7 +45,7 @@ export class AgentHost {
   private readonly recentEventRecordsFactory: (ctx: { townId: string; characterId: string }, opts?: RecentEventRecordsOptions) => Promise<WorldEventRecord[]> | WorldEventRecord[];
   private readonly characterGroupsFactory: (ctx: { townId: string; characterId: string }) => Promise<string[]> | string[];
   private readonly currentContextFactory: (ctx: { townId: string; characterId: string; manifest: PerceptionManifestPayload }) => Promise<AgentCurrentContext | null> | AgentCurrentContext | null;
-  private readonly thinkingStatus: (ctx: { runtimeName: string; townId: string; characterId: string; agentKind: AgentKind; active: boolean; reason: string }) => Promise<void> | void;
+  private readonly thinkingStatus: (ctx: { runtimeName: string; townId: string; characterId: string; agentKind: AgentKind; active: boolean; reason: string; source?: string }) => Promise<void> | void;
   private readonly contexts = new Map<string, AgentRuntimeContext>();
   private readonly fallbackStorage = new Map<string, RuntimeStorage>();
 
@@ -138,7 +138,7 @@ export class AgentHost {
       actions: () => this.actionHostFactory({ runtimeName, townId: this.townId, characterId }),
       sessions: () => this.sessionStore,
       thinkingTurns: () => this.thinkingTurnStore,
-      setThinkingStatus: (active, reason, agentKind) => Promise.resolve(this.thinkingStatus({ runtimeName, townId: this.townId, characterId, agentKind, active, reason })),
+      setThinkingStatus: (active, reason, agentKind, source) => Promise.resolve(this.thinkingStatus({ runtimeName, townId: this.townId, characterId, agentKind, active, reason, source })),
     };
   }
 

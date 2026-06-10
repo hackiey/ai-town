@@ -73,8 +73,8 @@ export function reasonForClassifications(classifications: EventClassification[])
   return classifications.some((c) => c.kind === "hard_interrupt") ? "interrupt" : "sensory";
 }
 
-// "先想再行动"事件：这类事件来时，runtime 会先 await 一轮 thinking 写完 working_memory，
-// 再让 action 轨开始 turn。之后两条轨道恢复各自节奏。
+// "先想再行动"事件：这类事件只触发 thinking 轨；thinking 写完 working_memory 后，
+// 再通过 working_memory 唤醒 action 轨，而不是把原事件作为 action trigger。
 // 选这里的标准：NPC 经历了一段较长的"意识中断"或"上下文剧变"，第一反应前需要重建认知。
 const THINK_FIRST_EVENT_TYPES = new Set<string>([
   WOKE_UP_EVENT,

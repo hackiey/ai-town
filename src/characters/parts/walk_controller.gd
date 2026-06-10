@@ -19,6 +19,10 @@ const _CORRIDOR_PLANNER := preload("res://src/world/location_corridor_planner.gd
 const STUCK_TIMEOUT := 1.5
 const STUCK_PROGRESS_MIN := 0.3
 const MAX_RECOVERY_TRIES := 4
+const ARRIVAL_SPREAD_MAX_ATTEMPTS := 3
+const ARRIVAL_SPREAD_RING_COUNT := 3
+const ARRIVAL_SPREAD_ANGLE_STEPS := 16
+const ARRIVAL_SPREAD_MIN_IMPROVEMENT := 0.12
 
 var character: Character
 
@@ -29,6 +33,9 @@ var _original_corridor: Array[Vector3] = []
 var _blacklist: PackedStringArray = PackedStringArray()
 var _planner: RefCounted = null
 var _final_arrival_distance: float = 0.0
+var _arrival_center: Vector3 = Vector3.ZERO
+var _arrival_radius: float = 0.0
+var _arrival_spread_attempts: int = 0
 var _stuck_timer: float = 0.0
 var _last_progress_pos: Vector3 = Vector3.ZERO
 
@@ -69,6 +76,9 @@ func plan_to_world_position(raw_target: Vector3, final_arrival_distance: float =
 	_blacklist = PackedStringArray()
 	_planner = planner
 	_final_arrival_distance = final_arrival_distance
+	_arrival_center = raw_target
+	_arrival_radius = final_arrival_distance
+	_arrival_spread_attempts = 0
 	_stuck_timer = 0.0
 	_last_progress_pos = character.global_position
 	nav.set_target_position(corridor[0])
@@ -156,6 +166,9 @@ func plan_to_world_position_or_direct(target: Vector3) -> void:
 	_blacklist = PackedStringArray()
 	_planner = planner
 	_final_arrival_distance = 0.0
+	_arrival_center = Vector3.ZERO
+	_arrival_radius = 0.0
+	_arrival_spread_attempts = 0
 	_stuck_timer = 0.0
 	_last_progress_pos = character.global_position
 
@@ -177,6 +190,9 @@ func plan_direct_to_world_position(raw_target: Vector3, final_arrival_distance: 
 	_blacklist = PackedStringArray()
 	_planner = null
 	_final_arrival_distance = final_arrival_distance
+	_arrival_center = target
+	_arrival_radius = final_arrival_distance
+	_arrival_spread_attempts = 0
 	_stuck_timer = 0.0
 	_last_progress_pos = character.global_position
 	nav.set_target_position(target)
@@ -189,6 +205,9 @@ func reset() -> void:
 	_blacklist = PackedStringArray()
 	_planner = null
 	_final_arrival_distance = 0.0
+	_arrival_center = Vector3.ZERO
+	_arrival_radius = 0.0
+	_arrival_spread_attempts = 0
 	_stuck_timer = 0.0
 	_last_progress_pos = character.global_position
 
@@ -203,6 +222,50 @@ func active_arrival_distance(default: float) -> float:
 	if _corridor.size() <= 1 and _final_arrival_distance > 0.0:
 		return _final_arrival_distance
 	return default
+
+
+# 最终到达 arrival 圈时，若圈附近已有其他 Character，改走圈内“离所有角色最近距离最大”的点。
+# 返回 true 表示已重设当前 nav target，本帧不要 finish action。
+func retarget_to_best_arrival_spot() -> bool:
+	if character.nav == null:
+		return false
+	if _corridor.size() > 1 or _arrival_radius <= 0.0:
+		return false
+	if _arrival_spread_attempts >= ARRIVAL_SPREAD_MAX_ATTEMPTS:
+		return false
+	var positions := _arrival_character_positions()
+	var other_positions: Array = positions.get("all", [])
+	if other_positions.is_empty() or not bool(positions.get("has_relevant", false)):
+		return false
+	var current_score := _arrival_spread_score(character.global_position, other_positions)
+	var best := _best_arrival_spot(other_positions, current_score)
+	if best.is_empty():
+		return false
+	var best_score := float(best.get("score", current_score))
+	var current_distance := sqrt(maxf(current_score, 0.0))
+	var best_distance := sqrt(maxf(best_score, 0.0))
+	if best_distance <= current_distance + ARRIVAL_SPREAD_MIN_IMPROVEMENT:
+		return false
+	var target: Vector3 = best["position"]
+	if _xz_distance_sq(character.global_position, target) <= _spread_stop_distance() * _spread_stop_distance():
+		return false
+	_corridor = [target]
+	_original_corridor = [target]
+	_final_arrival_distance = _spread_stop_distance()
+	_arrival_spread_attempts += 1
+	mark_progress(character.global_position)
+	character.nav.set_target_position(target)
+	return true
+
+
+func face_arrival_center() -> void:
+	if _arrival_radius <= 0.0:
+		return
+	var to_center := _arrival_center - character.global_position
+	var to_center_xz := Vector2(to_center.x, to_center.z)
+	if to_center_xz.length() <= 0.05:
+		return
+	character.rotation.y = atan2(to_center_xz.x, to_center_xz.y)
 
 
 # 走到当前 waypoint 之后调：pop 首项，返回 { finished, next_target }。
@@ -223,6 +286,9 @@ func advance_after_arrival() -> Dictionary:
 
 func clear_final_distance() -> void:
 	_final_arrival_distance = 0.0
+	_arrival_center = Vector3.ZERO
+	_arrival_radius = 0.0
+	_arrival_spread_attempts = 0
 
 
 # 进度跟踪：每帧 walking 状态下调，累计 STUCK_TIMEOUT 内位移 < STUCK_PROGRESS_MIN
@@ -270,6 +336,103 @@ func _path_length(from: Vector3, to: Vector3) -> float:
 	for i in range(1, path.size()):
 		total += path[i - 1].distance_to(path[i])
 	return total
+
+
+func _arrival_character_positions() -> Dictionary:
+	var all: Array = []
+	var has_relevant := false
+	var tree := character.get_tree()
+	if tree == null:
+		return {"all": all, "has_relevant": false}
+	var relevant_radius := _arrival_radius + _arrival_character_spacing()
+	var relevant_radius_sq := relevant_radius * relevant_radius
+	for group_name in ["npcs", "players"]:
+		for node in tree.get_nodes_in_group(group_name):
+			if node == character or not node is Character:
+				continue
+			var other := node as Character
+			if not is_instance_valid(other):
+				continue
+			var pos := other.global_position
+			all.append(pos)
+			if _xz_distance_sq(pos, _arrival_center) <= relevant_radius_sq:
+				has_relevant = true
+	return {"all": all, "has_relevant": has_relevant}
+
+
+func _best_arrival_spot(other_positions: Array, current_score: float) -> Dictionary:
+	var best_position := character.global_position
+	var best_score := current_score
+	var angle_offset := _arrival_angle_offset()
+	for ring_index in range(1, ARRIVAL_SPREAD_RING_COUNT + 1):
+		var ring_radius := _arrival_radius * float(ring_index) / float(ARRIVAL_SPREAD_RING_COUNT)
+		for step_index in range(ARRIVAL_SPREAD_ANGLE_STEPS):
+			var angle := angle_offset + TAU * float(step_index) / float(ARRIVAL_SPREAD_ANGLE_STEPS)
+			var raw := _arrival_center + Vector3(sin(angle) * ring_radius, 0.0, cos(angle) * ring_radius)
+			var candidate := _snap_to_nav(raw)
+			if _xz_distance_sq(candidate, _arrival_center) > (_arrival_radius * _arrival_radius) + 0.01:
+				continue
+			if not _arrival_candidate_reachable(candidate):
+				continue
+			var score := _arrival_spread_score(candidate, other_positions)
+			if score > best_score:
+				best_score = score
+				best_position = candidate
+	if best_position == character.global_position:
+		return {}
+	return {"position": best_position, "score": best_score}
+
+
+func _arrival_spread_score(candidate: Vector3, other_positions: Array) -> float:
+	var nearest_sq := INF
+	for pos_v in other_positions:
+		var pos := pos_v as Vector3
+		nearest_sq = minf(nearest_sq, _xz_distance_sq(candidate, pos))
+	return nearest_sq
+
+
+func _arrival_candidate_reachable(candidate: Vector3) -> bool:
+	var stop_distance := _spread_stop_distance()
+	if _xz_distance_sq(character.global_position, candidate) <= stop_distance * stop_distance:
+		return true
+	return _path_length(character.global_position, candidate) > 0.0
+
+
+func _snap_to_nav(pos: Vector3) -> Vector3:
+	var nav: NavigationAgent3D = character.nav
+	if nav == null:
+		return pos
+	var map_rid := nav.get_navigation_map()
+	if not map_rid.is_valid():
+		return pos
+	return NavigationServer3D.map_get_closest_point(map_rid, pos)
+
+
+func _spread_stop_distance() -> float:
+	var nav: NavigationAgent3D = character.nav
+	var nav_radius := nav.radius if nav != null else 0.25
+	var default_stop := nav.target_desired_distance if nav != null else 0.6
+	return minf(default_stop, maxf(0.25, nav_radius * 1.5))
+
+
+func _arrival_character_spacing() -> float:
+	var nav: NavigationAgent3D = character.nav
+	var nav_radius := nav.radius if nav != null else 0.25
+	return maxf(0.75, nav_radius * 4.0)
+
+
+func _arrival_angle_offset() -> float:
+	var seed_text := character.backend_character_id().strip_edges()
+	if seed_text.is_empty():
+		seed_text = String(character.name)
+	var seed: int = int(abs(hash(seed_text))) % 100000
+	return TAU * float(seed) / 100000.0
+
+
+func _xz_distance_sq(a: Vector3, b: Vector3) -> float:
+	var dx := a.x - b.x
+	var dz := a.z - b.z
+	return dx * dx + dz * dz
 
 
 # 数据 getter（NPC / Player physics 读）

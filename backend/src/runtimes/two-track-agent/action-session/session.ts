@@ -231,8 +231,10 @@ export class ActionTrackSession {
       sessionId: `${options.agentKind}:${options.townId}:${options.characterId}`,
       getApiKey: (provider) => resolveAgentProviderApiKey(options.config, provider),
       onPayload: () => {
+        void this.setPublicThinkingStatus(true);
         // tools 是 createTwoTrackAgentTools 按 currentContext 动态生成的，每轮可能不同；
-        // onPayload 在 LLM 请求实际发出前命中，抓快照随 assistant message 落库。
+        // onPayload 在 LLM 请求实际发出前命中，抓快照随 assistant message 落库，
+        // 同时点亮头顶 thinking 覆盖首 token 前的等待窗口。
         this.currentToolsSnapshot = snapshotAgentTools(this.agent.state.tools);
         return undefined;
       },
@@ -702,9 +704,6 @@ export class ActionTrackSession {
   // --- Agent 事件 ---
 
   private onAgentEvent(event: AgentEvent): void {
-    if (event.type === "message_start" && isAssistantMessage(event.message)) {
-      void this.setPublicThinkingStatus(true);
-    }
     if (event.type === "message_end" && isAssistantMessage(event.message)) {
       void this.setPublicThinkingStatus(false);
     }
@@ -731,6 +730,7 @@ export class ActionTrackSession {
       this.persistence.enqueueMessage(event.message, snapshot);
     }
     if (event.type === "tool_execution_start") {
+      void this.setPublicThinkingStatus(false);
       // sequential 模式（agent 构造 toolExecution: "sequential"）下 0↔1 摆动，
       // 同 message 多 tool 时按 emit 顺序串行 start/end，计数永不超过 1。
       this.activeToolExecutions += 1;
@@ -815,26 +815,12 @@ export class ActionTrackSession {
   }
 
   private appendPendingEvent(event: WorldEventRecord): void {
-    // think-first 路径会先 stash 一份再走正常 onEvent —— 防重入造成历史里同 id 出现两次。
+    // 同一事件可能被上游重复派发或在同一 turn 内多路径汇入，按 id 防止重复展示。
     if (this.pendingEvents.some((existing) => existing.id === event.id)) return;
     this.pendingEvents.push(event);
     if (this.pendingEvents.length > PENDING_EVENTS_CAP) {
       this.pendingEvents.splice(0, this.pendingEvents.length - PENDING_EVENTS_CAP);
     }
-  }
-
-  // think-first 路径用：把事件先塞进历史，但不分类、不入 reason 队列、不触发 turn。
-  // 调用方接着 await thinking，再走 onEvent —— 那时 appendPendingEvent 会按 id dedup。
-  async appendEventToHistoryOnly(event: WorldEventRecord): Promise<void> {
-    this.observeGameTime(event.gameTime);
-    if (isSelfAuthoredSensoryEvent(event, this.options.characterId)) return;
-    const relevant = isEventRelevantToCharacter(event, this.options.characterId);
-    const globalAmbient = isGlobalAmbientEvent(event);
-    if (!relevant && !globalAmbient) return;
-    // 与 onEvent 一致：ignored 的事件不进 pendingEvents。
-    if (this.options.agentKind === "npc"
-      && classifyEventForCharacter(event, this.options.characterId).kind === "ignored") return;
-    this.appendPendingEvent(event);
   }
 
   // --- 公共状态发布 ---
@@ -848,7 +834,7 @@ export class ActionTrackSession {
 
   private async publishThinkingStatus(active: boolean, reason: string): Promise<void> {
     try {
-      await this.options.ctx.setThinkingStatus(active, reason, this.options.agentKind);
+      await this.options.ctx.setThinkingStatus(active, reason, this.options.agentKind, "action-track");
     } catch (error) {
       this.options.logger?.warn({
         error,

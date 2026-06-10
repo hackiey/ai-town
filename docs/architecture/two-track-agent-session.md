@@ -15,7 +15,7 @@
 - **想"做什么"**：thinking 轨定时（默认每 15 游戏分钟）+ 关键事件触发，跑一次带 reasoning 的 LLM call，输出一段中文 working memory
 - **执行**：action 轨通常关 thinking，每次 LLM call 入口读最新 working memory 注入 user prompt，立刻产出 tool call
 
-两条 session 完全独立，没有 cross-track 锁。Action 轨只做轻量调度：事件先进入 pendingEvents；若当前正在等慢工具，release backend 等待但不取消 Godot 本体动作；若正在流式输出，abort 当前 call，下一轮重装 context。
+两条 session 完全独立，没有 cross-track 锁。Action 轨只做轻量调度：普通事件先进入 pendingEvents；若当前正在等慢工具，release backend 等待但不取消 Godot 本体动作；若正在流式输出，abort 当前 call，下一轮重装 context。
 
 ## 2. Design
 
@@ -102,9 +102,8 @@ event 到达
 isPlayerCommandEvent → session("player").onPlayerCommand → 入 reason 队列 "player_command"，启动 runTurnLoop
   ↓ 否则
 isThinkFirstEvent(event) → 路径 A："先想再行动"
-  ├─ await session(npc).appendEventToHistoryOnly(event)  // 把事件先放进 pendingEvents，不触发 turn
-  ├─ await thinkingSession.runThinkBlocking(...)         // 同步等 thinking 写完
-  └─ await session(npc).onEvent(event)                   // 此时 turn 入口读到的是最新 working_memory
+  ├─ await thinkingSession.runThinkBlocking(...)         // 同步等 thinking 写完 working_memory
+  └─ return                                              // 不把原事件投给 action；working_memory 写入回调会唤醒 action
   ↓ 否则
 session(npc).onEvent(event)
   ↓
@@ -116,7 +115,7 @@ session(npc).onEvent(event)
 若 isSignificantForThinking(event) → 异步 void thinkingSession.requestThink(...)  // 不阻 action
 ```
 
-**路径 A（think-first）**：当前只有 `woke_up`。角色刚醒，意识断了一整觉，第一反应前必须重建认知——blocking 等 thinking 写好 working_memory，action 才看得到"我醒了，今天打算做什么"。
+**路径 A（think-first）**：当前只有 `woke_up`。角色刚醒，意识断了一整觉，第一反应前必须重建认知——blocking 等 thinking 写好 working_memory；action 由 `working_memory` 唤醒，不再由旧的 `woke_up` 事件直接触发。
 
 **路径 B（significant for thinking）**：`spoken_to_directly` / 交易提议事件 / player 喊话 / always-interrupting 事件——异步触发 thinking 提前重写 working_memory；action 不等它，按自己节奏跑。下次 action turn 入口才会用上更新后的 brief。
 
@@ -209,15 +208,15 @@ Thinking 轨 **不入** `agent_sessions`——每次 turn 重建 Agent，无需 
             ▼             ▼                          ▼
        player_cmd    isThinkFirstEvent           其它事件
             │             │                          │
-            │       appendEventToHistoryOnly         │
-            │             │                          │
             │       await thinkingSession            │
             │       .runThinkBlocking                │
             │             │                          │
+            │       write working_memory             │
+            │             │                          │
             ▼             ▼                          ▼
-   session.onPlayerCommand    session.onEvent(event) ──┐
-            │                          │               │
-            └──── pendingReasons ──────┴───────────────┘
+   session.onPlayerCommand enqueueWorkingMemoryTurn  session.onEvent(event)
+            │             │                          │
+            └──── pendingReasons ────────────────────┘
                           │
                           ▼
                   runTurnLoop (serial)
@@ -261,7 +260,7 @@ backend/src/runtimes/two-track-agent/
 **Action 轨 turn 进入点**（`session.ts`）：
 - `onEvent(event)` — 普通事件
 - `onPlayerCommand(event)` — 玩家命令直触发 turn
-- `appendEventToHistoryOnly(event)` — think-first 用：仅放进 pendingEvents（按 id dedup 防重入）
+- `enqueueWorkingMemoryTurn()` — thinking 写完 working_memory 后的兜底唤醒
 - `thinkIfGameTimeDue(_, gameTime)` — game time tick：仅 `observeGameTime`，不做 idle 思考
 - `onContinuedActionNoticeQueued()` — 后台 detached action terminal → push action_notice reason
 

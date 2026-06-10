@@ -60,6 +60,7 @@ export type CharacterStatusPayload = {
   active?: boolean;
   reason?: string;
   agentKind?: "npc" | "player" | "god";
+  source?: string;
 };
 
 export type ActionAckPayload = {

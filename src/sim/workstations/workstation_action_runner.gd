@@ -251,7 +251,7 @@ func start_from_action(action_request: Dictionary) -> String:
 			"broken_tools": [],
 		}, true)
 	character.set("anim_state", "working")
-	character.show_action_label_rpc.rpc("%s…" % label)
+	character.head_status().push_override("%s…" % label)
 	_report_progress()
 	if duration <= 0.0:
 		_commit_active()
@@ -271,7 +271,7 @@ func cancel(reason: String = "cancelled") -> Dictionary:
 	_active = {}
 	_release_workstation_from_active(active)
 	Db.clear_character_activity(character.backend_character_id())
-	character.hide_action_label_rpc.rpc()
+	character.head_status().clear_override()
 	character.set("anim_state", "idle")
 	character.perception().send_manifest()
 	return {
@@ -466,7 +466,7 @@ func _finish_active_mining(interrupted: bool, reason: String, notify_completion:
 	_active = {}
 	_release_workstation_from_active(active)
 	Db.clear_character_activity(character.backend_character_id())
-	character.hide_action_label_rpc.rpc()
+	character.head_status().clear_override()
 	character.set("anim_state", "idle")
 	var summary := _build_mining_summary(active, interrupted, reason)
 	_send_world_event(summary)
@@ -559,7 +559,7 @@ func _commit_active() -> void:
 	_active = {}
 	_release_workstation_from_active(active)
 	Db.clear_character_activity(character.backend_character_id())
-	character.hide_action_label_rpc.rpc()
+	character.head_status().clear_override()
 	character.set("anim_state", "idle")
 	var result: Dictionary = active.get("result", {})
 

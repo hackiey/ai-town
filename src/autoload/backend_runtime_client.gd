@@ -321,10 +321,17 @@ func _accept_agent_host_if_available() -> void:
 func _reset_socket() -> void:
 	_was_open = false
 	if _accepted:
+		_clear_all_backend_thinking()
 		_accepted = false
 		runtime_disconnected.emit()
 	_has_socket = false
 	_socket = WebSocketPeer.new()
+
+
+func _clear_all_backend_thinking() -> void:
+	for character in _characters_by_id.values():
+		if character is Node and character.has_method("set_backend_thinking"):
+			character.call("set_backend_thinking", false, "runtime_disconnected")
 
 
 func _drain_messages() -> void:
@@ -510,7 +517,12 @@ func _apply_agent_thinking(msg: Dictionary) -> void:
 		return
 	var status: String = str(payload.get("status", ""))
 	if status == "thinking" and character.has_method("set_backend_thinking"):
-		character.call("set_backend_thinking", bool(payload.get("active", false)), str(payload.get("reason", "")))
+		character.call(
+			"set_backend_thinking",
+			bool(payload.get("active", false)),
+			str(payload.get("reason", "")),
+			str(payload.get("source", ""))
+		)
 
 
 func _cancel_action(msg: Dictionary) -> void:

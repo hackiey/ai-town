@@ -198,6 +198,20 @@ export class ThinkingTrackSession {
     this.currentAgent?.abort();
   }
 
+  private async publishThinkingStatus(active: boolean, reason: string): Promise<void> {
+    try {
+      await this.options.ctx.setThinkingStatus(active, reason, "npc", "thinking-track");
+    } catch (error) {
+      this.options.logger?.warn({
+        error,
+        townId: this.options.townId,
+        characterId: this.options.characterId,
+        active,
+        reason,
+      }, "failed to publish thinking-track status");
+    }
+  }
+
   private async runOnce(reason: string): Promise<void> {
     const current = await this.currentContextFromHost();
     if (!current) {
@@ -311,10 +325,13 @@ export class ThinkingTrackSession {
     }, `[thinking-track] start reason=${reason}`);
 
     let runError: unknown;
+    await this.publishThinkingStatus(true, reason);
     try {
       await agent.prompt(userPrompt);
     } catch (error) {
       runError = error;
+    } finally {
+      await this.publishThinkingStatus(false, reason);
     }
 
     const endGameTime = this.latestObservedGameTime;

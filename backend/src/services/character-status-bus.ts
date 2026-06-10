@@ -27,14 +27,17 @@ export function publishThinkingStatusToBus(
   active: boolean,
   reason: string,
   agentKind: "npc" | "player" | "god",
+  source = "",
 ): number {
-  return publishCharacterStatusToBus(bus, townId, {
+  const payload: CharacterStatusPayload = {
     characterId,
     status: "thinking",
     active,
     reason,
     agentKind,
-  });
+  };
+  if (source) payload.source = source;
+  return publishCharacterStatusToBus(bus, townId, payload);
 }
 
 export function parseCharacterStatusBusPayload(raw: unknown): CharacterStatusPayload {
@@ -59,11 +62,15 @@ export function parseCharacterStatusBusPayload(raw: unknown): CharacterStatusPay
   ) {
     throw new Error("character status bus payload has invalid agentKind");
   }
+  if (payload.source !== undefined && typeof payload.source !== "string") {
+    throw new Error("character status bus payload has invalid source");
+  }
   return {
     characterId: payload.characterId,
     status: "thinking",
     active: payload.active,
     reason: payload.reason,
     agentKind: payload.agentKind,
+    source: payload.source,
   };
 }

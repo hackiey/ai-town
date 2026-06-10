@@ -139,13 +139,11 @@ export class PiAgentRuntime {
 
     const kind = this.resolveAgentKind(characterId);
 
-    // "先想再行动"路径：把事件先放进 pendingEvents（不触发 turn），await thinking 写完
-    // working_memory，再走正常 onEvent —— 那次 turn 入口就能读到刚写的 brief。
-    // 此后两条轨道恢复各自节奏（thinking 的 15-min tick / action 的事件触发）。
+    // "先想再行动"路径：事件只触发 thinking 轨；thinking 写完 working_memory 后会通过
+    // onWorkingMemoryWritten 踢 action 轨一轮。不要再把同一个事件投给 action 轨，避免
+    // woke_up 这种旧事件在 thinking 结束后变成迟到的 action interrupt。
     if (kind === "npc" && isThinkFirstEvent(event)) {
-      await this.session(ctx, kind).appendEventToHistoryOnly(event);
       await this.thinkingSession(ctx).runThinkBlocking(`event:${event.type}:think-first`);
-      await this.session(ctx, kind).onEvent(event);
       return;
     }
 
