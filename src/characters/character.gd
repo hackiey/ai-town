@@ -21,6 +21,7 @@ const _FARM_ACTION_RUNNER := preload("res://src/characters/parts/farm_action_run
 const _BACKEND_ACTION_RUNNER := preload("res://src/characters/parts/backend_action_runner.gd")
 const _WATER_DRAW_RUNNER := preload("res://src/characters/parts/water_draw_runner.gd")
 const _TRADE_RUNNER := preload("res://src/characters/parts/trade_runner.gd")
+const _HUSBANDRY_RUNNER := preload("res://src/characters/parts/husbandry_runner.gd")
 const _SLEEP_CONTROLLER := preload("res://src/characters/parts/sleep_controller.gd")
 const _USE_ITEM_CONTROLLER := preload("res://src/characters/parts/use_item_controller.gd")
 const _CHARACTER_STATE_IO := preload("res://src/characters/parts/character_state_io.gd")
@@ -165,6 +166,7 @@ var _backend_runner: BackendActionRunner = null
 var _water_draw_runner = null
 var _head_status_runner: HeadStatusController = null
 var _trade_runner_inst: TradeRunner = null
+var _husbandry_runner_inst: HusbandryRunner = null
 var _sleep_controller_inst: SleepController = null
 var _use_item_controller_inst: UseItemController = null
 var _state_io_inst: CharacterStateIO = null
@@ -254,6 +256,12 @@ func trade_runner() -> TradeRunner:
 	if _trade_runner_inst == null:
 		_trade_runner_inst = _TRADE_RUNNER.new(self)
 	return _trade_runner_inst
+
+
+func husbandry() -> HusbandryRunner:
+	if _husbandry_runner_inst == null:
+		_husbandry_runner_inst = _HUSBANDRY_RUNNER.new(self)
+	return _husbandry_runner_inst
 
 
 func sleep_controller() -> SleepController:

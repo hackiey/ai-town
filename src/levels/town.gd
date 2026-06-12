@@ -26,6 +26,7 @@ const FIELD_STATUS_BUBBLE_LAYER_SCRIPT := preload("res://src/ui/farm/field_statu
 const NPC_HOVER_STATUS_SCRIPT := preload("res://src/ui/hud/npc_hover_status.gd")
 const GROUND_ITEM_HOVER_STATUS_SCRIPT := preload("res://src/ui/hud/ground_item_hover_status.gd")
 const NPC_CONTEXT_MENU_SCRIPT := preload("res://src/ui/hud/npc_context_menu.gd")
+const ANIMAL_CONTEXT_MENU_SCRIPT := preload("res://src/ui/hud/animal_context_menu.gd")
 const AI_TAKEOVER_PANEL_SCRIPT := preload("res://src/ui/hud/ai_takeover_panel.gd")
 const TRADE_PANEL_SCRIPT := preload("res://src/ui/trade/trade_panel.gd")
 const INCOMING_TRADE_PANEL_SCRIPT := preload("res://src/ui/trade/incoming_trade_panel.gd")
@@ -39,6 +40,7 @@ const INTERACTION_CONTROLLER_SCRIPT := preload("res://src/ui/hud/interaction_con
 @onready var _player_spawn: Marker3D = $PlayerSpawn
 @onready var _crop_spawner: MultiplayerSpawner = $CropSpawner
 @onready var _crops_root: Node3D = $Crops
+@onready var _animal_spawner: MultiplayerSpawner = $AnimalSpawner
 @onready var _camera_rig: CameraRig = $CameraRig if has_node("CameraRig") else null
 
 var _peer: ENetMultiplayerPeer
@@ -64,6 +66,7 @@ var _field_status_bubble_layer: CanvasLayer = null
 var _npc_hover_status: CanvasLayer = null
 var _ground_item_hover_status: GroundItemHoverStatus = null
 var _npc_context_menu: Node = null
+var _animal_context_menu: Node = null
 var _trade_panel: Node = null
 var _incoming_trade_panel: Node = null
 var _farm_proximity_active: Node = null  # client：当前最近 FarmGroup（≤ FARM_PROXIMITY_RADIUS）
@@ -81,6 +84,7 @@ func _ready() -> void:
 	# （后者要等额外一轮同步）。
 	_player_spawner.spawn_function = _spawn_player_from_data
 	_crop_spawner.spawn_function = Crop.from_spawn_data
+	_animal_spawner.spawn_function = Animal.from_spawn_data  # Phase 2 繁殖出生用；scene-placed 动物不走这
 	$GroundItemSpawner.spawn_function = GroundItem.from_spawn_data
 
 	if RunMode.is_runtime():
@@ -116,6 +120,9 @@ func _init_runtime() -> void:
 	_hydrate_persisted_crops()
 	# Hydrate 地面物品（item_instances ownerKind='world'）→ 重启后掉在地上的东西仍在原位。
 	_hydrate_persisted_ground_items()
+	# Hydrate 繁殖出生的畜牧动物（animal_instances）。scene 预放的 founder 已在自己
+	# _ready 里 take_animal_instance 消费掉对应行，这里只 spawn 剩下的出生动物。
+	_hydrate_persisted_animals()
 
 
 # 从 Db.all_farm_plots() 取所有有作物的 plot，按 farm_id 找到 FarmGroup，按 plot_index
@@ -149,6 +156,28 @@ func _hydrate_persisted_crops() -> void:
 			if crop == null:
 				continue
 			crop.apply_persisted_state(fields)
+
+
+# 从 Db.all_animal_instances() 取上次存档、繁殖出生的畜牧动物，用 AnimalSpawner spawn 回来。
+# founder（scene 预放）不在此列——它们在自己 _ready 里 take_animal_instance 已消费对应行。
+func _hydrate_persisted_animals() -> void:
+	var all_animals := Db.all_animal_instances()
+	if all_animals.is_empty():
+		return
+	for animal_id in all_animals.keys():
+		var fields: Dictionary = all_animals[animal_id]
+		var species := str(fields.get("animalDefId", ""))
+		if species.is_empty() or not AnimalSpecies.has(species):
+			continue
+		var pos := Vector3(
+			float(fields.get("posX", 0.0)),
+			float(fields.get("posY", 0.0)),
+			float(fields.get("posZ", 0.0)),
+		)
+		var animal := Animal.spawn(_animal_spawner, species, pos, str(animal_id))
+		if animal == null:
+			continue
+		animal.apply_persisted_state(fields)
 
 
 # 从 Db.all_ground_items() 取所有 ownerKind='world' 的 item_instances，调 spawner
@@ -224,6 +253,12 @@ func _init_client() -> void:
 	add_child(_npc_context_menu)
 	_npc_context_menu.talk_selected.connect(_on_npc_talk_selected)
 	_npc_context_menu.trade_selected.connect(_on_npc_trade_selected)
+
+	# 动物右键菜单（喂养 / 宰杀）。只对畜牧动物弹（AnimalContextMenu 内部判 is_livestock）。
+	_animal_context_menu = ANIMAL_CONTEXT_MENU_SCRIPT.new()
+	add_child(_animal_context_menu)
+	_animal_context_menu.feed_selected.connect(_on_animal_feed_selected)
+	_animal_context_menu.slaughter_selected.connect(_on_animal_slaughter_selected)
 
 	# HUD：聊天输入框。CanvasLayer 不参与 3D / multiplayer，本地挂上即可。
 	_chat_bar = CHAT_BAR_SCENE.instantiate()
@@ -794,6 +829,48 @@ func _walk_player_near(npc: Node, standoff: float = 1.4) -> void:
 	dir.y = 0.0
 	var step := dir.normalized() if dir.length() > 0.01 else Vector3.FORWARD
 	_local_player.request_move_to.rpc_id(1, to + step * standoff, {})
+
+
+# 动物菜单：走近后调玩家 request_husbandry RPC（server 端按交互半径再 fail-closed 校验）。
+func _on_animal_feed_selected(animal: Node) -> void:
+	_approach_and_husbandry(animal, "feed")
+
+
+func _on_animal_slaughter_selected(animal: Node) -> void:
+	_approach_and_husbandry(animal, "slaughter")
+
+
+func _approach_and_husbandry(animal: Node, verb: String) -> void:
+	if _local_player == null or animal == null or not is_instance_valid(animal):
+		return
+	if not _local_player.has_method("request_husbandry"):
+		return
+	var animal_id := str(animal.get("animal_id"))
+	if animal_id.is_empty():
+		_notify("该动物无 id，无法操作", "warn")
+		return
+	var reach := SiteMarker.interaction_radius_of(animal)
+	if _player_within(animal, reach):
+		_local_player.request_husbandry.rpc_id(1, verb, animal_id)
+		return
+	# 走近（停在交互半径内一点），到位后再发。
+	_walk_player_near(animal, maxf(1.0, reach - 0.8))
+	var waited := 0.0
+	while waited < 12.0:
+		await get_tree().physics_frame
+		if not is_instance_valid(animal) or _local_player == null:
+			return
+		if _player_within(animal, reach):
+			_local_player.request_husbandry.rpc_id(1, verb, animal_id)
+			return
+		waited += get_physics_process_delta_time()
+	_notify("没能走到动物旁边", "warn")
+
+
+func _player_within(animal: Node, reach: float) -> bool:
+	if not (_local_player is Node3D) or not (animal is Node3D):
+		return false
+	return (_local_player as Node3D).global_position.distance_to((animal as Node3D).global_position) <= reach
 
 
 # Server 和 client 都执行；owner_peer_id / character_id 走 data 在两端立刻可用。

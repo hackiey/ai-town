@@ -265,6 +265,20 @@ const _GAME_WORLD_SCHEMA: Array[String] = [
 		PRIMARY KEY (townId, farmId, plotIndex)
 	)""",
 	"CREATE INDEX IF NOT EXISTS idx_farm_plots_town_farm ON farm_plots (townId, farmId)",
+	"""CREATE TABLE IF NOT EXISTS animal_instances (
+		townId TEXT NOT NULL,
+		animalId TEXT NOT NULL,
+		animalDefId TEXT NOT NULL,
+		posX REAL, posY REAL, posZ REAL,
+		spawnedAtGameHour INTEGER,
+		fed REAL,
+		pregnantUntilHour INTEGER,
+		lastBredHour INTEGER,
+		alive INTEGER NOT NULL DEFAULT 1,
+		updatedAt TEXT NOT NULL,
+		PRIMARY KEY (townId, animalId)
+	)""",
+	"CREATE INDEX IF NOT EXISTS idx_animal_instances_town ON animal_instances (townId)",
 
 	# mine_state: 每个矿场一行。
 	# currentP 是每次挥镐固定的产出概率，由 Mines autoload 按 mine 类型种入。
@@ -494,6 +508,7 @@ var _inventory_cache: Dictionary = {}               # characterId -> Dictionary{
 var _container_inventory_cache: Dictionary = {}      # containerId -> Dictionary{slotIndex: slot dict}
 var _farm_states_cache: Dictionary = {}             # farmId -> Dictionary
 var _farm_plots_cache: Dictionary = {}              # farmId -> Dictionary{plotIndex: row dict}
+var _animal_instances_cache: Dictionary = {}        # animalId -> Dictionary（畜牧动物持久状态）
 
 
 func _ready() -> void:
@@ -1813,6 +1828,55 @@ func clear_farm_plot(farm_id: String, plot_index: int) -> void:
 		push_warning("[Db] clear_farm_plot failed: %s" % _db.error_message)
 
 
+# ─── Public API: animal_instances（畜牧动物，Phase 2）─────────────────
+# 整表 dump（{animalId: row}）。town hydrate 阶段重建上次存档的繁殖出生动物。
+# scene 预放的 founder 在自己 _ready 里 take_animal_instance 消费掉，不会被重复 spawn。
+func all_animal_instances() -> Dictionary:
+	return _animal_instances_cache.duplicate(true)
+
+
+# 取并消费一行（founder _ready / 出生动物 _ready 调）。空 dict = 首次出现。
+func take_animal_instance(animal_id: String) -> Dictionary:
+	if animal_id.is_empty():
+		return {}
+	var row: Variant = _animal_instances_cache.get(animal_id, null)
+	if row == null:
+		return {}
+	_animal_instances_cache.erase(animal_id)
+	return row as Dictionary
+
+
+# 用 (townId, animalId) UPSERT 一头动物的持久状态。
+func save_animal_instance(animal_id: String, fields: Dictionary) -> void:
+	if _db == null or animal_id.is_empty():
+		return
+	var now := Time.get_datetime_string_from_system(true)
+	var sql := "INSERT INTO animal_instances (townId, animalId, animalDefId, posX, posY, posZ, spawnedAtGameHour, fed, pregnantUntilHour, lastBredHour, alive, updatedAt) VALUES ('%s', '%s', '%s', %f, %f, %f, %d, %f, %d, %d, %d, '%s') ON CONFLICT(townId, animalId) DO UPDATE SET animalDefId = excluded.animalDefId, posX = excluded.posX, posY = excluded.posY, posZ = excluded.posZ, spawnedAtGameHour = excluded.spawnedAtGameHour, fed = excluded.fed, pregnantUntilHour = excluded.pregnantUntilHour, lastBredHour = excluded.lastBredHour, alive = excluded.alive, updatedAt = excluded.updatedAt" % [
+		_esc(RunMode.town_id), _esc(animal_id), _esc(str(fields.get("animalDefId", ""))),
+		float(fields.get("posX", 0.0)), float(fields.get("posY", 0.0)), float(fields.get("posZ", 0.0)),
+		int(fields.get("spawnedAtGameHour", 0)),
+		float(fields.get("fed", 100.0)),
+		int(fields.get("pregnantUntilHour", -1)),
+		int(fields.get("lastBredHour", -100000)),
+		1 if bool(fields.get("alive", true)) else 0,
+		now,
+	]
+	if not _db.query(sql):
+		push_warning("[Db] save_animal_instance failed: %s" % _db.error_message)
+
+
+# 删除一头动物（宰杀 / 死亡时调）。
+func delete_animal_instance(animal_id: String) -> void:
+	if _db == null or animal_id.is_empty():
+		return
+	_animal_instances_cache.erase(animal_id)
+	var sql := "DELETE FROM animal_instances WHERE townId = '%s' AND animalId = '%s'" % [
+		_esc(RunMode.town_id), _esc(animal_id),
+	]
+	if not _db.query(sql):
+		push_warning("[Db] delete_animal_instance failed: %s" % _db.error_message)
+
+
 # ─── Public API: mine_state ───────────────────────────────────────────
 
 # 取一行 mine_state；不存在返回空 dict。Mines autoload 启动时按需 ensure。
@@ -2098,6 +2162,7 @@ func _hydrate_caches(town_id: String) -> void:
 	_hydrate_container_inventory(town_id)
 	_hydrate_farm_states(town_id)
 	_hydrate_farm_plots(town_id)
+	_hydrate_animal_instances(town_id)
 
 
 func _hydrate_character_states(town_id: String) -> void:
@@ -2274,6 +2339,28 @@ func _hydrate_farm_plots(town_id: String) -> void:
 			"hasPest": int(r.get("hasPest", 0)) != 0,
 		}
 		_farm_plots_cache[farm_id] = bucket
+
+
+func _hydrate_animal_instances(town_id: String) -> void:
+	var rows: Array = _db.select_rows("animal_instances", "townId = '%s'" % _esc(town_id),
+		["animalId", "animalDefId", "posX", "posY", "posZ",
+		"spawnedAtGameHour", "fed", "pregnantUntilHour", "lastBredHour", "alive"])
+	for r_v in rows:
+		var r: Dictionary = r_v as Dictionary
+		var animal_id := str(r.get("animalId", ""))
+		if animal_id.is_empty():
+			continue
+		_animal_instances_cache[animal_id] = {
+			"animalDefId": str(r.get("animalDefId", "")),
+			"posX": float(r.get("posX", 0.0)),
+			"posY": float(r.get("posY", 0.0)),
+			"posZ": float(r.get("posZ", 0.0)),
+			"spawnedAtGameHour": int(r.get("spawnedAtGameHour", 0)),
+			"fed": float(r.get("fed", 100.0)),
+			"pregnantUntilHour": int(r.get("pregnantUntilHour", -1)),
+			"lastBredHour": int(r.get("lastBredHour", -100000)),
+			"alive": int(r.get("alive", 1)) != 0,
+		}
 
 
 # item_instances 列名列表（typed 平铺，无 customProperties）。前两列由 caller 决定

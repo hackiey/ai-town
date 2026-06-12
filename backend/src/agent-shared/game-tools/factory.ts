@@ -28,6 +28,7 @@ import {
   createSmeltTool,
   createSmithTool,
   createTakeTool,
+  createTendAnimalTool,
   createUseItemTool,
   createWoodworkTool,
   createWriteTool,
@@ -113,6 +114,8 @@ export function createSharedGameAgentTools(options: CreateGameAgentToolsOptions)
   tools.push(createPutTool(options, characterId, options.currentContext, interrupts));
   tools.push(createTakeTool(options, characterId, options.currentContext, interrupts));
   tools.push(createBrewTool(options, characterId, options.currentContext, interrupts));
+  // 畜牧：喂养 / 宰杀附近牲畜（与玩家 UI 共用 Character.husbandry()）
+  tools.push(createTendAnimalTool(options, characterId, options.currentContext, gameTime, interrupts));
 
   // 通信 / 交易 / 休息 / 兜底
   tools.push(createOfferTool(options, characterId, options.currentContext, gameTime, interrupts));

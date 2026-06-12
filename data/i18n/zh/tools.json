@@ -361,6 +361,18 @@
       "description": "阅读一件可阅读物品的内容。需要背包或附近容器里有名为 title 的物品。特殊场景：某些身份的人可以阅读自己专属的虚拟账册，系统会一并附上相关的真值流水。",
       "reason_format": "阅读 {title}"
     },
+    "tend_animal": {
+      "param": {
+        "verb": "畜牧操作：feed 喂养（消耗一份饲料，提升动物饱食度，喂饱才会自动繁殖）/ slaughter 宰杀（得到生肉，有些动物还有皮）。",
+        "species": "动物物种，如 cow（牛）/ sheep（羊）/ pig（猪）/ horse（马）/ llama（羊驼）。只对畜牧动物有效。"
+      },
+      "label": "畜牧",
+      "description": "喂养或宰杀附近的牲畜。verb 选 feed（喂养）或 slaughter（宰杀）；species 填物种（如 cow/sheep/pig）。系统会自动找你附近最近的该物种牲畜操作——需要你已经走到动物旁边（交互范围内），否则会提示太远。喂养需要背包里有饲料（小麦等带 grain/fodder 标签的物品）；宰杀会把生肉（和皮）放进你的背包。",
+      "reason_format": "{verb} 一头 {species}",
+      "error": {
+        "no_species": "必须指定要畜牧的动物物种"
+      }
+    },
     "update_memory": {
       "param": {
         "operation": "记忆操作类型：add 新增 / edit 修改 / remove 删除。",

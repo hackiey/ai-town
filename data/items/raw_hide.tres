@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="Item" format=3]
+
+[ext_resource type="Script" uid="uid://dqr5snte2lo05" path="res://src/sim/items/item.gd" id="1_item"]
+
+[resource]
+script = ExtResource("1_item")
+id = "raw_hide"
+kind = "material"
+weight = 0.8
+shape_type = "lump"
+tags = PackedStringArray("leather_raw", "hide")
+materials = {
+"body": "raw_hide"
+}
+tint = Color(0.55, 0.4, 0.28, 1)

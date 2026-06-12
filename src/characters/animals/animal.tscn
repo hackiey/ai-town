@@ -1,0 +1,62 @@
+[gd_scene load_steps=5 format=3]
+
+[ext_resource type="Script" path="res://src/characters/animals/animal.gd" id="1_animal"]
+[ext_resource type="Script" uid="uid://mhnkxhoheim8" path="res://src/world/site_marker.gd" id="2_site"]
+
+[sub_resource type="CapsuleShape3D" id="CapsuleShape_animal"]
+radius = 0.3
+height = 0.8
+
+[sub_resource type="SceneReplicationConfig" id="SceneReplicationConfig_animal"]
+properties/0/path = NodePath(".:position")
+properties/0/spawn = true
+properties/0/replication_mode = 1
+properties/1/path = NodePath(".:rotation")
+properties/1/spawn = true
+properties/1/replication_mode = 1
+properties/2/path = NodePath(".:species_id")
+properties/2/spawn = true
+properties/2/replication_mode = 0
+properties/3/path = NodePath(".:animal_id")
+properties/3/spawn = true
+properties/3/replication_mode = 0
+properties/4/path = NodePath(".:anim_state")
+properties/4/spawn = true
+properties/4/replication_mode = 2
+properties/5/path = NodePath(".:alive")
+properties/5/spawn = true
+properties/5/replication_mode = 2
+properties/6/path = NodePath(".:growth_stage")
+properties/6/spawn = true
+properties/6/replication_mode = 2
+
+[node name="Animal" type="CharacterBody3D"]
+collision_layer = 2
+collision_mask = 25
+floor_snap_length = 0.5
+floor_max_angle = 1.0472
+script = ExtResource("1_animal")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.4, 0)
+shape = SubResource("CapsuleShape_animal")
+
+[node name="NavigationAgent3D" type="NavigationAgent3D" parent="."]
+radius = 0.3
+path_desired_distance = 0.4
+target_desired_distance = 0.6
+path_max_distance = 5.0
+path_height_offset = 0.0
+avoidance_enabled = false
+
+[node name="Visual" type="Node3D" parent="."]
+
+[node name="MultiplayerSynchronizer" type="MultiplayerSynchronizer" parent="."]
+replication_config = SubResource("SceneReplicationConfig_animal")
+
+[node name="SiteMarker" type="Marker3D" parent="."]
+script = ExtResource("2_site")
+visible_near_radius = 3.0
+visible_far_radius = 50.0
+direct_interaction_radius = 3.0
+arrival_radius = 1.0

@@ -21,8 +21,12 @@ Known local references include:
 - `third-party/polygon-fantasy-kingdom/` for Polygon Fantasy Kingdom / Synty-style scene assets.
 - `third-party/mixamo/` for animation FBX files.
 - `third-party/particle-fx/` for local particle effect assets.
+- `third-party/quaternius-farm-animals/` — "Farm Animals" pack by Quaternius (cow, horse, llama, pig, pug, sheep, zebra; rigged + animated FBX). Licensed **CC0 1.0 Universal** (public domain dedication); see the pack's `License.txt`. Source: https://quaternius.com/packs/farmanimal.html
+- `third-party/quaternius-animated-animals/` — "Ultimate Animated Animals" pack by Quaternius (alpaca, bull, cow, deer, donkey, fox, horse, husky, shiba inu, stag, wolf; rigged + animated, glTF/FBX). Licensed **CC0 1.0 Universal**; see the pack's `License.txt`. Source: https://quaternius.com/packs/ultimateanimatedanimals.html
 
-Do not redistribute these folders unless their licenses explicitly allow it.
+The two Quaternius packs are CC0 (no attribution required, commercial use allowed), so unlike the other vendor folders they may be redistributed — but they are still kept under the gitignored `third-party/` so each developer downloads them locally (the project does not vendor third-party model binaries). Their `Blends/` and `OBJ/` subfolders carry a `.gdignore` so Godot only imports the FBX (farm) / glTF (animated) the game actually uses.
+
+Do not redistribute the other folders unless their licenses explicitly allow it.
 
 ## Tracked Game Assets
 

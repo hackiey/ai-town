@@ -497,6 +497,7 @@ func _is_instant_action(action: String) -> bool:
 		"brew",
 		"write",
 		"read",
+		"tend_animal",
 	]
 
 
@@ -550,6 +551,8 @@ func _complete_instant_action(action_request: Dictionary) -> void:
 			structured = LedgerHandlers.run_read(character, action_request)
 		"drop_item":
 			structured = InventoryHandlers.run_drop_item(character, action_request)
+		"tend_animal":
+			structured = HusbandryHandlers.run_tend_animal(character, action_request)
 		_:
 			# 历史路径：未识别 instant action，发个通用 world_event 然后 finish。
 			# 当前列表已穷举所有 _is_instant_action，正常不该走到这里。

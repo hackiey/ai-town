@@ -332,6 +332,14 @@ function createReadSchema() {
   });
 }
 
+function createTendAnimalSchema() {
+  return Type.Object({
+    verb: StringEnum(["feed", "slaughter"], { description: td("tend_animal.param.verb") }),
+    species: Type.String({ description: td("tend_animal.param.species") }),
+    reason: Type.Optional(Type.String({ description: toolReasonDescription() })),
+  });
+}
+
 // 类型从一个静态实例推导（schema 内容是 i18n，但结构稳定）
 export const useItemSchema = createUseItemSchema();
 export const dropItemSchema = createDropItemSchema();
@@ -345,6 +353,7 @@ export const doNothingSchema = createDoNothingSchema();
 export const sleepSchema = createSleepSchema();
 export const writeSchema = createWriteSchema();
 export const readSchema = createReadSchema();
+export const tendAnimalSchema = createTendAnimalSchema();
 
 export type MoveToLocationParams = {
   location: string;
@@ -407,6 +416,7 @@ export type SayToParams = {
 };
 export type UseItemParams = Static<typeof useItemSchema>;
 export type DropItemParams = Static<typeof dropItemSchema>;
+export type TendAnimalParams = Static<typeof tendAnimalSchema>;
 export type OfferParams = Static<typeof offerSchema>;
 export type RespondParams = Static<typeof respondSchema>;
 export type UpdateMemoryParams = Static<typeof updateMemorySchema>;

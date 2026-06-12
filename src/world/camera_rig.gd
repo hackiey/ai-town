@@ -200,6 +200,12 @@ func _unhandled_input(event: InputEvent) -> void:
 				EventBus.npc_context_menu_requested.emit(npc, mb.position)
 				get_viewport().set_input_as_handled()
 				return
+			var animal := _pick_animal_under(mb.position)
+			if animal != null:
+				_right_press_consumed_by_menu = true
+				EventBus.animal_context_menu_requested.emit(animal, mb.position)
+				get_viewport().set_input_as_handled()
+				return
 			_orbiting = true
 			Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
 			return
@@ -278,6 +284,28 @@ func _pick_npc_under(mouse_pos: Vector2) -> Character:
 	while node != null:
 		if node is Character and node.is_in_group("npcs"):
 			return node as Character
+		node = node.get_parent()
+	return null
+
+
+# 同 _pick_npc_under，但找的是 "animals" 组（动物在 layer 2，复用 npc_pick_mask）。
+func _pick_animal_under(mouse_pos: Vector2) -> Node:
+	var world := get_world_3d()
+	if world == null:
+		return null
+	var origin := _camera.project_ray_origin(mouse_pos)
+	var dir := _camera.project_ray_normal(mouse_pos)
+	var query := PhysicsRayQueryParameters3D.create(origin, origin + dir * 1000.0)
+	query.collision_mask = npc_pick_mask
+	query.collide_with_areas = false
+	query.collide_with_bodies = true
+	var hit := world.direct_space_state.intersect_ray(query)
+	if hit.is_empty():
+		return null
+	var node: Node = hit.get("collider", null) as Node
+	while node != null:
+		if node.is_in_group("animals"):
+			return node
 		node = node.get_parent()
 	return null
 

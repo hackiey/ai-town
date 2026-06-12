@@ -565,6 +565,43 @@ func request_use_item(slot_index: int) -> void:
 	_start_use_item_slot(slot_index, false)
 
 
+# 玩家畜牧操作：client 右键动物菜单选「喂养/宰杀」→ 走近后 .rpc_id(1, verb, animal_id)。
+# 逻辑走 Character.husbandry()（与 NPC tool 同一执行点）；server 端按交互半径 fail-closed。
+@rpc("any_peer", "call_remote", "reliable")
+func request_husbandry(verb: String, animal_id: String) -> void:
+	if not RunMode.is_runtime():
+		return
+	if _reject_if_not_owner("request_husbandry"):
+		return
+	var animal := _find_animal_by_id(animal_id)
+	if animal == null:
+		_notify_owner("找不到目标动物", "warn")
+		return
+	var result: Dictionary
+	match verb:
+		"feed":
+			result = husbandry().feed(animal)
+		"slaughter":
+			result = husbandry().slaughter(animal)
+		_:
+			_notify_owner("未知畜牧操作: %s" % verb, "warn")
+			return
+	if not bool(result.get("ok", false)):
+		_notify_owner(str(result.get("message", "操作失败")), "warn")
+		return
+	perception().send_manifest()
+
+
+func _find_animal_by_id(animal_id: String) -> Animal:
+	if animal_id.is_empty():
+		return null
+	for n in get_tree().get_nodes_in_group("animals"):
+		var a := n as Animal
+		if a != null and a.animal_id == animal_id:
+			return a
+	return null
+
+
 @rpc("any_peer", "call_remote", "reliable")
 func request_drop_item(slot_index: int, quantity: int) -> void:
 	if not RunMode.is_runtime():

@@ -42,6 +42,9 @@ export const ACTION_NAMES = [
   "brew",
   "write",
   "read",
+  // 畜牧：喂养 / 宰杀。target 只带 species（NPC 不给每头动物起名）；Godot 找最近同物种
+  // 牲畜并按交互半径 fail-closed 校验。与玩家 UI 共用 Character.husbandry()。
+  "tend_animal",
 ] as const;
 
 export type ActionName = (typeof ACTION_NAMES)[number];
@@ -91,6 +94,12 @@ export type UseItemTarget = {
 // Trade line：我方付出 (offer) 时 slotIndex 指向我背包里具体那份 stack；
 // 对方付出 (request) 是描述，对方背包对发起方不可见，slotIndex 留空，对方履约时按 itemId 自选。
 export type TradeLine = { item: string; count: number; slotIndex?: number };
+
+// 畜牧动作目标：verb + 物种 slug（cow/sheep/pig/...）。Godot 解析最近同物种牲畜。
+export type TendAnimalTarget = {
+  verb: "feed" | "slaughter";
+  species: string;
+};
 
 // request: [] 时 Godot 走 _run_give 单向赠送分支（不写 trade_offers，立即发 give 事件）；
 // request 非空时走 trade.lua 谈判流程。schema 是交易报价目标。
@@ -221,6 +230,7 @@ export type ActionTargetByName = {
   brew: BrewTarget;
   write: WriteTarget;
   read: ReadTarget;
+  tend_animal: TendAnimalTarget;
 };
 
 export type ActionTarget<TName extends ActionName = ActionName> = ActionTargetByName[TName];
@@ -292,6 +302,12 @@ export type ActionResultByName = {
   brew: { liters?: number; ceiling?: number };
   write: { itemName?: string; title?: string };
   read: { title?: string; content?: string };
+  tend_animal: {
+    animalId?: string;
+    species?: string;
+    fed?: number;
+    yields?: Array<{ item_id: string; quantity: number }>;
+  };
 };
 
 export type ActionResult<TName extends ActionName = ActionName> = ActionResultByName[TName];

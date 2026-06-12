@@ -1,0 +1,27 @@
+[gd_resource type="Resource" script_class="Substance" format=3]
+
+[ext_resource type="Script" path="res://src/sim/materials/substance.gd" id="1_mat"]
+
+[resource]
+script = ExtResource("1_mat")
+id = "raw_hide"
+category = "leather"
+hardness = 3
+density = 0.9
+melting_point = -1.0
+ignite_temperature = 280.0
+flammable = true
+thermal_capacity = 2000.0
+thermal_conductivity = 0.2
+brittleness = 0.3
+electrical_conductivity = 0.01
+default_state = 0
+hazards = PackedStringArray()
+tint = Color(0.55, 0.4, 0.28, 1)
+visual_fallback = ""
+transforms = {}
+alloys = {}
+shelf_life_hours = 0.0
+rotten_into = ""
+tags = PackedStringArray("leather_raw", "hide")
+extra = {}

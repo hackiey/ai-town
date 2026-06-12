@@ -65,6 +65,9 @@ signal craft_walk_block_requested(target_pos: Vector3)
 # screen_position 是鼠标屏幕坐标（用来定位菜单面板）。
 signal npc_context_menu_requested(npc: Node, screen_position: Vector2)
 
+# 玩家右键动物时由 CameraRig 发出，AnimalContextMenu 监听弹出（喂养 / 宰杀）。
+signal animal_context_menu_requested(animal: Node, screen_position: Vector2)
+
 # AI 托管（client only）：
 # - available_models_received：server 经 Player._receive_available_models_rpc 把 backend 推来的
 #   可用模型列表（raw "provider:model[/level]"）转给本地，AiTakeoverPanel 用来填模型下拉。

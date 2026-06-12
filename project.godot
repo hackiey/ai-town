@@ -35,6 +35,7 @@ Containers="*res://src/autoload/containers.gd"
 Mines="*res://src/autoload/mines.gd"
 Mints="*res://src/autoload/mints.gd"
 PassiveSimulator="*res://src/autoload/passive_simulator.gd"
+AnimalSimulator="*res://src/autoload/animal_simulator.gd"
 
 [display]
 

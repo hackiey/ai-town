@@ -1,0 +1,22 @@
+[gd_scene format=3 uid="uid://coi6o5u64syqc"]
+
+[ext_resource type="PackedScene" path="res://src/characters/animals/animal.tscn" id="1_base"]
+[ext_resource type="PackedScene" uid="uid://uxjqo0a30y6m" path="res://third-party/quaternius-farm-animals/FBX/Cow.fbx" id="2_model"]
+
+[sub_resource type="CapsuleShape3D" id="CapsuleShape3D_6e5gb"]
+radius = 0.45
+height = 1.1
+
+[node name="Cow" unique_id=2134333654 instance=ExtResource("1_base")]
+
+[node name="CollisionShape3D" parent="." index="0"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.55, 0)
+shape = SubResource("CapsuleShape3D_6e5gb")
+
+[node name="NavigationAgent3D" parent="." index="1"]
+radius = 0.45
+
+[node name="Visual" parent="." index="2"]
+transform = Transform3D(0.3, 0, 0, 0, 0.3, 0, 0, 0, 0.3, 0, 1.0207018, 0)
+
+[node name="Model" parent="Visual" index="0" unique_id=1240760434 instance=ExtResource("2_model")]

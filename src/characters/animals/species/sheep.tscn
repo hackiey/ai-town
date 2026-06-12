@@ -1,0 +1,20 @@
+[gd_scene format=3 uid="uid://elihm08x4hjl"]
+
+[ext_resource type="PackedScene" path="res://src/characters/animals/animal.tscn" id="1_base"]
+[ext_resource type="PackedScene" uid="uid://cjpxq0lqs6jyl" path="res://third-party/quaternius-farm-animals/FBX/Sheep.fbx" id="2_model"]
+
+[sub_resource type="CapsuleShape3D" id="CapsuleShape3D_xv3rf"]
+radius = 0.3
+height = 0.7
+
+[node name="Sheep" unique_id=1326589758 instance=ExtResource("1_base")]
+species_id = "sheep"
+
+[node name="CollisionShape3D" parent="." index="0"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.35, 0)
+shape = SubResource("CapsuleShape3D_xv3rf")
+
+[node name="Visual" parent="." index="2"]
+transform = Transform3D(0.3, 0, 0, 0, 0.3, 0, 0, 0, 0.3, 0, 0, 0)
+
+[node name="Model" parent="Visual" index="0" unique_id=1726849762 instance=ExtResource("2_model")]

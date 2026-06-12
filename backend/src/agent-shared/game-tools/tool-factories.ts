@@ -35,6 +35,7 @@ import {
   readSchema,
   respondSchema,
   sleepSchema,
+  tendAnimalSchema,
   useItemSchema,
   writeSchema,
   type AssembleParams,
@@ -62,6 +63,7 @@ import {
   type SleepParams,
   type SmeltParams,
   type SmithParams,
+  type TendAnimalParams,
   type UseItemParams,
   type WoodworkParams,
   type WriteParams,
@@ -927,6 +929,35 @@ export function createDropItemTool(
         },
         td("drop_item.reason_format", { item: item.label }),
         { displayTarget: item.label, gameTime, signal, onUpdate, interrupts },
+      );
+    },
+  };
+}
+
+export function createTendAnimalTool(
+  runtime: ToolRuntime,
+  characterId: string,
+  _currentContext?: AgentCurrentContext,
+  gameTime?: GameTimeSnapshot,
+  interrupts?: AgentToolInterrupts,
+): AgentTool<typeof tendAnimalSchema, CharacterActionToolDetails> {
+  return {
+    label: td("tend_animal.label"),
+    name: "tend_animal",
+    description: td("tend_animal.description"),
+    parameters: tendAnimalSchema,
+    execute: async (_toolCallId: string, args: TendAnimalParams, signal, onUpdate) => {
+      const species = String(args.species ?? "").trim().toLowerCase();
+      if (!species) {
+        throw new Error(td("tend_animal.error.no_species"));
+      }
+      return submitToolAction(
+        runtime.actions,
+        characterId,
+        "tend_animal",
+        { verb: args.verb as "feed" | "slaughter", species },
+        args.reason ?? td("tend_animal.reason_format", { verb: args.verb, species }),
+        { displayTarget: species, gameTime, signal, onUpdate, interrupts },
       );
     },
   };

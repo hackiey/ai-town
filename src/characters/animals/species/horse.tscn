@@ -1,0 +1,23 @@
+[gd_scene format=3 uid="uid://pm26tmmubo68"]
+
+[ext_resource type="PackedScene" path="res://src/characters/animals/animal.tscn" id="1_base"]
+[ext_resource type="PackedScene" uid="uid://dr823hw5o7nxs" path="res://third-party/quaternius-farm-animals/FBX/Horse.fbx" id="2_model"]
+
+[sub_resource type="CapsuleShape3D" id="CapsuleShape3D_vdjsr"]
+radius = 0.4
+height = 1.4
+
+[node name="Horse" unique_id=1458906151 instance=ExtResource("1_base")]
+species_id = "horse"
+
+[node name="CollisionShape3D" parent="." index="0"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.7, 0)
+shape = SubResource("CapsuleShape3D_vdjsr")
+
+[node name="NavigationAgent3D" parent="." index="1"]
+radius = 0.4
+
+[node name="Visual" parent="." index="2"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.2953641, 0)
+
+[node name="Model" parent="Visual" index="0" unique_id=935366590 instance=ExtResource("2_model")]
