@@ -44,6 +44,9 @@ const _ALL := {
 	"iron_axe":       preload("res://data/items/iron_axe.tres"),
 	"iron_knife":     preload("res://data/items/iron_knife.tres"),
 	"sickle":         preload("res://data/items/sickle.tres"),
+	# 战斗：魔杖（kind=wand）。power/affinity 在 properties（模板级），"charges" 复用
+	# durability（每次施法掉 1，0 = 耗尽但不销毁）。见 docs/architecture/combat-system.md。
+	"wand_basic":     preload("res://data/items/wand_basic.tres"),
 	# 层 C 食物
 	"bread":          preload("res://data/items/bread.tres"),
 	"veg_stew":       preload("res://data/items/veg_stew.tres"),

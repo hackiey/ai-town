@@ -220,13 +220,16 @@ static func inject(lua: LuaState, _ctx: Dictionary, collected: Array) -> void:
 
 	# 给角色挂 status（buff/debuff）。expires_total_hours 用 GameClock.total_game_hours()
 	# 体系——0 表示永久。source 是个标签，方便后续按来源批量清。
-	affect_tbl["add_status"] = func(target, status_id, expires_total_hours, source):
+	# fields：可选数值/字段表，merge 进 status 条目（如 stunned 的 duration_real_sec、
+	# shielded 的 block_power、lucky 的 luck）——"status 携带数值"的统一落点。空表 = 无附加字段。
+	affect_tbl["add_status"] = func(target, status_id, expires_total_hours, source, fields):
 		collected.append({
 			"type": "add_status",
 			"target": target,
 			"status_id": str(status_id),
 			"expires_total_hours": int(expires_total_hours),
 			"source": str(source),
+			"fields": LuaConv.to_dict(fields),
 		})
 
 	# 让 lua 直接往 backend 发 world_event（除 say_to 之外的事件，比如 spell_cast / pickup）。
@@ -246,6 +249,11 @@ static func inject(lua: LuaState, _ctx: Dictionary, collected: Array) -> void:
 	var world_tbl := lua.create_table()
 	world_tbl["now"] = func() -> float:
 		return Time.get_ticks_msec() / 1000.0
+
+	# 表达式求值（reaction-schema §4.5b）。formula 是字符串公式，vars 是 lua 表的变量名→值。
+	# 反应里的 @power 等公式靠它算（沙箱：只读 vars + 算术 + min/max/clamp）。
+	world_tbl["eval"] = func(formula, vars) -> float:
+		return ExprEval.eval(str(formula), LuaConv.to_dict(vars))
 
 	# 物质数据快照——给 crafting transforms / alloys / freshness 用。
 	# 必须返回 lua table（不是 GDScript Dict）才能让 lua 端用 .field 访问。

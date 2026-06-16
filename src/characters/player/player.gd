@@ -249,6 +249,13 @@ func _physics_process(delta: float) -> void:
 	else:
 		velocity.y = 0.0
 
+	if is_stunned():
+		velocity.x = 0.0
+		velocity.z = 0.0
+		_has_target = false
+		move_and_slide()
+		return
+
 	if _has_target:
 		var w := walk()
 		var raw_to_target := nav.target_position - global_position
@@ -344,6 +351,24 @@ func _head_status_text() -> String:
 # Client 调：player.request_move_to.rpc_id(1, world_pos, click_debug)
 # Server 收到后校验 sender 是这个 avatar 的 owner，再 set nav target。
 # 队列在跑时点击移动 → 自动取消队列再走（"自由移动打断队列"）。
+@rpc("any_peer", "call_remote", "reliable")
+func request_cast(aim_dir: Vector3, spell_id: String = "stupefy") -> void:
+	print("[Player] request_cast spell=%s runtime=%s owner=%d sender=%d ai=%s" % [
+		spell_id, RunMode.is_runtime(), owner_peer_id, multiplayer.get_remote_sender_id(), ai_controlled])
+	if not RunMode.is_runtime():
+		return
+	if _reject_if_not_owner("request_cast"):
+		return
+	if _reject_if_ai_controlled("request_cast"):
+		return
+	if not SpellCatalog.has(spell_id):
+		push_warning("[player %s] request_cast unknown spell '%s'" % [character_id, spell_id])
+		return
+	combat().cast().spell_id = spell_id
+	var ok := combat().cast().try_cast(aim_dir)
+	print("[Player] try_cast(%s) = %s (stunned=%s)" % [spell_id, ok, is_stunned()])
+
+
 @rpc("any_peer", "call_remote", "reliable")
 func request_move_to(pos: Vector3, click_debug: Dictionary = {}) -> void:
 	if not RunMode.is_runtime():
@@ -2225,10 +2250,18 @@ func _equipped_items() -> Array[String]:
 func _apply_anim_state(state: String) -> void:
 	if anim == null:
 		return
-	# Phase 3：working 暂时复用 Idle pose 占位（等 Mixamo plant/water/pest 真动画）
-	var name_ := "Walking" if state == "walking" else "Idle"
+	if combat().try_apply_anim():
+		return
+	var name_: String
+	match state:
+		"casting":
+			name_ = "CastWand"
+		"walking":
+			name_ = "Walking"
+		_:
+			name_ = "Idle"
 	if anim.current_animation != name_ and anim.has_animation(name_):
-		anim.play(name_, 0.0)
+		anim.play(name_, 0.15)
 
 
 # Character.enqueue_farm_actions 的 walking 阶段调这个：把 nav target 接到 corridor planner。

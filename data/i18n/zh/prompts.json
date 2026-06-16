@@ -266,6 +266,11 @@
         "quality_format": "品质：{tier}",
         "treat_disease_format": "治疗{disease}"
       },
+      "spell": {
+        "unknown": "未知咒语",
+        "stupefy": "昏昏倒地",
+        "protego": "盔甲护身"
+      },
       "event": {
         "self_pronoun": "你",
         "list_separator": "、",
@@ -349,6 +354,14 @@
           "other_format": "{actor} 醒了",
           "self_with_reason_format": "你醒了（{reason}）",
           "other_with_reason_format": "{actor} 醒了（{reason}）"
+        },
+        "spell_hit": {
+          "self_format": "你对 {target} 施放了「{spell}」",
+          "other_format": "{actor} 对 {target} 施放了「{spell}」",
+          "self_blocked_format": "你对 {target} 施放的「{spell}」被挡下了",
+          "other_blocked_format": "{actor} 对 {target} 施放的「{spell}」被挡下了",
+          "self_failed_format": "你的「{spell}」施法失败了",
+          "other_failed_format": "{actor} 的「{spell}」施法失败了"
         },
         "went_to_sleep": {
           "self_format": "你睡下了（计划 {minutes} 分钟）",

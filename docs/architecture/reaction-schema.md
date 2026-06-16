@@ -383,6 +383,8 @@ dispatcher 解析时展开成 N 个相同槽位。`repeat` 不算 constraint cou
 
 ## 4.5b 表达式语法（输出字段公式）
 
+> **落地状态 (2026-06)**：递归下降求值器已落地 = `ExprEval`（`src/sim/scripting/expr_eval.gd`），支持 `@变量路径 / + - * / / min/max/clamp`，沙箱只读 vars。经 `world.eval(formula, vars)`（`script_api.gd`）暴露给 Lua。首个消费者是魔法战斗 reaction（`data/mechanics/magic.lua` 的 `@power` 公式，见 [combat-system.md](./combat-system.md) 落地块）。crafting 的 generate 字段尚未切到它（仍用 `properties_fn` Lua 闭包），后续可统一。
+
 `outputs[i].generate` 内**任何字段**的 value 都可以是**字符串表达式**——shape_type、qty、materials.body、properties.* 全都支持。运行时从 input 读取并计算。
 
 **v3 修订**：明确表达式适用范围。之前 v2 只列 properties，现在统一所有 generate 字段，因为 batch 2 的 #1 butcher（qty 跟 carcass 走）和 #2 cooked_fish（shape_type 跟生食走）都需要在非 properties 字段用表达式。

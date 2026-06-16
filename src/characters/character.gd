@@ -28,6 +28,7 @@ const _CHARACTER_STATE_IO := preload("res://src/characters/parts/character_state
 const _CHARACTER_SNAPSHOTS := preload("res://src/characters/parts/character_snapshots.gd")
 const _CHARACTER_VISUAL_CONTROLLER := preload("res://src/characters/parts/character_visual_controller.gd")
 const _SPEECH_CONTROLLER := preload("res://src/characters/parts/speech_controller.gd")
+const _COMBAT_CONTROLLER := preload("res://src/characters/parts/combat_controller.gd")
 
 const INVENTORY_SLOT_COUNT := 20
 const INVENTORY_STACK_MAX := 99
@@ -104,7 +105,15 @@ var alive: bool = true:
 # 每条: { type: String, started_at: float, expires_total_hours: int, source_id: String }
 # expires_total_hours = -1 表示永久（hungry / sleeping 走显式清理，不到这步）。
 # medicine_effect 额外带 expires_total_minutes / remaining_deltas 等字段，按 10 分钟 tick 缓慢结算症状变化。
-var active_statuses: Array[Dictionary] = []
+# stun/knockout 这类叠加动画由 is_stunned()（读本数组）驱动，不是 anim_state。client puppet
+# 靠 synchronizer 推 active_statuses，但动画只在 anim_state setter 时才重算——受击/被唤醒不动
+# anim_state，所以 client 端要在本数组变化时重评一次动画，否则只默默掉血、看不到任何反应。
+# （server 端 apply_stun / _tick_stun 已显式 _apply_anim_state，且 .append/.remove_at 不触发 setter。）
+var active_statuses: Array[Dictionary] = []:
+	set(value):
+		active_statuses = value
+		if not RunMode.is_runtime() and is_node_ready():
+			_apply_anim_state(_current_anim_state())
 
 # 社交 / 装备 ────────────────────────────────────────
 @export var faction: String = "townsfolk"
@@ -173,6 +182,7 @@ var _state_io_inst: CharacterStateIO = null
 var _snapshots_inst: CharacterSnapshots = null
 var _visual_inst: CharacterVisualController = null
 var _speech_inst: SpeechController = null
+var _combat_inst: CombatController = null
 
 
 func walk() -> WalkController:
@@ -300,6 +310,20 @@ func speech() -> SpeechController:
 	return _speech_inst
 
 
+func combat() -> CombatController:
+	if _combat_inst == null:
+		_combat_inst = _COMBAT_CONTROLLER.new(self)
+	return _combat_inst
+
+
+func is_stunned() -> bool:
+	return has_status("stunned")
+
+
+func apply_stun(duration_sec: float) -> void:
+	combat().apply_stun(duration_sec)
+
+
 # ─── lifecycle ──────────────────────────────────────
 
 func _ready() -> void:
@@ -317,6 +341,7 @@ func _ready() -> void:
 	# 首次开服的角色初始状态由 Db seed 写入；Character 只读取 DB。
 	if RunMode.is_runtime():
 		state_io().hydrate()
+	combat().setup()
 	# _process 只用来跑气泡淡出；没气泡时关掉避免每个角色每帧空转
 	set_process(false)
 
@@ -338,6 +363,10 @@ func _process(delta: float) -> void:
 # 各自声明的 anim_state 不在 Character 上），默认空串。
 func _current_anim_state() -> String:
 	return ""
+
+
+func _apply_anim_state(_state: String) -> void:
+	pass
 
 
 func play_speech_animation(_duration: float) -> void:
@@ -941,6 +970,7 @@ func cancel_backend_action(action_id: String, reason: String = "interrupted") ->
 
 # 由 NPC / Player physics_process 每帧调一次：durative action deadline 检查。
 func _tick_backend_action(delta: float) -> void:
+	combat().tick(delta)
 	water_draw_actions().tick(delta)
 	sleep_controller().tick(delta)
 	use_item_controller().tick(delta)

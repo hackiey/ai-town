@@ -295,6 +295,13 @@ static func _apply_add_status(effect: Dictionary) -> Dictionary:
 	var expires_in: int = int(effect.get("expires_total_hours", 0))
 	var expires_total_hours := -1 if expires_in <= 0 else expires_in
 	var source := str(effect.get("source", ""))
+	var now_real := Time.get_ticks_msec() / 1000.0
+
+	# 可选附加字段（status 携带数值，如 stunned.duration_real_sec / shielded.block_power）。
+	# 带 real-time 时长的 status 补 started_real_sec，供 combat_controller._tick_stun 按 real-sec 过期。
+	var fields: Dictionary = effect.get("fields", {})
+	if fields.has("duration_real_sec") and not fields.has("started_real_sec"):
+		fields["started_real_sec"] = now_real
 
 	var existing_idx := -1
 	for i in target.active_statuses.size():
@@ -307,13 +314,18 @@ static func _apply_add_status(effect: Dictionary) -> Dictionary:
 		# 永久 (-1) 吸收任何续期；否则取较晚的 expiry
 		if prev != -1 and (expires_total_hours == -1 or expires_total_hours > prev):
 			existing["expires_total_hours"] = expires_total_hours
+		for k in fields:
+			existing[k] = fields[k]
 	else:
-		target.active_statuses.append({
+		var entry := {
 			"type": status_id,
-			"started_at": Time.get_ticks_msec() / 1000.0,
+			"started_at": now_real,
 			"expires_total_hours": expires_total_hours,
 			"source_id": source,
-		})
+		}
+		for k in fields:
+			entry[k] = fields[k]
+		target.active_statuses.append(entry)
 	target.refresh_statuses()
 	return {
 		"ok": true,

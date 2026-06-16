@@ -20,6 +20,8 @@
 
 按时间尺度分三套机制，**不强行统一成一个 tick**。三套都通过 [scripting-layer.md §2.2](./scripting-layer.md#22-effect-模型声明而不-mutate) 的 effect 系统落地变更。
 
+> **落地状态 (2026-06)**：fast tick 首个消费者已落地 = `SimTick`（`src/sim/sim_tick.gd`，autoload）+ `HitResolver`（`src/combat/hit_resolver.gd`）。注意 `SimTick` 走 **real-time** 250ms（非游戏时间）——战斗是实时帧驱动，命中结算节奏要跟弹道一致，不能被 `/timewarp` 拉乱；游戏时间慢节奏仍由 `GameClock.slow_tick`/`ten_minute_tick` 负责。热传导/燃烧等若需游戏时间 fast tick 再单开。详见 [combat-system.md](./combat-system.md) 落地块。
+
 | 机制 | 节奏 | 用途 | 实现 |
 |---|---|---|---|
 | **Fast tick** | 2-4 Hz | 热传导、燃烧、电导、phase change、力学反应 | `physics_tick.gd` + active_objects set，只 tick 被扰动的物体 |

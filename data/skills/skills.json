@@ -52,6 +52,12 @@
       "books": [
         "brewing_basics"
       ]
+    },
+    "stupefy": {
+      "books": []
+    },
+    "protego": {
+      "books": []
     }
   }
 }

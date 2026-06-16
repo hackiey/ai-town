@@ -10,7 +10,7 @@
 // woke_up 这类系统通知靠 hard 路径强制把它放进 agent 注意范围（对方可能不在场）。
 
 import { SAY_TO_ACTION } from "../../godot-link/actions.js";
-import { WOKE_UP_EVENT } from "../../godot-link/events.js";
+import { SPELL_HIT_EVENT, WOKE_UP_EVENT } from "../../godot-link/events.js";
 import type { WorldEventRecord } from "../../godot-link/protocol.js";
 import { directSpeechTargetIds, eventActorId, isPlayerActor, resolveCharacterIdsForEvent } from "./actor.js";
 import { isSayToEventType } from "../event-descriptions/index.js";
@@ -44,6 +44,7 @@ export const SENSORY_EVENT_TYPES = new Set<string>([
   "read",
   "plan_farm_work",
   "action_failed",
+  SPELL_HIT_EVENT,
   ...listCraftSlugs(),
 ]);
 
@@ -85,6 +86,19 @@ export function classifyEventForCharacter(
       return { kind: "sensory", interruptKey: "direct_speech", direct: true };
     }
     // 旁观者：不在这里 short-circuit，下方 isSensoryEventForCharacter 走 ambient_sensory
+  }
+
+  // 1d. spell_hit：施法者（actor）忽略——其结算已在 server 完成，不需要为自己的命中起 turn。
+  //     被命中的目标 direct_speech 强触发（醒着也要反应；睡着的已由 woke_up 单独打醒）。
+  //     旁观者继续往下走 ambient_sensory（spell_hit 已在 SENSORY_EVENT_TYPES）。
+  if (event.type === SPELL_HIT_EVENT) {
+    if (eventActorId(event) === characterId) {
+      return { kind: "ignored" };
+    }
+    const targetId = (event.data as { targetCharacterId?: string } | undefined)?.targetCharacterId;
+    if (targetId && targetId === characterId) {
+      return { kind: "sensory", interruptKey: "direct_speech", direct: true };
+    }
   }
 
   // 2. 自己产生的 sensory（我自己说话/走动）：自始至终 ignored。

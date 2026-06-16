@@ -13,6 +13,7 @@ import {
 
 export const WENT_TO_SLEEP_EVENT = "went_to_sleep";
 export const WOKE_UP_EVENT = "woke_up";
+export const SPELL_HIT_EVENT = "spell_hit";
 
 // Types that are recognized but don't have a typed data shape in world-events.ts
 // — ambient broadcasts and bookkeeping events.

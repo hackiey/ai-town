@@ -1,6 +1,31 @@
 # Combat system
 
-> Status: **drafting v1** — 设计稿，尚无对应代码。本文是哈利波特式魔杖咒语对战的完整 schema、运行时分层和实施路径。
+> Status: **MVP landed (2026-06)** — 两咒竖切（昏昏倒地 stupefy / 盔甲护身 protego）已落地并跑通。本文余下章节是完整设计稿；下面的「落地状态」块记录实际实现与设计的偏差（设计稿部分已陈旧，以落地块为准）。
+>
+> ### 落地状态 (2026-06) — 实际实现 vs 本文设计
+>
+> 本文多处假设的基础设施（`.tres` reaction、`react.apply`、独立 `wand_charges` 字段）**不存在**；实际按项目真实方向（Lua mechanic）落地。对照表：
+>
+> | 设计稿说 | 实际落地 | 文件 |
+> |---|---|---|
+> | reaction = 声明式 `.tres`（class Reaction） | reaction = **声明式 Lua 表**（复用 crafting 引擎语义，无 per-spell effect_script） | `data/mechanics/magic.lua` |
+> | `react.apply(verb, target, ctx)` | `CombatReactions.resolve(caster, target, verb, school)` → `MechanicHost.invoke("magic","on_hit_reaction")` | `src/combat/combat_reactions.gd` |
+> | 难度 `difficulty: 0..1` | `0..100` + crafting 的 `compute_fail_chance(p,d)`（与全局熟练度同一体系） | `magic.lua` |
+> | mastery 四因子② | per-verb：`skill_id == 咒 verb`（stupefy/protego），proficiency 0..100 → [0.6,1.5] 倍率 | `src/combat/spell_power.gd` |
+> | 魔杖 `wand_charges`/`max_wand_charges`/`depleted` 独立字段（§4.2/§7.4b 称已落地——**未落地**） | **复用 `durability`**（消耗型用次计数同一机制）：模板 `properties.max_durability` = 容量，每次施法 −1，0=耗尽留槽（`destroy_at_zero=false`）不销毁 | `wand_basic.tres` / `character_inventory.gd` |
+> | 魔杖 power/affinity | 模板 `properties.wand_power` + `properties.wand_affinity{school:mult}`；背包扫 tag `wand`（`equipped` 字典本项目 vestigial） | `wand_basic.tres` / `spell_power.gd` |
+> | `@power` 表达式（§4.5b 求值器，**之前未落地**） | `ExprEval` 递归下降求值器落地，经 `world.eval(formula, vars)` 暴露给 Lua | `src/sim/scripting/expr_eval.gd` |
+> | fast-tick HitResolver（§2/§6.1，**之前未落地**） | `SimTick`（**real-time** 250ms，非游戏时间，避免 timewarp 拉乱弹道结算）+ `HitResolver`（命中入队、tick 边界统一结算） | `src/sim/sim_tick.gd` / `src/combat/hit_resolver.gd` |
+> | Spell delivery 每咒一个 `.lua` | GDScript 注册表（投递参数：target_type/delivery/cast_time/弹道）；per-spell 投递 .lua 以后再说 | `src/combat/spell_catalog.gd` |
+> | 护盾 §4.6/§6.6 减法损耗 | `shielded.block_power`（**power 单位**，经扩展的 `affect.add_status(...,fields)` 承载）；`HitResolver` 减法吸收，耗尽移除；**击穿=盾碎+全额命中**（leftover 降威力的精细化待后续） | `hit_resolver.gd` / `magic.lua` |
+> | 感知 | 命中发 `spell_hit` world_event（目标 direct/打断、旁观 ambient、施法者 ignored）；睡眠目标仍由现有 `woke_up` 打醒（不重复）。**`spell_cast`（施法可被旁观感知）待后续**；自施 protego 暂不发事件 | backend `world-events.ts`/`event-descriptions/spell.ts`/`event-semantics/classification.ts` + `data/i18n/zh/prompts.json` |
+>
+> **输入**：键 `1`/`2` 选咒（stupefy/protego），键 `F`（`cast_primary`）施放选中咒，瞄准取鼠标方向。
+> **未做（超出两咒 MVP）**：DodgeController、其余咒、NPC 战斗 BT、护盾 VFX、魔杖回充、`spell_cast` 感知、护盾击穿 leftover 降威力。
+>
+> ---
+>
+> Status: **drafting v1** — 以下为原始设计稿（部分已被上面的落地块取代）。本文是哈利波特式魔杖咒语对战的完整 schema、运行时分层和实施路径。
 >
 > **配套文档**：
 > - [reaction-schema.md §7.4b](./reaction-schema.md) — wand_charges 概念首次落地（v4 修订）

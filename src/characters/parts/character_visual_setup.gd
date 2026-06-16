@@ -48,3 +48,56 @@ static func speech_animation_name(mesh_name: String) -> String:
 	if female:
 		names = ["SpeakFemale1", "SpeakFemale2"]
 	return names[randi() % names.size()]
+
+
+static func setup_wand_attachment(skel: Skeleton3D, wand_scene: PackedScene) -> Node3D:
+	if skel == null or wand_scene == null:
+		return null
+	var existing := skel.get_node_or_null("WandAttachment")
+	if existing != null:
+		var nested_tip := existing.get_node_or_null("Wand/WandTip")
+		if nested_tip != null:
+			return nested_tip
+		return existing.get_node_or_null("WandTip")
+
+	var bone_name := "RightHand"
+	if skel.find_bone(bone_name) < 0:
+		bone_name = "Hand_R"
+	if skel.find_bone(bone_name) < 0:
+		push_error("[CharacterVisualSetup] No RightHand bone found")
+		return null
+
+	var attachment := BoneAttachment3D.new()
+	attachment.name = "WandAttachment"
+	attachment.bone_name = bone_name
+	skel.add_child(attachment)
+
+	var wand := wand_scene.instantiate()
+	wand.name = "Wand"
+	# Stirring_Stick's local Y axis is its length; rotate it into the hand's forward direction.
+	wand.position = Vector3(0.0, 0.0, 0.0)
+	wand.rotation_degrees = Vector3(-90.0, 0.0, 0.0)
+	wand.scale = Vector3(0.55, 0.55, 0.55)
+	attachment.add_child(wand)
+	# Remove static body collision from the wand (it's just visual now)
+	for child in wand.get_children():
+		if child is StaticBody3D:
+			child.queue_free()
+
+	var wand_tip := Marker3D.new()
+	wand_tip.name = "WandTip"
+	wand_tip.position = Vector3(0.0, 0.53, 0.0)
+	wand.add_child(wand_tip)
+
+	return wand_tip
+
+
+static func set_combat_anims_no_loop(anim: AnimationPlayer) -> void:
+	if anim == null:
+		return
+	var no_loop_anims := ["CastWand", "KnockedOut", "GettingUp"]
+	for lib_name in anim.get_animation_library_list():
+		var lib := anim.get_animation_library(lib_name)
+		for a_name in no_loop_anims:
+			if lib.has_animation(a_name):
+				lib.get_animation(a_name).loop_mode = Animation.LOOP_NONE

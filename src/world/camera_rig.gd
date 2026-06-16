@@ -223,6 +223,19 @@ func _unhandled_input(event: InputEvent) -> void:
 		_yaw -= (event as InputEventMouseMotion).relative.x * orbit_sensitivity
 		return
 
+	# 施法：键 1 = 昏昏倒地（瞄准弹道），键 2 = 盔甲护身（自施）。按哪个直接施哪个。
+	# echo 守门：按住不连发。
+	if event.is_action_pressed("cast_select_1"):
+		if event is InputEventKey and (event as InputEventKey).echo:
+			return
+		_handle_cast_input("stupefy")
+		return
+	if event.is_action_pressed("cast_select_2"):
+		if event is InputEventKey and (event as InputEventKey).echo:
+			return
+		_handle_cast_input("protego")
+		return
+
 	if not click_to_move:
 		return
 	if not (event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT):
@@ -349,3 +362,35 @@ func _ray_hit_info(hit: Dictionary) -> Dictionary:
 		"layer": layer,
 		"position": position,
 	}
+
+
+func _handle_cast_input(spell_id: String) -> void:
+	if _target == null or not _target.has_method("request_cast"):
+		print("[CameraRig] cast aborted: no target / no request_cast")
+		return
+	# 从鼠标位置射线取瞄准方向（与点地移动 / 右键选 NPC 同一套 picking）。
+	# 之前用屏幕中心，跟鼠标光标无关，所以法术飞向"正中指到的地方"。
+	var viewport := get_viewport()
+	var mouse_pos := viewport.get_mouse_position()
+	var origin := _camera.project_ray_origin(mouse_pos)
+	var ray_dir := _camera.project_ray_normal(mouse_pos)
+	var space := get_world_3d().direct_space_state
+	var query := PhysicsRayQueryParameters3D.create(origin, origin + ray_dir * 100.0)
+	query.collision_mask = 0xFFFFFFFF
+	query.exclude = [_target.get_rid()] if _target is CollisionObject3D else []
+	var hit := space.intersect_ray(query)
+
+	var aim_dir: Vector3
+	if not hit.is_empty():
+		var hit_pos: Vector3 = hit.position
+		aim_dir = (hit_pos - _target.global_position).normalized()
+	else:
+		# 没打到任何东西，朝相机前方投射
+		aim_dir = ray_dir
+	aim_dir.y = 0.0
+	aim_dir = aim_dir.normalized()
+	if aim_dir.is_zero_approx():
+		aim_dir = -_target.global_basis.z
+
+	print("[CameraRig] cast %s aim=%s → server" % [spell_id, aim_dir])
+	_target.request_cast.rpc_id(1, aim_dir, spell_id)

@@ -34,6 +34,7 @@ const WATER_DRAW_PANEL_SCRIPT := preload("res://src/ui/water_draw/water_draw_pan
 const SPLIT_PANEL_SCRIPT := preload("res://src/ui/split/split_panel.gd")
 const BREW_PANEL_SCRIPT := preload("res://src/ui/brewing/brew_panel.gd")
 const INTERACTION_CONTROLLER_SCRIPT := preload("res://src/ui/hud/interaction_controller.gd")
+const SPELL_PROJECTILE_SCENE := preload("res://src/combat/spell_projectile.tscn")
 
 @onready var _player_spawner: MultiplayerSpawner = $PlayerSpawner
 @onready var _players_root: Node3D = $Players
@@ -42,6 +43,8 @@ const INTERACTION_CONTROLLER_SCRIPT := preload("res://src/ui/hud/interaction_con
 @onready var _crops_root: Node3D = $Crops
 @onready var _animal_spawner: MultiplayerSpawner = $AnimalSpawner
 @onready var _camera_rig: CameraRig = $CameraRig if has_node("CameraRig") else null
+
+var _projectile_spawner: MultiplayerSpawner = null
 
 var _peer: ENetMultiplayerPeer
 # client 端：本地 avatar spawn 完才能发 RPC，spawn 之前的输入直接丢。
@@ -79,6 +82,7 @@ const FARM_PROXIMITY_INTERVAL := 0.25
 
 
 func _ready() -> void:
+	_ensure_projectile_spawner()
 	# spawn_function 在 server 和 client 上都跑同样代码、同样 data —— owner_peer_id
 	# / character_id 等"必须立刻知道"的字段走 data，不走 SceneReplicationConfig
 	# （后者要等额外一轮同步）。
@@ -86,6 +90,7 @@ func _ready() -> void:
 	_crop_spawner.spawn_function = Crop.from_spawn_data
 	_animal_spawner.spawn_function = Animal.from_spawn_data  # Phase 2 繁殖出生用；scene-placed 动物不走这
 	$GroundItemSpawner.spawn_function = GroundItem.from_spawn_data
+	_projectile_spawner.spawn_function = _spawn_projectile_from_data
 
 	if RunMode.is_runtime():
 		_init_runtime()
@@ -123,6 +128,28 @@ func _init_runtime() -> void:
 	# Hydrate 繁殖出生的畜牧动物（animal_instances）。scene 预放的 founder 已在自己
 	# _ready 里 take_animal_instance 消费掉对应行，这里只 spawn 剩下的出生动物。
 	_hydrate_persisted_animals()
+
+
+func _ensure_projectile_spawner() -> void:
+	var projectiles_root := get_node_or_null("Projectiles") as Node3D
+	if projectiles_root == null:
+		projectiles_root = Node3D.new()
+		projectiles_root.name = "Projectiles"
+		add_child(projectiles_root)
+
+	_projectile_spawner = get_node_or_null("ProjectileSpawner") as MultiplayerSpawner
+	if _projectile_spawner == null:
+		_projectile_spawner = MultiplayerSpawner.new()
+		_projectile_spawner.name = "ProjectileSpawner"
+		add_child(_projectile_spawner)
+	_projectile_spawner.spawn_path = NodePath("../Projectiles")
+
+
+func _spawn_projectile_from_data(data: Variant) -> Node:
+	var d: Dictionary = data as Dictionary
+	var projectile := SPELL_PROJECTILE_SCENE.instantiate() as SpellProjectile
+	projectile.apply_spawn_data(d)
+	return projectile
 
 
 # 从 Db.all_farm_plots() 取所有有作物的 plot，按 farm_id 找到 FarmGroup，按 plot_index

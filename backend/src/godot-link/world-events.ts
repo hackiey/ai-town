@@ -81,6 +81,18 @@ export type WokeUpEventData = WorldEventDataBase & {
   reason?: string;
 };
 
+// ─── spell_hit ───────────────────────────────────────────────────────
+// 一次法术命中在 fast-tick 边界结算后发出。目标 direct（醒着也触发反应、睡着的被打醒），
+// 旁观者 ambient，施法者 self-ignored。outcome: "hit" | "blocked" | "failed"。
+export type SpellHitEventData = WorldEventDataBase & {
+  spellId: string;
+  school: string;
+  outcome: string;
+  targetCharacterId?: string;
+  hpDelta?: number;
+  addedStatuses?: string[];
+};
+
 // ─── container / shelf（统一）─────────────────────────────────────────
 // container_transfer：一次存取动作，moves 列出移动的物品。货架与容器共用（货架=无锁容器）。
 // 附近的人据此感知"谁往这个容器/货架存了/取了什么"。
@@ -186,6 +198,7 @@ export type WorldEventDataByType = {
   trade_response: TradeResponseEventData;
   went_to_sleep: WentToSleepEventData;
   woke_up: WokeUpEventData;
+  spell_hit: SpellHitEventData;
   container_transfer: ContainerTransferEventData;
   brewed: BrewedEventData;
   use_item: UseItemEventData;
@@ -223,6 +236,7 @@ const WORLD_EVENT_TYPE_MARKER: Record<WorldEventDataType, true> = {
   trade_response: true,
   went_to_sleep: true,
   woke_up: true,
+  spell_hit: true,
   container_transfer: true,
   brewed: true,
   use_item: true,

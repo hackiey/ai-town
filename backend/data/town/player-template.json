@@ -15,13 +15,16 @@
     "woodworking": 15,
     "charcoal_making": 10,
     "mining": 10,
-    "smithing": 10
+    "smithing": 10,
+    "stupefy": 60,
+    "protego": 60
   },
   "knowledge_books": [
     "farming_basics",
     "grain_chain_basics"
   ],
   "starting_inventory": [
+    { "item_id": "wand_basic", "quantity": 1 },
     { "item_id": "iron_ore", "quantity": 5 },
     { "item_id": "copper_ore", "quantity": 3 },
     { "item_id": "tin_ore", "quantity": 3 },

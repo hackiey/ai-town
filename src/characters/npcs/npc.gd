@@ -70,9 +70,12 @@ var anim_state: String = "idle":
 
 
 func _apply_anim_state(state: String) -> void:
+	if combat().try_apply_anim():
+		return
 	match state:
+		"casting":
+			_play("CastWand")
 		"idle", "falling", "working":
-			# Phase 3：working 暂用 Idle pose 占位（等真正的 plant/water/pest 动画）
 			_play("Idle")
 		"walking":
 			_play("Walking")
@@ -339,6 +342,12 @@ func _physics_process(delta: float) -> void:
 	else:
 		velocity.y = 0.0
 
+	if is_stunned():
+		velocity.x = 0.0
+		velocity.z = 0.0
+		move_and_slide()
+		return
+
 	match _state:
 		"falling":
 			velocity.x = 0.0; velocity.z = 0.0
@@ -519,8 +528,7 @@ func _head_status_text() -> String:
 
 func _play(anim_name: String) -> void:
 	if anim.current_animation != anim_name and anim.has_animation(anim_name):
-		# custom_blend=0 强制瞬时切，避免默认 blend time 让旧动画 fade out 一段
-		anim.play(anim_name, 0.0)
+		anim.play(anim_name, 0.15)
 
 
 func _try_step_assist(intent_xz: Vector2) -> void:

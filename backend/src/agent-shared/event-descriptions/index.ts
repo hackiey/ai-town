@@ -27,6 +27,7 @@ import { renderDropItemEventLine, renderReadEventLine, renderUseItemEventLine, r
 import { renderMoveToLocationEventLine } from "./move.js";
 import { renderSayToEventLine } from "./say.js";
 import { renderWentToSleepEventLine, renderWokeUpEventLine } from "./sleep.js";
+import { renderSpellHitEventLine } from "./spell.js";
 import { renderTradeOfferEventLine, renderTradeResponseEventLine } from "./trade.js";
 import { renderUseWorkstationEventLine } from "./workstation.js";
 
@@ -38,6 +39,7 @@ const RENDERERS: Record<string, EventLineRenderer> = {
   trade_response: renderTradeResponseEventLine,
   went_to_sleep: renderWentToSleepEventLine,
   woke_up: renderWokeUpEventLine,
+  spell_hit: renderSpellHitEventLine,
   container_transfer: renderContainerTransferEventLine,
   use_item: renderUseItemEventLine,
   // Craft axis events 全部走同一个 workstation 渲染器（事件数据 shape 相同）。

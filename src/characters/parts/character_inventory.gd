@@ -242,7 +242,9 @@ func count_item(item_id: String, quality: int = -1) -> int:
 # slot.durability（平铺列）是当前剩余（null = 全新工具，回退到 max）。
 # 减到 0 整把工具报废，slot 清空。返回 {broke, remaining, max, item_id}；
 # max=0 表示该 item 不计耐久，本次不动数据。
-func decrement_tool_durability(slot_index: int, amount: int = 1) -> Dictionary:
+# destroy_at_zero=true（默认）：减到 0 整把报废清空槽位（普通工具）。
+# destroy_at_zero=false：减到 0 留在 0（耗尽态，槽位保留）——魔杖 charges 用，0 = depleted 可回充。
+func decrement_tool_durability(slot_index: int, amount: int = 1, destroy_at_zero: bool = true) -> Dictionary:
 	assert(RunMode.is_runtime(), "decrement_tool_durability must run on server")
 	var inv: Array[Dictionary] = character.inventory
 	if slot_index < 0 or slot_index >= inv.size():
@@ -257,7 +259,7 @@ func decrement_tool_durability(slot_index: int, amount: int = 1) -> Dictionary:
 		return {"broke": false, "remaining": 0, "max": 0, "item_id": item_id}
 	var max_dur := dura.max_value()
 	var new_dur := dura.with_decremented(maxi(0, amount))
-	if new_dur <= 0:
+	if new_dur <= 0 and destroy_at_zero:
 		inv[slot_index] = InventorySlotData.empty()
 		character.inventory = inv
 		_persist_slot(slot_index)

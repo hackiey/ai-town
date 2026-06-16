@@ -41,7 +41,7 @@ sickness_rest_risk_threshold          = 40.0
 local function _check_hungry_threshold(target, hunger, has_hungry)
     if hunger <= hungry_threshold and not has_hungry then
         -- expires_total_hours = 0 → 永久（由阈值清理，不靠过期 tick）
-        affect.add_status(target, "hungry", 0, "hunger_decay")
+        affect.add_status(target, "hungry", 0, "hunger_decay", {})
     elseif hunger >= clear_threshold and has_hungry then
         affect.remove_status(target, "hungry")
     end
