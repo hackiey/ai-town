@@ -2409,7 +2409,7 @@ edge_max_length = 6.0
 filter_baking_aabb = AABB(0, 0, 0, 31, 40, 31)
 filter_baking_aabb_offset = Vector3(29.5, -30, 89.5)
 
-[sub_resource type="ImmediateMesh" id="ImmediateMesh_fwjxx"]
+[sub_resource type="ImmediateMesh" id="ImmediateMesh_pkrqw"]
 
 [node name="Town" type="Node3D" unique_id=160892606]
 script = ExtResource("18_town")
@@ -50401,7 +50401,7 @@ waypoints_root = NodePath("../Waypoints")
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -32.305, -24.804, 108)
 
 [node name="GridRenderer" type="MeshInstance3D" parent="Debug" unique_id=1687810968]
-mesh = SubResource("ImmediateMesh_fwjxx")
+mesh = SubResource("ImmediateMesh_pkrqw")
 script = ExtResource("2_grenderer")
 grid = ExtResource("3_grid")
 visible_in_runtime = false
@@ -50509,7 +50509,7 @@ category = "civic"
 group_gated_capabilities = PackedStringArray()
 
 [node name="City_Well3" parent="Workbench" unique_id=743171467 instance=ExtResource("29_well_workstation")]
-transform = Transform3D(0.97777224, 0, -0.20966975, 0, 1, 0, 0.20966975, 0, 0.97777224, -16.620256, 16.699966, -107.989136)
+transform = Transform3D(-0.99613976, 0, 0.08778173, 0, 1, 0, -0.08778173, 0, -0.99613976, -23.819609, 16.509972, -105.858025)
 tint_color = Color(0.18, 0.32, 0.55, 1)
 passive_tags = PackedStringArray()
 

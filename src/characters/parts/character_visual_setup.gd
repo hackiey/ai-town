@@ -78,6 +78,8 @@ static func setup_wand_attachment(skel: Skeleton3D, wand_scene: PackedScene) -> 
 	wand.position = Vector3(0.0, 0.0, 0.0)
 	wand.rotation_degrees = Vector3(-90.0, 0.0, 0.0)
 	wand.scale = Vector3(0.55, 0.55, 0.55)
+	# 暂时隐藏魔杖视觉（WandTip 仍存在，施法起点坐标不受影响）。要恢复删掉这行即可。
+	wand.visible = false
 	attachment.add_child(wand)
 	# Remove static body collision from the wand (it's just visual now)
 	for child in wand.get_children():

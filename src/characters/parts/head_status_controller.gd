@@ -20,6 +20,10 @@ const _HEAD_STATUS_RESEND_SEC := 1.0
 # ≈ 普通阅读节奏。下限走 character.speech_bubble_hold_sec（默认 3s），保证
 # 一两个字也至少能看清。
 const _SPEECH_BUBBLE_UNITS_PER_SEC := 3.0
+# 决策理由气泡（LLM 给动作的 reason）：比说话稍慢、最少停留 3.5s，理由更值得停留看清。
+const _REASON_BUBBLE_UNITS_PER_SEC := 2.5
+const _REASON_BUBBLE_MIN_HOLD := 3.5
+const _REASON_BUBBLE_FADE := 0.4
 const _SLEEPING_STATUS_TEXT := "💤"
 const _EATING_STATUS_EMOJI := "🍽️"
 const _WORKING_STATUS_EMOJI := "🛠️"
@@ -30,6 +34,10 @@ var character: Character
 
 var _speech_text: String = ""
 var _speech_bubble_remaining: float = 0.0
+
+# 决策理由气泡（瞬时，client 端计时淡出；优先级在 speech 之下、thinking 之上）。
+var _reason_text: String = ""
+var _reason_remaining: float = 0.0
 
 var _status_text: String = ""
 var _override_text: String = ""
@@ -90,6 +98,17 @@ func clear_override() -> void:
 		return
 	_override_sent_at_sec = Time.get_ticks_msec() / 1000.0
 	character.hide_action_label_rpc.rpc()
+
+
+# 【server】NPC 决定动作时把 LLM 理由推给 client。瞬时气泡，无 server 态、不 resend
+# （照搬 speech：client 端自己计时淡出）。
+func push_reason(text: String) -> void:
+	if not RunMode.is_runtime():
+		return
+	var clean := text.strip_edges()
+	if clean.is_empty() or not _can_send_rpc():
+		return
+	character.show_action_reason_rpc.rpc(clean)
 
 
 func set_thinking(active: bool, source: String = "") -> void:
@@ -156,6 +175,19 @@ func show_speech_bubble(text: String) -> float:
 	return _speech_bubble_remaining
 
 
+# 【client】Character.show_action_reason_rpc 转发进来：起一个按字数定时长的瞬时理由气泡。
+func show_reason_bubble(text: String) -> void:
+	_reason_text = text.strip_edges()
+	if _reason_text.is_empty():
+		_reason_remaining = 0.0
+		_update_process_state()
+		return
+	var dynamic_hold := _speech_units(_reason_text) / _REASON_BUBBLE_UNITS_PER_SEC
+	var hold := maxf(_REASON_BUBBLE_MIN_HOLD, dynamic_hold)
+	_reason_remaining = hold + _REASON_BUBBLE_FADE
+	_update_process_state()
+
+
 func _speech_units(text: String) -> float:
 	var units := 0.0
 	for i in text.length():
@@ -172,6 +204,11 @@ func update_process(delta: float) -> void:
 		if _speech_bubble_remaining <= 0.0:
 			_speech_bubble_remaining = 0.0
 			_speech_text = ""
+	if _reason_remaining > 0.0:
+		_reason_remaining -= delta
+		if _reason_remaining <= 0.0:
+			_reason_remaining = 0.0
+			_reason_text = ""
 	if _thinking and _THINKING_BUBBLE_FRAMES.size() > 1:
 		_thinking_timer -= delta
 		if _thinking_timer <= 0.0:
@@ -187,8 +224,17 @@ func bubble_state() -> Dictionary:
 		"visible": not text.is_empty(),
 		"mode": mode,
 		"text": text,
-		"alpha": _speech_alpha() if mode == "speech" else 1.0,
+		"alpha": _bubble_alpha(mode),
 	}
+
+
+func _bubble_alpha(mode: String) -> float:
+	match mode:
+		"speech":
+			return _speech_alpha()
+		"reason":
+			return _reason_alpha()
+	return 1.0
 
 
 func _speech_alpha() -> float:
@@ -199,9 +245,17 @@ func _speech_alpha() -> float:
 	return clampf(_speech_bubble_remaining / character.speech_bubble_fade_sec, 0.0, 1.0)
 
 
+func _reason_alpha() -> float:
+	if _reason_remaining >= _REASON_BUBBLE_FADE:
+		return 1.0
+	return clampf(_reason_remaining / _REASON_BUBBLE_FADE, 0.0, 1.0)
+
+
 func _current_mode() -> String:
 	if _speech_bubble_remaining > 0.0 and not _speech_text.is_empty():
 		return "speech"
+	if _reason_remaining > 0.0 and not _reason_text.is_empty():
+		return "reason"
 	if _thinking:
 		return "thinking"
 	if not _override_text.is_empty():
@@ -215,6 +269,8 @@ func _current_text(mode: String) -> String:
 	match mode:
 		"speech":
 			return _speech_text
+		"reason":
+			return "💭 " + _reason_text
 		"thinking":
 			if _THINKING_BUBBLE_FRAMES.is_empty():
 				return ""
@@ -303,4 +359,5 @@ func _contains_any(text: String, needles: Array[String]) -> bool:
 
 func _update_process_state() -> void:
 	var speech_active: bool = _speech_bubble_remaining > 0.0
-	character.set_process(speech_active or _thinking)
+	var reason_active: bool = _reason_remaining > 0.0
+	character.set_process(speech_active or reason_active or _thinking)

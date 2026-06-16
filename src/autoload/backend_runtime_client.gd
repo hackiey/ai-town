@@ -28,6 +28,12 @@ const RUNTIME_PROTOCOL_ACK := "protocol.ack"
 const RUNTIME_REACTION_CATALOG := "runtime.reaction_catalog_sync"
 const AGENT_HOST_HELLO := "agent.host.hello"
 const PROTOCOL_VERSION := "1.0.0"
+
+# NPC 决策理由头顶气泡（宣传片用）。display 决策放 Godot 侧（用户要求不动 backend）：
+# - say_to/respond 跳过：说话气泡已显示内容、交易回应信息量低。
+# - backend 把 reason 包成 "agent 工具：{reason}"（data/i18n/zh/tools.json: agent_tool_reason_format），这里剥前缀。
+const _NO_REASON_BUBBLE_ACTIONS := {"say_to": true, "respond": true}
+const _AGENT_TOOL_REASON_PREFIX := "agent 工具："
 const REPLAY_MESSAGE_TYPES := [RUNTIME_WORLD_EVENT]
 
 @export var auto_connect: bool = true
@@ -450,10 +456,25 @@ func _run_action(msg: Dictionary) -> void:
 			"characterId": character_id,
 		}
 	_ack_action(seq, message_id, action_id, "accepted")
+	_show_decision_reason(character, payload)
 	character.start_backend_action(
 		payload,
 		Callable(self, "_on_action_finished").bind(seq, message_id, action_id)
 	)
+
+
+# NPC 决定动作时把 LLM 给的 reason 弹到头顶（宣传片用）。只在 server/runtime 跑（client 不连 backend）。
+func _show_decision_reason(character: Node, payload: Dictionary) -> void:
+	if character == null or not character.has_method("show_action_reason"):
+		return
+	if _NO_REASON_BUBBLE_ACTIONS.has(str(payload.get("action", ""))):
+		return
+	var reason := str(payload.get("reason", "")).strip_edges()
+	if reason.begins_with(_AGENT_TOOL_REASON_PREFIX):
+		reason = reason.substr(_AGENT_TOOL_REASON_PREFIX.length()).strip_edges()
+	if reason.is_empty():
+		return
+	character.show_action_reason(reason)
 
 
 func _handle_runtime_accepted(msg: Dictionary) -> void:

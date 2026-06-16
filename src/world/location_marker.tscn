@@ -18,7 +18,7 @@ script = ExtResource("1_locm")
 arrival_radius = 0.6
 visible_near_radius = 10.0
 visible_far_radius = 50.0
-show_visual_at_runtime = true
+show_visual_at_runtime = false
 
 [node name="WorldObjectIdentity" type="Node" parent="." unique_id=103112661]
 script = ExtResource("world_identity_script")

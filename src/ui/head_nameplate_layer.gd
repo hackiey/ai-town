@@ -205,6 +205,8 @@ func _bubble_style(mode: String) -> StyleBoxFlat:
 	match mode:
 		"thinking":
 			style.bg_color = Color(1.0, 0.97, 0.86, 0.94)
+		"reason":
+			style.bg_color = Color(0.92, 0.94, 1.0, 0.95)  # 淡蓝：决策理由，区别于 thinking 奶油色
 		"override":
 			style.bg_color = Color(0.96, 1.0, 0.94, 0.94)
 		_:

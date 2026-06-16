@@ -142,7 +142,11 @@ export class PiAgentRuntime {
     // "先想再行动"路径：事件只触发 thinking 轨；thinking 写完 working_memory 后会通过
     // onWorkingMemoryWritten 踢 action 轨一轮。不要再把同一个事件投给 action 轨，避免
     // woke_up 这种旧事件在 thinking 结束后变成迟到的 action interrupt。
+    // 关键：woke_up 常是 NPC 的首个事件，action session 此刻多半还没建。必须先建好，
+    // 否则 onWorkingMemoryWritten 的 lazy lookup 命中 undefined 被 ?. 静默吞掉 ——
+    // 思考写完了却没人去踢 action turn，NPC 醒来杵着不动。
     if (kind === "npc" && isThinkFirstEvent(event)) {
+      this.session(ctx, kind);
       await this.thinkingSession(ctx).runThinkBlocking(`event:${event.type}:think-first`);
       return;
     }

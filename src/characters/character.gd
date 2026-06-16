@@ -670,6 +670,11 @@ func set_backend_thinking(active: bool, _reason: String = "", source: String = "
 	head_status().set_thinking(active, source)
 
 
+# server facade：NPC 决定动作时（BackendRuntimeClient._run_action）调用，把 LLM 决策理由弹到头顶。
+func show_action_reason(text: String) -> void:
+	head_status().push_reason(text)
+
+
 # ─── Wallet (silver/gold currency) ────────────────────────────────────
 # 价格 / 余额都用 centi 整数；1 silver = 100 centi。
 # 显示层用 Money.format_silver_from_centi。LLM 看到的接口仍是 silver float。
@@ -752,6 +757,11 @@ func set_status_label_rpc(text: String) -> void:
 @rpc("authority", "call_remote", "reliable")
 func set_thinking_status_rpc(active: bool) -> void:
 	head_status().apply_remote_thinking(active)
+
+
+@rpc("authority", "call_remote", "reliable")
+func show_action_reason_rpc(text: String) -> void:
+	head_status().show_reason_bubble(text)
 
 
 # ─── 角色级工具方法（i18n / 世界事件 / 角色查找 / 背包索引）──────────

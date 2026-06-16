@@ -2,7 +2,6 @@ import type { AgentTool, AgentToolResult, AgentToolUpdateCallback } from "@mario
 import type { GameTimeSnapshot } from "../../godot-link/protocol.js";
 import { localizeStringValue, resolveCharacterIdByName } from "../name-resolver/index.js";
 import type { AgentCurrentContext, ItemIndexEntry } from "../prompt-context/types.js";
-import { sayToThrottleMs } from "../say-to-throttle.js";
 import { td } from "./i18n.js";
 import {
   formatMoveToLocationToolResult,
@@ -841,9 +840,6 @@ export function createSayToTool(
       if (isMoveTargetError(targetCharacter)) {
         throw new Error(targetCharacter.error);
       }
-      // speaker 端节流：sleep 这段时间视为"NPC 在准备开口"，submit 还没发，气泡还没弹。
-      // 详见 say-to-throttle.ts。
-      await new Promise<void>((resolve) => setTimeout(resolve, sayToThrottleMs(args.text)));
       return submitToolAction(
         runtime.actions,
         characterId,

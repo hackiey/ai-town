@@ -222,7 +222,8 @@ func _refresh_toggle_text() -> void:
 
 func _refresh_visibility() -> void:
 	if _toggle_button != null:
-		_toggle_button.visible = _player != null
+		# 暂时隐藏「AI 托管」入口（接线全保留，去掉本行恢复即可）
+		_toggle_button.visible = false
 
 
 func _unhandled_input(event: InputEvent) -> void:
