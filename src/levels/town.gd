@@ -75,6 +75,7 @@ var _incoming_trade_panel: Node = null
 var _farm_proximity_active: Node = null  # client：当前最近 FarmGroup（≤ FARM_PROXIMITY_RADIUS）
 var _farm_proximity_accum: float = 0.0
 var _map_panel: MapPanel = null
+var _spectate_hint_layer: CanvasLayer = null  # NPC 观察模式底部操作提示条（拍宣传片用）
 
 const FARM_PROXIMITY_RADIUS := 4.0
 const FARM_PROXIMITY_HYSTERESIS := 0.5  # 离开时多走 0.5m 才算 lost，防止边界抖动
@@ -369,6 +370,25 @@ func _init_client() -> void:
 	add_child(map_layer)
 	map_layer.add_child(_map_panel)
 
+	# NPC 观察/导播模式提示条（拍宣传片用）：进入观察模式时在底部显示操作提示，退出隐藏。
+	_spectate_hint_layer = CanvasLayer.new()
+	_spectate_hint_layer.name = "SpectateHintLayer"
+	var spectate_hint := Label.new()
+	spectate_hint.text = "观察模式　·　[ / ] 上一个 / 下一个　·　左键点人跟随　·　V 退出"
+	spectate_hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	spectate_hint.add_theme_color_override("font_color", Color(1, 1, 1))
+	spectate_hint.add_theme_color_override("font_outline_color", Color(0, 0, 0))
+	spectate_hint.add_theme_constant_override("outline_size", 6)
+	spectate_hint.set_anchors_preset(Control.PRESET_BOTTOM_WIDE)
+	spectate_hint.offset_top = -56
+	spectate_hint.offset_bottom = -24
+	_spectate_hint_layer.add_child(spectate_hint)
+	_spectate_hint_layer.visible = false
+	add_child(_spectate_hint_layer)
+	if _camera_rig != null:
+		_camera_rig.spectate_changed.connect(
+				func(active: bool) -> void: _spectate_hint_layer.visible = active)
+
 
 func _on_peer_connected(peer_id: int) -> void:
 	var cid := Players.character_id_of_peer(peer_id)
@@ -483,7 +503,7 @@ func _bind_local_player(node: Node) -> void:
 		var visual_node := node.get_node_or_null("Visual") as Node3D
 		if visual_node != null and not visual_node.is_inside_tree():
 			visual_node = null
-		_camera_rig.set_target(node, visual_node)
+		_camera_rig.set_player(node, visual_node)
 	_local_player = node
 	if _inventory_panel != null:
 		_inventory_panel.set_player(node)
@@ -520,9 +540,9 @@ func _bind_local_player(node: Node) -> void:
 
 
 func _on_player_despawned(node: Node) -> void:
-	# 我的 avatar 没了 → 解绑相机，避免相机 follow 一个释放中的节点
-	if _camera_rig != null and _camera_rig.get("_target") == node:
-		_camera_rig.set_target(null)
+	# 我的 avatar 没了 → 解绑相机（内部会退出观察模式），避免相机 follow 一个释放中的节点
+	if _camera_rig != null and _camera_rig.get("_player") == node:
+		_camera_rig.set_player(null)
 	if _local_player == node:
 		_local_player = null
 		if _inventory_panel != null:

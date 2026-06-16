@@ -79,6 +79,17 @@ var _orbiting: bool = false
 # 右键按下时若命中 NPC，本次按下转交菜单，press/release 都不进入 orbit。
 var _right_press_consumed_by_menu: bool = false
 
+# ── 观察/导播模式（拍宣传片用）─────────────────────────────
+# _player = 本地可控 avatar；_target = 相机当前跟谁（玩家或某 NPC）。
+# 点地移动 / 施法永远作用于 _player，绝不作用于被观察的 NPC。
+signal spectate_changed(active: bool)
+var _player: Node3D
+var _player_anchor: Node3D
+var _spectating: bool = false
+var _npc_index: int = -1
+# 当前已从 spring cast 排除的目标 RID，切目标时撤掉，避免反复切换累积泄漏。
+var _excluded_rid: RID
+
 
 func _ready() -> void:
 	_pitch = deg_to_rad(pitch_degrees)
@@ -117,6 +128,10 @@ func _ready() -> void:
 # town.gd 在本地 player avatar spawn 后调用。
 # anchor_source = 视觉稳定节点（见文件头注释推荐顺序）。不传则退回 target 自己。
 func set_target(node: Node3D, anchor_source: Node3D = null) -> void:
+	# 切目标前先撤掉上一个目标的 spring cast 排除项，避免反复切换累积泄漏。
+	if _excluded_rid.is_valid():
+		_spring.remove_excluded_object(_excluded_rid)
+		_excluded_rid = RID()
 	if node == null:
 		_target = null
 		_anchor_source = null
@@ -127,11 +142,27 @@ func set_target(node: Node3D, anchor_source: Node3D = null) -> void:
 	_anchor_source = anchor_source if anchor_source != null and anchor_source.is_inside_tree() else node
 	# 排除 target 自己的 collision，不然 cast 一启动就撞 target → length=0 → 相机卡身体里。
 	if _target is CollisionObject3D:
-		_spring.add_excluded_object((_target as CollisionObject3D).get_rid())
+		_excluded_rid = (_target as CollisionObject3D).get_rid()
+		_spring.add_excluded_object(_excluded_rid)
 	var anchor := _raw_anchor()
 	_smoothed_anchor = anchor
 	_apply_rig_transform(anchor)
 	reset_physics_interpolation()
+
+
+# town.gd 在本地 player avatar spawn 后调用。_player = 可控 avatar；默认镜头也跟它。
+# node == null（despawn）：若在观察模式先退出，再解绑相机。
+func set_player(node: Node3D, anchor_source: Node3D = null) -> void:
+	_player = node
+	_player_anchor = anchor_source
+	if node == null:
+		if _spectating:
+			_exit_spectate()
+		else:
+			set_target(null)
+		return
+	if not _spectating:
+		set_target(node, anchor_source)
 
 
 func _process(delta: float) -> void:
@@ -189,23 +220,36 @@ func _unhandled_input(event: InputEvent) -> void:
 	if _target == null:
 		return
 
+	# 观察/导播模式按键（拍宣传片用）：V 进/出；观察态下 [ ] 切上一个/下一个 NPC。
+	if event is InputEventKey and (event as InputEventKey).pressed and not (event as InputEventKey).echo:
+		var kc := (event as InputEventKey).physical_keycode
+		if kc == KEY_V:
+			_toggle_spectate()
+			get_viewport().set_input_as_handled()
+			return
+		if _spectating and (kc == KEY_BRACKETLEFT or kc == KEY_BRACKETRIGHT):
+			_cycle_npc(1 if kc == KEY_BRACKETRIGHT else -1)
+			get_viewport().set_input_as_handled()
+			return
+
 	# 右键按住进入 orbit；松开退出。例外：press 时鼠标下有 NPC → 转交菜单，
-	# press/release 这一对都不进 orbit。
+	# press/release 这一对都不进 orbit。观察模式下右键纯取景，不弹菜单。
 	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_RIGHT:
 		var mb := event as InputEventMouseButton
 		if mb.pressed:
-			var npc := _pick_npc_under(mb.position)
-			if npc != null:
-				_right_press_consumed_by_menu = true
-				EventBus.npc_context_menu_requested.emit(npc, mb.position)
-				get_viewport().set_input_as_handled()
-				return
-			var animal := _pick_animal_under(mb.position)
-			if animal != null:
-				_right_press_consumed_by_menu = true
-				EventBus.animal_context_menu_requested.emit(animal, mb.position)
-				get_viewport().set_input_as_handled()
-				return
+			if not _spectating:
+				var npc := _pick_npc_under(mb.position)
+				if npc != null:
+					_right_press_consumed_by_menu = true
+					EventBus.npc_context_menu_requested.emit(npc, mb.position)
+					get_viewport().set_input_as_handled()
+					return
+				var animal := _pick_animal_under(mb.position)
+				if animal != null:
+					_right_press_consumed_by_menu = true
+					EventBus.animal_context_menu_requested.emit(animal, mb.position)
+					get_viewport().set_input_as_handled()
+					return
 			_orbiting = true
 			Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
 			return
@@ -236,6 +280,15 @@ func _unhandled_input(event: InputEvent) -> void:
 		_handle_cast_input("protego")
 		return
 
+	# 观察模式左键 = 点选 NPC 跟随（复用 _pick_npc_under），不再点地移动。
+	if _spectating and event is InputEventMouseButton and event.pressed \
+			and event.button_index == MOUSE_BUTTON_LEFT:
+		var picked := _pick_npc_under((event as InputEventMouseButton).position)
+		if picked != null:
+			_follow_npc(picked)
+		get_viewport().set_input_as_handled()
+		return
+
 	if not click_to_move:
 		return
 	if not (event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT):
@@ -246,7 +299,7 @@ func _unhandled_input(event: InputEvent) -> void:
 	var origin := _camera.project_ray_origin(mouse_pos)
 	var dir := _camera.project_ray_normal(mouse_pos)
 	var space := get_world_3d().direct_space_state
-	var exclude := [_target.get_rid()] if _target is CollisionObject3D else []
+	var exclude := [_player.get_rid()] if _player is CollisionObject3D else []
 	var first_query := PhysicsRayQueryParameters3D.create(origin, origin + dir * 500.0)
 	first_query.collision_mask = click_collision_mask | click_blocking_mask
 	first_query.exclude = exclude
@@ -272,10 +325,10 @@ func _unhandled_input(event: InputEvent) -> void:
 	var hit_pos := hit.position as Vector3
 	# 玩家点地面 → 喊给 godot server："我想去这里"。Server 校验、跑 nav、
 	# 用 MultiplayerSynchronizer 把新位置回推给所有 client。完全不经过 backend。
-	if not _target.has_method("request_move_to"):
-		push_warning("[CameraRig] target lacks request_move_to RPC")
+	if _player == null or not _player.has_method("request_move_to"):
+		push_warning("[CameraRig] player lacks request_move_to RPC")
 		return
-	_target.request_move_to.rpc_id(1, hit_pos, _ray_hit_info(hit))
+	_player.request_move_to.rpc_id(1, hit_pos, _ray_hit_info(hit))
 
 
 # 鼠标位置往世界打射线，命中 NPC 身体 → 顺着父链找 Character in "npcs" 组。
@@ -365,8 +418,11 @@ func _ray_hit_info(hit: Dictionary) -> Dictionary:
 
 
 func _handle_cast_input(spell_id: String) -> void:
-	if _target == null or not _target.has_method("request_cast"):
-		print("[CameraRig] cast aborted: no target / no request_cast")
+	# 观察模式下镜头在 NPC 身上，禁用施法（施法永远作用于自己 _player，不误伤被观察 NPC）。
+	if _spectating:
+		return
+	if _player == null or not _player.has_method("request_cast"):
+		print("[CameraRig] cast aborted: no player / no request_cast")
 		return
 	# 从鼠标位置射线取瞄准方向（与点地移动 / 右键选 NPC 同一套 picking）。
 	# 之前用屏幕中心，跟鼠标光标无关，所以法术飞向"正中指到的地方"。
@@ -377,20 +433,92 @@ func _handle_cast_input(spell_id: String) -> void:
 	var space := get_world_3d().direct_space_state
 	var query := PhysicsRayQueryParameters3D.create(origin, origin + ray_dir * 100.0)
 	query.collision_mask = 0xFFFFFFFF
-	query.exclude = [_target.get_rid()] if _target is CollisionObject3D else []
+	query.exclude = [_player.get_rid()] if _player is CollisionObject3D else []
 	var hit := space.intersect_ray(query)
 
 	var aim_dir: Vector3
 	if not hit.is_empty():
 		var hit_pos: Vector3 = hit.position
-		aim_dir = (hit_pos - _target.global_position).normalized()
+		aim_dir = (hit_pos - _player.global_position).normalized()
 	else:
 		# 没打到任何东西，朝相机前方投射
 		aim_dir = ray_dir
 	aim_dir.y = 0.0
 	aim_dir = aim_dir.normalized()
 	if aim_dir.is_zero_approx():
-		aim_dir = -_target.global_basis.z
+		aim_dir = -_player.global_basis.z
 
 	print("[CameraRig] cast %s aim=%s → server" % [spell_id, aim_dir])
-	_target.request_cast.rpc_id(1, aim_dir, spell_id)
+	_player.request_cast.rpc_id(1, aim_dir, spell_id)
+
+
+# ── 观察/导播模式 ───────────────────────────────────────────
+# V 进/出：进 → 镜头切到离玩家最近的 NPC 第三人称跟随；[ ] 循环切换；左键点选跟随；
+# 出 → 切回 _player。施法 / 点地移动 / 右键 NPC 菜单在观察模式下全部禁用（见 _unhandled_input）。
+func _toggle_spectate() -> void:
+	if _spectating:
+		_exit_spectate()
+	else:
+		_enter_spectate()
+
+
+func _enter_spectate() -> void:
+	var npcs := _live_npcs()
+	if npcs.is_empty():
+		print("[CameraRig] 观察模式：场景里没有 NPC，忽略")
+		return
+	_spectating = true
+	_npc_index = _nearest_npc_index(npcs)
+	_follow_npc(npcs[_npc_index])
+	spectate_changed.emit(true)
+
+
+func _exit_spectate() -> void:
+	_spectating = false
+	_npc_index = -1
+	set_target(_player, _player_anchor)
+	spectate_changed.emit(false)
+
+
+func _cycle_npc(step: int) -> void:
+	var npcs := _live_npcs()
+	if npcs.is_empty():
+		_exit_spectate()
+		return
+	_npc_index = wrapi(_npc_index + step, 0, npcs.size())
+	_follow_npc(npcs[_npc_index])
+
+
+func _follow_npc(npc: Node3D) -> void:
+	if npc == null or not npc.is_inside_tree():
+		return
+	var vis := npc.get_node_or_null("Visual") as Node3D
+	set_target(npc, vis)
+	# 点选进来时同步 index，保证 [ ] 接着从这个人切。
+	var idx := _live_npcs().find(npc)
+	if idx != -1:
+		_npc_index = idx
+
+
+# "npcs" 组里仍在场景树内的角色，按节点名稳定排序（保证 [ ] 顺序固定、不随帧抖动）。
+func _live_npcs() -> Array:
+	var out: Array = []
+	for n in get_tree().get_nodes_in_group("npcs"):
+		if n is Node3D and (n as Node).is_inside_tree():
+			out.append(n)
+	out.sort_custom(func(a, b): return (a as Node).name < (b as Node).name)
+	return out
+
+
+func _nearest_npc_index(npcs: Array) -> int:
+	if _player == null or not _player.is_inside_tree():
+		return 0
+	var origin := _player.global_position
+	var best := 0
+	var best_d := INF
+	for i in npcs.size():
+		var d := origin.distance_squared_to((npcs[i] as Node3D).global_position)
+		if d < best_d:
+			best_d = d
+			best = i
+	return best
