@@ -4,9 +4,11 @@
 
 AI Town is a **playable AI town** built with Godot + TypeScript: a hand-built medieval world where the NPCs are autonomous LLM agents that farm, gather, produce, and trade, keeping the town alive whether or not a player is around. You step in to experience survival, management-sim, and story/puzzle play. The current codebase is a prototype/research workbench rather than a packaged game release.
 
+> 🎬 **Demo video**: [Watch on Bilibili](https://www.bilibili.com/video/BV1CWLD6XE8t/?share_source=copy_web&vd_source=ff6e17530090e91067eb99d02a21498f)
+
 ## Features
 
-- **A town that runs itself.** The ~25 NPCs are autonomous LLM agents that farm, gather, craft, and trade on the exact same systems the player uses. Prices, shortages, and rivalries emerge from real supply and demand rather than scripted spawn tables, and the world keeps living whether or not you're online.
+- **A town that runs itself.** The ~30 NPCs are autonomous LLM agents that farm, gather, craft, and trade on the exact same systems the player uses. Prices, shortages, and rivalries emerge from real supply and demand rather than scripted spawn tables, and the world keeps living whether or not you're online.
 - **Two-track NPC minds.** Each NPC runs a fast reactive track that acts within seconds and a slow strategic track that summarizes experience, plans, and maintains working memory — staying responsive *and* goal-directed at a fraction of the cost of reasoning on every step. (More below.)
 - **Mechanics you can mod, in Lua.** Recipes, item effects, and world rules live in data and sandboxed Lua instead of engine code, so a new ingredient or a whole new behavior is a script away — no recompile. The sandbox safely runs untrusted, even AI-generated, scripts, which is exactly what makes player-authored magic possible.
 - **Crafting with real stakes.** A 0–100 proficiency per trade and each recipe's difficulty decide whether a craft succeeds and how good it turns out, and that quality travels with the item. Proficiency grows with practice and spreads through skillbooks — so specializing, hiring a master, and trading all genuinely pay off.
