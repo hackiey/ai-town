@@ -1,0 +1,4 @@
+# Install this file in an isolated virtual environment; do not add it to the
+# backend Node.js dependency graph.
+psd-tools==1.18.0
+Pillow==12.3.0

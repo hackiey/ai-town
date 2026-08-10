@@ -1,0 +1,14 @@
+{
+  "name": "example_pale_adventurer",
+  "include_top_level": [],
+  "groups": {
+    "Skin Tone": "Pale",
+    "Down Vest": "Brown Trousers",
+    "Up Vest": "Simple Dark Brown Clothes",
+    "Eyes": "Light Green",
+    "Accessories": "Body Belt",
+    "Equipments": "Sheathed Sword",
+    "Eyebrows": "Brown",
+    "Hair": "Short Brown"
+  }
+}

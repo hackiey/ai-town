@@ -13,6 +13,7 @@ import { sqlitePlugin } from "./plugins/sqlite.js";
 import { debugAgentRoutes } from "./routes/debug-agent.js";
 import { healthRoutes } from "./routes/health.js";
 import { agentConnectionHttpRoutes } from "./routes/agent-connections.js";
+import { publicTownRoutes } from "./routes/public-towns.js";
 
 export async function buildApp(config: AppConfig) {
   const app = Fastify({
@@ -37,6 +38,7 @@ export async function buildApp(config: AppConfig) {
 
   await app.register(healthRoutes);
   await app.register(agentConnectionHttpRoutes);
+  await app.register(publicTownRoutes);
   await app.register(debugAgentRoutes);
 
   return app;

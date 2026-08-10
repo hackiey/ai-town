@@ -17,9 +17,18 @@
 .env.*
 !.env.example
 !**/.env.example
+.venv-psd/
+**/__pycache__/
+*.pyc
 
 # Vendor / third-party (手工下载，看 third-party/README.md)
 third-party/
+
+# CraftPix packs are downloaded separately. Keep assets/craftpix/README.md and
+# assets/craftpix/scripts/ tracked; ignore only the actual third-party packs.
+/assets/craftpix/craftpix-net-254170-rpg-character-sprite-sheet-generator/
+/assets/craftpix/craftpix-net-504452-free-village-pixel-tileset-for-top-down-defense/
+/assets/craftpix/craftpix-net-665131-free-fields-tileset-pixel-art-for-tower-defense/
 
 # Lua VM binaries (跑 ./scripts/install-lua-gdextension 重新拉)
 addons/lua-gdextension/build/

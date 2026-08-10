@@ -1,0 +1,385 @@
+{
+  "format": "ai_character_semantic_presets",
+  "version": 1,
+  "catalog": "craftpix_rpg_48",
+  "presets": [
+    {
+      "id": "town_guard",
+      "name": "城镇卫兵",
+      "description": "穿锁甲和红色罩袍、携带盾剑的普通城镇守卫。",
+      "actions": ["idle", "walk", "guard", "attack", "talk"],
+      "default_action": "guard",
+      "default_direction": "down",
+      "appearance": {"groups": {
+        "skin_tone": ["skin_tone/pale"],
+        "down_vest": ["down_vest/plate_pants"],
+        "up_vest": ["up_vest/chainmail"],
+        "eyes": ["eyes/brown"],
+        "accessories": ["accessories/red_tabard"],
+        "equipments": ["equipments/shield_in_the_back", "equipments/sheathed_sword"],
+        "eyebrows": ["eyebrows/brown"],
+        "head": ["head/steel_helmet"]
+      }}
+    },
+    {
+      "id": "veteran_captain",
+      "name": "老兵队长",
+      "description": "带有战斗伤痕、披蓝色罩袍的重甲老兵指挥官。",
+      "actions": ["idle", "walk", "guard", "attack", "talk"],
+      "default_action": "guard",
+      "default_direction": "down",
+      "appearance": {"groups": {
+        "skin_tone": ["skin_tone/white"],
+        "down_vest": ["down_vest/plate_pants"],
+        "up_vest": ["up_vest/breastplate"],
+        "war_paint_and_scars": ["war_paint_and_scars/bear_scars"],
+        "eyes": ["eyes/dark_brown"],
+        "accessories": ["accessories/blue_tabard", "accessories/red_cape"],
+        "equipments": ["equipments/shield_in_the_back", "equipments/sheathed_sword"],
+        "face": ["face/old_beard"],
+        "eyebrows": ["eyebrows/light_gray"],
+        "head": ["head/steel_helmet_2"]
+      }}
+    },
+    {
+      "id": "village_blacksmith",
+      "name": "村庄铁匠",
+      "description": "穿耐脏深色工装、系工具腰带的沉稳铁匠。",
+      "actions": ["idle", "walk", "forge", "trade", "talk"],
+      "default_action": "forge",
+      "default_direction": "right",
+      "appearance": {"groups": {
+        "skin_tone": ["skin_tone/pale"],
+        "down_vest": ["down_vest/brown_trousers"],
+        "up_vest": ["up_vest/simple_dark_brown_clothes"],
+        "eyes": ["eyes/brown"],
+        "accessories": ["accessories/body_belt"],
+        "face": ["face/brown_beard"],
+        "eyebrows": ["eyebrows/brown"],
+        "hair": ["hair/short_brown"]
+      }}
+    },
+    {
+      "id": "forest_ranger",
+      "name": "森林游侠",
+      "description": "身披绿斗篷、携带旅行背包与长剑的精灵游侠。",
+      "actions": ["idle", "walk", "guard", "gather", "attack", "talk"],
+      "default_action": "guard",
+      "default_direction": "left",
+      "appearance": {"groups": {
+        "skin_tone": ["skin_tone/white"],
+        "down_vest": ["down_vest/brown_trousers"],
+        "up_vest": ["up_vest/elven_simple_clothes"],
+        "eyes": ["eyes/light_green"],
+        "accessories": ["accessories/green_cape", "accessories/back_bag", "accessories/body_belt"],
+        "equipments": ["equipments/sheathed_sword"],
+        "eyebrows": ["eyebrows/brown"],
+        "hair": ["hair/brown_ponytail"],
+        "ear": ["ear/elven_ear"]
+      }}
+    },
+    {
+      "id": "wild_hunter",
+      "name": "荒野猎人",
+      "description": "脸带兽爪伤痕、背着行囊在荒野独行的老练猎人。",
+      "actions": ["idle", "walk", "gather", "guard", "attack", "talk"],
+      "default_action": "gather",
+      "default_direction": "right",
+      "appearance": {"groups": {
+        "skin_tone": ["skin_tone/black_2"],
+        "down_vest": ["down_vest/brown_trousers"],
+        "up_vest": ["up_vest/simple_brown_robe"],
+        "war_paint_and_scars": ["war_paint_and_scars/bear_scars"],
+        "eyes": ["eyes/dark_brown"],
+        "accessories": ["accessories/back_bag", "accessories/brown_scarf"],
+        "equipments": ["equipments/sheathed_sword"],
+        "face": ["face/black_beard"],
+        "eyebrows": ["eyebrows/black"],
+        "hair": ["hair/messy_long_black_hair"]
+      }}
+    },
+    {
+      "id": "blue_mage",
+      "name": "苍蓝法师",
+      "description": "佩戴眼镜、以蓝色兜帽和长袍表明学院身份的法师。",
+      "actions": ["idle", "walk", "cast", "talk"],
+      "default_action": "cast",
+      "default_direction": "down",
+      "appearance": {"groups": {
+        "skin_tone": ["skin_tone/pale"],
+        "down_vest": ["down_vest/blue_mage_trousers"],
+        "up_vest": ["up_vest/blue_mage_robe"],
+        "eyes": ["eyes/light_blue"],
+        "accessories": ["accessories/blue_cape", "accessories/glasses"],
+        "eyebrows": ["eyebrows/light_gray"],
+        "head": ["head/blue_mage_hood"]
+      }}
+    },
+    {
+      "id": "ember_warlock",
+      "name": "赤焰术士",
+      "description": "使用红色法袍、火色双眼与红斗篷的危险术士。",
+      "actions": ["idle", "walk", "cast", "attack", "talk"],
+      "default_action": "cast",
+      "default_direction": "right",
+      "appearance": {"groups": {
+        "skin_tone": ["skin_tone/pale"],
+        "down_vest": ["down_vest/red_mage_trousers"],
+        "up_vest": ["up_vest/red_mage_robe"],
+        "war_paint_and_scars": ["war_paint_and_scars/red_war_paint"],
+        "eyes": ["eyes/light_yellow"],
+        "accessories": ["accessories/red_cape", "accessories/ruby_necklace"],
+        "eyebrows": ["eyebrows/red"],
+        "head": ["head/red_magee_hood"]
+      }}
+    },
+    {
+      "id": "moss_druid",
+      "name": "苔林德鲁伊",
+      "description": "拥有苔绿色皮肤、精灵耳与兽角的古老森林德鲁伊。",
+      "actions": ["idle", "walk", "gather", "cast", "pray", "talk"],
+      "default_action": "pray",
+      "default_direction": "down",
+      "appearance": {"groups": {
+        "skin_tone": ["skin_tone/green_moss"],
+        "down_vest": ["down_vest/green_mage_trousers"],
+        "up_vest": ["up_vest/green_mage_robe"],
+        "eyes": ["eyes/light_green"],
+        "accessories": ["accessories/green_cape", "accessories/lantern"],
+        "face": ["face/old_age"],
+        "eyebrows": ["eyebrows/light_gray"],
+        "hair": ["hair/light_gray_ponytail"],
+        "head": ["head/horns"],
+        "ear": ["ear/elven_ear"]
+      }}
+    },
+    {
+      "id": "violet_witch",
+      "name": "紫夜女巫",
+      "description": "以紫色法袍、符文战纹和红宝石项链施展秘术的女巫。",
+      "actions": ["idle", "walk", "cast", "brew", "talk"],
+      "default_action": "cast",
+      "default_direction": "left",
+      "appearance": {"groups": {
+        "skin_tone": ["skin_tone/pale"],
+        "down_vest": ["down_vest/purple_mage_trousers"],
+        "up_vest": ["up_vest/purple_mage_robe"],
+        "war_paint_and_scars": ["war_paint_and_scars/purple_war_paint"],
+        "eyes": ["eyes/pink"],
+        "accessories": ["accessories/purple_cape", "accessories/ruby_necklace"],
+        "eyebrows": ["eyebrows/black"],
+        "head": ["head/purple_mage_hood"]
+      }}
+    },
+    {
+      "id": "town_alchemist",
+      "name": "城镇炼金师",
+      "description": "挂满药剂、背着材料包并佩戴护目眼镜的炼金术研究者。",
+      "actions": ["idle", "walk", "brew", "trade", "talk"],
+      "default_action": "brew",
+      "default_direction": "right",
+      "appearance": {"groups": {
+        "skin_tone": ["skin_tone/pale"],
+        "down_vest": ["down_vest/blue_trousers"],
+        "up_vest": ["up_vest/simple_yellow_clothes"],
+        "eyes": ["eyes/brown"],
+        "accessories": ["accessories/alchemist_front_potions", "accessories/body_belt", "accessories/back_bag", "accessories/glasses"],
+        "eyebrows": ["eyebrows/blonde_eyebrow"],
+        "hair": ["hair/short_blonde"]
+      }}
+    },
+    {
+      "id": "lantern_priest",
+      "name": "提灯祭司",
+      "description": "身着黄色仪式服、携带圣灯并佩戴金色冠饰的祭司。",
+      "actions": ["idle", "walk", "pray", "cast", "talk"],
+      "default_action": "pray",
+      "default_direction": "down",
+      "appearance": {"groups": {
+        "skin_tone": ["skin_tone/white"],
+        "down_vest": ["down_vest/red_trousers"],
+        "up_vest": ["up_vest/simple_yellow_clothes"],
+        "eyes": ["eyes/light_yellow"],
+        "accessories": ["accessories/yellow_tabard", "accessories/lantern_tabard_mark", "accessories/lantern"],
+        "eyebrows": ["eyebrows/blonde_eyebrow"],
+        "hair": ["hair/blonde_ponytail"],
+        "head": ["head/gold_diadem"]
+      }}
+    },
+    {
+      "id": "royal_lady",
+      "name": "王都贵族",
+      "description": "穿紫色贵族礼服、佩红宝石与金冠的王都名媛。",
+      "actions": ["idle", "walk", "talk", "trade"],
+      "default_action": "talk",
+      "default_direction": "left",
+      "appearance": {"groups": {
+        "skin_tone": ["skin_tone/pale"],
+        "down_vest": ["down_vest/purple_mage_trousers"],
+        "up_vest": ["up_vest/purple_noble_cloth"],
+        "eyes": ["eyes/light_blue"],
+        "accessories": ["accessories/purple_cape", "accessories/ruby_necklace"],
+        "eyebrows": ["eyebrows/black"],
+        "hair": ["hair/long_black"],
+        "head": ["head/golden_crown"]
+      }}
+    },
+    {
+      "id": "blue_lord",
+      "name": "蓝衣领主",
+      "description": "身穿蓝色贵族服、佩剑与银冠的年轻领主。",
+      "actions": ["idle", "walk", "guard", "talk", "attack"],
+      "default_action": "talk",
+      "default_direction": "right",
+      "appearance": {"groups": {
+        "skin_tone": ["skin_tone/black"],
+        "down_vest": ["down_vest/blue_trousers"],
+        "up_vest": ["up_vest/blue_noble_cloth"],
+        "eyes": ["eyes/brown"],
+        "accessories": ["accessories/blue_cape", "accessories/body_belt"],
+        "equipments": ["equipments/sheathed_sword"],
+        "face": ["face/black_beard"],
+        "eyebrows": ["eyebrows/black"],
+        "hair": ["hair/curtain_hair_black"],
+        "head": ["head/silver_crown"]
+      }}
+    },
+    {
+      "id": "elven_scout",
+      "name": "精灵斥候",
+      "description": "以轻装、蓝色战纹和尖耳执行远程侦察任务的精灵。",
+      "actions": ["idle", "walk", "guard", "gather", "attack", "talk"],
+      "default_action": "guard",
+      "default_direction": "left",
+      "appearance": {"groups": {
+        "skin_tone": ["skin_tone/white"],
+        "down_vest": ["down_vest/green_mage_trousers"],
+        "up_vest": ["up_vest/elven_simple_clothes"],
+        "war_paint_and_scars": ["war_paint_and_scars/blue_war_paint"],
+        "eyes": ["eyes/light_green"],
+        "accessories": ["accessories/green_cape", "accessories/back_bag"],
+        "equipments": ["equipments/sheathed_sword"],
+        "eyebrows": ["eyebrows/blonde_eyebrow"],
+        "hair": ["hair/blonde_ponytail"],
+        "head": ["head/steel_diadem"],
+        "ear": ["ear/elven_ear"]
+      }}
+    },
+    {
+      "id": "orc_warrior",
+      "name": "兽人战士",
+      "description": "拥有绿色皮肤、兽人面孔、战纹与粗重护甲的部族战士。",
+      "actions": ["idle", "walk", "attack", "guard", "talk"],
+      "default_action": "attack",
+      "default_direction": "right",
+      "appearance": {"groups": {
+        "skin_tone": ["skin_tone/green"],
+        "down_vest": ["down_vest/rusted_plate_pants"],
+        "up_vest": ["up_vest/rusted_breastplate"],
+        "war_paint_and_scars": ["war_paint_and_scars/red_war_paint"],
+        "eyes": ["eyes/red_scaly_yellow_eyes"],
+        "accessories": ["accessories/red_tabard", "accessories/body_belt"],
+        "equipments": ["equipments/shield_in_the_back", "equipments/sheathed_sword"],
+        "face": ["face/orc"],
+        "eyebrows": ["eyebrows/black"],
+        "hair": ["hair/black_spiked_hair"],
+        "head": ["head/horns"],
+        "ear": ["ear/orc_ear"]
+      }}
+    },
+    {
+      "id": "goblin_tinker",
+      "name": "哥布林工匠",
+      "description": "背着工具包、戴眼镜并提着灯的机灵哥布林修补匠。",
+      "actions": ["idle", "walk", "forge", "trade", "talk"],
+      "default_action": "forge",
+      "default_direction": "right",
+      "appearance": {"groups": {
+        "skin_tone": ["skin_tone/green_moss"],
+        "down_vest": ["down_vest/brown_trousers"],
+        "up_vest": ["up_vest/simple_light_brown_clothes"],
+        "eyes": ["eyes/light_yellow"],
+        "accessories": ["accessories/body_belt", "accessories/back_bag", "accessories/glasses", "accessories/lantern"],
+        "eyebrows": ["eyebrows/black"],
+        "hair": ["hair/short_black"],
+        "ear": ["ear/goblin_ear"]
+      }}
+    },
+    {
+      "id": "dragon_cultist",
+      "name": "龙裔教徒",
+      "description": "红色鳞眼、龙吻与双角构成鲜明特征的神秘龙教成员。",
+      "actions": ["idle", "walk", "pray", "cast", "attack", "talk"],
+      "default_action": "pray",
+      "default_direction": "down",
+      "appearance": {"groups": {
+        "skin_tone": ["skin_tone/red"],
+        "down_vest": ["down_vest/red_mage_trousers"],
+        "up_vest": ["up_vest/black_noble_cloth"],
+        "war_paint_and_scars": ["war_paint_and_scars/red_war_paint"],
+        "eyes": ["eyes/red_scaly_yellow_eyes"],
+        "accessories": ["accessories/red_cape", "accessories/lantern"],
+        "face": ["face/dragon_mouth"],
+        "eyebrows": ["eyebrows/red"],
+        "hair": ["hair/dark_long_black"],
+        "head": ["head/horns"]
+      }}
+    },
+    {
+      "id": "dark_knight",
+      "name": "黑甲骑士",
+      "description": "使用旧式重甲、深蓝罩袍和全套盾剑的寡言骑士。",
+      "actions": ["idle", "walk", "guard", "attack", "talk"],
+      "default_action": "guard",
+      "default_direction": "left",
+      "appearance": {"groups": {
+        "skin_tone": ["skin_tone/black_2"],
+        "down_vest": ["down_vest/rusted_plate_pants"],
+        "up_vest": ["up_vest/rusted_breastplate"],
+        "war_paint_and_scars": ["war_paint_and_scars/bear_scars"],
+        "eyes": ["eyes/dark_brown"],
+        "accessories": ["accessories/dark_blue_tabard", "accessories/red_cape"],
+        "equipments": ["equipments/shield_in_the_back", "equipments/sheathed_sword"],
+        "face": ["face/black_beard"],
+        "eyebrows": ["eyebrows/black"],
+        "head": ["head/steel_helmet_2"]
+      }}
+    },
+    {
+      "id": "wandering_merchant",
+      "name": "旅行商人",
+      "description": "背着货包、系红围巾并提灯赶路的亲切行商。",
+      "actions": ["idle", "walk", "trade", "talk"],
+      "default_action": "trade",
+      "default_direction": "right",
+      "appearance": {"groups": {
+        "skin_tone": ["skin_tone/black"],
+        "down_vest": ["down_vest/blue_trousers"],
+        "up_vest": ["up_vest/simple_light_brown_clothes"],
+        "eyes": ["eyes/brown"],
+        "accessories": ["accessories/body_belt", "accessories/back_bag", "accessories/red_scarf", "accessories/lantern"],
+        "face": ["face/brown_beard"],
+        "eyebrows": ["eyebrows/brown"],
+        "hair": ["hair/short_brown"]
+      }}
+    },
+    {
+      "id": "traveling_bard",
+      "name": "吟游诗人",
+      "description": "穿醒目紫衣、佩围巾与宝石项链四处讲述故事的旅人。",
+      "actions": ["idle", "walk", "perform", "talk", "trade"],
+      "default_action": "perform",
+      "default_direction": "down",
+      "appearance": {"groups": {
+        "skin_tone": ["skin_tone/pale"],
+        "down_vest": ["down_vest/red_trousers"],
+        "up_vest": ["up_vest/simple_purple_clothes"],
+        "eyes": ["eyes/pink_2"],
+        "accessories": ["accessories/blue_scarf", "accessories/ruby_necklace"],
+        "eyebrows": ["eyebrows/blonde_eyebrow"],
+        "hair": ["hair/curtain_hair_blonde"],
+        "head": ["head/platinum_diadem"]
+      }}
+    }
+  ]
+}

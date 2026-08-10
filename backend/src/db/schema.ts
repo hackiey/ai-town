@@ -140,6 +140,23 @@ export const SCHEMA_STATEMENTS = [
     key TEXT PRIMARY KEY,
     value TEXT NOT NULL          -- JSON
   )`,
+
+  // public_towns：玩家发布到小镇大厅的地图包。地图使用项目现有 map.json 格式，
+  // editTokenHash 只用于作者后续覆盖更新，公开 API 永不返回哈希。
+  `CREATE TABLE IF NOT EXISTS public_towns (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    authorName TEXT NOT NULL,
+    description TEXT NOT NULL,
+    mapJson TEXT NOT NULL,
+    width INTEGER NOT NULL,
+    height INTEGER NOT NULL,
+    buildingCount INTEGER NOT NULL,
+    editTokenHash TEXT NOT NULL,
+    createdAt TEXT NOT NULL,
+    updatedAt TEXT NOT NULL
+  )`,
+  `CREATE INDEX IF NOT EXISTS idx_public_towns_updated ON public_towns (updatedAt DESC)`,
 ];
 
 // 新增列的幂等迁移；首次运行成功，之后失败被吞掉。

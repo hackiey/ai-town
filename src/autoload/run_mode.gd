@@ -10,6 +10,9 @@ extends Node
 #   --port <int>                runtime 监听端口，默认 7777
 #   --connect <host:port>       client 连接目标，默认 127.0.0.1:7777
 #   --backend-ws <url>          可选，覆盖 BackendRuntimeClient 默认地址
+#   --town-api <url>            小镇大厅 REST API，默认 http://127.0.0.1:3000
+#   --2d-prototype              启动新的 2D TileMap 原型，不进入登录/3D 小镇
+#   --town-editor               通过 boot.tscn 启动本地小镇编辑器
 #   --INIT                      runtime 启动时把旧 state.db 归档到 backend/data/archive/
 #                               （按时间戳命名），再新建空 state.db，便于事后分析每一局
 
@@ -24,7 +27,13 @@ var port: int = DEFAULT_PORT
 var connect_host: String = "127.0.0.1"
 var connect_port: int = DEFAULT_PORT
 var backend_ws_override: String = ""
+var town_hall_api_base: String = "http://127.0.0.1:3000"
+var editor_project_id: String = ""
+var editor_create_new: bool = false
+var editor_return_to_manager: bool = false
 var reset_db: bool = false
+var two_d_prototype: bool = false
+var town_editor: bool = false
 
 
 func _enter_tree() -> void:
@@ -37,6 +46,14 @@ func is_runtime() -> bool:
 
 func is_client() -> bool:
 	return mode == "client"
+
+
+func is_2d_prototype() -> bool:
+	return two_d_prototype
+
+
+func is_town_editor() -> bool:
+	return town_editor
 
 
 func _parse(args: PackedStringArray) -> void:
@@ -64,6 +81,15 @@ func _parse(args: PackedStringArray) -> void:
 				if i + 1 < args.size():
 					backend_ws_override = args[i + 1]
 					i += 1
+			"--town-api":
+				if i + 1 < args.size():
+					town_hall_api_base = args[i + 1]
+					i += 1
+			"--2d-prototype":
+				two_d_prototype = true
+			"--town-editor":
+				two_d_prototype = true
+				town_editor = true
 			"--INIT":
 				reset_db = true
 			_:
